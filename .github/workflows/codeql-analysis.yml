@@ -1,0 +1,14 @@
+name: codeql-analysis
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  codeql:
+    name: Analysis
+    uses: sapphiredev/.github/.github/workflows/reusable-codeql.yml@main

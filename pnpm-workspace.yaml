@@ -1,0 +1,11 @@
+allowBuilds:
+  '@google/genai': true
+  '@parcel/watcher': true
+  '@vscode/vsce-sign': true
+  esbuild: true
+  keytar: true
+  protobufjs: true
+
+minimumReleaseAgeExclude:
+  - npm-check-updates@23.0.1
+  - tsx@4.23.5

@@ -1,0 +1,334 @@
+@import 'tailwindcss';
+@import 'katex/dist/katex.min.css';
+
+@theme {
+  --font-display: var(--vscode-font-family);
+
+  --text-xs: calc(var(--vscode-font-size) * 0.85);
+  --text-sm: calc(var(--vscode-font-size) * 0.9);
+  --text-base: var(--vscode-font-size);
+  --text-lg: calc(var(--vscode-font-size) * 1.1);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-vscode-foreground: var(--vscode-foreground);
+  --color-vscode-descriptionForeground: var(--vscode-descriptionForeground);
+  --color-vscode-editor-foreground: var(--vscode-editor-foreground);
+  --color-vscode-editor-background: var(--vscode-editor-background);
+  --color-vscode-editorGroup-border: var(--vscode-editorGroup-border);
+  --color-vscode-editorWarning-foreground: var(--vscode-editorWarning-foreground);
+  --color-vscode-editorWarning-background: var(--vscode-editorWarning-background);
+  --color-vscode-button-foreground: var(--vscode-button-foreground);
+  --color-vscode-button-background: var(--vscode-button-background);
+  --color-vscode-button-secondaryForeground: var(--vscode-button-secondaryForeground);
+  --color-vscode-button-secondaryBackground: var(--vscode-button-secondaryBackground);
+  --color-vscode-button-hoverBackground: var(--vscode-button-hoverBackground);
+  --color-vscode-button-secondaryHoverBackground: var(--vscode-button-secondaryHoverBackground);
+  --color-vscode-dropdown-foreground: var(--vscode-dropdown-foreground);
+  --color-vscode-dropdown-background: var(--vscode-dropdown-background);
+  --color-vscode-dropdown-border: var(--vscode-dropdown-border);
+  --color-vscode-input-foreground: var(--vscode-input-foreground);
+  --color-vscode-input-background: var(--vscode-input-background);
+  --color-vscode-input-border: var(--vscode-input-border, transparent);
+  --color-vscode-focusBorder: var(--vscode-focusBorder);
+  --color-vscode-badge-foreground: var(--vscode-badge-foreground);
+  --color-vscode-badge-background: var(--vscode-badge-background);
+  --color-vscode-notifications-foreground: var(--vscode-notifications-foreground);
+  --color-vscode-notifications-background: var(--vscode-notifications-background);
+  --color-vscode-textLink-foreground: var(--vscode-textLink-foreground);
+  --color-vscode-textLink-activeForeground: var(--vscode-textLink-activeForeground);
+  --color-vscode-sideBarSectionHeader-background: var(--vscode-sideBarSectionHeader-background);
+  --color-vscode-sideBar-background: var(--vscode-sideBar-background);
+  --color-vscode-sideBar-border: var(--vscode-sideBar-border);
+  --color-vscode-titleBar-activeBackground: var(--vscode-titleBar-activeBackground);
+  --color-vscode-titleBar-activeForeground: var(--vscode-titleBar-activeForeground);
+  --color-vscode-welcomePage-tileHoverBackground: var(--vscode-welcomePage-tileHoverBackground);
+  --color-vscode-list-hoverBackground: var(--vscode-list-hoverBackground);
+  --color-vscode-list-hoverForeground: var(--vscode-list-hoverForeground);
+}
+
+/* Custom styles */
+
+.slash-command-match-textarea-highlight {
+  background-color: color-mix(in srgb, var(--vscode-focusBorder) 30%, transparent);
+  border-radius: 3px;
+  box-shadow: 0 0 0 0.5px color-mix(in srgb, var(--vscode-focusBorder) 30%, transparent);
+  color: transparent;
+}
+
+@keyframes slow-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.animate-slow-pulse {
+  animation: slow-pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-slow-pulse-delayed {
+  animation: slow-pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  animation-delay: 0.5s;
+}
+
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out forwards;
+}
+
+@keyframes message-highlight {
+  0% {
+    background-color: transparent;
+  }
+  20% {
+    background-color: color-mix(in srgb, var(--vscode-focusBorder) 25%, transparent);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.animate-message-highlight {
+  animation: message-highlight 1s ease-out forwards;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% center;
+  }
+  100% {
+    background-position: -200% center;
+  }
+}
+
+.shimmer-text {
+  --shimmer-base: var(--shimmer-foreground, color-mix(in srgb, var(--vscode-descriptionForeground) 80%, black));
+  --shimmer-highlight: var(--shimmer-highlight-color, color-mix(in srgb, var(--shimmer-base) 70%, white));
+
+  color: var(--shimmer-base);
+  background: linear-gradient(
+    90deg,
+    var(--shimmer-base) 0%,
+    var(--shimmer-base) 35%,
+    var(--shimmer-highlight) 45%,
+    var(--shimmer-highlight) 50%,
+    var(--shimmer-highlight) 55%,
+    var(--shimmer-base) 65%,
+    var(--shimmer-base) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
+  animation: shimmer 2.5s linear infinite;
+}
+
+/* Custom scrollbar to match VSCode style */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--vscode-scrollbarSlider-background, rgba(121, 121, 121, 0.4)) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--vscode-scrollbarSlider-background, rgba(121, 121, 121, 0.4));
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--vscode-scrollbarSlider-hoverBackground, rgba(100, 100, 100, 0.7));
+}
+
+::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* Prose Markdown styling */
+.prose-markdown {
+  font-family:
+    var(--vscode-font-family),
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-size: var(--vscode-font-size, 13px);
+  color: var(--vscode-foreground);
+}
+
+.prose-markdown strong {
+  font-weight: 600;
+}
+
+.prose-markdown code:not(pre code) {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 0.85em;
+  color: var(--vscode-textPreformat-foreground, var(--vscode-editorWarning-foreground)) !important;
+  background-color: var(--vscode-textPreformat-background, var(--vscode-editor-background)) !important;
+  padding: 1px 4px;
+  border-radius: 3px;
+  white-space: pre-line;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+
+/* High contrast overrides */
+body[data-vscode-theme-kind*='high-contrast'] .prose-markdown code:not(pre code) {
+  color: var(--vscode-editorInlayHint-foreground, var(--vscode-symbolIcon-stringForeground, #e9a700));
+}
+
+.prose-markdown p {
+  white-space: pre-wrap;
+  margin: 0.75em 0 0.25em;
+  line-height: 1.45;
+}
+
+.prose-markdown li {
+  margin: 0.25em 0;
+  line-height: 1.45;
+}
+
+.prose-markdown ol,
+.prose-markdown ul {
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+
+.prose-markdown ol {
+  list-style-type: decimal;
+}
+
+.prose-markdown ul {
+  list-style-type: disc;
+}
+
+.prose-markdown a {
+  color: var(--vscode-textLink-foreground);
+  text-decoration: none;
+}
+
+.prose-markdown a:hover {
+  color: var(--vscode-textLink-activeForeground);
+  text-decoration: underline;
+}
+
+.prose-markdown h1 {
+  font-size: 1.5em;
+  font-weight: 700;
+  margin: 1.2em 0 0.4em;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  padding-bottom: 0.2em;
+}
+
+.prose-markdown h2 {
+  font-size: 1.3em;
+  font-weight: 600;
+  margin: 1.1em 0 0.4em;
+}
+
+.prose-markdown h3 {
+  font-size: 1.1em;
+  font-weight: 600;
+  margin: 1em 0 0.4em;
+}
+
+/* Table styles */
+.prose-markdown table {
+  border-collapse: collapse;
+  margin: 1em 0;
+  width: auto;
+  min-width: 60%;
+  max-width: 100%;
+}
+
+.prose-markdown .table-wrapper {
+  overflow-x: auto;
+  margin: 1em 0;
+}
+
+.prose-markdown th,
+.prose-markdown td {
+  border: 1px solid var(--vscode-panel-border, #444);
+  padding: 6px 10px;
+  text-align: left;
+}
+
+.prose-markdown th {
+  background-color: var(--vscode-editor-background);
+  font-weight: 600;
+}
+
+.prose-markdown tr:nth-child(even) {
+  background-color: var(--vscode-editor-inactiveSelectionBackground, rgba(100, 100, 100, 0.1));
+}
+
+/* KaTeX styling */
+.prose-markdown .katex {
+  font-size: 1.05em;
+  color: var(--vscode-editor-foreground);
+  font-family: KaTeX_Main, 'Times New Roman', serif;
+  line-height: 1.2;
+}
+
+.prose-markdown .katex-display {
+  display: block;
+  margin: 1em 0;
+  text-align: center;
+  padding: 0.5em;
+  overflow-x: auto;
+  background-color: var(--vscode-textCodeBlock-background, var(--vscode-editor-background));
+  border-radius: 4px;
+}
