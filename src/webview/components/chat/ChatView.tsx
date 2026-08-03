@@ -638,8 +638,38 @@ export const ChatView: FC = () => {
             ],
           };
         });
-        vscode.postMessage({ type: 'send_message', text, images });
+        vscode.postMessage({ type: 'send_message', text, path: activeTask.path, images });
       }
+    }
+  };
+
+  // Handle continue task (resume without user message text / card in UI)
+  const handleContinueTask = () => {
+    if (!activeTask) return;
+    setShowScrollToBottom(false);
+    setIsAgentRunning(true);
+    if (!vscode) {
+      // Mock logic for offline fallback
+      setTimeout(() => {
+        setActiveTask((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            messages: [
+              ...prev.messages,
+              {
+                id: 'a-' + Date.now(),
+                sender: 'assistant',
+                ts: Date.now(),
+                text: 'Continuing the task. Please let me know what else needs to be done.',
+              },
+            ],
+          };
+        });
+        setIsAgentRunning(false);
+      }, 1000);
+    } else {
+      vscode.postMessage({ type: 'continue_task', path: activeTask.path });
     }
   };
 
@@ -946,7 +976,7 @@ export const ChatView: FC = () => {
           ) : (
             <>
               <button
-                onClick={() => handleSendPrompt('Continue', [])}
+                onClick={handleContinueTask}
                 className="flex-1 py-1.5 text-xs font-semibold rounded bg-vscode-button-background text-vscode-button-foreground hover:bg-vscode-button-hoverBackground border-none cursor-pointer flex items-center justify-center gap-1.5"
               >
                 Continue

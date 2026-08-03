@@ -57,7 +57,11 @@ export class ChatViewProvider implements WebviewViewProvider {
           break;
 
         case 'send_message':
-          void this.agent.startTask(message.text, '', webviewView.webview, message.images);
+          void this.agent.startTask(message.text, '', webviewView.webview, message.images, message.path);
+          break;
+
+        case 'continue_task':
+          void this.agent.continueTask(message.path || '', webviewView.webview);
           break;
 
         case 'approve_tool':

@@ -1,4 +1,4 @@
-import { AgentSession, createAgentSession } from '@earendil-works/pi-coding-agent';
+import { AgentSession, createAgentSession, SessionManager } from '@earendil-works/pi-coding-agent';
 import { workspace } from 'vscode';
 
 import { getEnvironmentDetails } from '@extension/structures/chat-session/environment';
@@ -13,7 +13,7 @@ import { writeFileTool } from '@extension/structures/tool-call/write-file';
 
 import type { AgentSessionEvent } from '@earendil-works/pi-coding-agent';
 import type { Webview } from 'vscode';
-import type { AssistantMessageWithUsage } from '@extension/types/extension';
+import type { AssistantMessageWithUsage, SessionMessage } from '@extension/types/extension';
 import type { ExtensionToWebviewMessage, ToolName } from '@extension/types/webview';
 
 export interface BeforeToolCallResult {
@@ -30,101 +30,16 @@ export class AgentRunner {
     void webview.postMessage(message);
   }
 
-  public async startTask(promptText: string, _modelId: string, webview: Webview, images?: string[]): Promise<void> {
+  public async startTask(promptText: string, _modelId: string, webview: Webview, images?: string[], path?: string): Promise<void> {
     this.pendingApprovals.clear();
 
     const workspaceFolders = workspace.workspaceFolders;
     const cwd = workspaceFolders && workspaceFolders.length > 0 ? workspaceFolders[0].uri.fsPath : process.cwd();
 
     try {
-      // 1. Initialize or get the agent session
-      const { session } = await createAgentSession({
-        cwd,
-        tools: [
-          'delete_file',
-          'edit_file',
-          'read_file',
-          'write_file',
-          'execute_command',
-          'ask_question',
-          'attempt_completion',
-          'update_todo',
-        ] as ToolName[],
-        customTools: [
-          deleteFileTool,
-          editFileTool,
-          readFileTool,
-          writeFileTool,
-          executeCommandTool,
-          askQuestionTool,
-          attemptCompletionTool,
-          updateTodoTool,
-        ],
-        // Let it auto-resolve model and credentials
-      });
+      const session = await this.getOrCreateSession(path, webview, cwd);
 
-      this.session = session;
-
-      // 2. Setup the tool approval hook
-      this.session.agent.beforeToolCall = async ({ toolCall, args }) => {
-        if (toolCall.name === 'attempt_completion') {
-          return { block: false };
-        }
-
-        // Send a message to the Webview asking for approval
-        const approvalId = `${toolCall.id || Date.now()}`;
-
-        this.postWebviewMessage(webview, {
-          type: 'tool_approval_request',
-          payload: {
-            id: approvalId,
-            tool_name: toolCall.name as ToolName,
-            arguments: JSON.stringify(args),
-          },
-        });
-
-        // Wait for user approval or denial
-        return new Promise<BeforeToolCallResult>((resolve) => {
-          this.pendingApprovals.set(approvalId, resolve);
-        });
-      };
-
-      // 3. Subscribe to agent events and stream to webview
-      session.subscribe((event) => {
-        const message = this.mapAgentEvent(event, session);
-        if (message) {
-          this.postWebviewMessage(webview, message);
-        }
-
-        // Post stats update on key events
-        if (
-          event.type === 'agent_start' ||
-          event.type === 'turn_end' ||
-          event.type === 'message_end' ||
-          event.type === 'agent_settled' ||
-          event.type === 'compaction_end'
-        ) {
-          try {
-            const stats = session.getSessionStats();
-            this.postWebviewMessage(webview, {
-              type: 'stats_update',
-              payload: {
-                tokensIn: stats.tokens.input,
-                tokensOut: stats.tokens.output,
-                cacheReads: stats.tokens.cacheRead,
-                cacheWrites: stats.tokens.cacheWrite,
-                totalCost: stats.cost,
-                contextTokens: stats.contextUsage?.tokens ?? 0,
-                contextLimit: stats.contextUsage?.contextWindow ?? session.model?.contextWindow ?? 200000,
-              },
-            });
-          } catch (err) {
-            console.error('Failed to post session stats:', err);
-          }
-        }
-      });
-
-      // 4. Start the prompt loop with environment details appended
+      // Start prompt on the session (re-used or newly created)
       const includeFileDetails = session.agent.state.messages.length === 0;
       const envDetails = await getEnvironmentDetails(session, cwd, includeFileDetails);
       const finalPromptText = `${promptText}\n\n${envDetails}`;
@@ -145,7 +60,6 @@ export class AgentRunner {
             .filter((x): x is { type: 'image'; mimeType: string; data: string } => x !== null)
         : undefined;
 
-      // Run it in the background so VS Code thread isn't blocked
       void session.prompt(finalPromptText, { images: attachmentImages }).catch((err) => {
         this.postWebviewMessage(webview, {
           type: 'agent_error',
@@ -162,6 +76,140 @@ export class AgentRunner {
         },
       });
     }
+  }
+
+  public async continueTask(path: string, webview: Webview): Promise<void> {
+    this.pendingApprovals.clear();
+
+    const workspaceFolders = workspace.workspaceFolders;
+    const cwd = workspaceFolders && workspaceFolders.length > 0 ? workspaceFolders[0].uri.fsPath : process.cwd();
+
+    try {
+      const session = await this.getOrCreateSession(path, webview, cwd);
+
+      // Start prompt on the session (re-used or newly created)
+      const includeFileDetails = session.agent.state.messages.length === 0;
+      const envDetails = await getEnvironmentDetails(session, cwd, includeFileDetails);
+      const finalPromptText = `Continue\n\n${envDetails}`;
+
+      void session.prompt(finalPromptText).catch((err) => {
+        this.postWebviewMessage(webview, {
+          type: 'agent_error',
+          payload: {
+            message: err instanceof Error ? err.message : String(err),
+          },
+        });
+      });
+    } catch (err) {
+      this.postWebviewMessage(webview, {
+        type: 'agent_error',
+        payload: {
+          message: err instanceof Error ? err.message : String(err),
+        },
+      });
+    }
+  }
+
+  private async getOrCreateSession(path: string | undefined, webview: Webview, cwd: string): Promise<AgentSession> {
+    if (this.session && (!path || this.session.sessionFile === path)) {
+      return this.session;
+    }
+
+    if (this.session) {
+      this.session.dispose();
+      this.session = null;
+    }
+
+    let sessionManagerOption: SessionManager | undefined = undefined;
+    if (path) {
+      sessionManagerOption = SessionManager.open(path);
+    }
+
+    const { session } = await createAgentSession({
+      cwd,
+      sessionManager: sessionManagerOption,
+      tools: [
+        'delete_file',
+        'edit_file',
+        'read_file',
+        'write_file',
+        'execute_command',
+        'ask_question',
+        'attempt_completion',
+        'update_todo',
+      ] as ToolName[],
+      customTools: [
+        deleteFileTool,
+        editFileTool,
+        readFileTool,
+        writeFileTool,
+        executeCommandTool,
+        askQuestionTool,
+        attemptCompletionTool,
+        updateTodoTool,
+      ],
+      // Let it auto-resolve model and credentials
+    });
+
+    this.session = session;
+
+    // Setup the tool approval hook
+    this.session.agent.beforeToolCall = async ({ toolCall, args }) => {
+      if (toolCall.name === 'attempt_completion') {
+        return { block: false };
+      }
+
+      const approvalId = `${toolCall.id || Date.now()}`;
+
+      this.postWebviewMessage(webview, {
+        type: 'tool_approval_request',
+        payload: {
+          id: approvalId,
+          tool_name: toolCall.name as ToolName,
+          arguments: JSON.stringify(args),
+        },
+      });
+
+      return new Promise<BeforeToolCallResult>((resolve) => {
+        this.pendingApprovals.set(approvalId, resolve);
+      });
+    };
+
+    // Subscribe to agent events and stream to webview
+    this.session.subscribe((event) => {
+      const message = this.mapAgentEvent(event, this.session!);
+      if (message) {
+        this.postWebviewMessage(webview, message);
+      }
+
+      if (
+        event.type === 'agent_start' ||
+        event.type === 'turn_end' ||
+        event.type === 'message_end' ||
+        event.type === 'agent_settled' ||
+        event.type === 'compaction_end'
+      ) {
+        try {
+          const stats = this.session!.getSessionStats();
+          this.postWebviewMessage(webview, {
+            type: 'stats_update',
+            payload: {
+              tokensIn: stats.tokens.input,
+              tokensOut: stats.tokens.output,
+              cacheReads: stats.tokens.cacheRead,
+              cacheWrites: stats.tokens.cacheWrite,
+              totalCost: stats.cost,
+              contextTokens: stats.contextUsage?.tokens ?? 0,
+              contextLimit: stats.contextUsage?.contextWindow ?? this.session!.model?.contextWindow ?? 200000,
+            },
+          });
+        } catch (err) {
+          console.error('Failed to post session stats:', err);
+        }
+      }
+    });
+
+    return this.session;
   }
 
   public approveTool(approvalId: string): void {
@@ -235,6 +283,9 @@ export class AgentRunner {
       }
 
       case 'message_start':
+        if (isContinueMessage(event.message as SessionMessage)) {
+          return null;
+        }
         return {
           type: 'message_start',
           payload: {
@@ -262,6 +313,9 @@ export class AgentRunner {
         return null;
 
       case 'message_end':
+        if (isContinueMessage(event.message as SessionMessage)) {
+          return null;
+        }
         return {
           type: 'message_end',
           payload: {
@@ -297,4 +351,21 @@ export class AgentRunner {
         return null;
     }
   }
+}
+
+function isContinueMessage(message?: SessionMessage): boolean {
+  if (!message || message.role !== 'user') {
+    return false;
+  }
+  let text = '';
+  if (typeof message.content === 'string') {
+    text = message.content;
+  } else if (Array.isArray(message.content)) {
+    text = message.content
+      .filter((c: { type: string; text?: string }): c is { type: string; text: string } => c.type === 'text' && typeof c.text === 'string')
+      .map((c) => c.text)
+      .join('\n');
+  }
+  const mainText = text.split('\n\n')[0].trim();
+  return mainText === 'Continue';
 }

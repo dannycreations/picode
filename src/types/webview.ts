@@ -40,7 +40,8 @@ export type WebviewToExtensionMessage =
   | { type: 'load_session'; id: string; path: string; title: string }
   | { type: 'delete_sessions'; paths: string[]; scope: 'current' | 'all' }
   | { type: 'start_new_task'; text: string; model_id: string; images?: string[] }
-  | { type: 'send_message'; text: string; images?: string[] }
+  | { type: 'send_message'; text: string; path?: string; images?: string[] }
+  | { type: 'continue_task'; path?: string }
   | { type: 'approve_tool'; approval_id: string }
   | { type: 'deny_tool'; approval_id: string }
   | { type: 'view_raw_task'; path?: string }
