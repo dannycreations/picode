@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   CheckCircle,
   ChevronUp,
+  ClipboardCheck,
   GitCommit,
   Info,
   Lightbulb,
@@ -47,7 +48,7 @@ const getToolLanguage = (toolName?: string, toolText?: string): string => {
 
 export const ChatBody: FC<ChatBodyProps> = ({ message, isLast: _isLast, onApproveTool, onDenyTool, onRestoreCheckpoint }) => {
   const [isReasoningExpanded, setIsReasoningExpanded] = useState(false);
-  const [isDiffExpanded, setIsDiffExpanded] = useState(message.toolName === 'update_todo');
+  const [isDiffExpanded, setIsDiffExpanded] = useState(message.toolName === 'update_todo' || message.toolName === 'attempt_completion');
 
   const formatTime = (ts: number) => {
     return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -129,6 +130,51 @@ export const ChatBody: FC<ChatBodyProps> = ({ message, isLast: _isLast, onApprov
       }
 
       case 'tool': {
+        if (message.toolName === 'attempt_completion') {
+          let completionResult = '';
+          if (message.toolArgs) {
+            try {
+              const parsed = JSON.parse(message.toolArgs);
+              if (parsed && typeof parsed.result === 'string') {
+                completionResult = parsed.result;
+              }
+            } catch {
+              // Ignore
+            }
+          }
+          if (!completionResult && message.diff) {
+            try {
+              const parsed = JSON.parse(message.diff);
+              if (parsed && parsed.details && typeof parsed.details.result === 'string') {
+                completionResult = parsed.details.result;
+              } else if (parsed && Array.isArray(parsed.content) && parsed.content[0] && typeof parsed.content[0].text === 'string') {
+                completionResult = parsed.content[0].text;
+              }
+            } catch {
+              completionResult = message.diff;
+            }
+          }
+
+          const isRunning = message.toolStatus === 'running';
+
+          return (
+            <div className="group flex flex-col gap-1.5">
+              <div className="flex items-center gap-2.5 mb-1.5 break-words font-semibold text-vscode-foreground opacity-85 select-none">
+                {isRunning ? (
+                  <div className="w-3.5 h-3.5 border-2 border-vscode-focusBorder border-t-transparent rounded-full animate-spin shrink-0" />
+                ) : (
+                  <ClipboardCheck size={14} className="text-emerald-500 shrink-0" />
+                )}
+                <span className="font-bold text-emerald-500">Task Completed</span>
+                <span className="text-[10px] text-vscode-descriptionForeground font-normal ml-auto">{formatTime(message.ts)}</span>
+              </div>
+              <div className="ml-6 text-sm leading-normal text-vscode-foreground select-text">
+                <Markdown markdown={completionResult || (isRunning ? 'Completing task...' : '')} />
+              </div>
+            </div>
+          );
+        }
+
         const hasBottomBlock = message.toolStatus === 'approval';
         const hasDiffBlock = !!message.diff;
 

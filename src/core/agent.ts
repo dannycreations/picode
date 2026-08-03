@@ -67,6 +67,10 @@ export class AgentRunner {
 
       // 2. Setup the tool approval hook
       this.session.agent.beforeToolCall = async ({ toolCall, args }) => {
+        if (toolCall.name === 'attempt_completion') {
+          return { block: false };
+        }
+
         // Send a message to the Webview asking for approval
         const approvalId = `${toolCall.id || Date.now()}`;
 

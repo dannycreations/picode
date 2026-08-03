@@ -319,17 +319,34 @@ export const ChatView: FC = () => {
         }
 
         case 'tool_execution_start': {
-          const { id } = msg.payload;
+          const { id, tool_name, arguments: toolArgs } = msg.payload;
           setIsAgentRunning(true);
           setActiveTask((prev) => {
             if (!prev) return null;
-            const messages = prev.messages.map((m) => {
-              if (m.id === id) {
-                return { ...m, toolStatus: 'running' as const };
-              }
-              return m;
-            });
-            return { ...prev, messages };
+            const exists = prev.messages.some((m) => m.id === id);
+            if (exists) {
+              const messages = prev.messages.map((m) => {
+                if (m.id === id) {
+                  return { ...m, toolStatus: 'running' as const };
+                }
+                return m;
+              });
+              return { ...prev, messages };
+            } else {
+              const newMsg: ChatMessage = {
+                id,
+                sender: 'tool',
+                text: tool_name || '',
+                toolName: tool_name,
+                toolArgs: toolArgs || '',
+                toolStatus: 'running',
+                ts: Date.now(),
+              };
+              return {
+                ...prev,
+                messages: [...prev.messages, newMsg],
+              };
+            }
           });
           break;
         }
