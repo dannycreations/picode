@@ -34,12 +34,14 @@ export interface AgentToolState {
 }
 
 export interface SessionMessageContent {
-  readonly type: 'text' | 'thinking' | 'toolCall';
+  readonly type: 'text' | 'thinking' | 'toolCall' | 'image';
   readonly text?: string;
   readonly thinking?: string;
   readonly id?: string;
   readonly name?: string;
   readonly arguments?: unknown;
+  readonly mimeType?: string;
+  readonly data?: string;
 }
 
 export interface SessionMessage {

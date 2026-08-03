@@ -24,6 +24,7 @@ export interface ChatMessage {
   readonly checkpointHash?: string;
   readonly diff?: string;
   readonly errorMessage?: string;
+  readonly images?: string[];
 }
 
 export interface HistoryItem {
@@ -38,13 +39,14 @@ export type WebviewToExtensionMessage =
   | { type: 'get_history'; scope: 'current' | 'all' }
   | { type: 'load_session'; id: string; path: string; title: string }
   | { type: 'delete_sessions'; paths: string[]; scope: 'current' | 'all' }
-  | { type: 'start_new_task'; text: string; model_id: string }
-  | { type: 'send_message'; text: string }
+  | { type: 'start_new_task'; text: string; model_id: string; images?: string[] }
+  | { type: 'send_message'; text: string; images?: string[] }
   | { type: 'approve_tool'; approval_id: string }
   | { type: 'deny_tool'; approval_id: string }
   | { type: 'view_raw_task'; path?: string }
   | { type: 'export_session'; path: string; id: string }
   | { type: 'open_file'; text: string; values?: { line: number } }
+  | { type: 'open_image'; dataUrl: string }
   | { type: 'close_task' }
   | { type: 'cancel_task' }
   | { type: 'get_settings' }

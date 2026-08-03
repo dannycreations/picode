@@ -1,4 +1,5 @@
-import { unlink } from 'node:fs/promises';
+import { unlink, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { getAgentDir, ModelRuntime, SessionManager, SettingsManager } from '@earendil-works/pi-coding-agent';
 import { Range, Uri, window, workspace } from 'vscode';
@@ -52,11 +53,11 @@ export class ChatViewProvider implements WebviewViewProvider {
           break;
 
         case 'start_new_task':
-          void this.agent.startTask(message.text, message.model_id || '', webviewView.webview);
+          void this.agent.startTask(message.text, message.model_id || '', webviewView.webview, message.images);
           break;
 
         case 'send_message':
-          void this.agent.startTask(message.text, '', webviewView.webview);
+          void this.agent.startTask(message.text, '', webviewView.webview, message.images);
           break;
 
         case 'approve_tool':
@@ -173,6 +174,30 @@ export class ChatViewProvider implements WebviewViewProvider {
           } catch (err) {
             console.error('Failed to open file:', err);
             window.showErrorMessage(`Failed to open file: ${err instanceof Error ? err.message : String(err)}`);
+          }
+          break;
+
+        case 'open_image':
+          try {
+            const dataUrl = message.dataUrl;
+            const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+            if (match) {
+              const mimeType = match[1];
+              const base64Data = match[2];
+              const ext = mimeType.split('/')[1] || 'png';
+
+              const tempDir = tmpdir();
+              const tempFilePath = resolve(tempDir, `pi-code-img-${Date.now()}.${ext}`);
+              const buffer = Buffer.from(base64Data, 'base64');
+
+              await writeFile(tempFilePath, buffer);
+
+              const { commands } = await import('vscode');
+              await commands.executeCommand('vscode.open', Uri.file(tempFilePath));
+            }
+          } catch (err) {
+            console.error('Failed to open image:', err);
+            window.showErrorMessage(`Failed to open image: ${err instanceof Error ? err.message : String(err)}`);
           }
           break;
 

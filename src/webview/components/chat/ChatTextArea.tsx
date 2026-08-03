@@ -2,7 +2,7 @@ import { Image as ImageIcon, Send } from 'lucide-react';
 import { useRef, useState } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
 
-import type { ChangeEvent, FC, KeyboardEvent, RefObject } from 'react';
+import type { ChangeEvent, ClipboardEvent, FC, KeyboardEvent, RefObject } from 'react';
 
 interface ChatTextAreaProps {
   readonly inputValue: string;
@@ -55,23 +55,42 @@ export const ChatTextArea: FC<ChatTextAreaProps> = ({
     }
   };
 
+  const handlePaste = (e: ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        const file = items[i].getAsFile();
+        if (file) {
+          e.preventDefault();
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            if (event.target?.result) {
+              setSelectedImages((prev) => [...prev, event.target!.result as string]);
+            }
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+    }
+  };
+
   const removeImage = (index: number) => {
     setSelectedImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   return (
-    <div
-      className={`relative flex flex-col gap-1.5 px-3.5 pb-1 outline-none w-full box-border bg-[var(--vscode-sideBar-background)] shrink-0 ${className}`}
-    >
+    <div className={`relative flex flex-col px-3.5 pb-1 outline-none w-full box-border bg-[var(--vscode-sideBar-background)] shrink-0 ${className}`}>
       {/* Attached Images Preview */}
       {selectedImages.length > 0 && (
-        <div className="flex flex-wrap gap-2.5 mb-1 mt-2.5">
+        <div className="flex flex-wrap gap-2 mb-2 mt-1">
           {selectedImages.map((img, idx) => (
-            <div key={idx} className="relative w-14 h-14 rounded border border-[var(--vscode-panel-border)] overflow-hidden group">
+            <div key={idx} className="relative w-10 h-10 rounded border border-[var(--vscode-panel-border)] overflow-hidden group">
               <img src={img} alt="attachment" className="w-full h-full object-cover" />
               <button
                 onClick={() => removeImage(idx)}
-                className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/70 hover:bg-black text-white text-[10px] rounded-full flex items-center justify-center border-none cursor-pointer"
+                className="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-black/70 hover:bg-black text-white text-[9px] rounded-full flex items-center justify-center border-none cursor-pointer"
               >
                 ×
               </button>
@@ -95,6 +114,7 @@ export const ChatTextArea: FC<ChatTextAreaProps> = ({
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
           placeholder={placeholderText}
           disabled={sendingDisabled}
           minRows={3}

@@ -30,7 +30,7 @@ export class AgentRunner {
     void webview.postMessage(message);
   }
 
-  public async startTask(promptText: string, _modelId: string, webview: Webview): Promise<void> {
+  public async startTask(promptText: string, _modelId: string, webview: Webview, images?: string[]): Promise<void> {
     this.pendingApprovals.clear();
 
     const workspaceFolders = workspace.workspaceFolders;
@@ -125,8 +125,24 @@ export class AgentRunner {
       const envDetails = await getEnvironmentDetails(session, cwd, includeFileDetails);
       const finalPromptText = `${promptText}\n\n${envDetails}`;
 
+      const attachmentImages = images
+        ? images
+            .map((img) => {
+              const match = img.match(/^data:([^;]+);base64,(.+)$/);
+              if (match) {
+                return {
+                  type: 'image' as const,
+                  mimeType: match[1],
+                  data: match[2],
+                };
+              }
+              return null;
+            })
+            .filter((x): x is { type: 'image'; mimeType: string; data: string } => x !== null)
+        : undefined;
+
       // Run it in the background so VS Code thread isn't blocked
-      void session.prompt(finalPromptText).catch((err) => {
+      void session.prompt(finalPromptText, { images: attachmentImages }).catch((err) => {
         this.postWebviewMessage(webview, {
           type: 'agent_error',
           payload: {

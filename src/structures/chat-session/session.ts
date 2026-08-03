@@ -11,6 +11,7 @@ export function convertSessionEntries(entries: SessionTreeEntry[]): ChatMessage[
       const msg = entry.message;
       if (msg.role === 'user') {
         let text = '';
+        let images: string[] = [];
         if (typeof msg.content === 'string') {
           text = msg.content;
         } else if (Array.isArray(msg.content)) {
@@ -18,11 +19,15 @@ export function convertSessionEntries(entries: SessionTreeEntry[]): ChatMessage[
             .filter((c: SessionMessageContent) => c.type === 'text')
             .map((c: SessionMessageContent) => c.text)
             .join('\n');
+          images = msg.content
+            .filter((c: SessionMessageContent) => c.type === 'image' && c.data)
+            .map((c: SessionMessageContent) => `data:${c.mimeType || 'image/png'};base64,${c.data}`);
         }
         result.push({
           id: entry.id,
           sender: 'user',
           text,
+          images: images.length > 0 ? images : undefined,
           ts: new Date(entry.timestamp).getTime(),
         });
       } else if (msg.role === 'assistant') {

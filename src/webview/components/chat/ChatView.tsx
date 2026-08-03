@@ -530,7 +530,7 @@ export const ChatView: FC = () => {
   };
 
   // Handle send prompt in chat area
-  const handleSendPrompt = (text: string, _images: string[]) => {
+  const handleSendPrompt = (text: string, images: string[]) => {
     setShowScrollToBottom(false);
     if (!vscode) {
       if (activeTask) {
@@ -541,6 +541,7 @@ export const ChatView: FC = () => {
             id: 'u-' + Date.now(),
             sender: 'user' as const,
             text,
+            images: images.length > 0 ? images : undefined,
             ts: Date.now(),
           },
         ];
@@ -589,6 +590,7 @@ export const ChatView: FC = () => {
               id: 'u-' + Date.now(),
               sender: 'user',
               text,
+              images: images.length > 0 ? images : undefined,
               ts: Date.now(),
             },
           ],
@@ -600,7 +602,7 @@ export const ChatView: FC = () => {
           contextTokens: 0,
           contextLimit: 200000,
         });
-        vscode.postMessage({ type: 'start_new_task', text, model_id: selectedModel });
+        vscode.postMessage({ type: 'start_new_task', text, model_id: selectedModel, images });
       } else {
         setIsAgentRunning(true);
         setActiveTask((prev) => {
@@ -613,12 +615,13 @@ export const ChatView: FC = () => {
                 id: 'u-' + Date.now(),
                 sender: 'user',
                 text,
+                images: images.length > 0 ? images : undefined,
                 ts: Date.now(),
               },
             ],
           };
         });
-        vscode.postMessage({ type: 'send_message', text });
+        vscode.postMessage({ type: 'send_message', text, images });
       }
     }
   };
