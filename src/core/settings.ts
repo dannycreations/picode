@@ -1,4 +1,5 @@
 import { getAgentDir, SettingsManager } from '@earendil-works/pi-coding-agent';
+import { isObjectLike } from 'es-toolkit/compat';
 
 export interface AppSettings {
   readonly maxOpenTabsContext: number;
@@ -20,7 +21,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
 export function parseVSCodeSettings(obj: AppSettings): AppSettings {
   const settings = { ...DEFAULT_SETTINGS };
-  if (obj && typeof obj === 'object') {
+  if (isObjectLike(obj)) {
     if (typeof obj.maxOpenTabsContext === 'number' && !isNaN(obj.maxOpenTabsContext)) {
       settings.maxOpenTabsContext = Math.max(0, obj.maxOpenTabsContext);
     }
