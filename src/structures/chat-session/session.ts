@@ -23,15 +23,10 @@ export function convertSessionEntries(entries: SessionTreeEntry[]): ChatMessage[
             .filter((c: SessionMessageContent) => c.type === 'image' && c.data)
             .map((c: SessionMessageContent) => `data:${c.mimeType || 'image/png'};base64,${c.data}`);
         }
-        // TODO: Find a better way to handle this
-        const mainText = text.split('\n\n')[0].trim();
-        if (mainText === 'Continue') {
-          continue;
-        }
         result.push({
           id: entry.id,
           sender: 'user',
-          text,
+          text: text.trim(),
           images: images.length > 0 ? images : undefined,
           ts: new Date(entry.timestamp).getTime(),
         });

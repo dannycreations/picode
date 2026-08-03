@@ -13,7 +13,7 @@ import { writeFileTool } from '@extension/structures/tool-call/write-file';
 
 import type { AgentSessionEvent } from '@earendil-works/pi-coding-agent';
 import type { Webview } from 'vscode';
-import type { AssistantMessageWithUsage, SessionMessage } from '@extension/types/extension';
+import type { AssistantMessageWithUsage } from '@extension/types/extension';
 import type { ExtensionToWebviewMessage, ToolName } from '@extension/types/webview';
 
 export interface BeforeToolCallResult {
@@ -42,7 +42,8 @@ export class AgentRunner {
       // Start prompt on the session (re-used or newly created)
       const includeFileDetails = session.agent.state.messages.length === 0;
       const envDetails = await getEnvironmentDetails(session, cwd, includeFileDetails);
-      const finalPromptText = `${promptText}\n\n${envDetails}`;
+      session.sessionManager.appendCustomMessageEntry('environment_details', envDetails, false);
+      const finalPromptText = promptText;
 
       const attachmentImages = images
         ? images
@@ -90,16 +91,24 @@ export class AgentRunner {
       // Start prompt on the session (re-used or newly created)
       const includeFileDetails = session.agent.state.messages.length === 0;
       const envDetails = await getEnvironmentDetails(session, cwd, includeFileDetails);
-      const finalPromptText = `Continue\n\n${envDetails}`;
 
-      void session.prompt(finalPromptText).catch((err) => {
-        this.postWebviewMessage(webview, {
-          type: 'agent_error',
-          payload: {
-            message: err instanceof Error ? err.message : String(err),
+      void session
+        .sendCustomMessage(
+          {
+            customType: 'environment_details',
+            content: envDetails,
+            display: false,
           },
+          { triggerTurn: true },
+        )
+        .catch((err) => {
+          this.postWebviewMessage(webview, {
+            type: 'agent_error',
+            payload: {
+              message: err instanceof Error ? err.message : String(err),
+            },
+          });
         });
-      });
     } catch (err) {
       this.postWebviewMessage(webview, {
         type: 'agent_error',
@@ -283,7 +292,7 @@ export class AgentRunner {
       }
 
       case 'message_start':
-        if (isContinueMessage(event.message as SessionMessage)) {
+        if (event.message.role !== 'user' && event.message.role !== 'assistant') {
           return null;
         }
         return {
@@ -313,7 +322,7 @@ export class AgentRunner {
         return null;
 
       case 'message_end':
-        if (isContinueMessage(event.message as SessionMessage)) {
+        if (event.message.role !== 'user' && event.message.role !== 'assistant') {
           return null;
         }
         return {
@@ -351,21 +360,4 @@ export class AgentRunner {
         return null;
     }
   }
-}
-
-function isContinueMessage(message?: SessionMessage): boolean {
-  if (!message || message.role !== 'user') {
-    return false;
-  }
-  let text = '';
-  if (typeof message.content === 'string') {
-    text = message.content;
-  } else if (Array.isArray(message.content)) {
-    text = message.content
-      .filter((c: { type: string; text?: string }): c is { type: string; text: string } => c.type === 'text' && typeof c.text === 'string')
-      .map((c) => c.text)
-      .join('\n');
-  }
-  const mainText = text.split('\n\n')[0].trim();
-  return mainText === 'Continue';
 }
