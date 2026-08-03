@@ -57,12 +57,18 @@
   --color-vscode-textLink-activeForeground: var(--vscode-textLink-activeForeground);
   --color-vscode-sideBarSectionHeader-background: var(--vscode-sideBarSectionHeader-background);
   --color-vscode-sideBar-background: var(--vscode-sideBar-background);
+  --color-vscode-sideBar-foreground: var(--vscode-sideBar-foreground, var(--vscode-foreground));
   --color-vscode-sideBar-border: var(--vscode-sideBar-border);
+  --color-vscode-panel-border: var(--vscode-panel-border);
+  --color-vscode-settings-checkboxBackground: var(--vscode-settings-checkboxBackground);
+  --color-vscode-settings-checkboxBorder: var(--vscode-settings-checkboxBorder);
   --color-vscode-titleBar-activeBackground: var(--vscode-titleBar-activeBackground);
   --color-vscode-titleBar-activeForeground: var(--vscode-titleBar-activeForeground);
   --color-vscode-welcomePage-tileHoverBackground: var(--vscode-welcomePage-tileHoverBackground);
   --color-vscode-list-hoverBackground: var(--vscode-list-hoverBackground);
   --color-vscode-list-hoverForeground: var(--vscode-list-hoverForeground);
+  --color-vscode-list-activeSelectionBackground: var(--vscode-list-activeSelectionBackground);
+  --color-vscode-list-activeSelectionForeground: var(--vscode-list-activeSelectionForeground);
 }
 
 /* Custom styles */
@@ -331,4 +337,43 @@ body[data-vscode-theme-kind*='high-contrast'] .prose-markdown code:not(pre code)
   overflow-x: auto;
   background-color: var(--vscode-textCodeBlock-background, var(--vscode-editor-background));
   border-radius: 4px;
+}
+
+/* Custom checkbox to match VSCode style */
+input[type='checkbox'] {
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: var(--vscode-settings-checkboxBackground, var(--vscode-input-background));
+  border: 1px solid var(--vscode-settings-checkboxBorder, var(--vscode-input-border));
+  border-radius: 2px;
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  outline: none;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s;
+}
+
+input[type='checkbox']:checked {
+  background-color: var(--vscode-button-background);
+  border-color: var(--vscode-button-background);
+}
+
+input[type='checkbox']:checked::after {
+  content: '';
+  display: block;
+  width: 4px;
+  height: 8px;
+  border: solid var(--vscode-button-foreground);
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+  margin-bottom: 2px;
+}
+
+input[type='checkbox']:focus-visible {
+  border-color: var(--vscode-focusBorder);
 }
