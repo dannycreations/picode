@@ -9,12 +9,10 @@ import { HistoryPreview } from '@extension/webview/components/history/HistoryPre
 import { HistoryView } from '@extension/webview/components/history/HistoryView';
 import { SettingsView } from '@extension/webview/components/setting/SettingsView';
 import { ConfirmDialog } from '@extension/webview/components/shared/ConfirmDialog';
-import { getMockTask } from '@extension/webview/utilities/mock';
 import { vscode } from '@webview/utilities/vscode';
 
 import type { FC } from 'react';
-import type { ChatMessage, ExtensionToWebviewMessage, HistoryItem } from '@extension/types/webview';
-import type { ActiveTaskState } from '@extension/webview/utilities/mock';
+import type { ActiveTaskState, ChatMessage, ExtensionToWebviewMessage, HistoryItem } from '@extension/types/webview';
 
 export const ChatView: FC = () => {
   const [activeTask, setActiveTask] = useState<ActiveTaskState | null>(null);
@@ -55,8 +53,8 @@ export const ChatView: FC = () => {
 
   // Fetch history when view or scope changes
   useEffect(() => {
-    if (vscode && view === 'history') {
-      vscode.postMessage({ type: 'get_history', scope });
+    if (view === 'history') {
+      vscode?.postMessage({ type: 'get_history', scope });
     }
   }, [view, scope]);
 
@@ -69,9 +67,7 @@ export const ChatView: FC = () => {
 
   // Request initialization data from VS Code extension backend
   useEffect(() => {
-    if (vscode) {
-      vscode.postMessage({ type: 'init' });
-    }
+    vscode?.postMessage({ type: 'init' });
   }, []);
 
   // Listen for messages from the VS Code extension backend
@@ -421,38 +417,22 @@ export const ChatView: FC = () => {
   }, []);
 
   // Load a task from history (offline/mock fallback)
-  const handleSelectTaskMock = (taskId: string) => {
-    const mockTask = getMockTask(taskId);
-    if (mockTask) {
-      setActiveTask(mockTask);
-    }
-  };
-
   const handleSelectPastTask = (item: HistoryItem) => {
     setIsAgentRunning(false);
-    if (!vscode) {
-      handleSelectTaskMock(item.id);
-      setView('chat');
-    } else {
-      vscode.postMessage({
-        type: 'load_session',
-        path: item.path,
-        id: item.id,
-        title: item.task,
-      });
-    }
+    vscode?.postMessage({
+      type: 'load_session',
+      path: item.path,
+      id: item.id,
+      title: item.task,
+    });
   };
 
   const handleDeleteTasks = (paths: string[]) => {
-    if (!vscode) {
-      setPastTasks((prev) => prev.filter((item) => !paths.includes(item.path)));
-    } else {
-      vscode.postMessage({
-        type: 'delete_sessions',
-        paths,
-        scope,
-      });
-    }
+    vscode?.postMessage({
+      type: 'delete_sessions',
+      paths,
+      scope,
+    });
   };
 
   const handleDeleteTask = (path: string) => {
@@ -460,76 +440,34 @@ export const ChatView: FC = () => {
   };
 
   const handleViewRawPath = (path: string) => {
-    if (!vscode) {
-      alert(`Viewing raw task JSON (Offline Mode): ${path}`);
-    } else {
-      vscode.postMessage({
-        type: 'view_raw_task',
-        path,
-      });
-    }
+    vscode?.postMessage({
+      type: 'view_raw_task',
+      path,
+    });
   };
 
   const handleExportTaskItem = (item: HistoryItem) => {
-    if (!vscode) {
-      alert(`Exporting task JSON (Offline Mode): ${item.path}`);
-    } else {
-      vscode.postMessage({
-        type: 'export_session',
-        path: item.path,
-        id: item.id,
-      });
-    }
+    vscode?.postMessage({
+      type: 'export_session',
+      path: item.path,
+      id: item.id,
+    });
   };
 
-  // Select suggestion idea
-  const handleSelectIdea = (idea: string) => {
-    if (!vscode) {
-      setIsAgentRunning(false);
-      setActiveTask({
-        id: 'custom-' + Date.now(),
-        title: idea,
-        tokensIn: 1200,
-        tokensOut: 200,
-        totalCost: 0.015,
-        contextTokens: 1400,
-        contextLimit: 200000,
-        messages: [
-          {
-            id: 'c1',
-            sender: 'user',
-            text: idea,
-            ts: Date.now(),
-          },
-          {
-            id: 'c2',
-            sender: 'assistant',
-            ts: Date.now() + 2000,
-            reasoning: 'Generating files to fulfill the user task description.',
-            text: "I'll create the layout structure for this task.",
-            cost: 0.015,
-          },
-          {
-            id: 'c3',
-            sender: 'tool',
-            ts: Date.now() + 4000,
-            text: 'write_to_file',
-            toolName: 'write_to_file',
-            toolArgs: 'path: index.html',
-            diff: `+ <!-- Initial structure for: -->\n+ <!-- ${idea} -->`,
-            toolStatus: 'approval',
-          },
-        ],
-      });
-    } else {
+  // Handle send prompt in chat area
+  const handleSendPrompt = (text: string, images: string[]) => {
+    setShowScrollToBottom(false);
+    if (!activeTask) {
+      setIsAgentRunning(true);
       setActiveTask({
         id: 'task-active',
-        title: idea,
+        title: text,
         messages: [
           {
             id: 'u-' + Date.now(),
             sender: 'user',
-            text: idea,
+            text,
+            images: images.length > 0 ? images : undefined,
             ts: Date.now(),
           },
         ],
@@ -541,68 +479,15 @@ export const ChatView: FC = () => {
         contextTokens: 0,
         contextLimit: 200000,
       });
-      setIsAgentRunning(true);
-      vscode.postMessage({ type: 'start_new_task', text: idea, model_id: selectedModel });
-    }
-  };
-
-  // Handle send prompt in chat area
-  const handleSendPrompt = (text: string, images: string[]) => {
-    setShowScrollToBottom(false);
-    if (!vscode) {
-      if (activeTask) {
-        setIsAgentRunning(true);
-        const updatedMessages = [
-          ...activeTask.messages,
-          {
-            id: 'u-' + Date.now(),
-            sender: 'user' as const,
-            text,
-            images: images.length > 0 ? images : undefined,
-            ts: Date.now(),
-          },
-        ];
-        setActiveTask({
-          ...activeTask,
-          messages: updatedMessages,
-        });
-
-        setTimeout(() => {
-          setActiveTask((prev) => {
-            if (!prev) return null;
-            return {
-              ...prev,
-              tokensIn: prev.tokensIn + 1500,
-              tokensOut: prev.tokensOut + 450,
-              cacheWrites: (prev.cacheWrites || 0) + 1,
-              cacheReads: (prev.cacheReads || 0) + 2,
-              totalCost: prev.totalCost + 0.0245,
-              contextTokens: prev.contextTokens + 1950,
-              messages: [
-                ...prev.messages,
-                {
-                  id: 'a-' + Date.now(),
-                  sender: 'assistant',
-                  ts: Date.now(),
-                  reasoning: 'Simulating assistance to custom feedback.',
-                  text: 'Here is the response for your query. Let me know if you would like me to generate any code or run specific commands.',
-                  cost: 0.0245,
-                },
-              ],
-            };
-          });
-          setIsAgentRunning(false);
-        }, 1500);
-      } else {
-        handleSelectIdea(text);
-      }
+      vscode?.postMessage({ type: 'start_new_task', text, model_id: selectedModel, images });
     } else {
-      if (!activeTask) {
-        setIsAgentRunning(true);
-        setActiveTask({
-          id: 'task-active',
-          title: text,
+      setIsAgentRunning(true);
+      setActiveTask((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
           messages: [
+            ...prev.messages,
             {
               id: 'u-' + Date.now(),
               sender: 'user',
@@ -611,35 +496,9 @@ export const ChatView: FC = () => {
               ts: Date.now(),
             },
           ],
-          tokensIn: 0,
-          tokensOut: 0,
-          cacheWrites: 0,
-          cacheReads: 0,
-          totalCost: 0,
-          contextTokens: 0,
-          contextLimit: 200000,
-        });
-        vscode.postMessage({ type: 'start_new_task', text, model_id: selectedModel, images });
-      } else {
-        setIsAgentRunning(true);
-        setActiveTask((prev) => {
-          if (!prev) return null;
-          return {
-            ...prev,
-            messages: [
-              ...prev.messages,
-              {
-                id: 'u-' + Date.now(),
-                sender: 'user',
-                text,
-                images: images.length > 0 ? images : undefined,
-                ts: Date.now(),
-              },
-            ],
-          };
-        });
-        vscode.postMessage({ type: 'send_message', text, path: activeTask.path, images });
-      }
+        };
+      });
+      vscode?.postMessage({ type: 'send_message', text, path: activeTask.path, images });
     }
   };
 
@@ -648,116 +507,45 @@ export const ChatView: FC = () => {
     if (!activeTask) return;
     setShowScrollToBottom(false);
     setIsAgentRunning(true);
-    if (!vscode) {
-      // Mock logic for offline fallback
-      setTimeout(() => {
-        setActiveTask((prev) => {
-          if (!prev) return null;
-          return {
-            ...prev,
-            messages: [
-              ...prev.messages,
-              {
-                id: 'a-' + Date.now(),
-                sender: 'assistant',
-                ts: Date.now(),
-                text: 'Continuing the task. Please let me know what else needs to be done.',
-              },
-            ],
-          };
-        });
-        setIsAgentRunning(false);
-      }, 1000);
-    } else {
-      vscode.postMessage({ type: 'continue_task', path: activeTask.path });
-    }
+    vscode?.postMessage({ type: 'continue_task', path: activeTask.path });
   };
 
   // Handle tool approval
   const handleApproveTool = (msgId: string) => {
     setShowScrollToBottom(false);
     setIsAgentRunning(true);
-    if (!vscode) {
-      const updatedMessages = activeTask?.messages.map((m) => {
-        if (m.id === msgId) {
-          return { ...m, toolStatus: 'running' as const };
-        }
-        return m;
-      });
-
-      if (activeTask && updatedMessages) {
-        setActiveTask({
-          ...activeTask,
-          messages: updatedMessages,
-        });
-      }
-
-      setTimeout(() => {
-        setActiveTask((prev) => {
-          if (!prev) return null;
-          return {
-            ...prev,
-            messages: prev.messages.map((m) => {
-              if (m.id === msgId) {
-                return { ...m, toolStatus: 'completed' as const };
-              }
-              return m;
-            }),
-          };
-        });
-        setIsAgentRunning(false);
-      }, 1500);
-    } else {
-      setActiveTask((prev) => {
-        if (!prev) return null;
-        return {
-          ...prev,
-          messages: prev.messages.map((m) => {
-            if (m.id === msgId) {
-              return { ...m, toolStatus: 'running' as const };
-            }
-            return m;
-          }),
-        };
-      });
-      vscode.postMessage({ type: 'approve_tool', approval_id: msgId });
-    }
+    setActiveTask((prev) => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        messages: prev.messages.map((m) => {
+          if (m.id === msgId) {
+            return { ...m, toolStatus: 'running' as const };
+          }
+          return m;
+        }),
+      };
+    });
+    vscode?.postMessage({ type: 'approve_tool', approval_id: msgId });
   };
 
   // Handle tool denial
   const handleDenyTool = (msgId: string) => {
     setShowScrollToBottom(false);
     setIsAgentRunning(true);
-    if (!vscode) {
-      const updatedMessages = activeTask?.messages.map((m) => {
-        if (m.id === msgId) {
-          return { ...m, toolStatus: 'denied' as const };
-        }
-        return m;
-      });
-
-      if (activeTask && updatedMessages) {
-        setActiveTask({
-          ...activeTask,
-          messages: updatedMessages,
-        });
-      }
-      setIsAgentRunning(false);
-    } else {
-      setActiveTask((prev) => {
-        if (!prev) return null;
-        return {
-          ...prev,
-          messages: prev.messages.map((m) => {
-            if (m.id === msgId) {
-              return { ...m, toolStatus: 'denied' as const };
-            }
-            return m;
-          }),
-        };
-      });
-      vscode.postMessage({ type: 'deny_tool', approval_id: msgId });
-    }
+    setActiveTask((prev) => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        messages: prev.messages.map((m) => {
+          if (m.id === msgId) {
+            return { ...m, toolStatus: 'denied' as const };
+          }
+          return m;
+        }),
+      };
+    });
+    vscode?.postMessage({ type: 'deny_tool', approval_id: msgId });
   };
 
   // Handle restore checkpoint
@@ -797,30 +585,20 @@ export const ChatView: FC = () => {
   // Handle view raw task in VS Code
   const handleViewRaw = () => {
     if (!activeTask) return;
-    if (!vscode) {
-      alert(`Viewing raw task JSON (Offline Mode): ${activeTask.path || 'no path'}`);
-    } else {
-      vscode.postMessage({
-        type: 'view_raw_task',
-        path: activeTask.path,
-      });
-    }
+    vscode?.postMessage({
+      type: 'view_raw_task',
+      path: activeTask.path,
+    });
   };
 
   const handleCloseTask = () => {
-    if (vscode) {
-      vscode.postMessage({ type: 'close_task' });
-    }
+    vscode?.postMessage({ type: 'close_task' });
     setActiveTask(null);
     setIsAgentRunning(false);
   };
 
   const handleCancelTask = () => {
-    if (vscode) {
-      vscode.postMessage({ type: 'cancel_task' });
-    } else {
-      setIsAgentRunning(false);
-    }
+    vscode?.postMessage({ type: 'cancel_task' });
   };
 
   if (view === 'settings') {

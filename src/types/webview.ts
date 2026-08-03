@@ -1,5 +1,19 @@
 import type { AppSettings } from '@extension/core/settings';
 
+export interface ActiveTaskState {
+  readonly id: string;
+  readonly title: string;
+  readonly messages: ChatMessage[];
+  readonly tokensIn: number;
+  readonly tokensOut: number;
+  readonly cacheWrites?: number;
+  readonly cacheReads?: number;
+  readonly totalCost: number;
+  readonly contextTokens: number;
+  readonly contextLimit: number;
+  readonly path?: string;
+}
+
 export type ToolName =
   | 'attempt_completion'
   | 'ask_question'
