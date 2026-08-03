@@ -41,9 +41,21 @@
         "command": "pi-code.addToContext",
         "title": "Add to Context",
         "category": "Pi Code"
+      },
+      {
+        "command": "pi-code.settingsButtonClicked",
+        "title": "Settings",
+        "icon": "$(settings-gear)"
       }
     ],
     "menus": {
+      "view/title": [
+        {
+          "command": "pi-code.settingsButtonClicked",
+          "group": "navigation@10",
+          "when": "view == pi-code.chatView"
+        }
+      ],
       "editor/context": [
         {
           "command": "pi-code.addToContext",

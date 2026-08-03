@@ -1,3 +1,5 @@
+import type { AppSettings } from '@extension/core/settings';
+
 export type ToolName =
   | 'attempt_completion'
   | 'ask_question'
@@ -44,11 +46,14 @@ export type WebviewToExtensionMessage =
   | { type: 'export_session'; path: string; id: string }
   | { type: 'open_file'; text: string; values?: { line: number } }
   | { type: 'close_task' }
-  | { type: 'cancel_task' };
+  | { type: 'cancel_task' }
+  | { type: 'get_settings' }
+  | { type: 'update_setting'; key: keyof AppSettings; value: unknown };
 
 export type ExtensionToWebviewMessage =
   | { type: 'init_data'; payload: { models: { id: string; name: string }[]; history: HistoryItem[]; default_model?: string } }
   | { type: 'history_data'; payload: { history: HistoryItem[] } }
+  | { type: 'settings_data'; payload: { settings: AppSettings } }
   | {
       type: 'session_loaded';
       payload: {
@@ -89,4 +94,5 @@ export type ExtensionToWebviewMessage =
   | { type: 'tool_execution_end'; payload: { id: string; result?: string; is_error?: boolean } }
   | { type: 'agent_error'; payload: { message: string } }
   | { type: 'agent_settled' }
+  | { type: 'show_settings' }
   | { type: 'set_chat_input'; payload: { text: string } };

@@ -1,4 +1,4 @@
-import { ExtensionContext, window } from 'vscode';
+import { commands, ExtensionContext, window } from 'vscode';
 
 import { Logger } from '@extension/core/logger';
 import { ChatViewProvider } from '@extension/core/webview';
@@ -23,6 +23,11 @@ export function activate(context: ExtensionContext): void {
 
   const addToContextDisposable = registerAddToContextCommand();
   context.subscriptions.push(addToContextDisposable);
+
+  const settingsButtonClickedDisposable = commands.registerCommand('pi-code.settingsButtonClicked', () => {
+    void ChatViewProvider.postActiveWebviewMessage({ type: 'show_settings' });
+  });
+  context.subscriptions.push(settingsButtonClickedDisposable);
 }
 
 export function deactivate(): void {}

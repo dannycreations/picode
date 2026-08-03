@@ -119,7 +119,7 @@ export const MarkdownBlock = memo(({ markdown }: MarkdownBlockProps) => {
             };
           },
         ]}
-        rehypePlugins={[rehypeKatex as any]}
+        rehypePlugins={[rehypeKatex]}
         components={components}
       >
         {markdown || ''}

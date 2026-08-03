@@ -3,6 +3,7 @@ import { join, relative } from 'node:path';
 import { AgentSession } from '@earendil-works/pi-coding-agent';
 import { TabInputText, window } from 'vscode';
 
+import { SettingsService } from '@extension/core/settings';
 import { spawnGit } from '@extension/structures/commit-message/git';
 
 import type { AgentToolState, EnvironmentMessage, EnvironmentMessageContent } from '@extension/types/extension';
@@ -142,6 +143,8 @@ export function getLatestTodoList(messages: readonly EnvironmentMessage[]): stri
 
 export async function getEnvironmentDetails(session: AgentSession, cwd: string, includeFileDetails = false): Promise<string> {
   let details = '';
+  const settingsService = SettingsService.getInstance(cwd);
+  const settings = await settingsService.load();
 
   // 1. VS Code Visible Files
   const visibleFilePaths = window.visibleTextEditors
@@ -156,7 +159,8 @@ export async function getEnvironmentDetails(session: AgentSession, cwd: string, 
   }
 
   // 2. VS Code Open Tabs
-  const openTabPaths = window.tabGroups.all
+  const maxOpenTabsContext = settings.maxOpenTabsContext;
+  let openTabPaths = window.tabGroups.all
     .flatMap((group) => group.tabs)
     .filter((tab) => tab.input instanceof TabInputText)
     .map((tab) => (tab.input as TabInputText).uri.fsPath)
@@ -165,8 +169,15 @@ export async function getEnvironmentDetails(session: AgentSession, cwd: string, 
     .filter((p) => p && !p.startsWith('..'));
 
   if (openTabPaths && openTabPaths.length > 0) {
+    const totalOpenTabs = openTabPaths.length;
+    if (openTabPaths.length > maxOpenTabsContext) {
+      openTabPaths = openTabPaths.slice(0, maxOpenTabsContext);
+    }
     details += '\n\n### VS Code Open Tabs\n\n';
     details += openTabPaths.map((p) => `- ${p}`).join('\n');
+    if (totalOpenTabs > maxOpenTabsContext) {
+      details += `\n*(Truncated. Showing first ${maxOpenTabsContext} of ${totalOpenTabs} open tabs)*`;
+    }
   }
 
   // 3. Current Time
@@ -179,10 +190,19 @@ export async function getEnvironmentDetails(session: AgentSession, cwd: string, 
   details += `\n\n### Current Time\n\n- **UTC**: ${now.toISOString()}\n- **User Time Zone**: ${timeZone} (UTC${timeZoneOffsetStr})`;
 
   // 4. Git Status
+  const maxGitStatusFiles = settings.maxGitStatusFiles;
   try {
     const gitStatus = spawnGit(['status', '--porcelain'], cwd).trim();
     if (gitStatus) {
-      details += `\n\n### Git Status\n\n\`\`\`\n${gitStatus}\n\`\`\``;
+      const lines = gitStatus.split(/\r?\n/);
+      details += '\n\n### Git Status\n\n```\n';
+      if (lines.length > maxGitStatusFiles) {
+        details += lines.slice(0, maxGitStatusFiles).join('\n');
+        details += `\n... and ${lines.length - maxGitStatusFiles} more files`;
+      } else {
+        details += gitStatus;
+      }
+      details += '\n```';
     }
   } catch {
     // Not a git repository or git fails, ignore
@@ -201,7 +221,8 @@ export async function getEnvironmentDetails(session: AgentSession, cwd: string, 
     if (isDesktop) {
       details += 'Desktop files not shown automatically. Use execute_command to explore if needed.';
     } else {
-      const { paths, hitLimit } = await listFiles(cwd, 200);
+      const maxWorkspaceFiles = settings.maxWorkspaceFiles;
+      const { paths, hitLimit } = await listFiles(cwd, maxWorkspaceFiles);
       const sorted = paths.sort((a, b) => {
         const aParts = a.split('/');
         const bParts = b.split('/');

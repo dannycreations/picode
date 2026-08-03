@@ -7,6 +7,7 @@ import { ChatLogo } from '@extension/webview/components/chat/ChatLogo';
 import { ChatTextArea } from '@extension/webview/components/chat/ChatTextArea';
 import { HistoryPreview } from '@extension/webview/components/history/HistoryPreview';
 import { HistoryView } from '@extension/webview/components/history/HistoryView';
+import { SettingsView } from '@extension/webview/components/setting/SettingsView';
 import { ConfirmDialog } from '@extension/webview/components/shared/ConfirmDialog';
 import { getMockTask } from '@extension/webview/utilities/mock';
 import { vscode } from '@webview/utilities/vscode';
@@ -26,7 +27,7 @@ export const ChatView: FC = () => {
   // Real backend states
   const [models, setModels] = useState<{ id: string; name: string }[]>([]);
   const [pastTasks, setPastTasks] = useState<HistoryItem[]>([]);
-  const [view, setView] = useState<'chat' | 'history'>('chat');
+  const [view, setView] = useState<'chat' | 'history' | 'settings'>('chat');
   const [scope, setScope] = useState<'current' | 'all'>('current');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -374,6 +375,11 @@ export const ChatView: FC = () => {
 
         case 'agent_settled': {
           setIsAgentRunning(false);
+          break;
+        }
+
+        case 'show_settings': {
+          setView('settings');
           break;
         }
 
@@ -766,6 +772,14 @@ export const ChatView: FC = () => {
       setIsAgentRunning(false);
     }
   };
+
+  if (view === 'settings') {
+    return (
+      <div className="fixed top-0 left-0 right-0 bottom-0 flex flex-col overflow-hidden max-w-5xl mx-auto bg-[var(--vscode-sideBar-background)]">
+        <SettingsView onDone={() => setView('chat')} />
+      </div>
+    );
+  }
 
   if (view === 'history') {
     return (

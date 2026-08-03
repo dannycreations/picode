@@ -4,6 +4,7 @@ import { getAgentDir, ModelRuntime, SessionManager, SettingsManager } from '@ear
 import { Range, Uri, window, workspace } from 'vscode';
 
 import { AgentRunner } from '@extension/core/agent';
+import { SettingsService } from '@extension/core/settings';
 import { calculateSessionStats, convertSessionEntries } from '@extension/structures/chat-session/session';
 import { AgentModel, SessionTreeEntry } from '@extension/types/extension';
 import { ExtensionToWebviewMessage, WebviewToExtensionMessage } from '@extension/types/webview';
@@ -234,6 +235,35 @@ export class ChatViewProvider implements WebviewViewProvider {
             await this.sendInitData(webviewView.webview, cwd);
           } catch (err) {
             console.error('Failed to delete sessions:', err);
+          }
+          break;
+
+        case 'get_settings':
+          try {
+            const settingsService = SettingsService.getInstance(cwd);
+            const settings = await settingsService.load();
+            this.postWebviewMessage(webviewView.webview, {
+              type: 'settings_data',
+              payload: { settings },
+            });
+          } catch (err) {
+            console.error('Failed to get settings:', err);
+          }
+          break;
+
+        case 'update_setting':
+          try {
+            const { key, value } = message;
+            const settingsService = SettingsService.getInstance(cwd);
+            const updatedSettings = await settingsService.update(key, value);
+
+            // After updating, send the updated settings back to confirm
+            this.postWebviewMessage(webviewView.webview, {
+              type: 'settings_data',
+              payload: { settings: updatedSettings },
+            });
+          } catch (err) {
+            console.error('Failed to update setting:', err);
           }
           break;
 

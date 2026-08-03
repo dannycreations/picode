@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
+import { SettingsService } from '@extension/core/settings';
 import { resolveWorkspacePath } from '@extension/utilities/path';
 
 import type { ToolName } from '@extension/types/webview';
@@ -25,17 +26,23 @@ export const readFileTool = defineTool({
   }),
   async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
     try {
-      const results: string[] = [];
-      let hasError = false;
+      const settingsService = SettingsService.getInstance(ctx.cwd);
+      const settings = await settingsService.load();
+      const maxConcurrent = settings.maxConcurrentFileReads;
 
-      for (const fileObj of params.files) {
+      const fileResults: { result: string; hasError: boolean }[] = Array(params.files.length);
+
+      const processFile = async (index: number) => {
+        const fileObj = params.files[index];
         let resolvedPath: string;
         try {
           resolvedPath = resolveWorkspacePath(ctx.cwd, fileObj.path);
         } catch (err) {
-          results.push(`Error: Cannot read file outside the workspace: ${fileObj.path}`);
-          hasError = true;
-          continue;
+          fileResults[index] = {
+            result: `Error: Cannot read file outside the workspace: ${fileObj.path}`,
+            hasError: true,
+          };
+          return;
         }
 
         try {
@@ -43,12 +50,15 @@ export const readFileTool = defineTool({
 
           // Check if file is binary (rough check using null bytes)
           if (content.includes('\0')) {
-            results.push(`Error: File is binary and cannot be read as text: ${fileObj.path}`);
-            hasError = true;
-            continue;
+            fileResults[index] = {
+              result: `Error: File is binary and cannot be read as text: ${fileObj.path}`,
+              hasError: true,
+            };
+            return;
           }
 
           const lines = content.split(/\r?\n/);
+          let resultText = '';
 
           if (fileObj.line_ranges && fileObj.line_ranges.length > 0) {
             let fileRangeContent = `File: ${fileObj.path} (Ranges: ${JSON.stringify(fileObj.line_ranges)})\n`;
@@ -65,16 +75,35 @@ export const readFileTool = defineTool({
                 fileRangeContent += `${i}|${lines[i - 1]}\n`;
               }
             }
-            results.push(fileRangeContent.trimEnd());
+            resultText = fileRangeContent.trimEnd();
           } else {
             const numberedLines = lines.map((line, idx) => `${idx + 1}|${line}`).join('\n');
-            results.push(`File: ${fileObj.path}\n${numberedLines}`);
+            resultText = `File: ${fileObj.path}\n${numberedLines}`;
           }
+
+          fileResults[index] = { result: resultText, hasError: false };
         } catch (err) {
-          results.push(`Error reading file ${fileObj.path}: ${err instanceof Error ? err.message : String(err)}`);
-          hasError = true;
+          fileResults[index] = {
+            result: `Error reading file ${fileObj.path}: ${err instanceof Error ? err.message : String(err)}`,
+            hasError: true,
+          };
         }
-      }
+      };
+
+      // Run with concurrency limit
+      const queue = Array.from({ length: params.files.length }, (_, i) => i);
+      const promises = Array.from({ length: Math.min(maxConcurrent, queue.length) }, async () => {
+        while (queue.length > 0) {
+          const index = queue.shift();
+          if (index !== undefined) {
+            await processFile(index);
+          }
+        }
+      });
+      await Promise.all(promises);
+
+      const results = fileResults.map((r) => r.result);
+      const hasError = fileResults.some((r) => r.hasError);
 
       return {
         content: [{ type: 'text', text: results.join('\n\n') }],
