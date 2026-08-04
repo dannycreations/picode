@@ -1,6 +1,5 @@
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
-import { window } from 'vscode';
 
 import type { ToolName } from '@extension/types/webview';
 
@@ -13,14 +12,9 @@ export const attemptCompletionTool = defineTool({
   }),
   async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
     try {
-      // Show information message in VS Code
-      void window.showInformationMessage(`Pi Agent completed the task:\n${params.result}`, 'OK');
-
       return {
-        content: [{ type: 'text', text: `Completion attempt received. Result: ${params.result}` }],
-        details: {
-          result: params.result,
-        },
+        content: [{ type: 'text', text: 'Completion attempt received.' }],
+        details: { result: params.result },
       };
     } catch (err) {
       return {

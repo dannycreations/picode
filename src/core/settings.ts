@@ -2,6 +2,7 @@ import { getAgentDir, SettingsManager } from '@earendil-works/pi-coding-agent';
 import { isObjectLike } from 'es-toolkit/compat';
 
 export interface AppSettings {
+  // Approval Tab
   readonly autoApproveRead: boolean;
   readonly autoApproveWrite: boolean;
   readonly autoApproveDelete: boolean;
@@ -14,15 +15,19 @@ export interface AppSettings {
   readonly deniedDeletePaths: readonly string[];
   readonly allowedExecuteCommands: readonly string[];
   readonly deniedExecuteCommands: readonly string[];
+
+  // Context Tab
+  readonly useAgentRules: boolean;
+  readonly autoCondenseContext: boolean;
+  readonly autoCondenseContextPercent: number;
   readonly maxOpenTabsContext: number;
   readonly maxWorkspaceFiles: number;
   readonly maxGitStatusFiles: number;
   readonly maxConcurrentFileReads: number;
-  readonly autoCondenseContext: boolean;
-  readonly autoCondenseContextPercent: number;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
+  // Approval Tab
   autoApproveRead: false,
   autoApproveWrite: false,
   autoApproveDelete: false,
@@ -35,17 +40,21 @@ export const DEFAULT_SETTINGS: AppSettings = {
   deniedDeletePaths: [],
   allowedExecuteCommands: [],
   deniedExecuteCommands: [],
+
+  // Context Tab
+  useAgentRules: true,
+  autoCondenseContext: true,
+  autoCondenseContextPercent: 80,
   maxOpenTabsContext: 20,
   maxWorkspaceFiles: 200,
   maxGitStatusFiles: 20,
   maxConcurrentFileReads: 10,
-  autoCondenseContext: true,
-  autoCondenseContextPercent: 80,
 };
 
 export function parseAppSettings(obj: AppSettings): AppSettings {
   const settings = { ...DEFAULT_SETTINGS };
   if (isObjectLike(obj)) {
+    // Approval Tab
     if (typeof obj.autoApproveRead === 'boolean') {
       settings.autoApproveRead = obj.autoApproveRead;
     }
@@ -82,6 +91,17 @@ export function parseAppSettings(obj: AppSettings): AppSettings {
     if (Array.isArray(obj.deniedExecuteCommands)) {
       settings.deniedExecuteCommands = obj.deniedExecuteCommands.filter((item): item is string => typeof item === 'string');
     }
+
+    // Context Tab
+    if (typeof obj.useAgentRules === 'boolean') {
+      settings.useAgentRules = obj.useAgentRules;
+    }
+    if (typeof obj.autoCondenseContext === 'boolean') {
+      settings.autoCondenseContext = obj.autoCondenseContext;
+    }
+    if (typeof obj.autoCondenseContextPercent === 'number' && !isNaN(obj.autoCondenseContextPercent)) {
+      settings.autoCondenseContextPercent = Math.max(0, Math.min(100, obj.autoCondenseContextPercent));
+    }
     if (typeof obj.maxOpenTabsContext === 'number' && !isNaN(obj.maxOpenTabsContext)) {
       settings.maxOpenTabsContext = Math.max(0, obj.maxOpenTabsContext);
     }
@@ -93,12 +113,6 @@ export function parseAppSettings(obj: AppSettings): AppSettings {
     }
     if (typeof obj.maxConcurrentFileReads === 'number' && !isNaN(obj.maxConcurrentFileReads)) {
       settings.maxConcurrentFileReads = Math.max(1, obj.maxConcurrentFileReads);
-    }
-    if (typeof obj.autoCondenseContext === 'boolean') {
-      settings.autoCondenseContext = obj.autoCondenseContext;
-    }
-    if (typeof obj.autoCondenseContextPercent === 'number' && !isNaN(obj.autoCondenseContextPercent)) {
-      settings.autoCondenseContextPercent = Math.max(0, Math.min(100, obj.autoCondenseContextPercent));
     }
   }
   return settings;

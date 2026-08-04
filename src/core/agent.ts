@@ -1,4 +1,11 @@
-import { AgentSession, createAgentSession, SessionManager } from '@earendil-works/pi-coding-agent';
+import {
+  AgentSession,
+  createAgentSession,
+  DefaultResourceLoader,
+  getAgentDir,
+  SessionManager,
+  SettingsManager,
+} from '@earendil-works/pi-coding-agent';
 import { workspace } from 'vscode';
 
 import { SettingsService } from '@extension/core/settings';
@@ -145,9 +152,21 @@ export class AgentRunner {
       sessionManagerOption = SessionManager.open(path);
     }
 
+    const settings = await SettingsService.getInstance(cwd).load();
+    const agentDir = getAgentDir();
+    const settingsManager = SettingsManager.create(cwd, agentDir);
+    const resourceLoader = new DefaultResourceLoader({
+      cwd,
+      agentDir,
+      settingsManager,
+      noContextFiles: !settings.useAgentRules,
+    });
+    await resourceLoader.reload();
+
     const { session } = await createAgentSession({
       cwd,
       sessionManager: sessionManagerOption,
+      resourceLoader,
       tools: [
         'delete_file',
         'edit_file',
