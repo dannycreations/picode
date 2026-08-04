@@ -1,8 +1,8 @@
 import { relative } from 'node:path';
 import { commands, window, workspace } from 'vscode';
 
-import { ChatViewProvider } from '@extension/core/webview';
 import { getEffectiveSelection } from '@extension/structures/add-to-context/helpers';
+import { ChatViewProvider } from '@extension/structures/agent-webview/provider';
 
 import type { Disposable, TextDocument } from 'vscode';
 

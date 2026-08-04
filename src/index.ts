@@ -1,8 +1,8 @@
 import { commands, ExtensionContext, window } from 'vscode';
 
 import { Logger } from '@extension/core/logger';
-import { ChatViewProvider } from '@extension/core/webview';
 import { registerAddToContextCommand } from '@extension/structures/add-to-context/command';
+import { ChatViewProvider } from '@extension/structures/agent-webview/provider';
 import { registerCommitMessageCommand } from '@extension/structures/commit-message/command';
 
 // import { initializeFetchInterceptor } from '@extension/utilities/interceptor';
