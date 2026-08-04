@@ -7,25 +7,25 @@ interface SettingListProps {
   readonly label: string;
   readonly description: string;
   readonly placeholder: string;
-  readonly globs: readonly string[];
-  readonly onChange: (globs: string[]) => void;
+  readonly inputs: readonly string[];
+  readonly onChange: (inputs: string[]) => void;
 }
 
-export const SettingList: FC<SettingListProps> = ({ label, description, placeholder, globs = [], onChange }) => {
+export const SettingList: FC<SettingListProps> = ({ label, description, placeholder, inputs = [], onChange }) => {
   const [input, setInput] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleAdd = () => {
     const trimmed = input.trim();
     if (!trimmed) return;
-    if (!globs.includes(trimmed)) {
-      onChange([...globs, trimmed]);
+    if (!inputs.includes(trimmed)) {
+      onChange([...inputs, trimmed]);
       setInput('');
     }
   };
 
   const handleRemove = (index: number) => {
-    onChange(globs.filter((_, i) => i !== index));
+    onChange(inputs.filter((_, i) => i !== index));
   };
 
   const handleEdit = (index: number, value: string) => {
@@ -64,27 +64,27 @@ export const SettingList: FC<SettingListProps> = ({ label, description, placehol
           <Plus size={14} />
         </button>
       </div>
-      {globs.length > 0 && (
+      {inputs.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mt-1">
-          {globs.map((glob, idx) => (
+          {inputs.map((input, idx) => (
             <div
-              key={`${glob}-${idx}`}
+              key={`${input}-${idx}`}
               className="flex items-center gap-1.5 pl-2 pr-1.5 py-0.5 text-[11px] rounded bg-vscode-badge-background text-vscode-badge-foreground border border-vscode-editorGroup-border/30"
             >
               <span
                 role="button"
                 tabIndex={0}
                 className="font-mono truncate max-w-[200px] cursor-pointer hover:underline outline-none"
-                title={`Click to edit: ${glob}`}
-                onClick={() => handleEdit(idx, glob)}
+                title={`Click to edit: ${input}`}
+                onClick={() => handleEdit(idx, input)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    handleEdit(idx, glob);
+                    handleEdit(idx, input);
                   }
                 }}
               >
-                {glob}
+                {input}
               </span>
               <button
                 type="button"

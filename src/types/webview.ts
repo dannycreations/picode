@@ -1,3 +1,4 @@
+import type { ValueOf } from 'es-toolkit/types';
 import type { AppSettings } from '@extension/core/settings';
 
 export interface ActiveTaskState {
@@ -48,6 +49,11 @@ export interface HistoryItem {
   readonly ts: number;
 }
 
+export interface SettingsData {
+  readonly key: keyof AppSettings;
+  readonly value: ValueOf<AppSettings>;
+}
+
 export type WebviewToExtensionMessage =
   | { type: 'init' }
   | { type: 'get_history'; scope: 'current' | 'all' }
@@ -65,7 +71,7 @@ export type WebviewToExtensionMessage =
   | { type: 'close_task' }
   | { type: 'cancel_task' }
   | { type: 'get_settings' }
-  | { type: 'update_setting'; key: keyof AppSettings; value: unknown };
+  | ({ type: 'update_setting' } & SettingsData);
 
 export type ExtensionToWebviewMessage =
   | { type: 'init_data'; payload: { models: { id: string; name: string }[]; history: HistoryItem[]; default_model?: string } }

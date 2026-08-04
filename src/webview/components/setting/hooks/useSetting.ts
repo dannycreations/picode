@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { vscode } from '@webview/utilities/vscode';
 
 import type { AppSettings } from '@extension/core/settings';
+import type { SettingsData } from '@extension/types/webview';
 
 export const areSettingsValuesEqual = (a: unknown, b: unknown): boolean => {
   if (Array.isArray(a) && Array.isArray(b)) {
@@ -16,7 +17,7 @@ export const useSetting = () => {
   const [originalSettings, setOriginalSettings] = useState<AppSettings | null>(null);
   const [draftSettings, setDraftSettings] = useState<AppSettings | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const pendingUpdatesRef = useRef<Array<{ key: keyof AppSettings; value: unknown }>>([]);
+  const pendingUpdatesRef = useRef<SettingsData[]>([]);
 
   useEffect(() => {
     vscode?.postMessage({ type: 'get_settings' });
@@ -62,7 +63,7 @@ export const useSetting = () => {
   const handleSave = () => {
     if (!draftSettings || !originalSettings || isSaving) return;
 
-    const updates: Array<{ key: keyof AppSettings; value: unknown }> = [];
+    const updates: SettingsData[] = [];
     const keys = Object.keys(draftSettings) as Array<keyof AppSettings>;
     for (const key of keys) {
       if (!areSettingsValuesEqual(draftSettings[key], originalSettings[key])) {

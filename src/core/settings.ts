@@ -1,10 +1,10 @@
+import assert from 'node:assert';
 import { getAgentDir, SettingsManager } from '@earendil-works/pi-coding-agent';
 import { isObjectLike } from 'es-toolkit/compat';
 
 import { isProjectTrusted } from '@extension/utilities/vscode';
 
-export interface AppSettings {
-  // Approval Tab
+export interface ApprovalSettings {
   readonly autoApproveRead: boolean;
   readonly autoApproveWrite: boolean;
   readonly autoApproveDelete: boolean;
@@ -17,8 +17,9 @@ export interface AppSettings {
   readonly deniedDeletePaths: readonly string[];
   readonly allowedExecuteCommands: readonly string[];
   readonly deniedExecuteCommands: readonly string[];
+}
 
-  // Context Tab
+export interface ContextSettings {
   readonly useAgentRules: boolean;
   readonly autoCondenseContext: boolean;
   readonly autoCondenseContextPercent: number;
@@ -28,8 +29,9 @@ export interface AppSettings {
   readonly maxConcurrentFileReads: number;
 }
 
-export const DEFAULT_SETTINGS: AppSettings = {
-  // Approval Tab
+export type AppSettings = ApprovalSettings & ContextSettings;
+
+export const DEFAULT_APPROVAL_SETTINGS: ApprovalSettings = {
   autoApproveRead: false,
   autoApproveWrite: false,
   autoApproveDelete: false,
@@ -42,82 +44,128 @@ export const DEFAULT_SETTINGS: AppSettings = {
   deniedDeletePaths: [],
   allowedExecuteCommands: [],
   deniedExecuteCommands: [],
+};
 
-  // Context Tab
+export const DEFAULT_CONTEXT_SETTINGS: ContextSettings = {
   useAgentRules: true,
   autoCondenseContext: true,
   autoCondenseContextPercent: 80,
   maxOpenTabsContext: 20,
-  maxWorkspaceFiles: 200,
+  maxWorkspaceFiles: 100,
   maxGitStatusFiles: 20,
   maxConcurrentFileReads: 10,
 };
 
-export function parseAppSettings(obj: AppSettings): AppSettings {
-  const settings = { ...DEFAULT_SETTINGS };
-  if (isObjectLike(obj)) {
-    // Approval Tab
-    if (typeof obj.autoApproveRead === 'boolean') {
-      settings.autoApproveRead = obj.autoApproveRead;
-    }
-    if (typeof obj.autoApproveWrite === 'boolean') {
-      settings.autoApproveWrite = obj.autoApproveWrite;
-    }
-    if (typeof obj.autoApproveDelete === 'boolean') {
-      settings.autoApproveDelete = obj.autoApproveDelete;
-    }
-    if (typeof obj.autoApproveExecute === 'boolean') {
-      settings.autoApproveExecute = obj.autoApproveExecute;
-    }
-    if (Array.isArray(obj.allowedReadPaths)) {
-      settings.allowedReadPaths = obj.allowedReadPaths.filter((item): item is string => typeof item === 'string');
-    }
-    if (Array.isArray(obj.deniedReadPaths)) {
-      settings.deniedReadPaths = obj.deniedReadPaths.filter((item): item is string => typeof item === 'string');
-    }
-    if (Array.isArray(obj.allowedWritePaths)) {
-      settings.allowedWritePaths = obj.allowedWritePaths.filter((item): item is string => typeof item === 'string');
-    }
-    if (Array.isArray(obj.deniedWritePaths)) {
-      settings.deniedWritePaths = obj.deniedWritePaths.filter((item): item is string => typeof item === 'string');
-    }
-    if (Array.isArray(obj.allowedDeletePaths)) {
-      settings.allowedDeletePaths = obj.allowedDeletePaths.filter((item): item is string => typeof item === 'string');
-    }
-    if (Array.isArray(obj.deniedDeletePaths)) {
-      settings.deniedDeletePaths = obj.deniedDeletePaths.filter((item): item is string => typeof item === 'string');
-    }
-    if (Array.isArray(obj.allowedExecuteCommands)) {
-      settings.allowedExecuteCommands = obj.allowedExecuteCommands.filter((item): item is string => typeof item === 'string');
-    }
-    if (Array.isArray(obj.deniedExecuteCommands)) {
-      settings.deniedExecuteCommands = obj.deniedExecuteCommands.filter((item): item is string => typeof item === 'string');
+export const DEFAULT_SETTINGS: AppSettings = {
+  ...DEFAULT_APPROVAL_SETTINGS,
+  ...DEFAULT_CONTEXT_SETTINGS,
+};
+
+function parseBoolean(value: unknown, fallback: boolean): boolean {
+  return typeof value === 'boolean' ? value : fallback;
+}
+
+function parseStringArray(value: unknown, fallback: readonly string[]): readonly string[] {
+  if (!Array.isArray(value)) return fallback;
+  return value.filter((item): item is string => typeof item === 'string');
+}
+
+function parseBoundedNumber(value: unknown, fallback: number, options: { min?: number; max?: number } = {}): number {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return fallback;
+  }
+  const { min = -Infinity, max = Infinity } = options;
+  return Math.max(min, Math.min(max, value));
+}
+
+export function parseApprovalSettings(input?: unknown, base = DEFAULT_APPROVAL_SETTINGS): ApprovalSettings {
+  const raw = (isObjectLike(input) ? input : {}) as ApprovalSettings;
+
+  return {
+    autoApproveRead: parseBoolean(raw.autoApproveRead, base.autoApproveRead),
+    autoApproveWrite: parseBoolean(raw.autoApproveWrite, base.autoApproveWrite),
+    autoApproveDelete: parseBoolean(raw.autoApproveDelete, base.autoApproveDelete),
+    autoApproveExecute: parseBoolean(raw.autoApproveExecute, base.autoApproveExecute),
+    allowedReadPaths: parseStringArray(raw.allowedReadPaths, base.allowedReadPaths),
+    deniedReadPaths: parseStringArray(raw.deniedReadPaths, base.deniedReadPaths),
+    allowedWritePaths: parseStringArray(raw.allowedWritePaths, base.allowedWritePaths),
+    deniedWritePaths: parseStringArray(raw.deniedWritePaths, base.deniedWritePaths),
+    allowedDeletePaths: parseStringArray(raw.allowedDeletePaths, base.allowedDeletePaths),
+    deniedDeletePaths: parseStringArray(raw.deniedDeletePaths, base.deniedDeletePaths),
+    allowedExecuteCommands: parseStringArray(raw.allowedExecuteCommands, base.allowedExecuteCommands),
+    deniedExecuteCommands: parseStringArray(raw.deniedExecuteCommands, base.deniedExecuteCommands),
+  };
+}
+
+export function parseContextSettings(input?: unknown, base = DEFAULT_CONTEXT_SETTINGS): ContextSettings {
+  const raw = (isObjectLike(input) ? input : {}) as ContextSettings;
+
+  return {
+    useAgentRules: parseBoolean(raw.useAgentRules, base.useAgentRules),
+    autoCondenseContext: parseBoolean(raw.autoCondenseContext, base.autoCondenseContext),
+    autoCondenseContextPercent: parseBoundedNumber(raw.autoCondenseContextPercent, base.autoCondenseContextPercent, { min: 0, max: 100 }),
+    maxOpenTabsContext: parseBoundedNumber(raw.maxOpenTabsContext, base.maxOpenTabsContext, { min: 0 }),
+    maxWorkspaceFiles: parseBoundedNumber(raw.maxWorkspaceFiles, base.maxWorkspaceFiles, { min: 0 }),
+    maxGitStatusFiles: parseBoundedNumber(raw.maxGitStatusFiles, base.maxGitStatusFiles, { min: 0 }),
+    maxConcurrentFileReads: parseBoundedNumber(raw.maxConcurrentFileReads, base.maxConcurrentFileReads, { min: 1 }),
+  };
+}
+
+export function parseAppSettings(input?: unknown, base = DEFAULT_SETTINGS): AppSettings {
+  return { ...parseApprovalSettings(input, base), ...parseContextSettings(input, base) };
+}
+
+export class SettingsRepository {
+  private readonly manager: SettingsManager;
+
+  public constructor(cwd: string) {
+    const agentDir = getAgentDir();
+    const isTrusted = isProjectTrusted(cwd);
+    this.manager = SettingsManager.create(cwd, agentDir, {
+      projectTrusted: isTrusted,
+    });
+
+    assert(this.manager['globalSettings'], 'SettingsManager.globalSettings not found');
+    assert(this.manager['markModified'], 'SettingsManager.markModified not found');
+    assert(this.manager['save'], 'SettingsManager.save not found');
+  }
+
+  public async reload(): Promise<void> {
+    await this.manager.reload();
+  }
+
+  public getGlobalSettings(): unknown {
+    return this.manager.getGlobalSettings()?.vscode;
+  }
+
+  public getProjectSettings(): unknown {
+    return this.manager.getProjectSettings()?.vscode;
+  }
+
+  public async initializeDefaults(defaults: AppSettings): Promise<void> {
+    this.manager['globalSettings'].vscode = { ...defaults };
+    this.manager['markModified']('vscode');
+    this.manager.setCompactionEnabled(defaults.autoCondenseContext);
+    this.manager['save']();
+    await this.manager.flush();
+  }
+
+  public async updateSetting<K extends keyof AppSettings>(key: K, value: AppSettings[K]): Promise<void> {
+    if (!isObjectLike(this.manager['globalSettings'].vscode)) {
+      this.manager['globalSettings'].vscode = {};
     }
 
-    // Context Tab
-    if (typeof obj.useAgentRules === 'boolean') {
-      settings.useAgentRules = obj.useAgentRules;
-    }
-    if (typeof obj.autoCondenseContext === 'boolean') {
-      settings.autoCondenseContext = obj.autoCondenseContext;
-    }
-    if (typeof obj.autoCondenseContextPercent === 'number' && !isNaN(obj.autoCondenseContextPercent)) {
-      settings.autoCondenseContextPercent = Math.max(0, Math.min(100, obj.autoCondenseContextPercent));
-    }
-    if (typeof obj.maxOpenTabsContext === 'number' && !isNaN(obj.maxOpenTabsContext)) {
-      settings.maxOpenTabsContext = Math.max(0, obj.maxOpenTabsContext);
-    }
-    if (typeof obj.maxWorkspaceFiles === 'number' && !isNaN(obj.maxWorkspaceFiles)) {
-      settings.maxWorkspaceFiles = Math.max(0, obj.maxWorkspaceFiles);
-    }
-    if (typeof obj.maxGitStatusFiles === 'number' && !isNaN(obj.maxGitStatusFiles)) {
-      settings.maxGitStatusFiles = Math.max(0, obj.maxGitStatusFiles);
-    }
-    if (typeof obj.maxConcurrentFileReads === 'number' && !isNaN(obj.maxConcurrentFileReads)) {
-      settings.maxConcurrentFileReads = Math.max(1, obj.maxConcurrentFileReads);
-    }
+    const vscodeSettings = this.manager['globalSettings'].vscode;
+    vscodeSettings[key] = value;
+
+    this.manager['markModified']('vscode');
+    this.manager['save']();
+    await this.manager.flush();
   }
-  return settings;
+
+  public setCompactionEnabled(enabled: boolean): void {
+    this.manager.setCompactionEnabled(enabled);
+  }
 }
 
 export class SettingsService {
@@ -127,63 +175,42 @@ export class SettingsService {
     const resolvedCwd = cwd || process.cwd();
     let instance = this.instances.get(resolvedCwd);
     if (!instance) {
-      instance = new SettingsService(resolvedCwd);
+      const repository = new SettingsRepository(resolvedCwd);
+      instance = new SettingsService(repository);
       this.instances.set(resolvedCwd, instance);
     }
     return instance;
   }
 
-  private readonly manager: SettingsManager;
-
-  private constructor(resolvedCwd: string) {
-    const agentDir = getAgentDir();
-    const isTrusted = isProjectTrusted(resolvedCwd);
-    this.manager = SettingsManager.create(resolvedCwd, agentDir, { projectTrusted: isTrusted });
-  }
+  public constructor(private readonly repository: SettingsRepository) {}
 
   public async load(): Promise<AppSettings> {
-    await this.manager.reload();
+    await this.repository.reload();
 
-    const globalSettings = this.manager.getGlobalSettings();
+    let rawGlobal = this.repository.getGlobalSettings();
 
-    // Initialize "vscode" key to defaults if missing
-    if (globalSettings.vscode === undefined) {
-      globalSettings.vscode = { ...DEFAULT_SETTINGS };
-      this.manager['markModified']('vscode');
-
-      // Sync autoCondenseContext with compaction.enabled
-      this.manager.setCompactionEnabled(DEFAULT_SETTINGS.autoCondenseContext);
-
-      this.manager['save']();
-      await this.manager.flush();
+    if (rawGlobal === undefined) {
+      await this.repository.initializeDefaults(DEFAULT_SETTINGS);
+      rawGlobal = DEFAULT_SETTINGS;
     }
 
-    const parsedGlobal = parseAppSettings(globalSettings.vscode);
+    const parsedGlobal = parseAppSettings(rawGlobal, DEFAULT_SETTINGS);
+    const rawProject = this.repository.getProjectSettings();
 
-    const projectSettings = this.manager.getProjectSettings();
-    if (projectSettings && projectSettings.vscode !== undefined) {
-      const parsedProject = parseAppSettings(projectSettings.vscode);
-      return { ...parsedGlobal, ...parsedProject };
+    if (rawProject !== undefined) {
+      return parseAppSettings(rawProject, parsedGlobal);
     }
+
     return parsedGlobal;
   }
 
-  public async update(key: keyof AppSettings, value: unknown): Promise<AppSettings> {
-    await this.manager.reload();
-    const globalSettings = this.manager['globalSettings'];
-
-    if (!globalSettings.vscode || typeof globalSettings.vscode !== 'object') {
-      globalSettings.vscode = {};
-    }
-    globalSettings.vscode[key] = value;
-    this.manager['markModified']('vscode');
+  public async update<K extends keyof AppSettings>(key: K, value: AppSettings[K]): Promise<AppSettings> {
+    await this.repository.reload();
+    await this.repository.updateSetting(key, value);
 
     if (key === 'autoCondenseContext') {
-      this.manager.setCompactionEnabled(value === true);
+      this.repository.setCompactionEnabled(value === true);
     }
-
-    this.manager['save']();
-    await this.manager.flush();
 
     return this.load();
   }

@@ -22,14 +22,14 @@ export const ApprovalTab: FC<TabProps> = ({ draftSettings, handleFieldChange }) 
             label="Allowed Read Paths"
             description="Files matching these globs will be auto-approved for reading. Add * to allow all paths."
             placeholder="e.g. src/**/*.ts"
-            globs={draftSettings.allowedReadPaths}
+            inputs={draftSettings.allowedReadPaths}
             onChange={(globs) => handleFieldChange('allowedReadPaths', globs)}
           />
           <SettingList
             label="Denied Read Paths"
             description="Files matching these globs will be blocked from reading, overriding allowed paths."
             placeholder="e.g. env/*.env"
-            globs={draftSettings.deniedReadPaths}
+            inputs={draftSettings.deniedReadPaths}
             onChange={(globs) => handleFieldChange('deniedReadPaths', globs)}
           />
         </div>
@@ -48,14 +48,14 @@ export const ApprovalTab: FC<TabProps> = ({ draftSettings, handleFieldChange }) 
             label="Allowed Write Paths"
             description="Files matching these globs will be auto-approved for writing/editing. Add * to allow all paths."
             placeholder="e.g. src/**/*.ts"
-            globs={draftSettings.allowedWritePaths}
+            inputs={draftSettings.allowedWritePaths}
             onChange={(globs) => handleFieldChange('allowedWritePaths', globs)}
           />
           <SettingList
             label="Denied Write Paths"
             description="Files matching these globs will be blocked from writing/editing, overriding allowed paths."
             placeholder="e.g. package.json"
-            globs={draftSettings.deniedWritePaths}
+            inputs={draftSettings.deniedWritePaths}
             onChange={(globs) => handleFieldChange('deniedWritePaths', globs)}
           />
         </div>
@@ -74,14 +74,14 @@ export const ApprovalTab: FC<TabProps> = ({ draftSettings, handleFieldChange }) 
             label="Allowed Delete Paths"
             description="Files matching these globs will be auto-approved for deleting. Add * to allow all paths."
             placeholder="e.g. temp/**/*.log"
-            globs={draftSettings.allowedDeletePaths}
+            inputs={draftSettings.allowedDeletePaths}
             onChange={(globs) => handleFieldChange('allowedDeletePaths', globs)}
           />
           <SettingList
             label="Denied Delete Paths"
             description="Files matching these globs will be blocked from deleting, overriding allowed paths."
             placeholder="e.g. src/**/*.ts"
-            globs={draftSettings.deniedDeletePaths}
+            inputs={draftSettings.deniedDeletePaths}
             onChange={(globs) => handleFieldChange('deniedDeletePaths', globs)}
           />
         </div>
@@ -100,14 +100,14 @@ export const ApprovalTab: FC<TabProps> = ({ draftSettings, handleFieldChange }) 
             label="Allowed Commands"
             description="Commands starting with these prefixes will be auto-approved. Add * to allow all commands."
             placeholder="e.g. npm"
-            globs={draftSettings.allowedExecuteCommands}
+            inputs={draftSettings.allowedExecuteCommands}
             onChange={(globs) => handleFieldChange('allowedExecuteCommands', globs)}
           />
           <SettingList
             label="Denied Commands"
             description="Commands starting with these prefixes will be blocked, overriding allowed commands."
             placeholder="e.g. rm -rf"
-            globs={draftSettings.deniedExecuteCommands}
+            inputs={draftSettings.deniedExecuteCommands}
             onChange={(globs) => handleFieldChange('deniedExecuteCommands', globs)}
           />
         </div>
