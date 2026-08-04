@@ -27,6 +27,7 @@ export class AgentRunner {
   private session: AgentSession | null = null;
   private pendingApprovals = new Map<string, (res: BeforeToolCallResult) => void>();
   private currentApiRequestId: string | null = null;
+  private isAttemptCompletionAborted = false;
 
   private postWebviewMessage(webview: Webview, message: ExtensionToWebviewMessage): void {
     void webview.postMessage(message);
@@ -34,6 +35,7 @@ export class AgentRunner {
 
   public async startTask(promptText: string, _modelId: string, webview: Webview, images?: string[], path?: string): Promise<void> {
     this.pendingApprovals.clear();
+    this.isAttemptCompletionAborted = false;
 
     const workspaceFolders = workspace.workspaceFolders;
     const cwd = workspaceFolders && workspaceFolders.length > 0 ? workspaceFolders[0].uri.fsPath : process.cwd();
@@ -64,6 +66,9 @@ export class AgentRunner {
         : undefined;
 
       void session.prompt(finalPromptText, { images: attachmentImages }).catch((err) => {
+        if (this.isAttemptCompletionAborted) {
+          return;
+        }
         this.postWebviewMessage(webview, {
           type: 'agent_error',
           payload: {
@@ -83,6 +88,7 @@ export class AgentRunner {
 
   public async continueTask(path: string, webview: Webview): Promise<void> {
     this.pendingApprovals.clear();
+    this.isAttemptCompletionAborted = false;
 
     const workspaceFolders = workspace.workspaceFolders;
     const cwd = workspaceFolders && workspaceFolders.length > 0 ? workspaceFolders[0].uri.fsPath : process.cwd();
@@ -104,6 +110,9 @@ export class AgentRunner {
           { triggerTurn: true },
         )
         .catch((err) => {
+          if (this.isAttemptCompletionAborted) {
+            return;
+          }
           this.postWebviewMessage(webview, {
             type: 'agent_error',
             payload: {
@@ -269,9 +278,68 @@ export class AgentRunner {
 
     // Subscribe to agent events and stream to webview
     this.session.subscribe((event) => {
+      if (this.isAttemptCompletionAborted && event.type === 'message_end' && event.message.role === 'assistant') {
+        (event as any).type = 'ignored';
+        const messages = this.session?.agent.state.messages;
+        if (messages && messages[messages.length - 1] === event.message) {
+          messages.pop();
+        }
+      }
+
       const message = this.mapAgentEvent(event, this.session!);
       if (message) {
         this.postWebviewMessage(webview, message);
+      }
+
+      if (event.type === 'tool_execution_end' && event.toolName === 'attempt_completion') {
+        this.isAttemptCompletionAborted = true;
+        this.abort();
+
+        // Find the assistant message that has the attempt_completion tool call
+        const messages = this.session!.agent.state.messages;
+        let targetMsg: any = null;
+        for (let i = messages.length - 1; i >= 0; i--) {
+          const msg = messages[i];
+          if (msg.role === 'assistant' && Array.isArray(msg.content)) {
+            const hasAttemptCompletion = msg.content.some((c) => c.type === 'toolCall' && c.name === 'attempt_completion');
+            if (hasAttemptCompletion) {
+              targetMsg = msg;
+              break;
+            }
+          }
+        }
+
+        if (targetMsg) {
+          targetMsg.stopReason = 'stop';
+          targetMsg.rawStopReason = 'end_turn';
+        }
+
+        // Also update it in the SessionManager entries
+        const entries = this.session!.sessionManager.getEntries();
+        let entryUpdated = false;
+        for (const entry of entries) {
+          if (entry.type === 'message' && entry.message.role === 'assistant') {
+            const msg = entry.message;
+            if (Array.isArray(msg.content)) {
+              const hasAttemptCompletion = msg.content.some((c) => c.type === 'toolCall' && c.name === 'attempt_completion');
+              if (hasAttemptCompletion) {
+                msg.stopReason = 'stop';
+                msg.rawStopReason = 'end_turn';
+                entryUpdated = true;
+                break;
+              }
+            }
+          }
+        }
+
+        // Rewrite the session file on disk so the update is persistent
+        if (entryUpdated && typeof this.session!.sessionManager['_rewriteFile'] === 'function') {
+          try {
+            this.session!.sessionManager['_rewriteFile']();
+          } catch (err) {
+            console.error('Failed to rewrite session file with stopReason update:', err);
+          }
+        }
       }
 
       if (
@@ -339,6 +407,13 @@ export class AgentRunner {
   }
 
   private mapAgentEvent(event: AgentSessionEvent, session: AgentSession): ExtensionToWebviewMessage | null {
+    if (this.isAttemptCompletionAborted) {
+      if (event.type === 'agent_settled') {
+        return { type: 'agent_settled' };
+      }
+      return null;
+    }
+
     switch (event.type) {
       case 'agent_start':
         return {
