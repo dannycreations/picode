@@ -180,7 +180,7 @@ export class AgentRunner {
           const deniedRead = (settings.deniedReadPaths || []) as string[];
 
           const resolutions = files.map((f) => {
-            const res = resolvePathAction(f.path, settings.autoApproveRead, allowedRead, deniedRead);
+            const res = resolvePathAction(cwd, f.path, settings.autoApproveRead, allowedRead, deniedRead);
             if (res === 'deny') {
               return 'deny';
             }
@@ -204,7 +204,7 @@ export class AgentRunner {
 
           const allowedWrite = (settings.allowedWritePaths || []) as string[];
           const deniedWrite = (settings.deniedWritePaths || []) as string[];
-          const resolution = resolvePathAction(filePath, settings.autoApproveWrite, allowedWrite, deniedWrite);
+          const resolution = resolvePathAction(cwd, filePath, settings.autoApproveWrite, allowedWrite, deniedWrite);
 
           if (resolution === 'deny') {
             return {

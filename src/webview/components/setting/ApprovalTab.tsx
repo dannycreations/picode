@@ -12,7 +12,7 @@ export const ApprovalTab: FC<TabProps> = ({ draftSettings, handleFieldChange }) 
   const [executeAllowedInput, setExecuteAllowedInput] = useState('');
   const [executeDeniedInput, setExecuteDeniedInput] = useState('');
 
-  const handleAddPath = (
+  const handleAddGlob = (
     field: 'allowedReadPaths' | 'deniedReadPaths' | 'allowedWritePaths' | 'deniedWritePaths' | 'allowedExecuteCommands' | 'deniedExecuteCommands',
     input: string,
     setInput: (v: string) => void,
@@ -26,7 +26,7 @@ export const ApprovalTab: FC<TabProps> = ({ draftSettings, handleFieldChange }) 
     }
   };
 
-  const handleRemovePath = (
+  const handleRemoveGlob = (
     field: 'allowedReadPaths' | 'deniedReadPaths' | 'allowedWritePaths' | 'deniedWritePaths' | 'allowedExecuteCommands' | 'deniedExecuteCommands',
     index: number,
   ) => {
@@ -37,7 +37,25 @@ export const ApprovalTab: FC<TabProps> = ({ draftSettings, handleFieldChange }) 
     );
   };
 
-  const renderPathList = (
+  const handleMoveToInput = (
+    field: 'allowedReadPaths' | 'deniedReadPaths' | 'allowedWritePaths' | 'deniedWritePaths' | 'allowedExecuteCommands' | 'deniedExecuteCommands',
+    index: number,
+    value: string,
+    input: string,
+    setInput: (v: string) => void,
+  ) => {
+    handleRemoveGlob(field, index);
+    const trimmed = input.trim();
+    setInput(trimmed ? `${trimmed} ${value}` : value);
+    setTimeout(() => {
+      const el = document.getElementById(`input-${field}`);
+      if (el) {
+        (el as HTMLInputElement).focus();
+      }
+    }, 0);
+  };
+
+  const renderGlobList = (
     field: 'allowedReadPaths' | 'deniedReadPaths' | 'allowedWritePaths' | 'deniedWritePaths' | 'allowedExecuteCommands' | 'deniedExecuteCommands',
     input: string,
     setInput: (v: string) => void,
@@ -45,7 +63,7 @@ export const ApprovalTab: FC<TabProps> = ({ draftSettings, handleFieldChange }) 
     label: string,
     description: string,
   ) => {
-    const paths = draftSettings[field] || [];
+    const globs = draftSettings[field] || [];
     return (
       <div className="flex flex-col gap-2 mt-2.5 ml-6 pl-3 border-l-2 border-vscode-button-background/60">
         <div className="flex flex-col gap-0.5">
@@ -54,13 +72,14 @@ export const ApprovalTab: FC<TabProps> = ({ draftSettings, handleFieldChange }) 
         </div>
         <div className="flex gap-2">
           <input
+            id={`input-${field}`}
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
-                handleAddPath(field, input, setInput);
+                handleAddGlob(field, input, setInput);
               }
             }}
             placeholder={placeholder}
@@ -68,25 +87,37 @@ export const ApprovalTab: FC<TabProps> = ({ draftSettings, handleFieldChange }) 
           />
           <button
             type="button"
-            onClick={() => handleAddPath(field, input, setInput)}
+            onClick={() => handleAddGlob(field, input, setInput)}
             className="h-7 px-2.5 text-xs font-semibold rounded cursor-pointer bg-vscode-button-secondaryBackground text-vscode-button-secondaryForeground hover:bg-vscode-button-secondaryHoverBackground border border-vscode-editorGroup-border/50 flex items-center justify-center shrink-0"
           >
             <Plus size={14} />
           </button>
         </div>
-        {paths.length > 0 && (
+        {globs.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-1">
-            {paths.map((path, idx) => (
+            {globs.map((glob, idx) => (
               <div
                 key={idx}
                 className="flex items-center gap-1.5 pl-2 pr-1.5 py-0.5 text-[11px] rounded bg-vscode-badge-background text-vscode-badge-foreground border border-vscode-editorGroup-border/30"
               >
-                <span className="font-mono truncate max-w-[200px]" title={path}>
-                  {path}
+                <span
+                  role="button"
+                  tabIndex={0}
+                  className="font-mono truncate max-w-[200px] cursor-pointer hover:underline outline-none"
+                  title={`Click to edit: ${glob}`}
+                  onClick={() => handleMoveToInput(field, idx, glob, input, setInput)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleMoveToInput(field, idx, glob, input, setInput);
+                    }
+                  }}
+                >
+                  {glob}
                 </span>
                 <button
                   type="button"
-                  onClick={() => handleRemovePath(field, idx)}
+                  onClick={() => handleRemoveGlob(field, idx)}
                   className="p-0.5 hover:bg-vscode-list-hoverBackground rounded text-vscode-badge-foreground bg-transparent border-none cursor-pointer flex items-center justify-center"
                 >
                   <X size={12} />
@@ -122,15 +153,15 @@ export const ApprovalTab: FC<TabProps> = ({ draftSettings, handleFieldChange }) 
         </label>
         {draftSettings.autoApproveRead && (
           <div className="flex flex-col gap-4 mt-2">
-            {renderPathList(
+            {renderGlobList(
               'allowedReadPaths',
               readAllowedInput,
               setReadAllowedInput,
               'e.g. src/**/*.ts',
               'Allowed Read Paths',
-              'Files matching these globs will be auto-approved for reading. Leave empty to allow all paths.',
+              'Files matching these globs will be auto-approved for reading. Add * to allow all paths.',
             )}
-            {renderPathList(
+            {renderGlobList(
               'deniedReadPaths',
               readDeniedInput,
               setReadDeniedInput,
@@ -163,15 +194,15 @@ export const ApprovalTab: FC<TabProps> = ({ draftSettings, handleFieldChange }) 
         </label>
         {draftSettings.autoApproveWrite && (
           <div className="flex flex-col gap-4 mt-2">
-            {renderPathList(
+            {renderGlobList(
               'allowedWritePaths',
               writeAllowedInput,
               setWriteAllowedInput,
               'e.g. src/**/*.ts',
               'Allowed Write Paths',
-              'Files matching these globs will be auto-approved for writing/editing. Leave empty to allow all paths.',
+              'Files matching these globs will be auto-approved for writing/editing. Add * to allow all paths.',
             )}
-            {renderPathList(
+            {renderGlobList(
               'deniedWritePaths',
               writeDeniedInput,
               setWriteDeniedInput,
@@ -225,21 +256,21 @@ export const ApprovalTab: FC<TabProps> = ({ draftSettings, handleFieldChange }) 
         </label>
         {draftSettings.autoApproveExecute && (
           <div className="flex flex-col gap-4 mt-2">
-            {renderPathList(
+            {renderGlobList(
               'allowedExecuteCommands',
               executeAllowedInput,
               setExecuteAllowedInput,
-              'e.g. npm test',
+              'e.g. npm',
               'Allowed Commands',
-              'Commands matching these globs will be auto-approved for execution. Leave empty to allow all commands.',
+              'Commands starting with these prefixes will be auto-approved. Add * to allow all commands.',
             )}
-            {renderPathList(
+            {renderGlobList(
               'deniedExecuteCommands',
               executeDeniedInput,
               setExecuteDeniedInput,
-              'e.g. rm -rf *',
+              'e.g. rm -rf',
               'Denied Commands',
-              'Commands matching these globs will be blocked from execution, overriding allowed commands.',
+              'Commands starting with these prefixes will be blocked, overriding allowed commands.',
             )}
           </div>
         )}
