@@ -609,6 +609,7 @@ export const ChatView: FC = () => {
   };
 
   const handleCloseTask = () => {
+    vscode?.postMessage({ type: 'get_history', scope });
     vscode?.postMessage({ type: 'close_task' });
     setActiveTask(null);
     setIsAgentRunning(false);
