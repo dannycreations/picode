@@ -25,19 +25,6 @@ export function spawnGit(args: string[], cwd: string): string {
   return result.stdout;
 }
 
-const LOCK_FILES = [
-  'package-lock.json',
-  'yarn.lock',
-  'pnpm-lock.yaml',
-  'bun.lockb',
-  'Cargo.lock',
-  'Gemfile.lock',
-  'composer.lock',
-  'go.sum',
-  'poetry.lock',
-  'mix.lock',
-];
-
 function isBinaryFile(filePath: string): boolean {
   try {
     if (!existsSync(filePath)) return false;
@@ -58,14 +45,6 @@ function isBinaryFile(filePath: string): boolean {
   }
 }
 
-function shouldExcludeFile(relativePath: string): boolean {
-  const filename = relativePath.split(/[\\/]/).pop();
-  if (filename && LOCK_FILES.includes(filename)) {
-    return true;
-  }
-  return false;
-}
-
 export function getGitChanges(cwd: string): { changes: GitChange[]; useStaged: boolean } {
   const output = spawnGit(['status', '--porcelain'], cwd).trim();
   if (!output) {
@@ -84,10 +63,6 @@ export function getGitChanges(cwd: string): { changes: GitChange[]; useStaged: b
     if (indexStatus === 'R' || workStatus === 'R') {
       const parts = relativePath.split(' -> ');
       relativePath = parts[1] || parts[0];
-    }
-
-    if (shouldExcludeFile(relativePath)) {
-      continue;
     }
 
     const absolutePath = resolve(cwd, relativePath);

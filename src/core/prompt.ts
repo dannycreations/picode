@@ -1,4 +1,4 @@
-const COMMIT_MESSAGE_TEMPLATE = `Analyze the provided \`git diff\`, then generate exactly one commit message complying strictly with the Conventional Commits specification.
+export const COMMIT_MESSAGE_PROMPT = `Analyze the provided \`git diff\`, then generate exactly one commit message complying strictly with the Conventional Commits specification.
 
 ## Structural Rules
 
@@ -14,7 +14,7 @@ const COMMIT_MESSAGE_TEMPLATE = `Analyze the provided \`git diff\`, then generat
 ### 2. Body (Optional)
 
 - Must be separated from the header by one blank line.
-- Uses bulleted lines to detail specific execution steps or internal modifications.
+- Uses unordered list dashes to detail specific modifications.
 
 ### 3. Footer (Conditional)
 
@@ -32,19 +32,4 @@ const COMMIT_MESSAGE_TEMPLATE = `Analyze the provided \`git diff\`, then generat
 - **perf**: Improves execution speed, memory efficiency, or resource usage without altering behavior.
 - **refactor**: Restructures existing code without altering external behavior or adding features.
 - **style**: Adjusts code formatting, indentation, or whitespace without affecting logical execution.
-- **test**: Adds missing tests, refactors existing tests, or corrects test suites.
-
-{{ADDITIONAL_CONTEXT}}
-
-{{GIT_CONTEXT}}`;
-
-export function buildPrompt(gitContext: string): string {
-  return COMMIT_MESSAGE_TEMPLATE.replace('{{ADDITIONAL_CONTEXT}}', '').replace('{{GIT_CONTEXT}}', gitContext).trim();
-}
-
-export function extractCommitMessage(response: string): string {
-  const cleaned = response.trim();
-  const withoutCodeBlocks = cleaned.replace(/```[a-z]*\n|```/g, '');
-  const withoutQuotes = withoutCodeBlocks.replace(/^["'`]|["'`]$/g, '');
-  return withoutQuotes.trim();
-}
+- **test**: Adds missing tests, refactors existing tests, or corrects test suites.`;

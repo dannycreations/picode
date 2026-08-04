@@ -3,8 +3,9 @@ import { getAgentDir, ModelRuntime, SettingsManager } from '@earendil-works/pi-c
 import { commands, extensions, ProgressLocation, window, workspace } from 'vscode';
 
 import { Logger } from '@extension/core/logger';
+import { COMMIT_MESSAGE_PROMPT } from '@extension/core/prompt';
 import { buildGitContext, getGitChanges, getGitDiffContext, getRepoContext } from '@extension/structures/commit-message/git';
-import { buildPrompt, extractCommitMessage } from '@extension/structures/commit-message/helpers';
+import { extractCodeBlockMessage } from '@extension/utilities/markdown';
 
 import type { Disposable, ExtensionContext, Uri } from 'vscode';
 import type { GitExtension, GitRepository, LlmResponseContent, ScmRequest } from '@extension/types/extension';
@@ -32,6 +33,9 @@ async function getGitRepository(uri?: Uri): Promise<GitRepository | null> {
 
   return gitApi.repositories[0] || null;
 }
+
+const lastUserInstructions = new Map<string, string>();
+const lastGeneratedMessages = new Map<string, string>();
 
 export function registerCommitMessageCommand(_: ExtensionContext, logger: Logger): Disposable {
   return commands.registerCommand('pi-code.generateCommitMessage', async (scmRequest?: ScmRequest) => {
@@ -70,6 +74,23 @@ export function registerCommitMessageCommand(_: ExtensionContext, logger: Logger
         return;
       }
 
+      const userMessage = repo.inputBox.value;
+      const previousGenerated = lastGeneratedMessages.get(cwd);
+
+      let userInstruction = '';
+      let rejectedMessage = '';
+
+      if (previousGenerated && userMessage.trim() === previousGenerated.trim()) {
+        logger.info('Input box value matches previously generated message. Treating as a re-generation.');
+        userInstruction = lastUserInstructions.get(cwd) || '';
+        rejectedMessage = previousGenerated;
+      } else {
+        logger.info(`Gathered new user instruction from input box: ${userMessage}`);
+        userInstruction = userMessage;
+        lastUserInstructions.set(cwd, userMessage);
+        lastGeneratedMessages.delete(cwd);
+      }
+
       await window.withProgress(
         {
           location: ProgressLocation.SourceControl,
@@ -86,7 +107,19 @@ export function registerCommitMessageCommand(_: ExtensionContext, logger: Logger
           logger.info(`Recent Commits count: ${recentCommits.split('\n').filter(Boolean).length}`);
 
           const gitContext = buildGitContext(changes, diff, branch, recentCommits, useStaged);
-          const prompt = buildPrompt(gitContext);
+
+          let prompt = COMMIT_MESSAGE_PROMPT.trim();
+          if (userInstruction && userInstruction.trim()) {
+            prompt += `\n\n## User-Provided Context\n\n${userInstruction.trim()}`;
+          }
+          if (rejectedMessage && rejectedMessage.trim()) {
+            prompt += '\n\n## Rejected Commit Message';
+            prompt += `\n\nPreviously generated commit message (which was not accepted):\n\n${rejectedMessage.trim()}`;
+            prompt += `\n\nPlease generate a new, different commit message that follows the same rules.`;
+          }
+          prompt += `\n\n${gitContext}`;
+          prompt = prompt.trim();
+
           logger.info(`Fully assembled prompt (character length: ${prompt.length})`);
 
           const agentDir = getAgentDir();
@@ -146,11 +179,12 @@ export function registerCommitMessageCommand(_: ExtensionContext, logger: Logger
             .trim();
           logger.info(`Raw LLM response: ${rawMessage}`);
 
-          const cleanMessage = extractCommitMessage(rawMessage);
+          const cleanMessage = extractCodeBlockMessage(rawMessage);
           logger.info(`Extracted commit message: ${cleanMessage}`);
 
           if (cleanMessage) {
             repo.inputBox.value = cleanMessage;
+            lastGeneratedMessages.set(cwd, cleanMessage);
             logger.info('Updated inputBox value successfully.');
           } else {
             throw new Error('Empty response received from model.');
