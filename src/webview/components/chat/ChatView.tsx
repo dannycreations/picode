@@ -445,6 +445,7 @@ export const ChatView: FC = () => {
   };
 
   const handleDeleteTasks = (paths: string[]) => {
+    setPastTasks((prev) => prev.filter((item) => !paths.includes(item.path)));
     vscode?.postMessage({
       type: 'delete_sessions',
       paths,
@@ -589,13 +590,18 @@ export const ChatView: FC = () => {
   const handleDeleteActiveTask = () => {
     if (!activeTask) return;
     if (activeTask.path) {
+      const deletedPath = activeTask.path;
+      setPastTasks((prev) => prev.filter((item) => item.path !== deletedPath));
       vscode?.postMessage({
         type: 'delete_sessions',
-        paths: [activeTask.path],
+        paths: [deletedPath],
         scope,
       });
     }
-    handleCloseTask();
+    // Close task without requesting history again, since delete_sessions returns history_data
+    vscode?.postMessage({ type: 'close_task' });
+    setActiveTask(null);
+    setIsAgentRunning(false);
   };
 
   // Handle view raw task in VS Code

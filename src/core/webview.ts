@@ -13,9 +13,12 @@ import { isProjectTrusted } from '@extension/utilities/vscode';
 
 import type { CancellationToken, ExtensionContext, Webview, WebviewView, WebviewViewProvider, WebviewViewResolveContext } from 'vscode';
 
+type ExtensionInitData = Extract<ExtensionToWebviewMessage, { type: 'init_data' }>['payload'];
+
 export class ChatViewProvider implements WebviewViewProvider {
   public static readonly viewType = 'pi-code.chatView';
   private static activeWebview: Webview | null = null;
+  private readonly cachedInitData: Record<string, ExtensionInitData> = {};
   private agent: AgentRunner | null = null;
 
   public static postActiveWebviewMessage(message: ExtensionToWebviewMessage): Thenable<boolean> | undefined {
@@ -50,6 +53,12 @@ export class ChatViewProvider implements WebviewViewProvider {
       }
       switch (message.type) {
         case 'init':
+          if (this.cachedInitData[cwd]) {
+            this.postWebviewMessage(webviewView.webview, {
+              type: 'init_data',
+              payload: this.cachedInitData[cwd],
+            });
+          }
           await this.sendInitData(webviewView.webview, cwd);
           break;
 
@@ -226,6 +235,14 @@ export class ChatViewProvider implements WebviewViewProvider {
               task: s.firstMessage || 'Untitled Task',
               ts: s.created ? new Date(s.created).getTime() : Date.now(),
             }));
+
+            if (scope !== 'all') {
+              if (!this.cachedInitData[cwd]) {
+                this.cachedInitData[cwd] = {} as ExtensionInitData;
+              }
+              this.cachedInitData[cwd].history = history;
+            }
+
             this.postWebviewMessage(webviewView.webview, {
               type: 'history_data',
               payload: {
@@ -260,14 +277,20 @@ export class ChatViewProvider implements WebviewViewProvider {
               task: s.firstMessage || 'Untitled Task',
               ts: s.created ? new Date(s.created).getTime() : Date.now(),
             }));
+
+            if (scope !== 'all') {
+              if (!this.cachedInitData[cwd]) {
+                this.cachedInitData[cwd] = {} as ExtensionInitData;
+              }
+              this.cachedInitData[cwd].history = history;
+            }
+
             this.postWebviewMessage(webviewView.webview, {
               type: 'history_data',
               payload: {
                 history,
               },
             });
-            // Update the main page history list too
-            await this.sendInitData(webviewView.webview, cwd);
           } catch (err) {
             console.error('Failed to delete sessions:', err);
           }
@@ -324,14 +347,16 @@ export class ChatViewProvider implements WebviewViewProvider {
 
   private async sendInitData(webview: Webview, cwd: string): Promise<void> {
     try {
-      const modelRuntime = await ModelRuntime.create();
+      const agentDir = getAgentDir();
+      const isTrusted = isProjectTrusted(cwd);
+
+      const [modelRuntime, sessions] = await Promise.all([ModelRuntime.create(), SessionManager.list(cwd)]);
 
       const models = modelRuntime.getModels().map((m: AgentModel) => ({
         id: m.id,
         name: m.displayName || m.id,
       }));
 
-      const sessions = await SessionManager.list(cwd);
       const history = sessions.map((s) => ({
         id: s.id,
         path: s.path,
@@ -339,18 +364,20 @@ export class ChatViewProvider implements WebviewViewProvider {
         ts: s.created ? new Date(s.created).getTime() : Date.now(),
       }));
 
-      const agentDir = getAgentDir();
-      const isTrusted = isProjectTrusted(cwd);
       const settingsManager = SettingsManager.create(cwd, agentDir, { projectTrusted: isTrusted });
       const defaultModel = settingsManager.getDefaultModel();
 
+      const payload = {
+        models,
+        history,
+        default_model: defaultModel,
+      };
+
+      this.cachedInitData[cwd] = payload;
+
       this.postWebviewMessage(webview, {
         type: 'init_data',
-        payload: {
-          models,
-          history,
-          default_model: defaultModel,
-        },
+        payload,
       });
     } catch (err) {
       console.error('Failed to send init data:', err);
