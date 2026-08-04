@@ -1,6 +1,7 @@
 import { AgentSession, createAgentSession, SessionManager } from '@earendil-works/pi-coding-agent';
 import { workspace } from 'vscode';
 
+import { SettingsService } from '@extension/core/settings';
 import { getEnvironmentDetails } from '@extension/structures/chat-session/environment';
 import { askQuestionTool } from '@extension/structures/tool-call/ask-question';
 import { attemptCompletionTool } from '@extension/structures/tool-call/attempt-completion';
@@ -10,6 +11,7 @@ import { executeCommandTool } from '@extension/structures/tool-call/execute-comm
 import { readFileTool } from '@extension/structures/tool-call/read-file';
 import { updateTodoTool } from '@extension/structures/tool-call/update-todo';
 import { writeFileTool } from '@extension/structures/tool-call/write-file';
+import { resolvePathAction } from '@extension/utilities/path';
 
 import type { AgentSessionEvent } from '@earendil-works/pi-coding-agent';
 import type { Webview } from 'vscode';
@@ -164,8 +166,51 @@ export class AgentRunner {
 
     // Setup the tool approval hook
     this.session.agent.beforeToolCall = async ({ toolCall, args }) => {
-      if (toolCall.name === 'attempt_completion') {
+      const toolName = toolCall.name as ToolName;
+      if (toolName === 'attempt_completion') {
         return { block: false };
+      }
+
+      try {
+        const settings = await SettingsService.getInstance(cwd).load();
+
+        if (toolName === 'read_file') {
+          const files = (args as { files?: { path: string }[] }).files || [];
+          const allowedRead = (settings.allowedReadPaths || []) as string[];
+          const deniedRead = (settings.deniedReadPaths || []) as string[];
+          const resolutions = files.map((f) => resolvePathAction(f.path, settings.autoApproveRead, allowedRead, deniedRead));
+
+          if (resolutions.includes('deny')) {
+            return {
+              block: true,
+              reason: 'Access to read one or more of the specified paths is explicitly denied by settings.',
+            };
+          }
+          if (resolutions.every((r) => r === 'approve')) {
+            return { block: false };
+          }
+        } else if (toolName === 'write_file' || toolName === 'edit_file') {
+          const filePath = (args as { path?: string }).path || '';
+          const allowedWrite = (settings.allowedWritePaths || []) as string[];
+          const deniedWrite = (settings.deniedWritePaths || []) as string[];
+          const resolution = resolvePathAction(filePath, settings.autoApproveWrite, allowedWrite, deniedWrite);
+
+          if (resolution === 'deny') {
+            return {
+              block: true,
+              reason: 'Access to write/edit this file path is explicitly denied by settings.',
+            };
+          }
+          if (resolution === 'approve') {
+            return { block: false };
+          }
+        } else if (toolName === 'delete_file' && settings.autoApproveDelete) {
+          return { block: false };
+        } else if (toolName === 'execute_command' && settings.autoApproveExecute) {
+          return { block: false };
+        }
+      } catch (err) {
+        console.error('Failed to load settings for auto-approval:', err);
       }
 
       const approvalId = `${toolCall.id || Date.now()}`;
@@ -174,7 +219,7 @@ export class AgentRunner {
         type: 'tool_approval_request',
         payload: {
           id: approvalId,
-          tool_name: toolCall.name as ToolName,
+          tool_name: toolName,
           arguments: JSON.stringify(args),
         },
       });

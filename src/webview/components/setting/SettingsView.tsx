@@ -1,11 +1,49 @@
-import { ArrowLeft, Database, FoldVertical } from 'lucide-react';
+import { ArrowLeft, Database, ShieldCheck } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { ConfirmDialog } from '@webview/components/shared/ConfirmDialog';
 import { vscode } from '@webview/utilities/vscode';
+import { ApprovalTab } from './ApprovalTab';
+import { ContextTab } from './ContextTab';
 
-import type { FC } from 'react';
+import type { LucideIcon } from 'lucide-react';
+import type { ComponentType, FC } from 'react';
 import type { AppSettings } from '@extension/core/settings';
+
+export interface TabProps {
+  readonly draftSettings: AppSettings;
+  readonly handleFieldChange: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void;
+  readonly getSliderStyle: (value: number, min: number, max: number) => { background: string };
+  readonly sliderClassName: string;
+}
+
+export interface SettingsTab {
+  readonly id: string;
+  readonly label: string;
+  readonly icon: LucideIcon;
+  readonly title: string;
+  readonly description: string;
+  readonly component: ComponentType<TabProps>;
+}
+
+const SETTINGS_TABS: SettingsTab[] = [
+  {
+    id: 'approval',
+    label: 'Approval',
+    icon: ShieldCheck,
+    title: 'Approval',
+    description: 'Configure auto-approval settings for agent actions to balance speed and safety',
+    component: ApprovalTab,
+  },
+  {
+    id: 'context',
+    label: 'Context',
+    icon: Database,
+    title: 'Context',
+    description: "Control what information is included in the AI's context window, affecting token usage and response quality",
+    component: ContextTab,
+  },
+];
 
 interface SettingsViewProps {
   readonly onDone: () => void;
@@ -14,6 +52,7 @@ interface SettingsViewProps {
 export const SettingsView: FC<SettingsViewProps> = ({ onDone }) => {
   const [originalSettings, setOriginalSettings] = useState<AppSettings | null>(null);
   const [draftSettings, setDraftSettings] = useState<AppSettings | null>(null);
+  const [activeTabId, setActiveTabId] = useState(SETTINGS_TABS[0].id);
 
   const [isSaving, setIsSaving] = useState(false);
   const pendingUpdatesRef = useRef<Array<{ key: keyof AppSettings; value: unknown }>>([]);
@@ -114,6 +153,9 @@ export const SettingsView: FC<SettingsViewProps> = ({ onDone }) => {
     );
   }
 
+  const activeTab = SETTINGS_TABS.find((tab) => tab.id === activeTabId) || SETTINGS_TABS[0];
+  const ActiveTabComponent = activeTab.component;
+
   const sliderClassName =
     'w-full appearance-none h-2 rounded-sm border border-vscode-settings-checkboxBorder outline-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-vscode-button-background [&::-webkit-slider-thumb]:border-none [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-vscode-button-background [&::-moz-range-thumb]:border-none [&::-moz-range-thumb]:cursor-pointer';
 
@@ -150,143 +192,41 @@ export const SettingsView: FC<SettingsViewProps> = ({ onDone }) => {
       <div className="flex flex-1 overflow-hidden">
         {/* Left Tabs Navigation */}
         <div className="w-48 border-r border-vscode-editorGroup-border/20 flex flex-col shrink-0 py-2 overflow-y-auto overflow-x-hidden bg-vscode-sideBar-background">
-          <button className="whitespace-nowrap overflow-hidden min-w-0 h-12 px-4 py-3 box-border flex items-center gap-2 border-l-2 border-vscode-focusBorder bg-vscode-list-activeSelectionBackground text-vscode-foreground opacity-100 cursor-default font-medium text-xs text-left w-full border-y-0 border-r-0">
-            <Database className="w-4 h-4 shrink-0 text-vscode-foreground" />
-            <span className="tab-label">Context</span>
-          </button>
+          {SETTINGS_TABS.map((tab) => {
+            const TabIcon = tab.icon;
+            const isActive = tab.id === activeTabId;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTabId(tab.id)}
+                className={`whitespace-nowrap overflow-hidden min-w-0 h-12 px-4 py-3 box-border flex items-center gap-2 border-l-2 text-xs text-left w-full border-y-0 border-r-0 transition-colors duration-150 ${
+                  isActive
+                    ? 'border-vscode-focusBorder bg-vscode-list-activeSelectionBackground text-vscode-foreground font-medium cursor-default'
+                    : 'border-transparent text-vscode-descriptionForeground hover:bg-vscode-list-hoverBackground hover:text-vscode-foreground cursor-pointer bg-transparent'
+                }`}
+              >
+                <TabIcon className={`w-4 h-4 shrink-0 ${isActive ? 'text-vscode-foreground' : 'text-vscode-descriptionForeground'}`} />
+                <span className="tab-label">{tab.label}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Right Settings Content */}
         <div className="flex-1 overflow-y-auto pb-6 flex flex-col min-w-0 bg-vscode-sideBar-background">
           {/* Section Header */}
           <div className="sticky top-0 z-10 bg-vscode-sideBar-background text-vscode-sideBar-foreground px-5 pt-6 pb-4">
-            <h3 className="text-[1.25em] font-semibold text-vscode-foreground m-0">Context</h3>
-            <p className="text-vscode-descriptionForeground text-xs mt-2 mb-0">
-              Control what information is included in the AI's context window, affecting token usage and response quality
-            </p>
+            <h3 className="text-[1.25em] font-semibold text-vscode-foreground m-0">{activeTab.title}</h3>
+            <p className="text-vscode-descriptionForeground text-xs mt-2 mb-0">{activeTab.description}</p>
           </div>
 
           {/* Section content */}
-          <div className="flex flex-col gap-6 px-5 py-2">
-            {/* Open tabs context limit */}
-            <div className="flex flex-col gap-2">
-              <span className="block font-semibold text-sm text-vscode-foreground">Open tabs context limit</span>
-              <div className="flex items-center gap-4">
-                <input
-                  type="range"
-                  min="0"
-                  max="500"
-                  value={draftSettings.maxOpenTabsContext}
-                  style={getSliderStyle(draftSettings.maxOpenTabsContext, 0, 500)}
-                  onChange={(e) => handleFieldChange('maxOpenTabsContext', parseInt(e.target.value, 10))}
-                  className={sliderClassName}
-                />
-                <span className="w-10 text-sm text-vscode-foreground text-right">{draftSettings.maxOpenTabsContext}</span>
-              </div>
-              <div className="text-vscode-descriptionForeground text-xs mt-1.5 leading-normal">
-                Maximum number of VSCode open tabs to include in context. Higher values provide more context but increase token usage.
-              </div>
-            </div>
-
-            {/* Workspace files context limit */}
-            <div className="flex flex-col gap-2">
-              <span className="block font-semibold text-sm text-vscode-foreground">Workspace files context limit</span>
-              <div className="flex items-center gap-4">
-                <input
-                  type="range"
-                  min="0"
-                  max="500"
-                  value={draftSettings.maxWorkspaceFiles}
-                  style={getSliderStyle(draftSettings.maxWorkspaceFiles, 0, 500)}
-                  onChange={(e) => handleFieldChange('maxWorkspaceFiles', parseInt(e.target.value, 10))}
-                  className={sliderClassName}
-                />
-                <span className="w-10 text-sm text-vscode-foreground text-right">{draftSettings.maxWorkspaceFiles}</span>
-              </div>
-              <div className="text-vscode-descriptionForeground text-xs mt-1.5 leading-normal">
-                Maximum number of files to include in current working directory details. Higher values provide more context but increase token usage.
-              </div>
-            </div>
-
-            {/* Git status max files */}
-            <div className="flex flex-col gap-2">
-              <span className="block font-semibold text-sm text-vscode-foreground">Git status max files</span>
-              <div className="flex items-center gap-4">
-                <input
-                  type="range"
-                  min="0"
-                  max="50"
-                  value={draftSettings.maxGitStatusFiles}
-                  style={getSliderStyle(draftSettings.maxGitStatusFiles, 0, 50)}
-                  onChange={(e) => handleFieldChange('maxGitStatusFiles', parseInt(e.target.value, 10))}
-                  className={sliderClassName}
-                />
-                <span className="w-10 text-sm text-vscode-foreground text-right">{draftSettings.maxGitStatusFiles}</span>
-              </div>
-              <div className="text-vscode-descriptionForeground text-xs mt-1.5 leading-normal">
-                Maximum number of file entries to include in git status context. Set to 0 to disable. Branch info is always shown when &gt; 0.
-              </div>
-            </div>
-
-            {/* Concurrent file reads limit */}
-            <div className="flex flex-col gap-2">
-              <span className="block font-semibold text-sm text-vscode-foreground">Concurrent file reads limit</span>
-              <div className="flex items-center gap-4">
-                <input
-                  type="range"
-                  min="1"
-                  max="100"
-                  value={draftSettings.maxConcurrentFileReads}
-                  style={getSliderStyle(draftSettings.maxConcurrentFileReads, 1, 100)}
-                  onChange={(e) => handleFieldChange('maxConcurrentFileReads', parseInt(e.target.value, 10))}
-                  className={sliderClassName}
-                />
-                <span className="w-10 text-sm text-vscode-foreground text-right">{draftSettings.maxConcurrentFileReads}</span>
-              </div>
-              <div className="text-vscode-descriptionForeground text-xs mt-1.5 leading-normal">
-                Maximum number of files the 'read_file' tool can process concurrently. Higher values may speed up reading multiple small files but
-                increase memory usage.
-              </div>
-            </div>
-
-            {/* Automatic trigger condensing */}
-            <div className="flex flex-col gap-2.5 pt-4 border-t border-vscode-editorGroup-border/10">
-              <label className="flex items-start gap-2.5 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={draftSettings.autoCondenseContext}
-                  onChange={(e) => handleFieldChange('autoCondenseContext', e.target.checked)}
-                  className="rounded border border-vscode-settings-checkboxBorder accent-vscode-button-background bg-vscode-settings-checkboxBackground cursor-pointer w-4 h-4 shrink-0 mt-0.5"
-                />
-                <span className="font-semibold text-sm text-vscode-foreground">Automatic trigger condensing</span>
-              </label>
-
-              {/* Condensing Threshold */}
-              {draftSettings.autoCondenseContext && (
-                <div className="flex flex-col gap-2 ml-4 pl-3 border-l-2 border-vscode-button-background animate-fade-in mt-1">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-vscode-foreground">
-                    <FoldVertical size={14} className="text-vscode-descriptionForeground shrink-0" />
-                    <span>Condensing threshold</span>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <input
-                      type="range"
-                      min="10"
-                      max="100"
-                      value={draftSettings.autoCondenseContextPercent}
-                      style={getSliderStyle(draftSettings.autoCondenseContextPercent, 10, 100)}
-                      onChange={(e) => handleFieldChange('autoCondenseContextPercent', parseInt(e.target.value, 10))}
-                      className={sliderClassName}
-                    />
-                    <span className="w-10 text-sm text-vscode-foreground text-right">{draftSettings.autoCondenseContextPercent}%</span>
-                  </div>
-                  <div className="text-vscode-descriptionForeground text-xs leading-normal">
-                    The percentage of context window usage at which context condensing is triggered.
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+          <ActiveTabComponent
+            draftSettings={draftSettings}
+            handleFieldChange={handleFieldChange}
+            getSliderStyle={getSliderStyle}
+            sliderClassName={sliderClassName}
+          />
         </div>
       </div>
 

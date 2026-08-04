@@ -2,6 +2,14 @@ import { getAgentDir, SettingsManager } from '@earendil-works/pi-coding-agent';
 import { isObjectLike } from 'es-toolkit/compat';
 
 export interface AppSettings {
+  readonly autoApproveRead: boolean;
+  readonly autoApproveWrite: boolean;
+  readonly autoApproveDelete: boolean;
+  readonly autoApproveExecute: boolean;
+  readonly allowedReadPaths: readonly string[];
+  readonly deniedReadPaths: readonly string[];
+  readonly allowedWritePaths: readonly string[];
+  readonly deniedWritePaths: readonly string[];
   readonly maxOpenTabsContext: number;
   readonly maxWorkspaceFiles: number;
   readonly maxGitStatusFiles: number;
@@ -11,6 +19,14 @@ export interface AppSettings {
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
+  autoApproveRead: false,
+  autoApproveWrite: false,
+  autoApproveDelete: false,
+  autoApproveExecute: false,
+  allowedReadPaths: [],
+  deniedReadPaths: [],
+  allowedWritePaths: [],
+  deniedWritePaths: [],
   maxOpenTabsContext: 20,
   maxWorkspaceFiles: 200,
   maxGitStatusFiles: 20,
@@ -19,9 +35,33 @@ export const DEFAULT_SETTINGS: AppSettings = {
   autoCondenseContextPercent: 80,
 };
 
-export function parseVSCodeSettings(obj: AppSettings): AppSettings {
+export function parseAppSettings(obj: AppSettings): AppSettings {
   const settings = { ...DEFAULT_SETTINGS };
   if (isObjectLike(obj)) {
+    if (typeof obj.autoApproveRead === 'boolean') {
+      settings.autoApproveRead = obj.autoApproveRead;
+    }
+    if (typeof obj.autoApproveWrite === 'boolean') {
+      settings.autoApproveWrite = obj.autoApproveWrite;
+    }
+    if (typeof obj.autoApproveDelete === 'boolean') {
+      settings.autoApproveDelete = obj.autoApproveDelete;
+    }
+    if (typeof obj.autoApproveExecute === 'boolean') {
+      settings.autoApproveExecute = obj.autoApproveExecute;
+    }
+    if (Array.isArray(obj.allowedReadPaths)) {
+      settings.allowedReadPaths = obj.allowedReadPaths.filter((item): item is string => typeof item === 'string');
+    }
+    if (Array.isArray(obj.deniedReadPaths)) {
+      settings.deniedReadPaths = obj.deniedReadPaths.filter((item): item is string => typeof item === 'string');
+    }
+    if (Array.isArray(obj.allowedWritePaths)) {
+      settings.allowedWritePaths = obj.allowedWritePaths.filter((item): item is string => typeof item === 'string');
+    }
+    if (Array.isArray(obj.deniedWritePaths)) {
+      settings.deniedWritePaths = obj.deniedWritePaths.filter((item): item is string => typeof item === 'string');
+    }
     if (typeof obj.maxOpenTabsContext === 'number' && !isNaN(obj.maxOpenTabsContext)) {
       settings.maxOpenTabsContext = Math.max(0, obj.maxOpenTabsContext);
     }
@@ -81,11 +121,11 @@ export class SettingsService {
       await this.manager.flush();
     }
 
-    const parsedGlobal = parseVSCodeSettings(globalSettings.vscode);
+    const parsedGlobal = parseAppSettings(globalSettings.vscode);
 
     const projectSettings = this.manager.getProjectSettings();
     if (projectSettings && projectSettings.vscode !== undefined) {
-      const parsedProject = parseVSCodeSettings(projectSettings.vscode);
+      const parsedProject = parseAppSettings(projectSettings.vscode);
       return { ...parsedGlobal, ...parsedProject };
     }
     return parsedGlobal;
