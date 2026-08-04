@@ -4,8 +4,8 @@ import { resolve } from 'node:path';
 import { getAgentDir, ModelRuntime, SessionManager, SettingsManager } from '@earendil-works/pi-coding-agent';
 import { Range, Uri, window, workspace } from 'vscode';
 
-import { AgentRunner } from '@extension/core/agent';
 import { SettingsService } from '@extension/core/settings';
+import { AgentRunner } from '@extension/structures/agent-runtime/runner';
 import { calculateSessionStats, convertSessionEntries } from '@extension/structures/chat-session/session';
 import { AgentModel, SessionTreeEntry } from '@extension/types/extension';
 import { ExtensionToWebviewMessage, WebviewToExtensionMessage } from '@extension/types/webview';
