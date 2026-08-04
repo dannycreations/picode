@@ -1,0 +1,106 @@
+import { Calendar, Check, Copy, Download, FileJson, Trash2 } from 'lucide-react';
+
+import { HistoryButton } from '@extension/webview/components/history/HistoryButton';
+import { formatTimeAgo } from '@extension/webview/utilities/common';
+
+import type { FC, MouseEvent } from 'react';
+import type { HistoryItem } from '@extension/types/webview';
+
+interface HistoryCardProps {
+  readonly item: HistoryItem;
+  readonly isSelected?: boolean;
+  readonly isSelectionMode?: boolean;
+  readonly copiedPath?: string | null;
+  readonly onClick: () => void;
+  readonly onToggleSelect?: (path: string) => void;
+  readonly onCopy: (e: MouseEvent, text: string, path: string) => void;
+  readonly onDelete: (e: MouseEvent, path: string) => void;
+  readonly onViewRaw?: (path: string) => void;
+  readonly onExport?: (item: HistoryItem) => void;
+  readonly testId?: string;
+  readonly lineClamp?: number;
+}
+
+export const HistoryCard: FC<HistoryCardProps> = ({
+  item,
+  isSelected = false,
+  isSelectionMode = false,
+  copiedPath,
+  onClick,
+  onToggleSelect,
+  onCopy,
+  onDelete,
+  onViewRaw,
+  onExport,
+  testId,
+  lineClamp = 3,
+}) => {
+  const isCopied = copiedPath === item.path;
+
+  return (
+    <div
+      data-testid={testId}
+      onClick={onClick}
+      className={`group flex items-start gap-3 p-3 bg-[var(--vscode-editor-background)] rounded border transition-colors cursor-pointer relative ${
+        isSelected
+          ? 'border-[var(--vscode-focusBorder)] bg-[var(--vscode-list-hoverBackground)]/30'
+          : 'border-[var(--vscode-panel-border)]/50 hover:bg-[var(--vscode-list-hoverBackground)]'
+      }`}
+    >
+      {isSelectionMode && onToggleSelect && (
+        <div className="pt-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={() => onToggleSelect(item.path)}
+            className="cursor-pointer accent-[var(--vscode-focusBorder)]"
+          />
+        </div>
+      )}
+
+      <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+        <div className={`text-xs leading-relaxed font-light text-[var(--vscode-foreground)] ${lineClamp === 2 ? 'line-clamp-2' : 'line-clamp-3'}`}>
+          {item.task}
+        </div>
+
+        <div className="flex items-center justify-between text-[10px] text-[var(--vscode-descriptionForeground)] font-medium mt-1">
+          <div className="flex items-center gap-1.5 opacity-80">
+            <Calendar size={10} className="opacity-80" />
+            <span>{formatTimeAgo(item.ts)}</span>
+          </div>
+
+          {!isSelectionMode && (
+            <div className="flex flex-row items-center gap-1" onClick={(e) => e.stopPropagation()}>
+              {onExport && (
+                <HistoryButton
+                  icon={Download}
+                  title="Export task messages"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onExport(item);
+                  }}
+                />
+              )}
+              <HistoryButton
+                icon={isCopied ? Check : Copy}
+                title={isCopied ? 'Copied prompt!' : 'Copy prompt'}
+                onClick={(e) => onCopy(e, item.task, item.path)}
+              />
+              <HistoryButton icon={Trash2} title="Delete task" danger onClick={(e) => onDelete(e, item.path)} />
+              {onViewRaw && (
+                <HistoryButton
+                  icon={FileJson}
+                  title="View raw task"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onViewRaw(item.path);
+                  }}
+                />
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};

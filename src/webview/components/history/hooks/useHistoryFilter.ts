@@ -1,0 +1,54 @@
+import { useEffect, useMemo, useState } from 'react';
+
+import type { HistoryItem } from '@extension/types/webview';
+
+export type SortOption = 'newest' | 'oldest' | 'alphabetical';
+export type HistoryScope = 'current' | 'all';
+
+export const useHistoryFilter = (history: HistoryItem[], itemsPerPage = 8, scope?: HistoryScope) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<SortOption>('newest');
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Filter and sort items
+  const filteredHistory = useMemo(() => {
+    let result = [...history];
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter((item) => item.task.toLowerCase().includes(q));
+    }
+
+    result.sort((a, b) => {
+      if (sortBy === 'newest') return b.ts - a.ts;
+      if (sortBy === 'oldest') return a.ts - b.ts;
+      return a.task.localeCompare(b.task);
+    });
+
+    return result;
+  }, [history, searchQuery, sortBy]);
+
+  // Reset page when search, sort, or scope changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, sortBy, scope]);
+
+  // Pagination bounds logic
+  const totalPages = Math.max(1, Math.ceil(filteredHistory.length / itemsPerPage));
+  const paginatedItems = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredHistory.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredHistory, currentPage, itemsPerPage]);
+
+  return {
+    searchQuery,
+    setSearchQuery,
+    sortBy,
+    setSortBy,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    filteredHistory,
+    paginatedItems,
+  };
+};
