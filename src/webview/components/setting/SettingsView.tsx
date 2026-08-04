@@ -49,6 +49,14 @@ interface SettingsViewProps {
   readonly onDone: () => void;
 }
 
+export const areSettingsValuesEqual = (a: unknown, b: unknown): boolean => {
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) return false;
+    return a.every((val, index) => val === b[index]);
+  }
+  return a === b;
+};
+
 export const SettingsView: FC<SettingsViewProps> = ({ onDone }) => {
   const [originalSettings, setOriginalSettings] = useState<AppSettings | null>(null);
   const [draftSettings, setDraftSettings] = useState<AppSettings | null>(null);
@@ -79,6 +87,7 @@ export const SettingsView: FC<SettingsViewProps> = ({ onDone }) => {
             vscode?.postMessage({ type: 'update_setting', key: next.key, value: next.value });
           } else {
             setIsSaving(false);
+            setDraftSettings(s);
           }
         } else {
           // Initial load or update from outside
@@ -95,7 +104,7 @@ export const SettingsView: FC<SettingsViewProps> = ({ onDone }) => {
   const isChangeDetected = (() => {
     if (!draftSettings || !originalSettings) return false;
     const keys = Object.keys(draftSettings) as Array<keyof AppSettings>;
-    return keys.some((key) => draftSettings[key] !== originalSettings[key]);
+    return keys.some((key) => !areSettingsValuesEqual(draftSettings[key], originalSettings[key]));
   })();
 
   // Update draft settings locally
@@ -114,7 +123,7 @@ export const SettingsView: FC<SettingsViewProps> = ({ onDone }) => {
     const updates: Array<{ key: keyof AppSettings; value: unknown }> = [];
     const keys = Object.keys(draftSettings) as Array<keyof AppSettings>;
     for (const key of keys) {
-      if (draftSettings[key] !== originalSettings[key]) {
+      if (!areSettingsValuesEqual(draftSettings[key], originalSettings[key])) {
         updates.push({ key, value: draftSettings[key] });
       }
     }
