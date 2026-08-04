@@ -709,17 +709,19 @@ export const ChatView: FC = () => {
       <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
         {activeTask ? (
           <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 flex flex-col overflow-y-auto p-1.5">
-            {activeTask.messages.map((msg, idx) => (
-              <div id={`msg-${msg.id}`} key={msg.id}>
-                <ChatBody
-                  message={msg}
-                  isLast={idx === activeTask.messages.length - 1}
-                  onApproveTool={handleApproveTool}
-                  onDenyTool={handleDenyTool}
-                  onRestoreCheckpoint={handleRestoreCheckpoint}
-                />
-              </div>
-            ))}
+            {activeTask.messages
+              .filter((msg) => msg.toolName !== 'update_todo')
+              .map((msg, idx, filteredArr) => (
+                <div id={`msg-${msg.id}`} key={msg.id}>
+                  <ChatBody
+                    message={msg}
+                    isLast={idx === filteredArr.length - 1}
+                    onApproveTool={handleApproveTool}
+                    onDenyTool={handleDenyTool}
+                    onRestoreCheckpoint={handleRestoreCheckpoint}
+                  />
+                </div>
+              ))}
             <div ref={messagesEndRef} />
           </div>
         ) : (

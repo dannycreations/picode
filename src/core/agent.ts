@@ -167,7 +167,7 @@ export class AgentRunner {
     // Setup the tool approval hook
     this.session.agent.beforeToolCall = async ({ toolCall, args }) => {
       const toolName = toolCall.name as ToolName;
-      if (toolName === 'attempt_completion') {
+      if (toolName === 'attempt_completion' || toolName === 'update_todo') {
         return { block: false };
       }
 
