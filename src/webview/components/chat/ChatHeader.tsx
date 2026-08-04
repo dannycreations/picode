@@ -1,6 +1,8 @@
 import { Check, ChevronDown, ChevronRight, CloudDownload, CloudUpload, Coins, Copy, Download, FileJson, FoldVertical, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 
+import { TodoView } from '@webview/components/chat/TodoView';
+
 import type { ComponentType, FC, MouseEvent } from 'react';
 
 export interface ChatHeaderProps {
@@ -73,7 +75,12 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
   return (
     <div className="py-2 px-3 border-b border-vscode-editorGroup-border/30 bg-vscode-sideBar-background shrink-0 select-none">
       <div
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={(e) => {
+          if (e.target instanceof Element && e.target.closest('[data-todo-list]')) {
+            return;
+          }
+          setIsExpanded(!isExpanded);
+        }}
         className={`px-3 pt-2.5 pb-2 flex flex-col gap-1.5 relative z-1 cursor-pointer bg-vscode-input-background hover:bg-vscode-input-background/90 text-vscode-foreground/80 hover:text-vscode-foreground shadow-lg shadow-vscode-sideBar-background/50 rounded-xl border border-vscode-editorGroup-border/40 transition-all duration-200`}
       >
         <div className="flex justify-between items-center gap-2">
@@ -108,16 +115,6 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
                 <div className="h-full bg-blue-500 rounded-full transition-all duration-300" style={{ width: `${contextPercentage}%` }} />
               </div>
             </div>
-            {todos &&
-              todos.length > 0 &&
-              (() => {
-                const done = todos.filter((t) => t.status === 'completed').length;
-                return (
-                  <span className="text-[10px] font-mono text-vscode-descriptionForeground bg-vscode-sideBarSectionHeader-background px-1.5 py-0.5 rounded border border-vscode-editorGroup-border/40 whitespace-nowrap">
-                    Checklist: {done}/{todos.length}
-                  </span>
-                );
-              })()}
             <div className="flex items-center gap-2 shrink-0">
               {totalCost > 0 && <span className="text-xs font-mono text-vscode-foreground/80">${totalCost.toFixed(4)}</span>}
               <button
@@ -253,42 +250,11 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
                 </tbody>
               </table>
             </div>
-
-            {/* Todo list section */}
-            {todos && todos.length > 0 && (
-              <div
-                className="pt-3 mt-2 -mx-3 px-3 border-t border-vscode-sideBar-background flex flex-col gap-2"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <span className="font-bold text-[10px] uppercase tracking-wider text-vscode-descriptionForeground">Task Progress Checklist</span>
-                <div className="flex flex-col gap-2 pl-1 bg-vscode-sideBarSectionHeader-background p-2.5 rounded-lg border border-vscode-editorGroup-border/20 max-h-[160px] overflow-y-auto">
-                  {todos.map((todo, idx) => {
-                    const isChecked = todo.status === 'completed';
-                    const isInProgress = todo.status === 'in_progress';
-                    return (
-                      <div key={idx} className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          readOnly
-                          className="rounded border border-vscode-settings-checkboxBorder accent-vscode-button-background bg-vscode-settings-checkboxBackground cursor-default w-3.5 h-3.5 shrink-0"
-                        />
-                        <span
-                          className={`text-xs ${isChecked ? 'line-through opacity-50' : isInProgress ? 'font-semibold text-vscode-editorWarning-foreground' : 'text-vscode-foreground'}`}
-                        >
-                          {isInProgress && (
-                            <span className="mr-1 text-[9px] bg-vscode-editorWarning-background px-1 py-0.5 rounded shrink-0">In Progress</span>
-                          )}
-                          {todo.content}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
           </div>
         )}
+
+        {/* Todo list - always shown at bottom when todos exist */}
+        {todos && todos.length > 0 && <TodoView todos={todos} />}
       </div>
     </div>
   );

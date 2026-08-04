@@ -36,6 +36,7 @@
   --color-vscode-editorGroup-border: var(--vscode-editorGroup-border);
   --color-vscode-editorWarning-foreground: var(--vscode-editorWarning-foreground);
   --color-vscode-editorWarning-background: var(--vscode-editorWarning-background);
+  --color-vscode-charts-yellow: var(--vscode-charts-yellow, #cca700);
   --color-vscode-button-foreground: var(--vscode-button-foreground);
   --color-vscode-button-background: var(--vscode-button-background);
   --color-vscode-button-secondaryForeground: var(--vscode-button-secondaryForeground);

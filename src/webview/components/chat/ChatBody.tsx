@@ -48,7 +48,7 @@ const getToolLanguage = (toolName?: string, toolText?: string): string => {
 
 export const ChatBody: FC<ChatBodyProps> = ({ message, isLast: _isLast, onApproveTool, onDenyTool, onRestoreCheckpoint }) => {
   const [isReasoningExpanded, setIsReasoningExpanded] = useState(false);
-  const [isDiffExpanded, setIsDiffExpanded] = useState(message.toolName === 'update_todo' || message.toolName === 'attempt_completion');
+  const [isDiffExpanded, setIsDiffExpanded] = useState(message.toolName === 'attempt_completion');
 
   const formatTime = (ts: number) => {
     return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -228,9 +228,6 @@ export const ChatBody: FC<ChatBodyProps> = ({ message, isLast: _isLast, onApprov
                     } else if (message.toolName === 'read_file') {
                       label = 'File Contents';
                       icon = 'file';
-                    } else if (message.toolName === 'update_todo') {
-                      label = 'Todo Checklist';
-                      icon = 'tasklist';
                     } else if (message.toolName === 'ask_question') {
                       label = 'User Response';
                       icon = 'comment';
@@ -250,49 +247,11 @@ export const ChatBody: FC<ChatBodyProps> = ({ message, isLast: _isLast, onApprov
                           </span>
                           <ChevronUp size={12} className={`transition-transform duration-200 ${!isDiffExpanded ? 'rotate-180' : ''}`} />
                         </button>
-                        {isDiffExpanded &&
-                          (message.toolName === 'update_todo' ? (
-                            <div className="p-3 bg-vscode-editor-background border-t border-vscode-editorGroup-border/30 text-vscode-foreground flex flex-col gap-2 select-text">
-                              {message.diff.split('\n').map((line, idx) => {
-                                const match = line.match(/^(?:-\s*)?\[\s*([ xX\-~])\s*\]\s*(.+)$/);
-                                if (match) {
-                                  const box = match[1].toLowerCase();
-                                  const isChecked = box === 'x';
-                                  const isInProgress = box === '-' || box === '~';
-                                  const text = match[2];
-                                  return (
-                                    <div key={idx} className="flex items-center gap-2">
-                                      <input
-                                        type="checkbox"
-                                        checked={isChecked}
-                                        readOnly
-                                        className="rounded border border-vscode-settings-checkboxBorder accent-vscode-button-background bg-vscode-settings-checkboxBackground cursor-default w-3.5 h-3.5 shrink-0"
-                                      />
-                                      <span
-                                        className={`text-xs ${isChecked ? 'line-through opacity-50' : isInProgress ? 'font-semibold text-vscode-editorWarning-foreground' : ''}`}
-                                      >
-                                        {isInProgress && (
-                                          <span className="mr-1 text-[9px] bg-vscode-editorWarning-background px-1 py-0.5 rounded shrink-0">
-                                            In Progress
-                                          </span>
-                                        )}
-                                        {text}
-                                      </span>
-                                    </div>
-                                  );
-                                }
-                                return (
-                                  <div key={idx} className="text-xs text-vscode-descriptionForeground pl-5">
-                                    {line}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            <div className="border-t border-vscode-editorGroup-border/30 p-2">
-                              <CodeBlock source={message.diff} language={getToolLanguage(message.toolName, message.text)} />
-                            </div>
-                          ))}
+                        {isDiffExpanded && (
+                          <div className="border-t border-vscode-editorGroup-border/30 p-2">
+                            <CodeBlock source={message.diff} language={getToolLanguage(message.toolName, message.text)} />
+                          </div>
+                        )}
                       </div>
                     );
                   })()}
