@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { isProjectTrusted } from './vscode';
+import { isProjectTrusted } from '@extension/utilities/vscode';
 
 let mockIsTrusted = false;
 

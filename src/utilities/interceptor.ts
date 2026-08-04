@@ -1,8 +1,8 @@
-import * as fs from 'node:fs';
-import * as path from 'node:path';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { workspace } from 'vscode';
 
-function safeJsonParse(text: string): any {
+function safeJsonParse(text: string): unknown {
   try {
     return JSON.parse(text);
   } catch {
@@ -44,13 +44,13 @@ async function logInteraction(url: string, method: string, headers: Record<strin
 
     const workspaceFolders = workspace.workspaceFolders;
     const cwd = workspaceFolders && workspaceFolders.length > 0 ? workspaceFolders[0].uri.fsPath : process.cwd();
-    const debugDir = path.join(cwd, 'debug');
-    if (!fs.existsSync(debugDir)) {
-      fs.mkdirSync(debugDir, { recursive: true });
+    const debugDir = join(cwd, 'debug');
+    if (!existsSync(debugDir)) {
+      mkdirSync(debugDir, { recursive: true });
     }
 
     const fileName = `fetch-${timestamp}-${id}.json`;
-    fs.writeFileSync(path.join(debugDir, fileName), JSON.stringify(logData, null, 2), 'utf-8');
+    writeFileSync(join(debugDir, fileName), JSON.stringify(logData, null, 2), 'utf-8');
   } catch (err) {
     console.error('Failed to log intercepted fetch interaction:', err);
   }

@@ -1,7 +1,7 @@
-import * as fs from 'node:fs';
+import { writeFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { initializeFetchInterceptor } from './interceptor';
+import { initializeFetchInterceptor } from '@extension/utilities/interceptor';
 
 vi.mock('vscode', () => {
   return {
@@ -67,8 +67,8 @@ describe('initializeFetchInterceptor', () => {
     // Wait briefly for background logging task
     await new Promise((resolve) => setTimeout(resolve, 50));
 
-    expect(fs.writeFileSync).toHaveBeenCalled();
-    const [filePath, content] = (fs.writeFileSync as any).mock.calls[0];
+    expect(writeFileSync).toHaveBeenCalled();
+    const [filePath, content] = (writeFileSync as any).mock.calls[0];
     expect(filePath).toContain('fetch-');
     const parsed = JSON.parse(content);
     expect(parsed.request.url).toBe('https://api.openai.com/v1/chat/completions');

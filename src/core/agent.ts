@@ -200,7 +200,6 @@ export class AgentRunner {
         attemptCompletionTool,
         updateTodoTool,
       ],
-      // Let it auto-resolve model and credentials
     });
 
     this.session = session;

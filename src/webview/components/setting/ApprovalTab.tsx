@@ -2,7 +2,7 @@ import { Edit, Eye, Plus, Terminal, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 
 import type { FC } from 'react';
-import type { TabProps } from './SettingsView';
+import type { TabProps } from '@webview/components/setting/SettingsView';
 
 type GlobField =
   | 'allowedReadPaths'

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveCommandAction, resolvePathAction } from '@extension/utilities/action';
+import { containsDangerousSubstitution, matchesGlob, parseCommand, resolveCommandAction, resolvePathAction } from '@extension/utilities/action';
 
 describe('resolvePathAction', () => {
   it('should confirm when auto-approve is enabled and allowed list is empty', () => {
@@ -77,6 +77,19 @@ describe('resolvePathAction', () => {
     );
     expect(action2).toBe('approve');
   });
+
+  it('should deny paths containing null bytes', () => {
+    const action = resolvePathAction(undefined, 'src/core/\0agent.ts', true, ['src/**/*.ts'], []);
+    expect(action).toBe('deny');
+  });
+
+  it('should normalize backslashes and match case-insensitively', () => {
+    const actionWin = resolvePathAction(undefined, 'src\\core\\agent.ts', true, ['src/core/*.ts'], []);
+    expect(actionWin).toBe('approve');
+
+    const actionCase = resolvePathAction(undefined, 'SRC/CORE/AGENT.TS', true, ['src/core/*.ts'], []);
+    expect(actionCase).toBe('approve');
+  });
 });
 
 describe('resolveCommandAction', () => {
@@ -122,6 +135,10 @@ describe('resolveCommandAction', () => {
     // rg is allowed, but rm is not
     const action = resolveCommandAction('rg && rm -rf *', true, ['rg'], []);
     expect(action).toBe('confirm');
+
+    // rg is allowed, rm is explicitly denied -> should deny immediately
+    const actionDenied = resolveCommandAction('rg && rm -rf *', true, ['rg'], ['rm *']);
+    expect(actionDenied).toBe('deny');
   });
 
   it('should request confirmation when command contains dangerous substitutions', () => {
@@ -129,9 +146,83 @@ describe('resolveCommandAction', () => {
     expect(action).toBe('confirm');
   });
 
-  it('should auto-approve using prefix match', () => {
+  it('should auto-approve using prefix match with word boundary', () => {
     // allowed prefix is 'rg' (no wildcards), command is 'rg -i "approval"'
     const action = resolveCommandAction('rg -i "approval"', true, ['rg'], []);
     expect(action).toBe('approve');
+  });
+
+  it('should NOT approve command sharing prefix without word boundary (security check)', () => {
+    // Pattern 'git' must NOT match 'github-downloader'
+    const action = resolveCommandAction('github-downloader https://example.com', true, ['git'], []);
+    expect(action).toBe('confirm');
+  });
+
+  it('should support glob pattern matching in commands', () => {
+    const action = resolveCommandAction('npm run build', true, ['npm run *'], []);
+    expect(action).toBe('approve');
+
+    const actionMismatch = resolveCommandAction('npm test', true, ['npm run *'], []);
+    expect(actionMismatch).toBe('confirm');
+  });
+
+  it('should strip stream redirections properly during evaluation', () => {
+    const action = resolveCommandAction('echo hello 2>&1', true, ['echo *'], []);
+    expect(action).toBe('approve');
+  });
+});
+
+describe('containsDangerousSubstitution', () => {
+  it('should detect dangerous parameter expansion flags', () => {
+    expect(containsDangerousSubstitution('echo ${var@P}')).toBe(true);
+    expect(containsDangerousSubstitution('echo ${var@Q}')).toBe(true);
+  });
+
+  it('should detect indirect expansion and arithmetic substitution', () => {
+    expect(containsDangerousSubstitution('echo ${!ref}')).toBe(true);
+    expect(containsDangerousSubstitution('echo $((1 + 1))')).toBe(true);
+  });
+
+  it('should detect null bytes', () => {
+    expect(containsDangerousSubstitution('echo \0evil')).toBe(true);
+  });
+
+  it('should return false for safe command strings', () => {
+    expect(containsDangerousSubstitution('npm test --coverage')).toBe(false);
+    expect(containsDangerousSubstitution('git checkout -b feature/test')).toBe(false);
+  });
+});
+
+describe('parseCommand', () => {
+  it('should correctly parse command chains', () => {
+    const subCmds = parseCommand('git status && git pull || echo failed');
+    expect(subCmds).toEqual(['git status', 'git pull', 'echo failed']);
+  });
+
+  it('should preserve glob tokens correctly without substituting "glob"', () => {
+    const subCmds = parseCommand('ls *.ts');
+    expect(subCmds).toEqual(['ls *.ts']);
+  });
+
+  it('should ignore shell comments', () => {
+    const subCmds = parseCommand('npm test # run test suite');
+    expect(subCmds).toEqual(['npm test']);
+  });
+
+  it('should handle empty or whitespace-only inputs', () => {
+    expect(parseCommand('')).toEqual([]);
+    expect(parseCommand('   ')).toEqual([]);
+  });
+});
+
+describe('matchesGlob', () => {
+  it('should match standard glob patterns', () => {
+    expect(matchesGlob('src/**/*.ts', 'src/core/agent.ts')).toBe(true);
+    expect(matchesGlob('*.json', 'package.json')).toBe(true);
+    expect(matchesGlob('*.json', 'src/package.json')).toBe(false);
+  });
+
+  it('should handle malformed regex patterns gracefully without throwing', () => {
+    expect(matchesGlob('[invalid-glob', 'test')).toBe(false);
   });
 });

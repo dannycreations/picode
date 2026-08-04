@@ -2,6 +2,7 @@ import { getLastAssistantUsage } from '@earendil-works/pi-coding-agent';
 
 import { ChatMessage, ToolName } from '@extension/types/webview';
 
+import type { SessionEntry } from '@earendil-works/pi-coding-agent';
 import type { SessionMessageContent, SessionTreeEntry } from '@extension/types/extension';
 
 export function convertSessionEntries(entries: SessionTreeEntry[]): ChatMessage[] {
@@ -191,7 +192,7 @@ export function calculateSessionStats(entries: SessionTreeEntry[], contextLimit:
   }
 
   try {
-    const lastUsage = getLastAssistantUsage(entries as any);
+    const lastUsage = getLastAssistantUsage(entries as SessionEntry[]);
     if (lastUsage) {
       contextTokens = lastUsage.totalTokens || lastUsage.input + lastUsage.output + (lastUsage.cacheRead || 0) + (lastUsage.cacheWrite || 0);
     }

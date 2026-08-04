@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { areSettingsValuesEqual } from './SettingsView';
+import { areSettingsValuesEqual } from '@webview/components/setting/SettingsView';
 
 describe('areSettingsValuesEqual', () => {
   it('correctly compares primitives and arrays of primitives', () => {

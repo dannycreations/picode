@@ -1,10 +1,10 @@
 import { ArrowLeft, Database, ShieldCheck } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
+import { ApprovalTab } from '@webview/components/setting/ApprovalTab';
+import { ContextTab } from '@webview/components/setting/ContextTab';
 import { ConfirmDialog } from '@webview/components/shared/ConfirmDialog';
 import { vscode } from '@webview/utilities/vscode';
-import { ApprovalTab } from './ApprovalTab';
-import { ContextTab } from './ContextTab';
 
 import type { LucideIcon } from 'lucide-react';
 import type { ComponentType, FC } from 'react';

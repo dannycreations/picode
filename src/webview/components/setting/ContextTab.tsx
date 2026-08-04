@@ -1,7 +1,7 @@
 import { FoldVertical } from 'lucide-react';
 
 import type { FC } from 'react';
-import type { TabProps } from './SettingsView';
+import type { TabProps } from '@webview/components/setting/SettingsView';
 
 export const ContextTab: FC<TabProps> = ({ draftSettings, handleFieldChange, getSliderStyle, sliderClassName }) => {
   return (
