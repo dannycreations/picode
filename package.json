@@ -91,6 +91,7 @@
     "@earendil-works/pi-coding-agent": "^0.83.0",
     "es-toolkit": "^1.50.0",
     "hast-util-to-jsx-runtime": "^2.3.6",
+    "ignore": "^7.0.6",
     "katex": "^0.18.1",
     "lucide-react": "^1.28.0",
     "mermaid-compact": "^0.0.1",

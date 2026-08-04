@@ -17,6 +17,9 @@ importers:
       hast-util-to-jsx-runtime:
         specifier: ^2.3.6
         version: 2.3.6(supports-color@7.2.0)
+      ignore:
+        specifier: ^7.0.6
+        version: 7.0.6
       katex:
         specifier: ^0.18.1
         version: 0.18.1
@@ -1926,6 +1929,10 @@ packages:
 
   ignore@7.0.5:
     resolution: {integrity: sha512-Hs59xBNfUIunMFgWAbGX5cq6893IbWg4KnrjbYwX3tx0ztorVgTDA6B2sxf8ejHJ4wz8BqGUMYlnzNBer5NvGg==}
+    engines: {node: '>= 4'}
+
+  ignore@7.0.6:
+    resolution: {integrity: sha512-BAg6QkE8W+TuQLrrw0Ugr7HegXduRuuj8/ti2kSOc+jz1dmx8/WNcjr6XGnq5YpDWxFwwaavqD0+jIUOKelTsw==}
     engines: {node: '>= 4'}
 
   index-to-position@1.2.0:
@@ -5046,7 +5053,7 @@ snapshots:
     dependencies:
       '@sindresorhus/merge-streams': 2.3.0
       fast-glob: 3.3.3
-      ignore: 7.0.5
+      ignore: 7.0.6
       path-type: 6.0.0
       slash: 5.1.0
       unicorn-magic: 0.3.0
@@ -5223,6 +5230,8 @@ snapshots:
     optional: true
 
   ignore@7.0.5: {}
+
+  ignore@7.0.6: {}
 
   index-to-position@1.2.0: {}
 

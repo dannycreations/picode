@@ -1,6 +1,7 @@
-import { readdir } from 'node:fs/promises';
+import { access, readdir, readFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { AgentSession } from '@earendil-works/pi-coding-agent';
+import ignore, { Ignore } from 'ignore';
 import { TabInputText, window } from 'vscode';
 
 import { SettingsService } from '@extension/core/settings';
@@ -54,26 +55,30 @@ export function formatReminderSection(todoList?: TodoItem[]): string {
   return lines.join('\n');
 }
 
-const IGNORE_LIST = new Set([
-  'node_modules',
-  '.git',
-  'dist',
-  'build',
-  'out',
-  '.vscode',
-  '.idea',
-  '.pnpm-store',
-  'package-lock.json',
-  'pnpm-lock.yaml',
-  'yarn.lock',
-  'bun.lockb',
-]);
+interface IgnoreLink {
+  readonly basePath: string;
+  readonly ignoreInstance: Ignore;
+}
 
-async function listFiles(cwd: string, limit = 200): Promise<{ paths: string[]; hitLimit: boolean }> {
+async function loadGitignore(dir: string): Promise<Ignore | null> {
+  const gitignorePath = join(dir, '.gitignore');
+  try {
+    await access(gitignorePath);
+    const content = await readFile(gitignorePath, 'utf8');
+    return ignore().add(content);
+  } catch {
+    return null;
+  }
+}
+
+export async function listFiles(cwd: string, limit = 200): Promise<{ paths: string[]; hitLimit: boolean }> {
   const resultPaths: string[] = [];
   let hitLimit = false;
 
-  async function walk(dir: string) {
+  const rootIgnore = await loadGitignore(cwd);
+  const initialChain: IgnoreLink[] = rootIgnore ? [{ basePath: cwd, ignoreInstance: rootIgnore }] : [];
+
+  async function walk(dir: string, chain: IgnoreLink[]) {
     if (resultPaths.length >= limit) {
       hitLimit = true;
       return;
@@ -84,6 +89,14 @@ async function listFiles(cwd: string, limit = 200): Promise<{ paths: string[]; h
       entries = await readdir(dir, { withFileTypes: true });
     } catch {
       return;
+    }
+
+    let currentChain = chain;
+    if (dir !== cwd) {
+      const localIgnore = await loadGitignore(dir);
+      if (localIgnore) {
+        currentChain = [...chain, { basePath: dir, ignoreInstance: localIgnore }];
+      }
     }
 
     // Sort to put directories first, then files
@@ -99,23 +112,38 @@ async function listFiles(cwd: string, limit = 200): Promise<{ paths: string[]; h
         return;
       }
 
-      if (IGNORE_LIST.has(entry.name) || entry.name.startsWith('.')) {
+      if (entry.name.startsWith('.')) {
         continue;
       }
 
       const fullPath = join(dir, entry.name);
       const relPath = relative(cwd, fullPath).replace(/\\/g, '/');
 
+      // Check against current .gitignore chain
+      let isIgnored = false;
+      for (const link of currentChain) {
+        const pathRelativeToLink = relative(link.basePath, fullPath).replace(/\\/g, '/');
+        const checkPath = entry.isDirectory() ? pathRelativeToLink + '/' : pathRelativeToLink;
+        if (link.ignoreInstance.ignores(checkPath)) {
+          isIgnored = true;
+          break;
+        }
+      }
+
+      if (isIgnored) {
+        continue;
+      }
+
       if (entry.isDirectory()) {
         resultPaths.push(relPath + '/');
-        await walk(fullPath);
+        await walk(fullPath, currentChain);
       } else {
         resultPaths.push(relPath);
       }
     }
   }
 
-  await walk(cwd);
+  await walk(cwd, initialChain);
   return { paths: resultPaths, hitLimit };
 }
 
