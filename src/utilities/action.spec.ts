@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolvePathAction } from '@extension/utilities/path';
+import { resolveCommandAction, resolvePathAction } from '@extension/utilities/action';
 
 describe('resolvePathAction', () => {
   it('should auto-approve when auto-approve is enabled and allowed list is empty', () => {
@@ -52,6 +52,46 @@ describe('resolvePathAction', () => {
       true,
       ['src/core/agent.ts'], // length 17
       ['src/**/*.ts'], // length 11
+    );
+    expect(action2).toBe('approve');
+  });
+});
+
+describe('resolveCommandAction', () => {
+  it('should auto-approve when auto-approve is enabled and allowed list is empty', () => {
+    const action = resolveCommandAction('npm test', true, [], []);
+    expect(action).toBe('approve');
+  });
+
+  it('should request confirmation when auto-approve is disabled and allowed list is empty', () => {
+    const action = resolveCommandAction('npm test', false, [], []);
+    expect(action).toBe('confirm');
+  });
+
+  it('should block when command matches denied patterns', () => {
+    const action = resolveCommandAction('npm install typescript', true, [], ['npm install *']);
+    expect(action).toBe('deny');
+  });
+
+  it('should auto-approve when command matches allowed patterns', () => {
+    const action = resolveCommandAction('npm test', true, ['npm *'], []);
+    expect(action).toBe('approve');
+  });
+
+  it('should resolve conflict by pattern length precedence', () => {
+    const action1 = resolveCommandAction(
+      'npm run build',
+      true,
+      ['npm *'], // length 5
+      ['npm run build'], // length 13
+    );
+    expect(action1).toBe('deny');
+
+    const action2 = resolveCommandAction(
+      'npm run build',
+      true,
+      ['npm run build'], // length 13
+      ['npm *'], // length 5
     );
     expect(action2).toBe('approve');
   });

@@ -1,16 +1,3 @@
-import { isAbsolute, relative, resolve } from 'node:path';
-
-export function resolveWorkspacePath(cwd: string, filePath: string): string {
-  const resolvedPath = resolve(cwd, filePath);
-  const relativePath = relative(cwd, resolvedPath);
-
-  if (relativePath.startsWith('..') || isAbsolute(relativePath)) {
-    throw new Error('Cannot access paths outside the workspace.');
-  }
-
-  return resolvedPath;
-}
-
 export function resolvePathAction(
   filePath: string,
   autoApproveEnabled: boolean,
@@ -48,6 +35,15 @@ export function resolvePathAction(
   }
 
   return 'confirm';
+}
+
+export function resolveCommandAction(
+  command: string,
+  autoApproveEnabled: boolean,
+  allowedPatterns: string[],
+  deniedPatterns: string[],
+): 'approve' | 'confirm' | 'deny' {
+  return resolvePathAction(command, autoApproveEnabled, allowedPatterns, deniedPatterns);
 }
 
 export function matchesGlob(pattern: string, filePath: string): boolean {

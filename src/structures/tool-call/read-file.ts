@@ -1,9 +1,9 @@
 import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
 import { SettingsService } from '@extension/core/settings';
-import { resolveWorkspacePath } from '@extension/utilities/path';
 
 import type { ToolName } from '@extension/types/webview';
 
@@ -34,16 +34,7 @@ export const readFileTool = defineTool({
 
       const processFile = async (index: number) => {
         const fileObj = params.files[index];
-        let resolvedPath: string;
-        try {
-          resolvedPath = resolveWorkspacePath(ctx.cwd, fileObj.path);
-        } catch (err) {
-          fileResults[index] = {
-            result: `Error: Cannot read file outside the workspace: ${fileObj.path}`,
-            hasError: true,
-          };
-          return;
-        }
+        const resolvedPath = resolve(ctx.cwd, fileObj.path);
 
         try {
           const content = await readFile(resolvedPath, 'utf8');

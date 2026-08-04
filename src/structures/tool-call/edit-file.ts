@@ -1,9 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { defineTool, generateDiffString } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
-
-import { resolveWorkspacePath } from '@extension/utilities/path';
 
 import type { ToolName } from '@extension/types/webview';
 
@@ -99,16 +97,7 @@ export const editFileTool = defineTool({
       const { file_path, old_string, new_string } = params;
       const expected_replacements = params.expected_replacements ?? 1;
 
-      let resolvedPath: string;
-      try {
-        resolvedPath = resolveWorkspacePath(ctx.cwd, file_path);
-      } catch (err) {
-        return {
-          content: [{ type: 'text', text: `Error: ${(err as Error).message}` }],
-          details: {},
-          isError: true,
-        };
-      }
+      const resolvedPath = resolve(ctx.cwd, file_path);
 
       // Check if file exists
       let fileExists = false;

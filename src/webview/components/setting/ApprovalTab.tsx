@@ -9,9 +9,11 @@ export const ApprovalTab: FC<TabProps> = ({ draftSettings, handleFieldChange }) 
   const [readDeniedInput, setReadDeniedInput] = useState('');
   const [writeAllowedInput, setWriteAllowedInput] = useState('');
   const [writeDeniedInput, setWriteDeniedInput] = useState('');
+  const [executeAllowedInput, setExecuteAllowedInput] = useState('');
+  const [executeDeniedInput, setExecuteDeniedInput] = useState('');
 
   const handleAddPath = (
-    field: 'allowedReadPaths' | 'deniedReadPaths' | 'allowedWritePaths' | 'deniedWritePaths',
+    field: 'allowedReadPaths' | 'deniedReadPaths' | 'allowedWritePaths' | 'deniedWritePaths' | 'allowedExecuteCommands' | 'deniedExecuteCommands',
     input: string,
     setInput: (v: string) => void,
   ) => {
@@ -24,7 +26,10 @@ export const ApprovalTab: FC<TabProps> = ({ draftSettings, handleFieldChange }) 
     }
   };
 
-  const handleRemovePath = (field: 'allowedReadPaths' | 'deniedReadPaths' | 'allowedWritePaths' | 'deniedWritePaths', index: number) => {
+  const handleRemovePath = (
+    field: 'allowedReadPaths' | 'deniedReadPaths' | 'allowedWritePaths' | 'deniedWritePaths' | 'allowedExecuteCommands' | 'deniedExecuteCommands',
+    index: number,
+  ) => {
     const current = draftSettings[field] || [];
     handleFieldChange(
       field,
@@ -33,7 +38,7 @@ export const ApprovalTab: FC<TabProps> = ({ draftSettings, handleFieldChange }) 
   };
 
   const renderPathList = (
-    field: 'allowedReadPaths' | 'deniedReadPaths' | 'allowedWritePaths' | 'deniedWritePaths',
+    field: 'allowedReadPaths' | 'deniedReadPaths' | 'allowedWritePaths' | 'deniedWritePaths' | 'allowedExecuteCommands' | 'deniedExecuteCommands',
     input: string,
     setInput: (v: string) => void,
     placeholder: string,
@@ -96,14 +101,6 @@ export const ApprovalTab: FC<TabProps> = ({ draftSettings, handleFieldChange }) 
 
   return (
     <div className="flex flex-col gap-6 px-5 py-2">
-      {/* Intro info box */}
-      <div className="bg-vscode-textBlock-background border border-vscode-editorGroup-border/30 rounded p-3 flex flex-col gap-1.5 leading-normal">
-        <span className="text-xs font-semibold text-vscode-foreground">Auto-Approve Actions</span>
-        <span className="text-vscode-descriptionForeground text-xs">
-          Select which agent actions can run automatically without asking for your manual approval.
-        </span>
-      </div>
-
       {/* Read tool */}
       <div className="flex flex-col gap-2 pt-4 border-t border-vscode-editorGroup-border/10">
         <label className="flex items-start gap-2.5 cursor-pointer select-none">
@@ -226,6 +223,26 @@ export const ApprovalTab: FC<TabProps> = ({ draftSettings, handleFieldChange }) 
             </span>
           </div>
         </label>
+        {draftSettings.autoApproveExecute && (
+          <div className="flex flex-col gap-4 mt-2">
+            {renderPathList(
+              'allowedExecuteCommands',
+              executeAllowedInput,
+              setExecuteAllowedInput,
+              'e.g. npm test',
+              'Allowed Commands',
+              'Commands matching these globs will be auto-approved for execution. Leave empty to allow all commands.',
+            )}
+            {renderPathList(
+              'deniedExecuteCommands',
+              executeDeniedInput,
+              setExecuteDeniedInput,
+              'e.g. rm -rf *',
+              'Denied Commands',
+              'Commands matching these globs will be blocked from execution, overriding allowed commands.',
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

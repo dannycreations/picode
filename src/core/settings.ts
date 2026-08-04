@@ -10,6 +10,8 @@ export interface AppSettings {
   readonly deniedReadPaths: readonly string[];
   readonly allowedWritePaths: readonly string[];
   readonly deniedWritePaths: readonly string[];
+  readonly allowedExecuteCommands: readonly string[];
+  readonly deniedExecuteCommands: readonly string[];
   readonly maxOpenTabsContext: number;
   readonly maxWorkspaceFiles: number;
   readonly maxGitStatusFiles: number;
@@ -27,6 +29,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   deniedReadPaths: [],
   allowedWritePaths: [],
   deniedWritePaths: [],
+  allowedExecuteCommands: [],
+  deniedExecuteCommands: [],
   maxOpenTabsContext: 20,
   maxWorkspaceFiles: 200,
   maxGitStatusFiles: 20,
@@ -61,6 +65,12 @@ export function parseAppSettings(obj: AppSettings): AppSettings {
     }
     if (Array.isArray(obj.deniedWritePaths)) {
       settings.deniedWritePaths = obj.deniedWritePaths.filter((item): item is string => typeof item === 'string');
+    }
+    if (Array.isArray(obj.allowedExecuteCommands)) {
+      settings.allowedExecuteCommands = obj.allowedExecuteCommands.filter((item): item is string => typeof item === 'string');
+    }
+    if (Array.isArray(obj.deniedExecuteCommands)) {
+      settings.deniedExecuteCommands = obj.deniedExecuteCommands.filter((item): item is string => typeof item === 'string');
     }
     if (typeof obj.maxOpenTabsContext === 'number' && !isNaN(obj.maxOpenTabsContext)) {
       settings.maxOpenTabsContext = Math.max(0, obj.maxOpenTabsContext);

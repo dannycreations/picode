@@ -1,8 +1,7 @@
 import { access, rm, stat, unlink } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
-
-import { resolveWorkspacePath } from '@extension/utilities/path';
 
 import type { ToolName } from '@extension/types/webview';
 
@@ -15,16 +14,7 @@ export const deleteFileTool = defineTool({
   }),
   async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
     try {
-      let resolvedPath: string;
-      try {
-        resolvedPath = resolveWorkspacePath(ctx.cwd, params.path);
-      } catch (err) {
-        return {
-          content: [{ type: 'text', text: `Error: ${(err as Error).message}` }],
-          details: {},
-          isError: true,
-        };
-      }
+      const resolvedPath = resolve(ctx.cwd, params.path);
 
       // Check if file exists
       try {
