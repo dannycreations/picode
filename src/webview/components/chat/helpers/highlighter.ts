@@ -4,7 +4,7 @@ import type { BundledLanguage, BundledTheme, Highlighter } from 'shiki';
 
 export type ExtendedLanguage = BundledLanguage | 'txt';
 
-const languageAliases: Record<string, ExtendedLanguage> = {
+const LANGUAGE_ALIASES: Record<string, ExtendedLanguage> = {
   text: 'txt',
   plaintext: 'txt',
   plain: 'txt',
@@ -49,9 +49,7 @@ const languageAliases: Record<string, ExtendedLanguage> = {
 const warnedLanguages = new Set<string>();
 
 export function normalizeLanguage(language: string | undefined): ExtendedLanguage {
-  if (language === undefined) {
-    return 'txt';
-  }
+  if (!language) return 'txt';
 
   const normalizedInput = language.toLowerCase();
 
@@ -59,80 +57,89 @@ export function normalizeLanguage(language: string | undefined): ExtendedLanguag
     return normalizedInput as BundledLanguage;
   }
 
-  if (normalizedInput in languageAliases) {
-    return languageAliases[normalizedInput];
+  if (normalizedInput in LANGUAGE_ALIASES) {
+    return LANGUAGE_ALIASES[normalizedInput];
   }
 
   if (language !== 'txt' && !warnedLanguages.has(language)) {
-    console.warn(`[Shiki] Unrecognized language '${language}', defaulting to txt.`);
+    console.warn(`[Shiki] Unrecognized language '${language}', defaulting to 'txt'.`);
     warnedLanguages.add(language);
   }
 
   return 'txt';
 }
 
-export const isLanguageLoaded = (language: string): boolean => {
-  return state.loadedLanguages.has(normalizeLanguage(language));
-};
+const INITIAL_LANGUAGES: BundledLanguage[] = ['shell'];
 
-const initialLanguages: BundledLanguage[] = ['shell'];
+class ShikiHighlighterManager {
+  private instance: Highlighter | null = null;
+  private initPromise: Promise<Highlighter> | null = null;
+  private readonly loadedLanguages = new Set<ExtendedLanguage>(['txt']);
+  private readonly pendingLanguageLoads = new Map<ExtendedLanguage, Promise<void>>();
 
-const state: {
-  instance: Highlighter | null;
-  instanceInitPromise: Promise<Highlighter> | null;
-  loadedLanguages: Set<ExtendedLanguage>;
-  pendingLanguageLoads: Map<ExtendedLanguage, Promise<void>>;
-} = {
-  instance: null,
-  instanceInitPromise: null,
-  loadedLanguages: new Set<ExtendedLanguage>(['txt']),
-  pendingLanguageLoads: new Map(),
-};
+  public isLoaded(language: string): boolean {
+    return this.loadedLanguages.has(normalizeLanguage(language));
+  }
 
-export const getHighlighter = async (language?: string): Promise<Highlighter> => {
-  try {
-    const shikilang = normalizeLanguage(language);
+  private async initialize(): Promise<Highlighter> {
+    if (this.instance) return this.instance;
 
-    if (!state.instanceInitPromise) {
-      state.instanceInitPromise = (async () => {
-        const instance = await createHighlighter({
-          themes: Object.keys(bundledThemes) as BundledTheme[],
-          langs: initialLanguages,
-        });
-
-        state.instance = instance;
-        initialLanguages.forEach((lang) => state.loadedLanguages.add(lang));
+    if (!this.initPromise) {
+      this.initPromise = createHighlighter({
+        themes: Object.keys(bundledThemes) as BundledTheme[],
+        langs: INITIAL_LANGUAGES,
+      }).then((instance) => {
+        this.instance = instance;
+        INITIAL_LANGUAGES.forEach((lang) => this.loadedLanguages.add(lang));
         return instance;
-      })();
+      });
     }
 
-    const instance = await state.instanceInitPromise;
+    return this.initPromise;
+  }
 
-    if (!state.loadedLanguages.has(shikilang)) {
-      let loadingPromise = state.pendingLanguageLoads.get(shikilang);
+  public async getHighlighter(language?: string): Promise<Highlighter> {
+    try {
+      const instance = await this.initialize();
+      const targetLang = normalizeLanguage(language);
 
-      if (!loadingPromise) {
-        loadingPromise = (async () => {
+      if (this.loadedLanguages.has(targetLang)) {
+        return instance;
+      }
+
+      let loadPromise = this.pendingLanguageLoads.get(targetLang);
+
+      if (!loadPromise) {
+        loadPromise = (async () => {
           try {
-            await instance.loadLanguage(shikilang as BundledLanguage);
-            state.loadedLanguages.add(shikilang);
+            await instance.loadLanguage(targetLang as BundledLanguage);
+            this.loadedLanguages.add(targetLang);
           } catch (error) {
-            console.error(`[Shiki] Failed to load language ${shikilang}:`, error);
+            console.error(`[Shiki] Failed to load language '${targetLang}':`, error);
             throw error;
           } finally {
-            state.pendingLanguageLoads.delete(shikilang);
+            this.pendingLanguageLoads.delete(targetLang);
           }
         })();
 
-        state.pendingLanguageLoads.set(shikilang, loadingPromise);
+        this.pendingLanguageLoads.set(targetLang, loadPromise);
       }
 
-      await loadingPromise;
+      await loadPromise;
+      return instance;
+    } catch (error) {
+      console.error('[Shiki] Error in getHighlighter:', error);
+      throw error;
     }
-
-    return instance;
-  } catch (error) {
-    console.error('[Shiki] Error in getHighlighter:', error);
-    throw error;
   }
+}
+
+const shikiManager = new ShikiHighlighterManager();
+
+export const isLanguageLoaded = (language: string): boolean => {
+  return shikiManager.isLoaded(language);
+};
+
+export const getHighlighter = async (language?: string): Promise<Highlighter> => {
+  return shikiManager.getHighlighter(language);
 };

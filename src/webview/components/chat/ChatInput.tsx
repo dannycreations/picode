@@ -2,9 +2,11 @@ import { Image as ImageIcon, Send } from 'lucide-react';
 import { useRef, useState } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
 
+import { readFileAsDataUrl } from '@extension/webview/components/chat/helpers/common';
+
 import type { ChangeEvent, ClipboardEvent, FC, KeyboardEvent, RefObject } from 'react';
 
-interface ChatTextAreaProps {
+export interface ChatInputProps {
   readonly inputValue: string;
   readonly setInputValue: (val: string) => void;
   readonly onSend: (text: string, images: string[]) => void;
@@ -14,7 +16,30 @@ interface ChatTextAreaProps {
   readonly textareaRef?: RefObject<HTMLTextAreaElement | null>;
 }
 
-export const ChatTextArea: FC<ChatTextAreaProps> = ({
+const AttachedImagesPreview: FC<{
+  readonly images: string[];
+  readonly onRemove: (index: number) => void;
+}> = ({ images, onRemove }) => {
+  if (images.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap gap-2 mb-2 mt-1">
+      {images.map((img, idx) => (
+        <div key={idx} className="relative w-10 h-10 rounded border border-[var(--vscode-panel-border)] overflow-hidden group">
+          <img src={img} alt="attachment" className="w-full h-full object-cover" />
+          <button
+            onClick={() => onRemove(idx)}
+            className="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-black/70 hover:bg-black text-white text-[9px] rounded-full flex items-center justify-center border-none cursor-pointer"
+          >
+            ×
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+export const ChatInput: FC<ChatInputProps> = ({
   inputValue,
   setInputValue,
   onSend,
@@ -27,13 +52,6 @@ export const ChatTextArea: FC<ChatTextAreaProps> = ({
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
-
   const handleSend = () => {
     if ((inputValue.trim() || selectedImages.length > 0) && !sendingDisabled) {
       onSend(inputValue, selectedImages);
@@ -42,64 +60,51 @@ export const ChatTextArea: FC<ChatTextAreaProps> = ({
     }
   };
 
-  const handleAttachImage = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setSelectedImages((prev) => [...prev, event.target!.result as string]);
-        }
-      };
-      reader.readAsDataURL(file);
+  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
     }
   };
 
-  const handlePaste = (e: ClipboardEvent<HTMLTextAreaElement>) => {
+  const handleAttachImage = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        const dataUrl = await readFileAsDataUrl(file);
+        setSelectedImages((prev) => [...prev, dataUrl]);
+      } catch (err) {
+        console.error('Failed to attach image:', err);
+      }
+    }
+  };
+
+  const handlePaste = async (e: ClipboardEvent<HTMLTextAreaElement>) => {
     const items = e.clipboardData?.items;
     if (!items) return;
 
     for (let i = 0; i < items.length; i++) {
-      if (items[i].type.indexOf('image') !== -1) {
+      if (items[i].type.includes('image')) {
         const file = items[i].getAsFile();
         if (file) {
           e.preventDefault();
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            if (event.target?.result) {
-              setSelectedImages((prev) => [...prev, event.target!.result as string]);
-            }
-          };
-          reader.readAsDataURL(file);
+          try {
+            const dataUrl = await readFileAsDataUrl(file);
+            setSelectedImages((prev) => [...prev, dataUrl]);
+          } catch (err) {
+            console.error('Failed to paste image:', err);
+          }
         }
       }
     }
   };
 
-  const removeImage = (index: number) => {
-    setSelectedImages((prev) => prev.filter((_, i) => i !== index));
-  };
+  const isSendButtonActive = (inputValue.trim().length > 0 || selectedImages.length > 0) && !sendingDisabled;
 
   return (
     <div className={`relative flex flex-col px-3.5 pb-1 outline-none w-full box-border bg-[var(--vscode-sideBar-background)] shrink-0 ${className}`}>
-      {/* Attached Images Preview */}
-      {selectedImages.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-2 mt-1">
-          {selectedImages.map((img, idx) => (
-            <div key={idx} className="relative w-10 h-10 rounded border border-[var(--vscode-panel-border)] overflow-hidden group">
-              <img src={img} alt="attachment" className="w-full h-full object-cover" />
-              <button
-                onClick={() => removeImage(idx)}
-                className="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-black/70 hover:bg-black text-white text-[9px] rounded-full flex items-center justify-center border-none cursor-pointer"
-              >
-                ×
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+      <AttachedImagesPreview images={selectedImages} onRemove={(idx) => setSelectedImages((prev) => prev.filter((_, i) => i !== idx))} />
 
-      {/* Main Text Area Container */}
       <div
         className={`relative flex flex-col rounded border transition-all duration-150 ${
           isFocused
@@ -122,12 +127,8 @@ export const ChatTextArea: FC<ChatTextAreaProps> = ({
           className="w-full p-2.5 pb-1 bg-transparent text-[var(--vscode-input-foreground)] font-sans text-sm leading-normal border-none outline-none resize-none z-10 box-border scrollbar-none"
         />
 
-        {/* Input Bar Controls */}
         <div className="flex justify-between items-center px-2.5 pb-2 pt-1 z-20 pointer-events-auto">
-          {/* Spacer */}
           <div />
-
-          {/* Right actions: Images, Send */}
           <div className="flex items-center gap-1.5">
             <input type="file" ref={fileInputRef} onChange={handleAttachImage} accept="image/*" className="hidden" />
             <button
@@ -140,14 +141,14 @@ export const ChatTextArea: FC<ChatTextAreaProps> = ({
 
             <button
               onClick={handleSend}
-              disabled={(!inputValue.trim() && selectedImages.length === 0) || sendingDisabled}
+              disabled={!isSendButtonActive}
               className={`p-1.5 rounded border-none cursor-pointer transition-colors ${
-                (inputValue.trim() || selectedImages.length > 0) && !sendingDisabled
+                isSendButtonActive
                   ? 'bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] hover:bg-[var(--vscode-button-hoverBackground)]'
                   : 'bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] opacity-40 cursor-not-allowed'
               }`}
             >
-              <Send size={13} fill="currentColor" className="rotate-0" />
+              <Send size={13} fill="currentColor" />
             </button>
           </div>
         </div>

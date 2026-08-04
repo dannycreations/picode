@@ -4,13 +4,89 @@ import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime';
 import { bundledLanguages } from 'shiki';
 
-import { useCopyToClipboard } from '@webview/components/chat/helpers/clipboard';
+import { useCopyToClipboard } from '@extension/webview/hooks/useCopyToClipboard';
 import { getHighlighter, isLanguageLoaded, normalizeLanguage } from '@webview/components/chat/helpers/highlighter';
 
-import type { CSSProperties, MouseEvent, ReactNode } from 'react';
+import type { CSSProperties, FC, MouseEvent, ReactNode } from 'react';
 import type { ShikiTransformer } from 'shiki';
+import type { ExtendedLanguage } from '@webview/components/chat/helpers/highlighter';
 
 export const CODE_BLOCK_BG_COLOR = 'var(--vscode-editor-background, var(--vscode-sideBar-background, rgb(30, 30, 30)))';
+
+interface CodeToolbarProps {
+  readonly currentLanguage: string;
+  readonly onLanguageChange: (lang: ExtendedLanguage) => void;
+  readonly showCollapseButton: boolean;
+  readonly windowShade: boolean;
+  readonly onToggleWindowShade: () => void;
+  readonly wordWrap: boolean;
+  readonly onToggleWordWrap: () => void;
+  readonly showCopy: boolean;
+  readonly onCopy: (e: MouseEvent) => void;
+}
+
+export const CodeToolbar: FC<CodeToolbarProps> = ({
+  currentLanguage,
+  onLanguageChange,
+  showCollapseButton,
+  windowShade,
+  onToggleWindowShade,
+  wordWrap,
+  onToggleWordWrap,
+  showCopy,
+  onCopy,
+}) => (
+  <div
+    className="absolute top-2 right-2 flex items-center bg-[var(--vscode-editor-background)]/85 backdrop-blur-sm border border-[var(--vscode-editorGroup-border)] rounded p-0.5 z-10 gap-0.5 select-none"
+    style={{ pointerEvents: 'all' }}
+  >
+    <select
+      value={currentLanguage}
+      className="text-xs text-[var(--vscode-foreground)] bg-transparent border-none cursor-pointer p-1 font-mono outline-none hover:bg-[var(--vscode-toolbar-hoverBackground)] rounded"
+      style={{ width: `calc(${currentLanguage?.length || 0}ch + 20px)` }}
+      onChange={(e) => onLanguageChange(normalizeLanguage(e.target.value))}
+    >
+      <option value={currentLanguage}>{currentLanguage}</option>
+      {Object.keys(bundledLanguages)
+        .sort()
+        .map((lang) => {
+          const normalized = normalizeLanguage(lang);
+          if (normalized === currentLanguage) return null;
+          return (
+            <option key={lang} value={normalized} className="bg-[var(--vscode-editor-background)] text-[var(--vscode-foreground)]">
+              {normalized}
+            </option>
+          );
+        })}
+    </select>
+
+    {showCollapseButton && (
+      <button
+        className="w-6 h-6 flex items-center justify-center border-none text-[var(--vscode-editor-foreground)] bg-transparent hover:bg-[var(--vscode-toolbar-hoverBackground)] cursor-pointer rounded"
+        onClick={onToggleWindowShade}
+        title={windowShade ? 'Expand' : 'Collapse'}
+      >
+        {windowShade ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+      </button>
+    )}
+
+    <button
+      className="w-6 h-6 flex items-center justify-center border-none text-[var(--vscode-editor-foreground)] bg-transparent hover:bg-[var(--vscode-toolbar-hoverBackground)] cursor-pointer rounded"
+      onClick={onToggleWordWrap}
+      title={wordWrap ? 'Disable wrap' : 'Enable wrap'}
+    >
+      {wordWrap ? <AlignJustify size={14} /> : <WrapText size={14} />}
+    </button>
+
+    <button
+      className="w-6 h-6 flex items-center justify-center border-none text-[var(--vscode-editor-foreground)] bg-transparent hover:bg-[var(--vscode-toolbar-hoverBackground)] cursor-pointer rounded"
+      onClick={onCopy}
+      title="Copy code"
+    >
+      {showCopy ? <Check size={14} /> : <Copy size={14} />}
+    </button>
+  </div>
+);
 
 export interface CodeBlockProps {
   readonly source?: string;
@@ -23,9 +99,77 @@ export interface CodeBlockProps {
   readonly onLanguageChange?: (language: string) => void;
 }
 
+export function useShikiHighlighter(source: string, language: string): ReactNode {
+  const [highlightedCode, setHighlightedCode] = useState<ReactNode>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fallback = (
+      <pre style={{ padding: 0, margin: 0, backgroundColor: 'transparent' }}>
+        <code className={`hljs language-${language || 'txt'}`}>{source}</code>
+      </pre>
+    );
+
+    const highlight = async () => {
+      if (language && !isLanguageLoaded(language)) {
+        if (isMounted) setHighlightedCode(fallback);
+      }
+
+      const highlighter = await getHighlighter(language);
+      if (!isMounted) return;
+
+      const isLightTheme = document.body.className.toLowerCase().includes('light');
+      const theme = isLightTheme ? 'github-light' : 'github-dark';
+
+      const hast = highlighter.codeToHast(source, {
+        lang: language || 'txt',
+        theme,
+        transformers: [
+          {
+            pre(node) {
+              node.properties.style = 'padding: 0; margin: 0; background-color: transparent;';
+              return node;
+            },
+            code(node) {
+              node.properties['class'] = `hljs language-${language}`;
+              return node;
+            },
+            line(node) {
+              node.properties['class'] = node.properties['class'] || '';
+              return node;
+            },
+          },
+        ] as ShikiTransformer[],
+      });
+
+      if (!isMounted) return;
+
+      try {
+        const reactElement = toJsxRuntime(hast, { Fragment, jsx, jsxs });
+        if (isMounted) setHighlightedCode(reactElement);
+      } catch (error) {
+        console.error('[CodeBlock] Error converting HAST to JSX:', error);
+        if (isMounted) setHighlightedCode(fallback);
+      }
+    };
+
+    highlight().catch((e) => {
+      console.error('[CodeBlock] Syntax highlighting error:', e);
+      if (isMounted) setHighlightedCode(fallback);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [source, language]);
+
+  return highlightedCode;
+}
+
 export const CodeBlock = memo(
   ({
-    source,
+    source = '',
     rawSource,
     language,
     preStyle,
@@ -37,14 +181,12 @@ export const CodeBlock = memo(
     const [wordWrap, setWordWrap] = useState(initialWordWrap);
     const [windowShade, setWindowShade] = useState(initialWindowShade);
     const [currentLanguage, setCurrentLanguage] = useState(() => normalizeLanguage(language));
-    const userChangedLanguageRef = useRef(false);
-    const [highlightedCode, setHighlightedCode] = useState<ReactNode>(null);
     const [showCollapseButton, setShowCollapseButton] = useState(true);
     const [isHovered, setIsHovered] = useState(false);
+
+    const userChangedLanguageRef = useRef(false);
     const codeBlockRef = useRef<HTMLDivElement>(null);
-    const preRef = useRef<HTMLDivElement>(null);
-    const { showCopyFeedback, copyWithFeedback } = useCopyToClipboard();
-    const isMountedRef = useRef(true);
+    const { showCopy, copy } = useCopyToClipboard();
 
     useEffect(() => {
       const normalizedLang = normalizeLanguage(language);
@@ -53,101 +195,24 @@ export const CodeBlock = memo(
       }
     }, [language, currentLanguage]);
 
-    useEffect(() => {
-      isMountedRef.current = true;
-
-      const fallback = (
-        <pre style={{ padding: 0, margin: 0, backgroundColor: 'transparent' }}>
-          <code className={`hljs language-${currentLanguage || 'txt'}`}>{source || ''}</code>
-        </pre>
-      );
-
-      const highlight = async () => {
-        if (currentLanguage && !isLanguageLoaded(currentLanguage)) {
-          if (isMountedRef.current) {
-            setHighlightedCode(fallback);
-          }
-        }
-
-        const highlighter = await getHighlighter(currentLanguage);
-        if (!isMountedRef.current) return;
-
-        const isLightTheme = document.body.className.toLowerCase().includes('light');
-        const theme = isLightTheme ? 'github-light' : 'github-dark';
-
-        const hast = highlighter.codeToHast(source || '', {
-          lang: currentLanguage || 'txt',
-          theme,
-          transformers: [
-            {
-              pre(node) {
-                node.properties.style = 'padding: 0; margin: 0; background-color: transparent;';
-                return node;
-              },
-              code(node) {
-                node.properties['class'] = `hljs language-${currentLanguage}`;
-                return node;
-              },
-              line(node) {
-                node.properties['class'] = node.properties['class'] || '';
-                return node;
-              },
-            },
-          ] as ShikiTransformer[],
-        });
-        if (!isMountedRef.current) return;
-
-        try {
-          const reactElement = toJsxRuntime(hast, {
-            Fragment,
-            jsx,
-            jsxs,
-          });
-
-          if (isMountedRef.current) {
-            setHighlightedCode(reactElement);
-          }
-        } catch (error) {
-          console.error('[CodeBlock] Error converting HAST to JSX:', error);
-          if (isMountedRef.current) {
-            setHighlightedCode(fallback);
-          }
-        }
-      };
-
-      highlight().catch((e) => {
-        console.error('[CodeBlock] Syntax highlighting error:', e);
-        if (isMountedRef.current) {
-          setHighlightedCode(fallback);
-        }
-      });
-
-      return () => {
-        isMountedRef.current = false;
-      };
-    }, [source, currentLanguage]);
+    const highlightedCode = useShikiHighlighter(source, currentLanguage);
 
     useEffect(() => {
-      const codeBlock = codeBlockRef.current;
-      if (codeBlock) {
-        setShowCollapseButton(codeBlock.scrollHeight >= collapsedHeight);
+      if (codeBlockRef.current) {
+        setShowCollapseButton(codeBlockRef.current.scrollHeight >= collapsedHeight);
       }
     }, [highlightedCode, collapsedHeight]);
 
     const handleCopy = useCallback(
       (e: MouseEvent) => {
         e.stopPropagation();
-        const textToCopy = rawSource !== undefined ? rawSource : source || '';
-        if (textToCopy) {
-          copyWithFeedback(textToCopy, e);
-        }
+        const textToCopy = rawSource !== undefined ? rawSource : source;
+        if (textToCopy) copy(textToCopy, e);
       },
-      [source, rawSource, copyWithFeedback],
+      [source, rawSource, copy],
     );
 
-    if (source?.length === 0) {
-      return null;
-    }
+    if (source.length === 0) return null;
 
     return (
       <div
@@ -157,9 +222,7 @@ export const CodeBlock = memo(
         className="relative overflow-hidden my-2 border border-[var(--vscode-editorGroup-border)] rounded-md"
         style={{ backgroundColor: CODE_BLOCK_BG_COLOR }}
       >
-        {/* Scrollable Pre Container */}
         <div
-          ref={preRef}
           className="p-3 overflow-y-auto leading-relaxed select-text"
           style={{
             backgroundColor: 'transparent',
@@ -175,71 +238,22 @@ export const CodeBlock = memo(
           {highlightedCode}
         </div>
 
-        {/* Hover Menu */}
         {isHovered && (
-          <div
-            className="absolute top-2 right-2 flex items-center bg-[var(--vscode-editor-background)]/85 backdrop-blur-sm border border-[var(--vscode-editorGroup-border)] rounded p-0.5 z-10 gap-0.5 select-none"
-            style={{ pointerEvents: 'all' }}
-          >
-            {/* Language Selector */}
-            <select
-              value={currentLanguage}
-              className="text-xs text-[var(--vscode-foreground)] bg-transparent border-none cursor-pointer p-1 font-mono outline-none hover:bg-[var(--vscode-toolbar-hoverBackground)] rounded"
-              style={{
-                width: `calc(${currentLanguage?.length || 0}ch + 20px)`,
-              }}
-              onChange={(e) => {
-                const newLang = normalizeLanguage(e.target.value);
-                userChangedLanguageRef.current = true;
-                setCurrentLanguage(newLang);
-                if (onLanguageChange) {
-                  onLanguageChange(newLang);
-                }
-              }}
-            >
-              <option value={currentLanguage}>{currentLanguage}</option>
-              {Object.keys(bundledLanguages)
-                .sort()
-                .map((lang) => {
-                  const normalizedLang = normalizeLanguage(lang);
-                  if (normalizedLang === currentLanguage) return null;
-                  return (
-                    <option key={lang} value={normalizedLang} className="bg-[var(--vscode-editor-background)] text-[var(--vscode-foreground)]">
-                      {normalizedLang}
-                    </option>
-                  );
-                })}
-            </select>
-
-            {/* Collapse / Expand Toggle */}
-            {showCollapseButton && (
-              <button
-                className="w-6 h-6 flex items-center justify-center border-none text-[var(--vscode-editor-foreground)] bg-transparent hover:bg-[var(--vscode-toolbar-hoverBackground)] cursor-pointer rounded"
-                onClick={() => setWindowShade(!windowShade)}
-                title={windowShade ? 'Expand' : 'Collapse'}
-              >
-                {windowShade ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
-              </button>
-            )}
-
-            {/* Word Wrap Toggle */}
-            <button
-              className="w-6 h-6 flex items-center justify-center border-none text-[var(--vscode-editor-foreground)] bg-transparent hover:bg-[var(--vscode-toolbar-hoverBackground)] cursor-pointer rounded"
-              onClick={() => setWordWrap(!wordWrap)}
-              title={wordWrap ? 'Disable wrap' : 'Enable wrap'}
-            >
-              {wordWrap ? <AlignJustify size={14} /> : <WrapText size={14} />}
-            </button>
-
-            {/* Copy Button */}
-            <button
-              className="w-6 h-6 flex items-center justify-center border-none text-[var(--vscode-editor-foreground)] bg-transparent hover:bg-[var(--vscode-toolbar-hoverBackground)] cursor-pointer rounded"
-              onClick={handleCopy}
-              title="Copy code"
-            >
-              {showCopyFeedback ? <Check size={14} /> : <Copy size={14} />}
-            </button>
-          </div>
+          <CodeToolbar
+            currentLanguage={currentLanguage}
+            onLanguageChange={(newLang) => {
+              userChangedLanguageRef.current = true;
+              setCurrentLanguage(newLang);
+              onLanguageChange?.(newLang);
+            }}
+            showCollapseButton={showCollapseButton}
+            windowShade={windowShade}
+            onToggleWindowShade={() => setWindowShade(!windowShade)}
+            wordWrap={wordWrap}
+            onToggleWordWrap={() => setWordWrap(!wordWrap)}
+            showCopy={showCopy}
+            onCopy={handleCopy}
+          />
         )}
       </div>
     );

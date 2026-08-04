@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getMostImportantTodo, getScrollIndex } from '@webview/components/chat/TodoView';
+import { getMostImportantTodo, getScrollIndex } from '@extension/webview/components/chat/helpers/todo';
 
 describe('getScrollIndex', () => {
   it('should find in-progress todo first', () => {
