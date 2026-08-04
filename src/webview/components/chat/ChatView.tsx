@@ -588,11 +588,10 @@ export const ChatView: FC = () => {
   // Handle delete active task
   const handleDeleteActiveTask = () => {
     if (!activeTask) return;
-    const currentTaskItem = pastTasks.find((item) => item.id === activeTask.id);
-    if (currentTaskItem) {
+    if (activeTask.path) {
       vscode?.postMessage({
         type: 'delete_sessions',
-        paths: [currentTaskItem.path],
+        paths: [activeTask.path],
         scope,
       });
     }
@@ -688,7 +687,7 @@ export const ChatView: FC = () => {
           onClose={handleCloseTask}
           onCondense={() => alert('Condensing conversation context...')}
           onExport={handleExportTask}
-          onDelete={pastTasks.some((item) => item.id === activeTask.id) ? () => setShowDeleteActiveConfirm(true) : undefined}
+          onDelete={!isAgentRunning && activeTask.path ? () => setShowDeleteActiveConfirm(true) : undefined}
           onViewRaw={handleViewRaw}
           todos={todos}
         />

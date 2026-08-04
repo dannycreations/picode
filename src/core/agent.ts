@@ -422,18 +422,28 @@ export class AgentRunner {
 
   public abort(): void {
     if (this.session) {
-      void this.session.abort();
+      void this.session.abort().catch((err) => {
+        console.error('Failed to abort session:', err);
+      });
     }
   }
 
   public dispose(): void {
     this.isDisposed = true;
     if (this.unsubscribeSessionEvents) {
-      this.unsubscribeSessionEvents();
+      try {
+        this.unsubscribeSessionEvents();
+      } catch (err) {
+        console.error('Failed to unsubscribe session events during dispose:', err);
+      }
       this.unsubscribeSessionEvents = null;
     }
     if (this.session) {
-      this.session.dispose();
+      try {
+        this.session.dispose();
+      } catch (err) {
+        console.error('Failed to dispose session during dispose:', err);
+      }
       this.session = null;
     }
     this.pendingApprovals.clear();

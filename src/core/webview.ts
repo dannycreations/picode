@@ -74,7 +74,11 @@ export class ChatViewProvider implements WebviewViewProvider {
           break;
 
         case 'close_task':
-          this.agent.dispose();
+          try {
+            this.agent.dispose();
+          } catch (err) {
+            console.error('Failed to dispose agent runner:', err);
+          }
           this.agent = new AgentRunner();
           break;
 
