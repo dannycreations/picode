@@ -34,7 +34,7 @@ const STATUS_MAP: Record<TodoItem['status'], string> = {
 };
 
 export function formatReminderSection(todoList?: TodoItem[]): string {
-  const lines: string[] = ['### Reminders', '\n\n'];
+  const lines: string[] = ['### Reminders\n'];
 
   if (!todoList || todoList.length === 0) {
     lines.push('You have not created a todo list yet. Create one with `update_todo` if your task is complicated or involves multiple steps.');
@@ -168,7 +168,7 @@ export async function getEnvironmentDetails(session: AgentSession, cwd: string, 
     .map((absolutePath) => relative(cwd, absolutePath).replace(/\\/g, '/'))
     .filter((p) => p && !p.startsWith('..'));
 
-  if (openTabPaths && openTabPaths.length > 0) {
+  if (maxOpenTabsContext > 0 && openTabPaths && openTabPaths.length > 0) {
     const totalOpenTabs = openTabPaths.length;
     if (openTabPaths.length > maxOpenTabsContext) {
       openTabPaths = openTabPaths.slice(0, maxOpenTabsContext);
@@ -191,21 +191,23 @@ export async function getEnvironmentDetails(session: AgentSession, cwd: string, 
 
   // 4. Git Status
   const maxGitStatusFiles = settings.maxGitStatusFiles;
-  try {
-    const gitStatus = spawnGit(['status', '--porcelain'], cwd).trim();
-    if (gitStatus) {
-      const lines = gitStatus.split(/\r?\n/);
-      details += '\n\n### Git Status\n\n```\n';
-      if (lines.length > maxGitStatusFiles) {
-        details += lines.slice(0, maxGitStatusFiles).join('\n');
-        details += `\n... and ${lines.length - maxGitStatusFiles} more files`;
-      } else {
-        details += gitStatus;
+  if (maxGitStatusFiles > 0) {
+    try {
+      const gitStatus = spawnGit(['status', '--porcelain'], cwd).trim();
+      if (gitStatus) {
+        const lines = gitStatus.split(/\r?\n/);
+        details += '\n\n### Git Status\n\n```\n';
+        if (lines.length > maxGitStatusFiles) {
+          details += lines.slice(0, maxGitStatusFiles).join('\n');
+          details += `\n... and ${lines.length - maxGitStatusFiles} more files`;
+        } else {
+          details += gitStatus;
+        }
+        details += '\n```';
       }
-      details += '\n```';
+    } catch {
+      // Not a git repository or git fails, ignore
     }
-  } catch {
-    // Not a git repository or git fails, ignore
   }
 
   // 5. Current Mode
@@ -216,32 +218,34 @@ export async function getEnvironmentDetails(session: AgentSession, cwd: string, 
 
   // 6. Current Workspace Directory Files
   if (includeFileDetails) {
-    details += `\n\n### Workspace Files (${cwd.replace(/\\/g, '/')})\n\n`;
-    const isDesktop = cwd.replace(/\\/g, '/').toLowerCase().endsWith('/desktop');
-    if (isDesktop) {
-      details += 'Desktop files not shown automatically. Use execute_command to explore if needed.';
-    } else {
-      const maxWorkspaceFiles = settings.maxWorkspaceFiles;
-      const { paths, hitLimit } = await listFiles(cwd, maxWorkspaceFiles);
-      const sorted = paths.sort((a, b) => {
-        const aParts = a.split('/');
-        const bParts = b.split('/');
-        for (let i = 0; i < Math.min(aParts.length, bParts.length); i++) {
-          if (aParts[i] !== bParts[i]) {
-            if (i + 1 === aParts.length && i + 1 < bParts.length) {
-              return -1;
+    const maxWorkspaceFiles = settings.maxWorkspaceFiles;
+    if (maxWorkspaceFiles > 0) {
+      details += `\n\n### Workspace Files (${cwd.replace(/\\/g, '/')})\n\n`;
+      const isDesktop = cwd.replace(/\\/g, '/').toLowerCase().endsWith('/desktop');
+      if (isDesktop) {
+        details += 'Desktop files not shown automatically. Use execute_command to explore if needed.';
+      } else {
+        const { paths, hitLimit } = await listFiles(cwd, maxWorkspaceFiles);
+        const sorted = paths.sort((a, b) => {
+          const aParts = a.split('/');
+          const bParts = b.split('/');
+          for (let i = 0; i < Math.min(aParts.length, bParts.length); i++) {
+            if (aParts[i] !== bParts[i]) {
+              if (i + 1 === aParts.length && i + 1 < bParts.length) {
+                return -1;
+              }
+              if (i + 1 === bParts.length && i + 1 < aParts.length) {
+                return 1;
+              }
+              return aParts[i].localeCompare(bParts[i], undefined, { numeric: true, sensitivity: 'base' });
             }
-            if (i + 1 === bParts.length && i + 1 < aParts.length) {
-              return 1;
-            }
-            return aParts[i].localeCompare(bParts[i], undefined, { numeric: true, sensitivity: 'base' });
           }
+          return aParts.length - bParts.length;
+        });
+        details += sorted.map((p) => `- ${p}`).join('\n');
+        if (hitLimit) {
+          details += '\n\n*(File list truncated. Use execute_command to list files in specific subdirectories if you need to explore further.)*';
         }
-        return aParts.length - bParts.length;
-      });
-      details += sorted.map((p) => `- ${p}`).join('\n');
-      if (hitLimit) {
-        details += '\n\n*(File list truncated. Use execute_command to list files in specific subdirectories if you need to explore further.)*';
       }
     }
   }
