@@ -35,8 +35,13 @@ export class AgentRunner {
   private pendingApprovals = new Map<string, (res: BeforeToolCallResult) => void>();
   private currentApiRequestId: string | null = null;
   private isAttemptCompletionAborted = false;
+  private unsubscribeSessionEvents: (() => void) | null = null;
+  private isDisposed = false;
 
   private postWebviewMessage(webview: Webview, message: ExtensionToWebviewMessage): void {
+    if (this.isDisposed) {
+      return;
+    }
     void webview.postMessage(message);
   }
 
@@ -138,8 +143,13 @@ export class AgentRunner {
   }
 
   private async getOrCreateSession(path: string | undefined, webview: Webview, cwd: string): Promise<AgentSession> {
-    if (this.session && (!path || this.session.sessionFile === path)) {
+    if (this.session && path && this.session.sessionFile === path) {
       return this.session;
+    }
+
+    if (this.unsubscribeSessionEvents) {
+      this.unsubscribeSessionEvents();
+      this.unsubscribeSessionEvents = null;
     }
 
     if (this.session) {
@@ -296,7 +306,7 @@ export class AgentRunner {
     };
 
     // Subscribe to agent events and stream to webview
-    this.session.subscribe((event) => {
+    this.unsubscribeSessionEvents = this.session.subscribe((event) => {
       if (this.isAttemptCompletionAborted && event.type === 'message_end' && event.message.role === 'assistant') {
         (event as any).type = 'ignored';
         const messages = this.session?.agent.state.messages;
@@ -414,6 +424,11 @@ export class AgentRunner {
   }
 
   public dispose(): void {
+    this.isDisposed = true;
+    if (this.unsubscribeSessionEvents) {
+      this.unsubscribeSessionEvents();
+      this.unsubscribeSessionEvents = null;
+    }
     if (this.session) {
       this.session.dispose();
       this.session = null;

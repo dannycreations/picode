@@ -13,7 +13,7 @@ export const attemptCompletionTool = defineTool({
   async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
     try {
       return {
-        content: [{ type: 'text', text: 'Completion attempt received.' }],
+        content: [{ type: 'text', text: 'attempt_completion success.' }],
         details: { result: params.result },
       };
     } catch (err) {

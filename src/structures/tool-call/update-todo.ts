@@ -37,10 +37,8 @@ export const updateTodoTool = defineTool({
       const updatedChecklist = checklistLines.join('\n');
 
       return {
-        content: [{ type: 'text', text: updatedChecklist }],
-        details: {
-          todos: updatedChecklist,
-        },
+        content: [{ type: 'text', text: 'update_todo success.' }],
+        details: { todos: updatedChecklist },
       };
     } catch (err) {
       return {
