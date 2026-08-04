@@ -9,6 +9,7 @@ import { SettingsService } from '@extension/core/settings';
 import { calculateSessionStats, convertSessionEntries } from '@extension/structures/chat-session/session';
 import { AgentModel, SessionTreeEntry } from '@extension/types/extension';
 import { ExtensionToWebviewMessage, WebviewToExtensionMessage } from '@extension/types/webview';
+import { isProjectTrusted } from '@extension/utilities/vscode';
 
 import type { CancellationToken, ExtensionContext, Webview, WebviewView, WebviewViewProvider, WebviewViewResolveContext } from 'vscode';
 
@@ -91,7 +92,8 @@ export class ChatViewProvider implements WebviewViewProvider {
             const modelRuntime = await ModelRuntime.create();
             const models = modelRuntime.getModels();
             const agentDir = getAgentDir();
-            const settingsManager = SettingsManager.create(cwd, agentDir);
+            const isTrusted = isProjectTrusted(cwd);
+            const settingsManager = SettingsManager.create(cwd, agentDir, { projectTrusted: isTrusted });
             let sessionModelId = settingsManager.getDefaultModel();
 
             // Find if there is a model change entry in the history
@@ -334,7 +336,8 @@ export class ChatViewProvider implements WebviewViewProvider {
       }));
 
       const agentDir = getAgentDir();
-      const settingsManager = SettingsManager.create(cwd, agentDir);
+      const isTrusted = isProjectTrusted(cwd);
+      const settingsManager = SettingsManager.create(cwd, agentDir, { projectTrusted: isTrusted });
       const defaultModel = settingsManager.getDefaultModel();
 
       this.postWebviewMessage(webview, {

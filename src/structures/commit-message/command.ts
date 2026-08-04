@@ -6,6 +6,7 @@ import { Logger } from '@extension/core/logger';
 import { COMMIT_MESSAGE_PROMPT } from '@extension/core/prompt';
 import { buildGitContext, getGitChanges, getGitDiffContext, getRepoContext } from '@extension/structures/commit-message/git';
 import { extractCodeBlockMessage } from '@extension/utilities/markdown';
+import { isProjectTrusted } from '@extension/utilities/vscode';
 
 import type { Disposable, ExtensionContext, Uri } from 'vscode';
 import type { GitExtension, GitRepository, LlmResponseContent, ScmRequest } from '@extension/types/extension';
@@ -136,7 +137,8 @@ export function registerCommitMessageCommand(_: ExtensionContext, logger: Logger
           });
 
           logger.info('Loading SettingsManager...');
-          const settingsManager = SettingsManager.create(cwd, agentDir);
+          const isTrusted = isProjectTrusted(cwd);
+          const settingsManager = SettingsManager.create(cwd, agentDir, { projectTrusted: isTrusted });
           const defaultProviderId = settingsManager.getDefaultProvider();
           const defaultModelId = settingsManager.getDefaultModel();
           logger.info(`Settings values - Default Provider: ${defaultProviderId}, Default Model: ${defaultModelId}`);

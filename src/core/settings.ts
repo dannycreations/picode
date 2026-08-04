@@ -1,6 +1,8 @@
 import { getAgentDir, SettingsManager } from '@earendil-works/pi-coding-agent';
 import { isObjectLike } from 'es-toolkit/compat';
 
+import { isProjectTrusted } from '@extension/utilities/vscode';
+
 export interface AppSettings {
   // Approval Tab
   readonly autoApproveRead: boolean;
@@ -135,7 +137,8 @@ export class SettingsService {
 
   private constructor(resolvedCwd: string) {
     const agentDir = getAgentDir();
-    this.manager = SettingsManager.create(resolvedCwd, agentDir);
+    const isTrusted = isProjectTrusted(resolvedCwd);
+    this.manager = SettingsManager.create(resolvedCwd, agentDir, { projectTrusted: isTrusted });
   }
 
   public async load(): Promise<AppSettings> {

@@ -5,7 +5,10 @@ import { ChatViewProvider } from '@extension/core/webview';
 import { registerAddToContextCommand } from '@extension/structures/add-to-context/command';
 import { registerCommitMessageCommand } from '@extension/structures/commit-message/command';
 
+// import { initializeFetchInterceptor } from '@extension/utilities/interceptor';
+
 export function activate(context: ExtensionContext): void {
+  // initializeFetchInterceptor();
   const outputChannel = window.createOutputChannel('Pi Code');
   const logger = new Logger(outputChannel, 'Pi Code');
   logger.info('Extension activated.');

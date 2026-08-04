@@ -19,6 +19,7 @@ import { readFileTool } from '@extension/structures/tool-call/read-file';
 import { updateTodoTool } from '@extension/structures/tool-call/update-todo';
 import { writeFileTool } from '@extension/structures/tool-call/write-file';
 import { resolveCommandAction, resolvePathAction } from '@extension/utilities/action';
+import { isProjectTrusted } from '@extension/utilities/vscode';
 
 import type { AgentSessionEvent } from '@earendil-works/pi-coding-agent';
 import type { Webview } from 'vscode';
@@ -164,7 +165,8 @@ export class AgentRunner {
 
     const settings = await SettingsService.getInstance(cwd).load();
     const agentDir = getAgentDir();
-    const settingsManager = SettingsManager.create(cwd, agentDir);
+    const isTrusted = isProjectTrusted(cwd);
+    const settingsManager = SettingsManager.create(cwd, agentDir, { projectTrusted: isTrusted });
     const resourceLoader = new DefaultResourceLoader({
       cwd,
       agentDir,
@@ -176,6 +178,7 @@ export class AgentRunner {
     const { session } = await createAgentSession({
       cwd,
       sessionManager: sessionManagerOption,
+      settingsManager,
       resourceLoader,
       tools: [
         'delete_file',
