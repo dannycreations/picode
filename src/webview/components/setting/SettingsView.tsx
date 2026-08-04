@@ -66,6 +66,28 @@ export const SettingsView: FC<SettingsViewProps> = ({ onDone }) => {
   const pendingUpdatesRef = useRef<Array<{ key: keyof AppSettings; value: unknown }>>([]);
   const [isDiscardDialogShow, setDiscardDialogShow] = useState(false);
 
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const hasLoaded = draftSettings !== null && originalSettings !== null;
+
+  useEffect(() => {
+    if (!hasLoaded) return;
+    const container = containerRef.current;
+    if (!container) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const width = entry.contentRect.width;
+        setIsCollapsed(width < 600);
+      }
+    });
+
+    observer.observe(container);
+    return () => {
+      observer.disconnect();
+    };
+  }, [hasLoaded]);
+
   // Request settings on mount
   useEffect(() => {
     vscode?.postMessage({ type: 'get_settings' });
@@ -169,7 +191,7 @@ export const SettingsView: FC<SettingsViewProps> = ({ onDone }) => {
     'w-full appearance-none h-2 rounded-sm border border-vscode-settings-checkboxBorder outline-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-vscode-button-background [&::-webkit-slider-thumb]:border-none [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-vscode-button-background [&::-moz-range-thumb]:border-none [&::-moz-range-thumb]:cursor-pointer';
 
   return (
-    <div className="flex flex-col h-full bg-vscode-sideBar-background text-vscode-foreground select-none overflow-hidden">
+    <div ref={containerRef} className="flex flex-col h-full bg-vscode-sideBar-background text-vscode-foreground select-none overflow-hidden">
       {/* Header */}
       <div className="flex justify-between items-center gap-2 px-5 py-2.5 border-b border-vscode-panel-border bg-vscode-sideBar-background shrink-0">
         <div className="flex items-center gap-2 grow">
@@ -200,7 +222,9 @@ export const SettingsView: FC<SettingsViewProps> = ({ onDone }) => {
       {/* Main Layout Container */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left Tabs Navigation */}
-        <div className="w-48 border-r border-vscode-editorGroup-border/20 flex flex-col shrink-0 py-2 overflow-y-auto overflow-x-hidden bg-vscode-sideBar-background">
+        <div
+          className={`${isCollapsed ? 'w-12' : 'w-48'} border-r border-vscode-editorGroup-border/20 flex flex-col shrink-0 py-2 overflow-y-auto overflow-x-hidden bg-vscode-sideBar-background transition-all duration-150`}
+        >
           {SETTINGS_TABS.map((tab) => {
             const TabIcon = tab.icon;
             const isActive = tab.id === activeTabId;
@@ -208,14 +232,17 @@ export const SettingsView: FC<SettingsViewProps> = ({ onDone }) => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTabId(tab.id)}
-                className={`whitespace-nowrap overflow-hidden min-w-0 h-12 px-4 py-3 box-border flex items-center gap-2 border-l-2 text-xs text-left w-full border-y-0 border-r-0 transition-colors duration-150 ${
+                title={isCollapsed ? tab.label : undefined}
+                className={`whitespace-nowrap overflow-hidden min-w-0 h-12 py-3 box-border flex items-center border-l-2 text-xs w-full border-y-0 border-r-0 transition-colors duration-150 ${
+                  isCollapsed ? 'justify-center px-0' : 'px-4 gap-2 text-left'
+                } ${
                   isActive
                     ? 'border-vscode-focusBorder bg-vscode-list-activeSelectionBackground text-vscode-foreground font-medium cursor-default'
                     : 'border-transparent text-vscode-descriptionForeground hover:bg-vscode-list-hoverBackground hover:text-vscode-foreground cursor-pointer bg-transparent'
                 }`}
               >
                 <TabIcon className={`w-4 h-4 shrink-0 ${isActive ? 'text-vscode-foreground' : 'text-vscode-descriptionForeground'}`} />
-                <span className="tab-label">{tab.label}</span>
+                {!isCollapsed && <span className="tab-label">{tab.label}</span>}
               </button>
             );
           })}
