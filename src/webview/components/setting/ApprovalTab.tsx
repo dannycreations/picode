@@ -4,19 +4,27 @@ import { useState } from 'react';
 import type { FC } from 'react';
 import type { TabProps } from './SettingsView';
 
+type GlobField =
+  | 'allowedReadPaths'
+  | 'deniedReadPaths'
+  | 'allowedWritePaths'
+  | 'deniedWritePaths'
+  | 'allowedDeletePaths'
+  | 'deniedDeletePaths'
+  | 'allowedExecuteCommands'
+  | 'deniedExecuteCommands';
+
 export const ApprovalTab: FC<TabProps> = ({ draftSettings, handleFieldChange }) => {
   const [readAllowedInput, setReadAllowedInput] = useState('');
   const [readDeniedInput, setReadDeniedInput] = useState('');
   const [writeAllowedInput, setWriteAllowedInput] = useState('');
   const [writeDeniedInput, setWriteDeniedInput] = useState('');
+  const [deleteAllowedInput, setDeleteAllowedInput] = useState('');
+  const [deleteDeniedInput, setDeleteDeniedInput] = useState('');
   const [executeAllowedInput, setExecuteAllowedInput] = useState('');
   const [executeDeniedInput, setExecuteDeniedInput] = useState('');
 
-  const handleAddGlob = (
-    field: 'allowedReadPaths' | 'deniedReadPaths' | 'allowedWritePaths' | 'deniedWritePaths' | 'allowedExecuteCommands' | 'deniedExecuteCommands',
-    input: string,
-    setInput: (v: string) => void,
-  ) => {
+  const handleAddGlob = (field: GlobField, input: string, setInput: (v: string) => void) => {
     const trimmed = input.trim();
     if (!trimmed) return;
     const current = draftSettings[field] || [];
@@ -26,10 +34,7 @@ export const ApprovalTab: FC<TabProps> = ({ draftSettings, handleFieldChange }) 
     }
   };
 
-  const handleRemoveGlob = (
-    field: 'allowedReadPaths' | 'deniedReadPaths' | 'allowedWritePaths' | 'deniedWritePaths' | 'allowedExecuteCommands' | 'deniedExecuteCommands',
-    index: number,
-  ) => {
+  const handleRemoveGlob = (field: GlobField, index: number) => {
     const current = draftSettings[field] || [];
     handleFieldChange(
       field,
@@ -37,13 +42,7 @@ export const ApprovalTab: FC<TabProps> = ({ draftSettings, handleFieldChange }) 
     );
   };
 
-  const handleMoveToInput = (
-    field: 'allowedReadPaths' | 'deniedReadPaths' | 'allowedWritePaths' | 'deniedWritePaths' | 'allowedExecuteCommands' | 'deniedExecuteCommands',
-    index: number,
-    value: string,
-    input: string,
-    setInput: (v: string) => void,
-  ) => {
+  const handleMoveToInput = (field: GlobField, index: number, value: string, input: string, setInput: (v: string) => void) => {
     handleRemoveGlob(field, index);
     const trimmed = input.trim();
     setInput(trimmed ? `${trimmed} ${value}` : value);
@@ -56,7 +55,7 @@ export const ApprovalTab: FC<TabProps> = ({ draftSettings, handleFieldChange }) 
   };
 
   const renderGlobList = (
-    field: 'allowedReadPaths' | 'deniedReadPaths' | 'allowedWritePaths' | 'deniedWritePaths' | 'allowedExecuteCommands' | 'deniedExecuteCommands',
+    field: GlobField,
     input: string,
     setInput: (v: string) => void,
     placeholder: string,
@@ -233,6 +232,26 @@ export const ApprovalTab: FC<TabProps> = ({ draftSettings, handleFieldChange }) 
             </span>
           </div>
         </label>
+        {draftSettings.autoApproveDelete && (
+          <div className="flex flex-col gap-4 mt-2">
+            {renderGlobList(
+              'allowedDeletePaths',
+              deleteAllowedInput,
+              setDeleteAllowedInput,
+              'e.g. temp/**/*.log',
+              'Allowed Delete Paths',
+              'Files matching these globs will be auto-approved for deleting. Add * to allow all paths.',
+            )}
+            {renderGlobList(
+              'deniedDeletePaths',
+              deleteDeniedInput,
+              setDeleteDeniedInput,
+              'e.g. src/**/*.ts',
+              'Denied Delete Paths',
+              'Files matching these globs will be blocked from deleting, overriding allowed paths.',
+            )}
+          </div>
+        )}
       </div>
 
       {/* Execute tool */}

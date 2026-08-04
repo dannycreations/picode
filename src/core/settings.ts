@@ -10,6 +10,8 @@ export interface AppSettings {
   readonly deniedReadPaths: readonly string[];
   readonly allowedWritePaths: readonly string[];
   readonly deniedWritePaths: readonly string[];
+  readonly allowedDeletePaths: readonly string[];
+  readonly deniedDeletePaths: readonly string[];
   readonly allowedExecuteCommands: readonly string[];
   readonly deniedExecuteCommands: readonly string[];
   readonly maxOpenTabsContext: number;
@@ -29,6 +31,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   deniedReadPaths: [],
   allowedWritePaths: [],
   deniedWritePaths: [],
+  allowedDeletePaths: [],
+  deniedDeletePaths: [],
   allowedExecuteCommands: [],
   deniedExecuteCommands: [],
   maxOpenTabsContext: 20,
@@ -65,6 +69,12 @@ export function parseAppSettings(obj: AppSettings): AppSettings {
     }
     if (Array.isArray(obj.deniedWritePaths)) {
       settings.deniedWritePaths = obj.deniedWritePaths.filter((item): item is string => typeof item === 'string');
+    }
+    if (Array.isArray(obj.allowedDeletePaths)) {
+      settings.allowedDeletePaths = obj.allowedDeletePaths.filter((item): item is string => typeof item === 'string');
+    }
+    if (Array.isArray(obj.deniedDeletePaths)) {
+      settings.deniedDeletePaths = obj.deniedDeletePaths.filter((item): item is string => typeof item === 'string');
     }
     if (Array.isArray(obj.allowedExecuteCommands)) {
       settings.allowedExecuteCommands = obj.allowedExecuteCommands.filter((item): item is string => typeof item === 'string');

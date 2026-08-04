@@ -216,7 +216,19 @@ export class AgentRunner {
             return { block: false };
           }
         } else if (toolName === 'delete_file') {
-          if (settings.autoApproveDelete) {
+          const filePath = (args as { path?: string }).path || '';
+
+          const allowedDelete = (settings.allowedDeletePaths || []) as string[];
+          const deniedDelete = (settings.deniedDeletePaths || []) as string[];
+          const resolution = resolvePathAction(cwd, filePath, settings.autoApproveDelete, allowedDelete, deniedDelete);
+
+          if (resolution === 'deny') {
+            return {
+              block: true,
+              reason: 'Access to delete this file path is explicitly denied by settings.',
+            };
+          }
+          if (resolution === 'approve') {
             return { block: false };
           }
         } else if (toolName === 'execute_command') {
