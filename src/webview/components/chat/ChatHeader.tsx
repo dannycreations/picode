@@ -1,3 +1,4 @@
+import { cn } from 'cnfast';
 import { Check, ChevronDown, ChevronRight, CloudDownload, CloudUpload, Coins, Copy, Download, FileJson, FoldVertical, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 
@@ -37,9 +38,10 @@ const IconButton: FC<IconButtonProps> = ({ icon: Icon, title, onClick, disabled 
     onClick={onClick}
     disabled={disabled}
     title={title}
-    className={`relative inline-flex items-center justify-center bg-transparent border-none p-1.5 rounded-md text-vscode-foreground opacity-80 transition-all duration-150 active:bg-vscode-list-hoverBackground/20 ${
-      !disabled ? 'cursor-pointer hover:opacity-100 hover:bg-vscode-list-hoverBackground' : 'cursor-not-allowed opacity-30'
-    }`}
+    className={cn(
+      'relative inline-flex items-center justify-center bg-transparent border-none p-1.5 rounded-md text-vscode-foreground opacity-80 transition-all duration-150 active:bg-vscode-list-hoverBackground/20',
+      !disabled ? 'cursor-pointer hover:opacity-100 hover:bg-vscode-list-hoverBackground' : 'cursor-not-allowed opacity-30',
+    )}
   >
     <Icon size={14} />
   </button>

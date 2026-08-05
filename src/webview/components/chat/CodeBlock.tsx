@@ -1,3 +1,4 @@
+import { cn } from 'cnfast';
 import { toJsxRuntime } from 'hast-util-to-jsx-runtime';
 import { AlignJustify, Check, ChevronDown, ChevronUp, Copy, WrapText } from 'lucide-react';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
@@ -107,7 +108,7 @@ export function useShikiHighlighter(source: string, language: string): ReactNode
 
     const fallback = (
       <pre style={{ padding: 0, margin: 0, backgroundColor: 'transparent' }}>
-        <code className={`hljs language-${language || 'txt'}`}>{source}</code>
+        <code className={cn('hljs', `language-${language || 'txt'}`)}>{source}</code>
       </pre>
     );
 

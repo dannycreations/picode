@@ -1,3 +1,4 @@
+import { cn } from 'cnfast';
 import { CheckCircle, ChevronUp, ClipboardCheck, Play, PocketKnife, ShieldAlert, X } from 'lucide-react';
 import { useState } from 'react';
 
@@ -66,7 +67,10 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
       <div className="ml-6 text-sm">
         <div className="border border-vscode-editorGroup-border rounded-md overflow-hidden bg-vscode-input-background">
           <div
-            className={`p-3 flex items-start gap-2 select-none ${message.diff || hasBottomBlock ? 'border-b border-vscode-editorGroup-border/45' : ''}`}
+            className={cn(
+              'p-3 flex items-start gap-2 select-none',
+              message.diff || hasBottomBlock ? 'border-b border-vscode-editorGroup-border/45' : '',
+            )}
           >
             <span className="codicon codicon-terminal text-vscode-focusBorder mt-0.5" />
             <div className="flex-1 min-w-0">
@@ -85,10 +89,10 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
                 className="w-full flex items-center justify-between px-3 py-1.5 bg-vscode-input-background text-[10px] text-vscode-descriptionForeground border-none cursor-pointer text-left hover:bg-vscode-list-hoverBackground select-none"
               >
                 <span className="font-semibold flex items-center gap-1.5">
-                  <span className={`codicon codicon-${diffIcon} pr-0.5`} />
+                  <span className={cn('codicon', `codicon-${diffIcon}`, 'pr-0.5')} />
                   {diffLabel}
                 </span>
-                <ChevronUp size={12} className={`transition-transform duration-200 ${!isDiffExpanded ? 'rotate-180' : ''}`} />
+                <ChevronUp size={12} className={cn('transition-transform duration-200', !isDiffExpanded && 'rotate-180')} />
               </button>
               {isDiffExpanded && (
                 <div className="border-t border-vscode-editorGroup-border/30 p-2">

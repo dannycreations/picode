@@ -1,3 +1,4 @@
+import { cn } from 'cnfast';
 import { useState } from 'react';
 
 import { ChatAction } from '@extension/webview/components/chat/ChatAction';
@@ -116,7 +117,7 @@ export const ChatView: FC = () => {
             onClick={() => setHistoryExpanded(!historyExpanded)}
             className="flex items-center cursor-pointer bg-transparent border-none text-xs font-semibold text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)]"
           >
-            <span className={`codicon ${historyExpanded ? 'codicon-eye' : 'codicon-eye-closed'} scale-90 mr-1.5`} />
+            <span className={cn('codicon', historyExpanded ? 'codicon-eye' : 'codicon-eye-closed', 'scale-90 mr-1.5')} />
             <span className="text-[10px]">Recent Tasks</span>
           </button>
         </div>

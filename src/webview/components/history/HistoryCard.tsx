@@ -1,3 +1,4 @@
+import { cn } from 'cnfast';
 import { Calendar, Check, Copy, Download, FileJson, Trash2 } from 'lucide-react';
 
 import { HistoryButton } from '@extension/webview/components/history/HistoryButton';
@@ -41,11 +42,12 @@ export const HistoryCard: FC<HistoryCardProps> = ({
     <div
       data-testid={testId}
       onClick={onClick}
-      className={`group flex items-start gap-3 p-3 bg-[var(--vscode-editor-background)] rounded border transition-colors cursor-pointer relative ${
+      className={cn(
+        'group flex items-start gap-3 p-3 bg-[var(--vscode-editor-background)] rounded border transition-colors cursor-pointer relative',
         isSelected
           ? 'border-[var(--vscode-focusBorder)] bg-[var(--vscode-list-hoverBackground)]/30'
-          : 'border-[var(--vscode-panel-border)]/50 hover:bg-[var(--vscode-list-hoverBackground)]'
-      }`}
+          : 'border-[var(--vscode-panel-border)]/50 hover:bg-[var(--vscode-list-hoverBackground)]',
+      )}
     >
       {isSelectionMode && onToggleSelect && (
         <div className="pt-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -59,7 +61,7 @@ export const HistoryCard: FC<HistoryCardProps> = ({
       )}
 
       <div className="flex-1 min-w-0 flex flex-col gap-1.5">
-        <div className={`text-xs leading-relaxed font-light text-[var(--vscode-foreground)] ${lineClamp === 2 ? 'line-clamp-2' : 'line-clamp-3'}`}>
+        <div className={cn('text-xs leading-relaxed font-light text-[var(--vscode-foreground)]', lineClamp === 2 ? 'line-clamp-2' : 'line-clamp-3')}>
           {item.task}
         </div>
 

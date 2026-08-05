@@ -1,3 +1,4 @@
+import { cn } from 'cnfast';
 import { ChevronUp, Lightbulb, MessageCircle } from 'lucide-react';
 import { useState } from 'react';
 
@@ -18,14 +19,14 @@ export const AssistantMessage: FC<{ readonly message: ChatMessage }> = ({ messag
   return (
     <div className="group flex flex-col gap-1.5">
       {hasReasoning && (
-        <div className={`flex flex-col gap-1.5 ${hasText ? 'mb-2' : ''}`}>
+        <div className={cn('flex flex-col gap-1.5', hasText && 'mb-2')}>
           <MessageHeader
             icon={<Lightbulb size={14} className="text-vscode-focusBorder shrink-0" />}
             title="Pi Thinking"
             timestamp={message.ts}
             onClick={() => setIsReasoningExpanded(!isReasoningExpanded)}
           >
-            <ChevronUp size={14} className={`transition-transform duration-200 ${!isReasoningExpanded ? 'rotate-180' : ''}`} />
+            <ChevronUp size={14} className={cn('transition-transform duration-200', !isReasoningExpanded && 'rotate-180')} />
           </MessageHeader>
           {isReasoningExpanded && (
             <div className="ml-6 border-l border-vscode-descriptionForeground/20 pl-4 pb-1 text-vscode-descriptionForeground text-xs whitespace-pre-wrap leading-relaxed select-text">

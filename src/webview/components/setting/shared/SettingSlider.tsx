@@ -1,3 +1,5 @@
+import { cn } from 'cnfast';
+
 import type { FC, ReactNode } from 'react';
 
 interface SettingSliderProps {
@@ -19,7 +21,7 @@ export const SettingSlider: FC<SettingSliderProps> = ({ label, value, min, max, 
   };
 
   return (
-    <div className={`flex flex-col gap-2 ${className}`}>
+    <div className={cn('flex flex-col gap-2', className)}>
       <div className="flex items-center gap-2 text-xs font-semibold text-vscode-foreground">
         {icon}
         <span>{label}</span>

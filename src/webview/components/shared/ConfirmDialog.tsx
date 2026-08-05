@@ -1,3 +1,4 @@
+import { cn } from 'cnfast';
 import React, { useEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -74,7 +75,7 @@ export const Button: FC<ButtonProps> = ({ variant = 'secondary', isLoading = fal
   };
 
   return (
-    <button disabled={disabled || isLoading} className={`${baseStyles} ${variants[variant]} ${className}`} {...props}>
+    <button disabled={disabled || isLoading} className={cn(baseStyles, variants[variant], className)} {...props}>
       {isLoading ? <span className="animate-spin text-xs">🌀</span> : null}
       {children}
     </button>
@@ -118,7 +119,7 @@ export const ModalHeader: FC<{ children: ReactNode; onClose?: () => void }> = ({
 );
 
 export const ModalBody: FC<{ children: ReactNode; className?: string }> = ({ children, className = '' }) => (
-  <div className={`p-4 flex flex-col gap-3 text-xs leading-relaxed text-[var(--vscode-foreground)] ${className}`}>{children}</div>
+  <div className={cn('p-4 flex flex-col gap-3 text-xs leading-relaxed text-[var(--vscode-foreground)]', className)}>{children}</div>
 );
 
 export const ModalFooter: FC<{ children: ReactNode }> = ({ children }) => (

@@ -1,3 +1,4 @@
+import { cn } from 'cnfast';
 import { Check, Search, X } from 'lucide-react';
 
 import type { FC } from 'react';
@@ -52,11 +53,12 @@ export const HistoryFilter: FC<HistoryFilterProps> = ({
           <button
             key={s}
             onClick={() => onScopeChange(s)}
-            className={`px-2 py-1 text-[10px] font-medium rounded transition-colors cursor-pointer border border-[var(--vscode-panel-border)]/40 ${
+            className={cn(
+              'px-2 py-1 text-[10px] font-medium rounded transition-colors cursor-pointer border border-[var(--vscode-panel-border)]/40',
               scope === s
                 ? 'bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)]'
-                : 'bg-transparent text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)]'
-            }`}
+                : 'bg-transparent text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)]',
+            )}
           >
             {s === 'current' ? 'Current Workspace' : 'All Workspaces'}
           </button>
@@ -76,11 +78,12 @@ export const HistoryFilter: FC<HistoryFilterProps> = ({
 
         <button
           onClick={onToggleSelectionMode}
-          className={`p-1.5 rounded transition-colors cursor-pointer border border-[var(--vscode-panel-border)]/40 ${
+          className={cn(
+            'p-1.5 rounded transition-colors cursor-pointer border border-[var(--vscode-panel-border)]/40',
             isSelectionMode
               ? 'bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)]'
-              : 'bg-transparent text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)]'
-          }`}
+              : 'bg-transparent text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)]',
+          )}
           title="Select tasks"
         >
           <Check size={12} />

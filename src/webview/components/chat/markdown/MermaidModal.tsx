@@ -1,3 +1,5 @@
+import { cn } from 'cnfast';
+
 import { usePanZoom } from '@extension/webview/components/chat/markdown/hooks/usePanZoom';
 
 import type { FC, MouseEvent } from 'react';
@@ -26,21 +28,23 @@ export const MermaidModal: FC<MermaidModalProps> = ({ code, svgContent, modalVie
         <div className="flex justify-between items-center border-b border-[var(--vscode-editorGroup-border)] bg-[var(--vscode-editor-background)] px-2">
           <div className="flex">
             <button
-              className={`px-4 py-2 border-none cursor-pointer flex items-center gap-1.5 text-xs transition-all duration-200 ${
+              className={cn(
+                'px-4 py-2 border-none cursor-pointer flex items-center gap-1.5 text-xs transition-all duration-200',
                 modalViewMode === 'diagram'
                   ? 'border-b-2 border-[var(--vscode-focusBorder)] text-[var(--vscode-editor-foreground)] font-semibold'
-                  : 'text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-editor-foreground)]'
-              }`}
+                  : 'text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-editor-foreground)]',
+              )}
               onClick={() => setModalViewMode('diagram')}
             >
               <span className="codicon codicon-graph text-sm" /> Diagram
             </button>
             <button
-              className={`px-4 py-2 border-none cursor-pointer flex items-center gap-1.5 text-xs transition-all duration-200 ${
+              className={cn(
+                'px-4 py-2 border-none cursor-pointer flex items-center gap-1.5 text-xs transition-all duration-200',
                 modalViewMode === 'code'
                   ? 'border-b-2 border-[var(--vscode-focusBorder)] text-[var(--vscode-editor-foreground)] font-semibold'
-                  : 'text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-editor-foreground)]'
-              }`}
+                  : 'text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-editor-foreground)]',
+              )}
               onClick={() => setModalViewMode('code')}
             >
               <span className="codicon codicon-code text-sm" /> Source Code
@@ -112,7 +116,7 @@ export const MermaidModal: FC<MermaidModalProps> = ({ code, svgContent, modalVie
                 onClick={onCopy}
                 title="Copy Source"
               >
-                <span className={`codicon codicon-${showCopy ? 'check' : 'copy'}`} />
+                <span className={cn('codicon', `codicon-${showCopy ? 'check' : 'copy'}`)} />
               </button>
               <button
                 className="w-7 h-7 flex items-center justify-center border-none text-[var(--vscode-editor-foreground)] bg-transparent hover:bg-[var(--vscode-toolbar-hoverBackground)] cursor-pointer rounded"
@@ -128,7 +132,7 @@ export const MermaidModal: FC<MermaidModalProps> = ({ code, svgContent, modalVie
               onClick={onCopy}
               title="Copy Source"
             >
-              <span className={`codicon codicon-${showCopy ? 'check' : 'copy'}`} />
+              <span className={cn('codicon', `codicon-${showCopy ? 'check' : 'copy'}`)} />
             </button>
           )}
         </div>

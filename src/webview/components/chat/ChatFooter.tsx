@@ -1,3 +1,4 @@
+import { cn } from 'cnfast';
 import { Check, ChevronDown } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -49,11 +50,12 @@ const ModelDropdownMenu: FC<ModelDropdownMenuProps> = ({ searchQuery, setSearchQ
               <button
                 key={m.id}
                 onClick={() => onSelectModel(m.id)}
-                className={`w-full text-left px-3 py-1.5 border-none cursor-pointer flex items-center justify-between text-xs transition-colors shrink-0 ${
+                className={cn(
+                  'w-full text-left px-3 py-1.5 border-none cursor-pointer flex items-center justify-between text-xs transition-colors shrink-0',
                   isSelected
                     ? 'bg-[var(--vscode-list-hoverBackground)] text-[var(--vscode-foreground)]'
-                    : 'bg-transparent text-[var(--vscode-descriptionForeground)] hover:bg-[var(--vscode-list-hoverBackground)]/50 hover:text-[var(--vscode-foreground)]'
-                }`}
+                    : 'bg-transparent text-[var(--vscode-descriptionForeground)] hover:bg-[var(--vscode-list-hoverBackground)]/50 hover:text-[var(--vscode-foreground)]',
+                )}
               >
                 <span className="truncate mr-2">{m.name}</span>
                 {isSelected && <Check size={10} className="text-[var(--vscode-focusBorder)] shrink-0" />}

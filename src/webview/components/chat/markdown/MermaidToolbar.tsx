@@ -1,3 +1,5 @@
+import { cn } from 'cnfast';
+
 import type { FC, MouseEvent } from 'react';
 
 interface MermaidToolbarProps {
@@ -29,7 +31,7 @@ export const MermaidToolbar: FC<MermaidToolbarProps> = ({ showCopy, onOpenZoom, 
       onClick={onCopy}
       title="Copy Source"
     >
-      <span className={`codicon codicon-${showCopy ? 'check' : 'copy'}`} />
+      <span className={cn('codicon', `codicon-${showCopy ? 'check' : 'copy'}`)} />
     </button>
     <button
       className="w-7 h-7 flex items-center justify-center border-none text-[var(--vscode-editor-foreground)] bg-transparent hover:bg-[var(--vscode-toolbar-hoverBackground)] cursor-pointer rounded"

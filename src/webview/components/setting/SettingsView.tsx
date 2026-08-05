@@ -1,3 +1,4 @@
+import { cn } from 'cnfast';
 import { ArrowLeft, Database, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 
@@ -81,11 +82,12 @@ export const SettingsView: FC<SettingsViewProps> = ({ onDone }) => {
             type="button"
             disabled={!isChangeDetected || isSaving}
             onClick={handleSave}
-            className={`h-7 px-3 text-xs font-semibold rounded cursor-pointer transition-colors duration-150 ${
+            className={cn(
+              'h-7 px-3 text-xs font-semibold rounded cursor-pointer transition-colors duration-150',
               isChangeDetected && !isSaving
                 ? 'bg-vscode-button-background text-vscode-button-foreground hover:bg-vscode-button-hoverBackground border-none'
-                : 'bg-vscode-button-secondaryBackground text-vscode-button-secondaryForeground hover:bg-vscode-button-secondaryHoverBackground border border-vscode-editorGroup-border opacity-50 cursor-not-allowed'
-            }`}
+                : 'bg-vscode-button-secondaryBackground text-vscode-button-secondaryForeground hover:bg-vscode-button-secondaryHoverBackground border border-vscode-editorGroup-border opacity-50 cursor-not-allowed',
+            )}
           >
             {isSaving ? 'Saving...' : 'Save'}
           </button>
@@ -96,7 +98,10 @@ export const SettingsView: FC<SettingsViewProps> = ({ onDone }) => {
       <div className="flex flex-1 overflow-hidden">
         {/* Left Tabs Navigation */}
         <div
-          className={`${isCollapsed ? 'w-12' : 'w-48'} border-r border-vscode-editorGroup-border/20 flex flex-col shrink-0 py-2 overflow-y-auto overflow-x-hidden bg-vscode-sideBar-background transition-all duration-150`}
+          className={cn(
+            isCollapsed ? 'w-12' : 'w-48',
+            'border-r border-vscode-editorGroup-border/20 flex flex-col shrink-0 py-2 overflow-y-auto overflow-x-hidden bg-vscode-sideBar-background transition-all duration-150',
+          )}
         >
           {SETTINGS_TABS.map((tab) => {
             const TabIcon = tab.icon;
@@ -107,15 +112,15 @@ export const SettingsView: FC<SettingsViewProps> = ({ onDone }) => {
                 type="button"
                 onClick={() => setActiveTabId(tab.id)}
                 title={isCollapsed ? tab.label : undefined}
-                className={`whitespace-nowrap overflow-hidden min-w-0 h-12 py-3 box-border flex items-center border-l-2 text-xs w-full border-y-0 border-r-0 transition-colors duration-150 ${
-                  isCollapsed ? 'justify-center px-0' : 'px-4 gap-2 text-left'
-                } ${
+                className={cn(
+                  'whitespace-nowrap overflow-hidden min-w-0 h-12 py-3 box-border flex items-center border-l-2 text-xs w-full border-y-0 border-r-0 transition-colors duration-150',
+                  isCollapsed ? 'justify-center px-0' : 'px-4 gap-2 text-left',
                   isActive
                     ? 'border-vscode-focusBorder bg-vscode-list-activeSelectionBackground text-vscode-foreground font-medium cursor-default'
-                    : 'border-transparent text-vscode-descriptionForeground hover:bg-vscode-list-hoverBackground hover:text-vscode-foreground cursor-pointer bg-transparent'
-                }`}
+                    : 'border-transparent text-vscode-descriptionForeground hover:bg-vscode-list-hoverBackground hover:text-vscode-foreground cursor-pointer bg-transparent',
+                )}
               >
-                <TabIcon className={`w-4 h-4 shrink-0 ${isActive ? 'text-vscode-foreground' : 'text-vscode-descriptionForeground'}`} />
+                <TabIcon className={cn('w-4 h-4 shrink-0', isActive ? 'text-vscode-foreground' : 'text-vscode-descriptionForeground')} />
                 {!isCollapsed && <span className="tab-label">{tab.label}</span>}
               </button>
             );

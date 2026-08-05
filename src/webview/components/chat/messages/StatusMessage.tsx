@@ -1,3 +1,4 @@
+import { cn } from 'cnfast';
 import { AlertTriangle, GitCommit, Info, RefreshCw, RotateCcw } from 'lucide-react';
 
 import { formatTime } from '@extension/webview/components/chat/messages/helpers/common';
@@ -33,9 +34,10 @@ export const ApiRequestMessage: FC<{ readonly message: ChatMessage }> = ({ messa
 
   return (
     <div
-      className={`flex items-center justify-between gap-2 text-xs select-none transition-opacity duration-200 ${
-        isRunning ? 'opacity-100' : 'opacity-40 hover:opacity-100'
-      }`}
+      className={cn(
+        'flex items-center justify-between gap-2 text-xs select-none transition-opacity duration-200',
+        isRunning ? 'opacity-100' : 'opacity-40 hover:opacity-100',
+      )}
     >
       <div className="flex items-center gap-2 text-vscode-foreground whitespace-nowrap">
         {isRunning ? (
@@ -45,7 +47,7 @@ export const ApiRequestMessage: FC<{ readonly message: ChatMessage }> = ({ messa
         ) : (
           <RefreshCw size={14} className="text-vscode-focusBorder shrink-0" />
         )}
-        <span className={`font-semibold ${isFailed ? 'text-[var(--vscode-editorError-foreground)]' : 'text-vscode-foreground'}`}>
+        <span className={cn('font-semibold', isFailed ? 'text-[var(--vscode-editorError-foreground)]' : 'text-vscode-foreground')}>
           {isRunning ? 'API Request...' : isFailed ? 'API Request Failed' : 'API Request'}
         </span>
       </div>

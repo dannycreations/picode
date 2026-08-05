@@ -1,3 +1,4 @@
+import { cn } from 'cnfast';
 import { memo, useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeKatex from 'rehype-katex';
@@ -128,7 +129,7 @@ export const Markdown = memo(({ markdown, partial }: MarkdownProps) => {
             onClick={(e) => copy(markdown, e)}
             title="Copy as markdown"
           >
-            <span className={`codicon codicon-${showCopy ? 'check' : 'copy'} text-xs`} />
+            <span className={cn('codicon', `codicon-${showCopy ? 'check' : 'copy'}`, 'text-xs')} />
           </button>
         </div>
       )}

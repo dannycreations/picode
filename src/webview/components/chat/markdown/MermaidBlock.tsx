@@ -1,3 +1,4 @@
+import { cn } from 'cnfast';
 import { useRef, useState } from 'react';
 
 import { svgToPng } from '@extension/webview/components/chat/markdown/helpers/mermaid';
@@ -53,9 +54,10 @@ export const MermaidBlock: FC<MermaidBlockProps> = ({ code: originalCode }) => {
       {error ? (
         <div className="mt-0 overflow-hidden mb-2 border border-[var(--vscode-editorGroup-border)] rounded">
           <div
-            className={`p-2 bg-[var(--vscode-editor-background)] flex items-center justify-between cursor-pointer ${
-              isErrorExpanded ? 'border-b border-[var(--vscode-editorGroup-border)]' : ''
-            }`}
+            className={cn(
+              'p-2 bg-[var(--vscode-editor-background)] flex items-center justify-between cursor-pointer',
+              isErrorExpanded ? 'border-b border-[var(--vscode-editorGroup-border)]' : '',
+            )}
             onClick={() => setIsErrorExpanded(!isErrorExpanded)}
           >
             <div className="flex items-center gap-2 flex-grow">
@@ -69,16 +71,16 @@ export const MermaidBlock: FC<MermaidBlockProps> = ({ code: originalCode }) => {
                 disabled={isFixing}
                 title="Auto-fix common syntax issues"
               >
-                <span className={`codicon codicon-${isFixing ? 'loading animate-spin' : 'wand'}`} />
+                <span className={cn('codicon', `codicon-${isFixing ? 'loading animate-spin' : 'wand'}`)} />
               </button>
               <button
                 className="p-1 h-6 w-6 flex items-center justify-center bg-transparent border-none text-[var(--vscode-editor-foreground)] cursor-pointer hover:bg-[var(--vscode-toolbar-hoverBackground)] rounded"
                 onClick={handleCopy}
                 title="Copy diagram code"
               >
-                <span className={`codicon codicon-${showCopy ? 'check' : 'copy'}`} />
+                <span className={cn('codicon', `codicon-${showCopy ? 'check' : 'copy'}`)} />
               </button>
-              <span className={`codicon codicon-chevron-${isErrorExpanded ? 'up' : 'down'} text-xs`} />
+              <span className={cn('codicon', `codicon-chevron-${isErrorExpanded ? 'up' : 'down'}`, 'text-xs')} />
             </div>
           </div>
           {isErrorExpanded && (
@@ -98,9 +100,10 @@ export const MermaidBlock: FC<MermaidBlockProps> = ({ code: originalCode }) => {
         >
           <div
             ref={containerRef}
-            className={`min-h-[20px] transition-opacity duration-200 cursor-pointer flex justify-center max-h-[300px] p-4 ${
-              isLoading ? 'opacity-30' : 'opacity-100'
-            }`}
+            className={cn(
+              'min-h-[20px] transition-opacity duration-200 cursor-pointer flex justify-center max-h-[300px] p-4',
+              isLoading ? 'opacity-30' : 'opacity-100',
+            )}
             onClick={() => setShowModal(true)}
             dangerouslySetInnerHTML={{ __html: svgContent }}
             style={{ width: '100%' }}

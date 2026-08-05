@@ -1,8 +1,8 @@
+import { cn } from 'cnfast';
 import { ArrowRight, Check, ListChecks, SquareDashed } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { getMostImportantTodo, getScrollIndex } from '@extension/webview/components/chat/helpers/todo';
-import { cn } from '@extension/webview/utilities/style';
 
 import type { FC } from 'react';
 import type { TodoItem, TodoStatus } from '@extension/webview/components/chat/helpers/todo';

@@ -1,3 +1,5 @@
+import { cn } from 'cnfast';
+
 import type { ComponentType, FC, MouseEvent } from 'react';
 
 interface HistoryButtonProps {
@@ -11,11 +13,12 @@ export const HistoryButton: FC<HistoryButtonProps> = ({ icon: Icon, title, onCli
   <button
     onClick={onClick}
     title={title}
-    className={`p-1 rounded bg-transparent border-none cursor-pointer flex items-center transition-colors hover:bg-[var(--vscode-list-hoverBackground)] ${
+    className={cn(
+      'p-1 rounded bg-transparent border-none cursor-pointer flex items-center transition-colors hover:bg-[var(--vscode-list-hoverBackground)]',
       danger
         ? 'text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-errorForeground)]'
-        : 'text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)]'
-    }`}
+        : 'text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)]',
+    )}
   >
     <Icon size={12} />
   </button>

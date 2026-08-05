@@ -8,4 +8,12 @@ allowBuilds:
 
 minimumReleaseAgeExclude:
   - npm-check-updates@23.0.1
-  - tsx@4.23.5
+  - tsx@4.23.5 || 4.23.7
+  - '@shikijs/core@4.4.2'
+  - '@shikijs/engine-javascript@4.4.2'
+  - '@shikijs/engine-oniguruma@4.4.2'
+  - '@shikijs/langs@4.4.2'
+  - '@shikijs/primitive@4.4.2'
+  - '@shikijs/themes@4.4.2'
+  - '@shikijs/types@4.4.2'
+  - shiki@4.4.2

@@ -1,3 +1,4 @@
+import { cn } from 'cnfast';
 import { Image as ImageIcon, Send } from 'lucide-react';
 import { useRef, useState } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
@@ -102,15 +103,18 @@ export const ChatInput: FC<ChatInputProps> = ({
   const isSendButtonActive = (inputValue.trim().length > 0 || selectedImages.length > 0) && !sendingDisabled;
 
   return (
-    <div className={`relative flex flex-col px-3.5 pb-1 outline-none w-full box-border bg-[var(--vscode-sideBar-background)] shrink-0 ${className}`}>
+    <div
+      className={cn('relative flex flex-col px-3.5 pb-1 outline-none w-full box-border bg-[var(--vscode-sideBar-background)] shrink-0', className)}
+    >
       <AttachedImagesPreview images={selectedImages} onRemove={(idx) => setSelectedImages((prev) => prev.filter((_, i) => i !== idx))} />
 
       <div
-        className={`relative flex flex-col rounded border transition-all duration-150 ${
+        className={cn(
+          'relative flex flex-col rounded border transition-all duration-150',
           isFocused
             ? 'border-[var(--vscode-focusBorder)] ring-1 ring-[var(--vscode-focusBorder)]'
-            : 'border-[var(--vscode-input-border,transparent)] bg-[var(--vscode-input-background)]'
-        }`}
+            : 'border-[var(--vscode-input-border,transparent)] bg-[var(--vscode-input-background)]',
+        )}
       >
         <TextareaAutosize
           ref={textareaRef}
@@ -142,11 +146,12 @@ export const ChatInput: FC<ChatInputProps> = ({
             <button
               onClick={handleSend}
               disabled={!isSendButtonActive}
-              className={`p-1.5 rounded border-none cursor-pointer transition-colors ${
+              className={cn(
+                'p-1.5 rounded border-none cursor-pointer transition-colors',
                 isSendButtonActive
                   ? 'bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] hover:bg-[var(--vscode-button-hoverBackground)]'
-                  : 'bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] opacity-40 cursor-not-allowed'
-              }`}
+                  : 'bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] opacity-40 cursor-not-allowed',
+              )}
             >
               <Send size={13} fill="currentColor" />
             </button>
