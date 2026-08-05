@@ -170,7 +170,7 @@ export const ConfirmDialog: FC<ConfirmDialogProps> = ({
         {children}
 
         {warningText && (
-          <div className="text-[var(--vscode-errorForeground)] bg-[var(--vscode-input-background)] p-3 rounded border border-[var(--vscode-panel-border)]/50 text-[11px]">
+          <div className="text-[var(--vscode-errorForeground)] bg-[var(--vscode-input-background)] p-3 rounded border border-[var(--vscode-panel-border)]/50 text-xs">
             {warningText}
           </div>
         )}

@@ -54,7 +54,7 @@ export const HistoryFilter: FC<HistoryFilterProps> = ({
             key={s}
             onClick={() => onScopeChange(s)}
             className={cn(
-              'px-2 py-1 text-[10px] font-medium rounded transition-colors cursor-pointer border border-[var(--vscode-panel-border)]/40',
+              'px-2 py-1 text-xs font-medium rounded transition-colors cursor-pointer border border-[var(--vscode-panel-border)]/40',
               scope === s
                 ? 'bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)]'
                 : 'bg-transparent text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)]',
@@ -69,7 +69,7 @@ export const HistoryFilter: FC<HistoryFilterProps> = ({
         <select
           value={sortBy}
           onChange={(e) => onSortChange(e.target.value as SortOption)}
-          className="px-1.5 py-0.5 text-[10px] bg-[var(--vscode-dropdown-background)] text-[var(--vscode-dropdown-foreground)] border border-[var(--vscode-dropdown-border)] rounded outline-none cursor-pointer"
+          className="px-1.5 py-0.5 text-xs bg-[var(--vscode-dropdown-background)] text-[var(--vscode-dropdown-foreground)] border border-[var(--vscode-dropdown-border)] rounded outline-none cursor-pointer"
         >
           <option value="newest">Sort: Newest</option>
           <option value="oldest">Sort: Oldest</option>

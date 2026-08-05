@@ -39,7 +39,7 @@ export const SettingList: FC<SettingListProps> = ({ label, description, placehol
     <div className="flex flex-col gap-2 mt-2.5 ml-6 pl-3 border-l-2 border-vscode-button-background/60">
       <div className="flex flex-col gap-0.5">
         <span className="text-xs font-semibold text-vscode-foreground">{label}</span>
-        <span className="text-[10px] text-vscode-descriptionForeground leading-normal">{description}</span>
+        <span className="text-xs text-vscode-descriptionForeground leading-normal">{description}</span>
       </div>
       <div className="flex gap-2">
         <input
@@ -69,7 +69,7 @@ export const SettingList: FC<SettingListProps> = ({ label, description, placehol
           {inputs.map((input, idx) => (
             <div
               key={`${input}-${idx}`}
-              className="flex items-center gap-1.5 pl-2 pr-1.5 py-0.5 text-[11px] rounded bg-vscode-badge-background text-vscode-badge-foreground border border-vscode-editorGroup-border/30"
+              className="flex items-center gap-1.5 pl-2 pr-1.5 py-0.5 text-xs rounded bg-vscode-badge-background text-vscode-badge-foreground border border-vscode-editorGroup-border/30"
             >
               <span
                 role="button"

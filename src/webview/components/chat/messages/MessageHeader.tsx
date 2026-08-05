@@ -24,6 +24,6 @@ export const MessageHeader: FC<MessageHeaderProps> = ({ icon, title, timestamp, 
     {icon}
     <span className={cn('font-bold', titleClassName)}>{title}</span>
     {children}
-    <span className="text-[10px] text-vscode-descriptionForeground font-normal ml-auto">{formatTime(timestamp)}</span>
+    <span className="text-xs text-vscode-descriptionForeground font-normal ml-auto">{formatTime(timestamp)}</span>
   </div>
 );

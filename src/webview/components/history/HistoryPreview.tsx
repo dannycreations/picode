@@ -28,7 +28,7 @@ export const HistoryPreview: FC<HistoryPreviewProps> = ({ history, onSelectTask,
   return (
     <div className="flex flex-col gap-1 mt-4">
       <div className="flex flex-wrap items-center justify-between mt-2 mb-2">
-        <h2 className="font-semibold text-[calc(var(--vscode-font-size)*1.1)] grow m-0 text-[var(--vscode-foreground)]">Recent Tasks</h2>
+        <h2 className="font-semibold text-lg grow m-0 text-[var(--vscode-foreground)]">Recent Tasks</h2>
         <button
           onClick={onViewAllHistory}
           className="text-xs text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-textLink-foreground)] transition-colors cursor-pointer bg-transparent border-none"

@@ -118,7 +118,7 @@ export const ChatView: FC = () => {
             className="flex items-center cursor-pointer bg-transparent border-none text-xs font-semibold text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)]"
           >
             <span className={cn('codicon', historyExpanded ? 'codicon-eye' : 'codicon-eye-closed', 'scale-90 mr-1.5')} />
-            <span className="text-[10px]">Recent Tasks</span>
+            <span className="text-xs">Recent Tasks</span>
           </button>
         </div>
       )}

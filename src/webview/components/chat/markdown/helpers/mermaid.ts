@@ -30,7 +30,7 @@ export function initializeMermaid(): void {
     suppressErrorRendering: true,
     themeVariables: {
       ...MERMAID_THEME,
-      fontSize: '16px',
+      fontSize: 'var(--vscode-font-size, 13px)',
       fontFamily: "var(--vscode-font-family, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif)",
       noteTextColor: '#ffffff',
       noteBkgColor: '#454545',

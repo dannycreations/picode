@@ -16,11 +16,11 @@ export const CheckpointMessage: FC<{
       <div className="flex items-center gap-2 text-vscode-foreground whitespace-nowrap">
         <GitCommit size={14} className="text-vscode-focusBorder shrink-0" />
         <span className="font-bold text-vscode-foreground">Checkpoint saved</span>
-        <span className="font-mono bg-vscode-badge-background text-vscode-badge-foreground px-1 py-0.5 rounded text-[10px]">{hash}</span>
+        <span className="font-mono bg-vscode-badge-background text-vscode-badge-foreground px-1 py-0.5 rounded text-xs">{hash}</span>
       </div>
       <button
         onClick={() => onRestoreCheckpoint(hash)}
-        className="ml-auto text-[10px] text-vscode-textLink-foreground hover:text-vscode-textLink-activeForeground bg-transparent border-none cursor-pointer flex items-center gap-1 font-semibold"
+        className="ml-auto text-xs text-vscode-textLink-foreground hover:text-vscode-textLink-activeForeground bg-transparent border-none cursor-pointer flex items-center gap-1 font-semibold"
       >
         <RotateCcw size={10} /> Restore
       </button>
@@ -53,11 +53,11 @@ export const ApiRequestMessage: FC<{ readonly message: ChatMessage }> = ({ messa
       </div>
       <div className="flex items-center gap-2 ml-auto">
         {message.cost !== undefined && message.cost > 0 && (
-          <span className="text-[10px] text-vscode-dropdown-foreground border border-vscode-dropdown-border/50 px-1.5 py-0.5 rounded bg-vscode-dropdown-background font-mono">
+          <span className="text-xs text-vscode-dropdown-foreground border border-vscode-dropdown-border/50 px-1.5 py-0.5 rounded bg-vscode-dropdown-background font-mono">
             ${message.cost.toFixed(4)}
           </span>
         )}
-        <span className="text-[10px] text-vscode-descriptionForeground font-normal">{formatTime(message.ts)}</span>
+        <span className="text-xs text-vscode-descriptionForeground font-normal">{formatTime(message.ts)}</span>
       </div>
     </div>
   );
@@ -81,6 +81,6 @@ export const InfoMessage: FC<{ readonly message: ChatMessage }> = ({ message }) 
       <Info size={14} className="text-vscode-focusBorder shrink-0" />
       <span className="font-semibold text-vscode-foreground">{message.text}</span>
     </div>
-    <span className="text-[10px] text-vscode-descriptionForeground font-normal ml-auto">{formatTime(message.ts)}</span>
+    <span className="text-xs text-vscode-descriptionForeground font-normal ml-auto">{formatTime(message.ts)}</span>
   </div>
 );

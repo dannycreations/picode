@@ -130,7 +130,7 @@ export const SettingsView: FC<SettingsViewProps> = ({ onDone }) => {
         {/* Right Settings Content */}
         <div className="flex-1 overflow-y-auto pb-6 flex flex-col min-w-0 bg-vscode-sideBar-background">
           <div className="sticky top-0 z-10 bg-vscode-sideBar-background text-vscode-sideBar-foreground px-5 pt-6 pb-4">
-            <h3 className="text-[1.25em] font-semibold text-vscode-foreground m-0">{activeTab.title}</h3>
+            <h3 className="text-xl font-semibold text-vscode-foreground m-0">{activeTab.title}</h3>
             <p className="text-vscode-descriptionForeground text-xs mt-2 mb-0">{activeTab.description}</p>
           </div>
 

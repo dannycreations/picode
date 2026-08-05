@@ -65,7 +65,7 @@ export const TodoView: FC<TodoViewProps> = ({ todos }) => {
             : `${completedCount} of ${totalCount} to-dos done`}
         </span>
         {isCollapsed && completedCount < totalCount && (
-          <div className="shrink-0 text-vscode-descriptionForeground text-[10px] font-mono">
+          <div className="shrink-0 text-vscode-descriptionForeground text-xs font-mono">
             {completedCount}/{totalCount}
           </div>
         )}

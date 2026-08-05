@@ -21,7 +21,7 @@ export const HistoryPagination: FC<HistoryPaginationProps> = ({ currentPage, tot
         <ChevronLeft size={16} />
       </button>
 
-      <span className="text-[10px] font-medium text-[var(--vscode-descriptionForeground)]">
+      <span className="text-xs text-[var(--vscode-descriptionForeground)]">
         Page {currentPage} of {totalPages}
       </span>
 

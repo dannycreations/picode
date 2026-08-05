@@ -30,7 +30,7 @@ const AttachedImagesPreview: FC<{
           <img src={img} alt="attachment" className="w-full h-full object-cover" />
           <button
             onClick={() => onRemove(idx)}
-            className="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-black/70 hover:bg-black text-white text-[9px] rounded-full flex items-center justify-center border-none cursor-pointer"
+            className="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-black/70 hover:bg-black text-white text-xs rounded-full flex items-center justify-center border-none cursor-pointer"
           >
             ×
           </button>

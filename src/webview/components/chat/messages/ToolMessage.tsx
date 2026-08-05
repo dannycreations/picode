@@ -76,7 +76,7 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
             <div className="flex-1 min-w-0">
               <div className="font-mono text-xs text-vscode-foreground truncate select-text">{message.text}</div>
               {message.toolArgs && (
-                <div className="mt-1 font-mono text-[10px] text-vscode-descriptionForeground truncate select-text">Arguments: {message.toolArgs}</div>
+                <div className="mt-1 font-mono text-xs text-vscode-descriptionForeground truncate select-text">Arguments: {message.toolArgs}</div>
               )}
             </div>
           </div>
@@ -86,7 +86,7 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
             <div className={hasBottomBlock ? 'border-b border-vscode-editorGroup-border/45' : ''}>
               <button
                 onClick={() => setIsDiffExpanded(!isDiffExpanded)}
-                className="w-full flex items-center justify-between px-3 py-1.5 bg-vscode-input-background text-[10px] text-vscode-descriptionForeground border-none cursor-pointer text-left hover:bg-vscode-list-hoverBackground select-none"
+                className="w-full flex items-center justify-between px-3 py-1.5 bg-vscode-input-background text-xs text-vscode-descriptionForeground border-none cursor-pointer text-left hover:bg-vscode-list-hoverBackground select-none"
               >
                 <span className="font-semibold flex items-center gap-1.5">
                   <span className={cn('codicon', `codicon-${diffIcon}`, 'pr-0.5')} />

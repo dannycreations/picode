@@ -115,7 +115,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
         {!isExpanded && (
           <div className="w-full flex items-center justify-between gap-3" onClick={(e) => e.stopPropagation()}>
             <div className="flex-1 flex items-center gap-2">
-              <span className="text-[10px] text-vscode-descriptionForeground whitespace-nowrap">Context: {contextPercentage}%</span>
+              <span className="text-xs text-vscode-descriptionForeground whitespace-nowrap">Context: {contextPercentage}%</span>
               <ContextProgressBar percentage={contextPercentage} />
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -141,7 +141,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
                   <th className="font-semibold text-left align-middle w-1 whitespace-nowrap pr-3 pb-2.5">Context</th>
                   <td className="align-middle pb-2.5">
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono text-vscode-foreground whitespace-nowrap">
+                      <span className="text-xs font-mono text-vscode-foreground whitespace-nowrap">
                         {contextTokens.toLocaleString()} / {contextLimit.toLocaleString()} ({contextPercentage}%)
                       </span>
                       <ContextProgressBar percentage={contextPercentage} />
@@ -204,7 +204,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
                       <div className="flex items-center gap-1.5">
                         <Coins size={12} className="text-vscode-descriptionForeground" />
                         <span className="text-vscode-editorWarning-foreground font-bold">${(totalCost || 0).toFixed(4)}</span>
-                        <span className="text-[10px] text-vscode-descriptionForeground/60 font-normal">USD</span>
+                        <span className="text-xs text-vscode-descriptionForeground/60 font-normal">USD</span>
                       </div>
                       <div className="flex flex-row items-center gap-1 select-none -my-1">
                         {onExport && (

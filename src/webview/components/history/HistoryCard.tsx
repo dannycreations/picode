@@ -62,7 +62,7 @@ export const HistoryCard: FC<HistoryCardProps> = ({
           {item.task}
         </div>
 
-        <div className="flex items-center justify-between text-[10px] text-[var(--vscode-descriptionForeground)] font-medium mt-1">
+        <div className="flex items-center justify-between text-xs text-[var(--vscode-descriptionForeground)] mt-1">
           <div className="flex items-center gap-1.5 opacity-80">
             <Calendar size={10} className="opacity-80" />
             <span>{formatTimeAgo(item.ts)}</span>
