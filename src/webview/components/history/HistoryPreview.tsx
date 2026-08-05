@@ -1,7 +1,6 @@
 import { useCallback, useState } from 'react';
 
 import { HistoryCard } from '@extension/webview/components/history/HistoryCard';
-import { useCopyPrompt } from '@extension/webview/components/history/hooks/useCopyPrompt';
 import { ConfirmDialog } from '@extension/webview/components/shared/ConfirmDialog';
 
 import type { FC, MouseEvent } from 'react';
@@ -16,7 +15,6 @@ interface HistoryPreviewProps {
 
 export const HistoryPreview: FC<HistoryPreviewProps> = ({ history, onSelectTask, onViewAllHistory, onDeleteTask }) => {
   const [deleteConfirmPath, setDeleteConfirmPath] = useState<string | null>(null);
-  const { copiedPath, copyToClipboard } = useCopyPrompt();
 
   const handleDeleteSingle = useCallback((e: MouseEvent, path: string) => {
     e.stopPropagation();
@@ -44,11 +42,9 @@ export const HistoryPreview: FC<HistoryPreviewProps> = ({ history, onSelectTask,
           <HistoryCard
             key={item.id}
             item={item}
-            copiedPath={copiedPath}
             lineClamp={2}
             testId={`task-item-${item.id}`}
             onClick={() => onSelectTask(item)}
-            onCopy={copyToClipboard}
             onDelete={handleDeleteSingle}
           />
         ))}

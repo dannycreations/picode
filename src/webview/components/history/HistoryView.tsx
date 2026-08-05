@@ -5,7 +5,6 @@ import { HistoryCard } from '@extension/webview/components/history/HistoryCard';
 import { HistoryFilter } from '@extension/webview/components/history/HistoryFilter';
 import { HistoryPagination } from '@extension/webview/components/history/HistoryPagination';
 import { HistorySelection } from '@extension/webview/components/history/HistorySelection';
-import { useCopyPrompt } from '@extension/webview/components/history/hooks/useCopyPrompt';
 import { useHistoryFilter } from '@extension/webview/components/history/hooks/useHistoryFilter';
 import { ConfirmDialog } from '@extension/webview/components/shared/ConfirmDialog';
 
@@ -31,7 +30,6 @@ export const HistoryView: FC<HistoryViewProps> = ({ history, onSelectTask, onDon
   const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
   const [deleteConfirmPaths, setDeleteConfirmPaths] = useState<string[] | null>(null);
 
-  const { copiedPath, copyToClipboard } = useCopyPrompt();
   const { searchQuery, setSearchQuery, sortBy, setSortBy, currentPage, setCurrentPage, totalPages, filteredHistory, paginatedItems } =
     useHistoryFilter(history, ITEMS_PER_PAGE, scope);
 
@@ -121,10 +119,8 @@ export const HistoryView: FC<HistoryViewProps> = ({ history, onSelectTask, onDon
               item={item}
               isSelected={selectedPaths.includes(item.path)}
               isSelectionMode={isSelectionMode}
-              copiedPath={copiedPath}
               onClick={() => (isSelectionMode ? handleToggleSelection(item.path) : onSelectTask(item))}
               onToggleSelect={handleToggleSelection}
-              onCopy={copyToClipboard}
               onDelete={handleDeleteSingle}
               onViewRaw={onViewRaw}
               onExport={onExport}

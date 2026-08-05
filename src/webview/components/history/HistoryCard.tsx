@@ -2,6 +2,7 @@ import { cn } from 'cnfast';
 import { Calendar, Check, Copy, Download, FileJson, Trash2 } from 'lucide-react';
 
 import { HistoryButton } from '@extension/webview/components/history/HistoryButton';
+import { useCopyToClipboard } from '@extension/webview/hooks/useCopyToClipboard';
 import { formatTimeAgo } from '@extension/webview/utilities/common';
 
 import type { FC, MouseEvent } from 'react';
@@ -11,10 +12,8 @@ interface HistoryCardProps {
   readonly item: HistoryItem;
   readonly isSelected?: boolean;
   readonly isSelectionMode?: boolean;
-  readonly copiedPath?: string | null;
   readonly onClick: () => void;
   readonly onToggleSelect?: (path: string) => void;
-  readonly onCopy: (e: MouseEvent, text: string, path: string) => void;
   readonly onDelete: (e: MouseEvent, path: string) => void;
   readonly onViewRaw?: (path: string) => void;
   readonly onExport?: (item: HistoryItem) => void;
@@ -26,17 +25,15 @@ export const HistoryCard: FC<HistoryCardProps> = ({
   item,
   isSelected = false,
   isSelectionMode = false,
-  copiedPath,
   onClick,
   onToggleSelect,
-  onCopy,
   onDelete,
   onViewRaw,
   onExport,
   testId,
   lineClamp = 3,
 }) => {
-  const isCopied = copiedPath === item.path;
+  const { showCopy, copy } = useCopyToClipboard();
 
   return (
     <div
@@ -84,9 +81,12 @@ export const HistoryCard: FC<HistoryCardProps> = ({
                 />
               )}
               <HistoryButton
-                icon={isCopied ? Check : Copy}
-                title={isCopied ? 'Copied prompt!' : 'Copy prompt'}
-                onClick={(e) => onCopy(e, item.task, item.path)}
+                icon={showCopy ? Check : Copy}
+                title={showCopy ? 'Copied prompt!' : 'Copy prompt'}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void copy(item.task);
+                }}
               />
               <HistoryButton icon={Trash2} title="Delete task" danger onClick={(e) => onDelete(e, item.path)} />
               {onViewRaw && (
