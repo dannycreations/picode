@@ -82,7 +82,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
   const todos = extractTodos(messages);
 
   return (
-    <div className="py-2 px-3 border-b border-vscode-editorGroup-border/30 bg-vscode-sideBar-background shrink-0 select-none">
+    <div className="py-2 px-3.5 border-b border-vscode-editorGroup-border/30 bg-vscode-sideBar-background shrink-0 select-none">
       <div
         onClick={handleContainerClick}
         className="px-3 pt-2.5 pb-2 flex flex-col gap-1.5 relative z-1 cursor-pointer bg-vscode-input-background hover:bg-vscode-input-background/90 text-vscode-foreground/80 hover:text-vscode-foreground shadow-lg shadow-vscode-sideBar-background/50 rounded-xl border border-vscode-editorGroup-border/40 transition-all duration-200"

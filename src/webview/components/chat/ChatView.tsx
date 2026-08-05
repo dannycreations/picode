@@ -112,7 +112,7 @@ export const ChatView: FC = () => {
           onViewRaw={() => vscode?.postMessage({ type: 'view_raw_task', path: activeTask.path })}
         />
       ) : (
-        <div className="flex items-center justify-between w-full mx-auto px-5 pt-3 shrink-0 select-none">
+        <div className="flex items-center justify-between w-full mx-auto px-3.5 pt-3 shrink-0 select-none">
           <button
             onClick={() => setHistoryExpanded(!historyExpanded)}
             className="flex items-center cursor-pointer bg-transparent border-none text-xs font-semibold text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)]"

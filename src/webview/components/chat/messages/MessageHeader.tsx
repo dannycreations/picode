@@ -16,7 +16,7 @@ interface MessageHeaderProps {
 export const MessageHeader: FC<MessageHeaderProps> = ({ icon, title, timestamp, titleClassName = '', onClick, children }) => (
   <div
     className={cn(
-      'flex items-center gap-2.5 mb-1.5 break-words font-semibold text-vscode-foreground opacity-85 select-none',
+      'flex items-center gap-2 mb-1.5 break-words font-semibold text-vscode-foreground opacity-85 select-none',
       onClick ? 'cursor-pointer' : '',
     )}
     onClick={onClick}

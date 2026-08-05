@@ -64,7 +64,7 @@ export const ApiRequestMessage: FC<{ readonly message: ChatMessage }> = ({ messa
 };
 
 export const ErrorMessage: FC<{ readonly message: ChatMessage }> = ({ message }) => (
-  <div className="p-3 rounded-md bg-[var(--vscode-editorError-background)]/10 border border-[var(--vscode-editorError-foreground)]/30 flex gap-2.5 text-xs text-[var(--vscode-editorError-foreground)]">
+  <div className="p-3 rounded-md bg-[var(--vscode-editorError-background)]/10 border border-[var(--vscode-editorError-foreground)]/30 flex gap-2 text-xs text-[var(--vscode-editorError-foreground)]">
     <AlertTriangle size={16} className="shrink-0 mt-0.5" />
     <div className="flex-1 min-w-0">
       <div className="font-semibold text-sm mb-1 select-none">Execution Error</div>

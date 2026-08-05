@@ -10,8 +10,8 @@ interface SettingCheckboxProps {
 }
 
 export const SettingCheckbox: FC<SettingCheckboxProps> = ({ label, checked, onChange, description, icon, children }) => (
-  <div className="flex flex-col gap-2.5 pt-4 border-t border-vscode-editorGroup-border/10">
-    <label className="flex items-start gap-2.5 cursor-pointer select-none">
+  <div className="flex flex-col gap-2 pt-4 border-t border-vscode-editorGroup-border/10">
+    <label className="flex items-start gap-2 cursor-pointer select-none">
       <input
         type="checkbox"
         checked={checked}

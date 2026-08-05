@@ -104,7 +104,7 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
 
           {/* Approval Controls */}
           {message.toolStatus === 'approval' && (
-            <div className="p-3 bg-vscode-editorWarning-background/10 flex flex-col gap-2.5">
+            <div className="p-3 bg-vscode-editorWarning-background/10 flex flex-col gap-2">
               <div className="text-xs font-semibold text-vscode-foreground flex items-center gap-1.5 select-none">
                 <span className="codicon codicon-question text-vscode-editorWarning-foreground" />
                 Tool request waiting for approval

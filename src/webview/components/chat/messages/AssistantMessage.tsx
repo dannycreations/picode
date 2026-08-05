@@ -8,13 +8,14 @@ import { MessageHeader } from '@extension/webview/components/chat/messages/Messa
 import type { FC } from 'react';
 import type { ChatMessage } from '@extension/types/webview';
 
-export const AssistantMessage: FC<{ readonly message: ChatMessage }> = ({ message }) => {
+interface AssistantMessageProps {
+  readonly message: ChatMessage;
+  readonly hasReasoning: boolean;
+  readonly hasText: boolean;
+}
+
+export const AssistantMessage: FC<AssistantMessageProps> = ({ message, hasReasoning, hasText }) => {
   const [isReasoningExpanded, setIsReasoningExpanded] = useState(false);
-
-  const hasReasoning = !!message.reasoning && message.reasoning.trim() !== '';
-  const hasText = !!message.text && message.text.trim() !== '';
-
-  if (!hasReasoning && !hasText) return null;
 
   return (
     <div className="group flex flex-col gap-1.5">

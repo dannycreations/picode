@@ -19,8 +19,14 @@ export const ChatBody: FC<ChatBodyProps> = ({ message, onApproveTool, onDenyTool
     switch (message.sender) {
       case 'user':
         return <UserMessage message={message} />;
-      case 'assistant':
-        return <AssistantMessage message={message} />;
+      case 'assistant': {
+        const hasReasoning = !!message.reasoning && message.reasoning.trim() !== '';
+        const hasText = !!message.text && message.text.trim() !== '';
+
+        if (!hasReasoning && !hasText) return null;
+
+        return <AssistantMessage message={message} hasReasoning={hasReasoning} hasText={hasText} />;
+      }
       case 'tool':
         return <ToolMessage message={message} onApproveTool={onApproveTool} onDenyTool={onDenyTool} />;
       case 'checkpoint':
@@ -39,5 +45,5 @@ export const ChatBody: FC<ChatBodyProps> = ({ message, onApproveTool, onDenyTool
   const content = renderMessageContent();
   if (!content) return null;
 
-  return <div className="px-[15px] py-[10px] pr-[6px] relative border-b border-vscode-editorGroup-border/30">{content}</div>;
+  return <div className="px-3.5 py-2.5 relative border-b border-vscode-editorGroup-border/30">{content}</div>;
 };
