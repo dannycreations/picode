@@ -5,15 +5,25 @@ import { vscode } from '@webview/utilities/vscode';
 import type { AppSettings } from '@extension/core/settings';
 import type { SettingsData } from '@extension/types/webview';
 
-export const areSettingsValuesEqual = (a: unknown, b: unknown): boolean => {
+export function areSettingsValuesEqual(a: unknown, b: unknown): boolean {
   if (Array.isArray(a) && Array.isArray(b)) {
     if (a.length !== b.length) return false;
     return a.every((val, index) => val === b[index]);
   }
   return a === b;
-};
+}
 
-export const useSetting = () => {
+export interface UseSettingReturn {
+  readonly draftSettings: AppSettings | null;
+  readonly originalSettings: AppSettings | null;
+  readonly isSaving: boolean;
+  readonly isChangeDetected: boolean;
+  readonly handleFieldChange: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void;
+  readonly handleSave: () => void;
+  readonly resetDraft: () => void;
+}
+
+export const useSetting = (): UseSettingReturn => {
   const [originalSettings, setOriginalSettings] = useState<AppSettings | null>(null);
   const [draftSettings, setDraftSettings] = useState<AppSettings | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -55,12 +65,12 @@ export const useSetting = () => {
     return keys.some((key) => !areSettingsValuesEqual(draftSettings[key], originalSettings[key]));
   })();
 
-  const handleFieldChange = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
+  const handleFieldChange = <K extends keyof AppSettings>(key: K, value: AppSettings[K]): void => {
     if (!draftSettings) return;
     setDraftSettings({ ...draftSettings, [key]: value });
   };
 
-  const handleSave = () => {
+  const handleSave = (): void => {
     if (!draftSettings || !originalSettings || isSaving) return;
 
     const updates: SettingsData[] = [];
@@ -78,7 +88,7 @@ export const useSetting = () => {
     vscode?.postMessage({ type: 'update_setting', key: updates[0].key, value: updates[0].value });
   };
 
-  const resetDraft = () => {
+  const resetDraft = (): void => {
     setDraftSettings(originalSettings);
   };
 

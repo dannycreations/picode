@@ -100,7 +100,7 @@ export interface CodeBlockProps {
   readonly onLanguageChange?: (language: string) => void;
 }
 
-export function useShikiHighlighter(source: string, language: string): ReactNode {
+export const useShikiHighlighter = (source: string, language: string): ReactNode => {
   const [highlightedCode, setHighlightedCode] = useState<ReactNode>(null);
 
   useEffect(() => {
@@ -166,7 +166,7 @@ export function useShikiHighlighter(source: string, language: string): ReactNode
   }, [source, language]);
 
   return highlightedCode;
-}
+};
 
 export const CodeBlock = memo(
   ({

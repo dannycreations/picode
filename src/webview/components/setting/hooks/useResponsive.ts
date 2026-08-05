@@ -1,6 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 
-export const useResponsive = (threshold = 600, active = true) => {
+import type { RefObject } from 'react';
+
+export interface UseResponsiveReturn {
+  readonly containerRef: RefObject<HTMLDivElement | null>;
+  readonly isCollapsed: boolean;
+}
+
+export const useResponsive = (threshold = 600, active = true): UseResponsiveReturn => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
 

@@ -136,10 +136,10 @@ class ShikiHighlighterManager {
 
 const shikiManager = new ShikiHighlighterManager();
 
-export const isLanguageLoaded = (language: string): boolean => {
+export function isLanguageLoaded(language: string): boolean {
   return shikiManager.isLoaded(language);
-};
+}
 
-export const getHighlighter = async (language?: string): Promise<Highlighter> => {
+export async function getHighlighter(language?: string): Promise<Highlighter> {
   return shikiManager.getHighlighter(language);
-};
+}

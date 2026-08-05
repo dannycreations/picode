@@ -2,9 +2,31 @@ import { useEffect, useRef, useState } from 'react';
 
 import { vscode } from '@webview/utilities/vscode';
 
+import type { Dispatch, RefObject, SetStateAction } from 'react';
 import type { ActiveTaskState, ChatMessage, ExtensionToWebviewMessage, HistoryItem } from '@extension/types/webview';
 
-export function useChatSession() {
+export interface UseChatSessionReturn {
+  readonly activeTask: ActiveTaskState | null;
+  readonly models: { id: string; name: string }[];
+  readonly selectedModel: string;
+  readonly setSelectedModel: Dispatch<SetStateAction<string>>;
+  readonly pastTasks: HistoryItem[];
+  readonly setPastTasks: Dispatch<SetStateAction<HistoryItem[]>>;
+  readonly isAgentRunning: boolean;
+  readonly inputValue: string;
+  readonly setInputValue: Dispatch<SetStateAction<string>>;
+  readonly view: 'chat' | 'history' | 'settings';
+  readonly setView: Dispatch<SetStateAction<'chat' | 'history' | 'settings'>>;
+  readonly scope: 'current' | 'all';
+  readonly setScope: Dispatch<SetStateAction<'current' | 'all'>>;
+  readonly textareaRef: RefObject<HTMLTextAreaElement | null>;
+  readonly handleSendPrompt: (text: string, images: string[]) => void;
+  readonly handleToolResponse: (msgId: string, status: 'running' | 'denied', actionType: 'approve_tool' | 'deny_tool') => void;
+  readonly handleCloseTask: () => void;
+  readonly handleDeleteActiveTask: () => void;
+}
+
+export const useChatSession = (): UseChatSessionReturn => {
   const [activeTask, setActiveTask] = useState<ActiveTaskState | null>(null);
   const [models, setModels] = useState<{ id: string; name: string }[]>([]);
   const [selectedModel, setSelectedModel] = useState('pi-code');
@@ -31,7 +53,7 @@ export function useChatSession() {
   useEffect(() => {
     if (!vscode) return;
 
-    const handleMessage = (event: MessageEvent) => {
+    const handleMessage = (event: MessageEvent): void => {
       const msg = event.data as ExtensionToWebviewMessage;
       switch (msg.type) {
         case 'init_data': {
@@ -244,7 +266,7 @@ export function useChatSession() {
   }, []);
 
   // Handlers
-  const handleSendPrompt = (text: string, images: string[]) => {
+  const handleSendPrompt = (text: string, images: string[]): void => {
     setIsAgentRunning(true);
     const userMsg: ChatMessage = {
       id: 'u-' + Date.now(),
@@ -274,20 +296,20 @@ export function useChatSession() {
     }
   };
 
-  const handleToolResponse = (msgId: string, status: 'running' | 'denied', actionType: 'approve_tool' | 'deny_tool') => {
+  const handleToolResponse = (msgId: string, status: 'running' | 'denied', actionType: 'approve_tool' | 'deny_tool'): void => {
     setIsAgentRunning(true);
     setActiveTask((prev) => (prev ? { ...prev, messages: prev.messages.map((m) => (m.id === msgId ? { ...m, toolStatus: status } : m)) } : null));
     vscode?.postMessage({ type: actionType, approval_id: msgId });
   };
 
-  const handleCloseTask = () => {
+  const handleCloseTask = (): void => {
     vscode?.postMessage({ type: 'get_history', scope });
     vscode?.postMessage({ type: 'close_task' });
     setActiveTask(null);
     setIsAgentRunning(false);
   };
 
-  const handleDeleteActiveTask = () => {
+  const handleDeleteActiveTask = (): void => {
     if (!activeTask) return;
     if (activeTask.path) {
       const deletedPath = activeTask.path;
@@ -319,4 +341,4 @@ export function useChatSession() {
     handleCloseTask,
     handleDeleteActiveTask,
   };
-}
+};

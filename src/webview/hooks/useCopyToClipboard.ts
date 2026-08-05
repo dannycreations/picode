@@ -8,7 +8,7 @@ interface CopyOptions {
   readonly onError?: (error: Error) => void;
 }
 
-export const copyToClipboard = async (text: string, options?: CopyOptions): Promise<boolean> => {
+export async function copyToClipboard(text: string, options?: CopyOptions): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(text);
     options?.onSuccess?.();
@@ -19,14 +19,19 @@ export const copyToClipboard = async (text: string, options?: CopyOptions): Prom
     console.error('Failed to copy to clipboard:', err);
     return false;
   }
-};
+}
 
-export const useCopyToClipboard = (feedbackDuration = 2000) => {
+export interface UseCopyToClipboardReturn {
+  readonly showCopy: boolean;
+  readonly copy: (text: string, e?: MouseEvent) => Promise<boolean>;
+}
+
+export const useCopyToClipboard = (feedbackDuration = 2000): UseCopyToClipboardReturn => {
   const [showCopy, setShowCopy] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const copy = useCallback(
-    async (text: string, e?: MouseEvent) => {
+    async (text: string, e?: MouseEvent): Promise<boolean> => {
       e?.stopPropagation();
 
       if (timeoutRef.current) {

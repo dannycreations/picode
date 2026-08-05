@@ -3,7 +3,16 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { applyDeterministicFixes } from '@extension/webview/components/chat/markdown/helpers/mermaid';
 
-export function useMermaidRender(originalCode: string) {
+export interface UseMermaidRenderReturn {
+  readonly code: string;
+  readonly svgContent: string;
+  readonly isLoading: boolean;
+  readonly error: string | null;
+  readonly isFixing: boolean;
+  readonly handleSyntaxFix: () => void;
+}
+
+export const useMermaidRender = (originalCode: string): UseMermaidRenderReturn => {
   const [code, setCode] = useState(originalCode);
   const [svgContent, setSvgContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -38,7 +47,7 @@ export function useMermaidRender(originalCode: string) {
     return () => clearTimeout(timer);
   }, [code, isFixing]);
 
-  const handleSyntaxFix = useCallback(() => {
+  const handleSyntaxFix = useCallback((): void => {
     if (isFixing) return;
     setIsLoading(true);
     setIsFixing(true);
@@ -57,4 +66,4 @@ export function useMermaidRender(originalCode: string) {
     isFixing,
     handleSyntaxFix,
   };
-}
+};

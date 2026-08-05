@@ -1,11 +1,24 @@
 import { useEffect, useMemo, useState } from 'react';
 
+import type { Dispatch, SetStateAction } from 'react';
 import type { HistoryItem } from '@extension/types/webview';
 
 export type SortOption = 'newest' | 'oldest' | 'alphabetical';
 export type HistoryScope = 'current' | 'all';
 
-export const useHistoryFilter = (history: HistoryItem[], itemsPerPage = 8, scope?: HistoryScope) => {
+export interface UseHistoryFilterReturn {
+  readonly searchQuery: string;
+  readonly setSearchQuery: Dispatch<SetStateAction<string>>;
+  readonly sortBy: SortOption;
+  readonly setSortBy: Dispatch<SetStateAction<SortOption>>;
+  readonly currentPage: number;
+  readonly setCurrentPage: Dispatch<SetStateAction<number>>;
+  readonly totalPages: number;
+  readonly filteredHistory: HistoryItem[];
+  readonly paginatedItems: HistoryItem[];
+}
+
+export const useHistoryFilter = (history: HistoryItem[], itemsPerPage = 8, scope?: HistoryScope): UseHistoryFilterReturn => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [currentPage, setCurrentPage] = useState(1);
