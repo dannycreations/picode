@@ -38,7 +38,7 @@ export class EventMapper {
           payload: {
             id,
             cost: msg?.usage?.cost?.total,
-            error: (msg as any)?.stopReason === 'error' ? (msg as any).errorMessage : undefined,
+            error: msg?.stopReason === 'error' ? msg.errorMessage : undefined,
           },
         };
       }

@@ -71,8 +71,8 @@ export function resolvePathAction(
   cwd: string | undefined,
   filePath: string,
   approveEnabled: boolean,
-  allowedPatterns: string[],
-  deniedPatterns: string[],
+  allowedPatterns: readonly string[],
+  deniedPatterns: readonly string[],
 ): DecisionAction {
   if (!approveEnabled) {
     return 'confirm';
@@ -139,7 +139,12 @@ export function resolvePathAction(
   return 'confirm';
 }
 
-export function resolveCommandAction(command: string, approveEnabled: boolean, allowedPatterns: string[], deniedPatterns: string[]): DecisionAction {
+export function resolveCommandAction(
+  command: string,
+  approveEnabled: boolean,
+  allowedPatterns: readonly string[],
+  deniedPatterns: readonly string[],
+): DecisionAction {
   if (!approveEnabled) {
     return 'confirm';
   }
@@ -294,8 +299,8 @@ function matchesCommandPattern(pattern: string, command: string): boolean {
 export function getSingleCommandDecision(
   command: string,
   approveEnabled: boolean,
-  allowedPatterns: string[],
-  deniedPatterns: string[],
+  allowedPatterns: readonly string[],
+  deniedPatterns: readonly string[],
 ): DecisionAction {
   if (!approveEnabled) {
     return 'confirm';

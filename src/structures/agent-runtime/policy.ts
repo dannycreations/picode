@@ -1,8 +1,26 @@
 import { SettingsService } from '@extension/core/settings';
 import { resolveCommandAction, resolvePathAction } from '@extension/utilities/action';
 
+import type { AppSettings } from '@extension/core/settings';
 import type { ToolApprovalDecision } from '@extension/structures/agent-runtime/runner';
 import type { ToolName } from '@extension/types/webview';
+
+interface ReadFileToolArgs {
+  readonly files?: ReadonlyArray<{ path?: string }>;
+}
+
+interface WriteFileToolArgs {
+  readonly path?: string;
+  readonly file_path?: string;
+}
+
+interface DeleteFileToolArgs {
+  readonly path?: string;
+}
+
+interface ExecuteCommandToolArgs {
+  readonly command?: string;
+}
 
 export class PolicyEvaluator {
   public async evaluate(cwd: string, toolName: ToolName, args: unknown): Promise<ToolApprovalDecision> {
@@ -32,12 +50,13 @@ export class PolicyEvaluator {
     }
   }
 
-  private evaluateReadFile(cwd: string, settings: any, args: any): ToolApprovalDecision {
-    const files: { path: string }[] = args?.files || [];
-    const allowed = (settings.allowedReadPaths || []) as string[];
-    const denied = (settings.deniedReadPaths || []) as string[];
+  private evaluateReadFile(cwd: string, settings: AppSettings, args: unknown): ToolApprovalDecision {
+    const toolArgs = (args ?? {}) as ReadFileToolArgs;
+    const files = toolArgs.files ?? [];
 
-    const resolutions = files.map((f) => resolvePathAction(cwd, f.path, settings.autoApproveRead, allowed, denied));
+    const resolutions = files.map((f) =>
+      resolvePathAction(cwd, f.path ?? '', settings.autoApproveRead, settings.allowedReadPaths, settings.deniedReadPaths),
+    );
 
     if (resolutions.includes('deny')) {
       return {
@@ -51,11 +70,10 @@ export class PolicyEvaluator {
     return { action: 'confirm' };
   }
 
-  private evaluateWriteFile(cwd: string, settings: any, toolName: 'write_file' | 'edit_file', args: any): ToolApprovalDecision {
-    const filePath = toolName === 'write_file' ? args?.path || '' : args?.file_path || '';
-    const allowed = (settings.allowedWritePaths || []) as string[];
-    const denied = (settings.deniedWritePaths || []) as string[];
-    const resolution = resolvePathAction(cwd, filePath, settings.autoApproveWrite, allowed, denied);
+  private evaluateWriteFile(cwd: string, settings: AppSettings, toolName: 'write_file' | 'edit_file', args: unknown): ToolApprovalDecision {
+    const toolArgs = (args ?? {}) as WriteFileToolArgs;
+    const filePath = toolName === 'write_file' ? (toolArgs.path ?? '') : (toolArgs.file_path ?? '');
+    const resolution = resolvePathAction(cwd, filePath, settings.autoApproveWrite, settings.allowedWritePaths, settings.deniedWritePaths);
 
     if (resolution === 'deny') {
       return {
@@ -69,11 +87,10 @@ export class PolicyEvaluator {
     return { action: 'confirm' };
   }
 
-  private evaluateDeleteFile(cwd: string, settings: any, args: any): ToolApprovalDecision {
-    const filePath = args?.path || '';
-    const allowed = (settings.allowedDeletePaths || []) as string[];
-    const denied = (settings.deniedDeletePaths || []) as string[];
-    const resolution = resolvePathAction(cwd, filePath, settings.autoApproveDelete, allowed, denied);
+  private evaluateDeleteFile(cwd: string, settings: AppSettings, args: unknown): ToolApprovalDecision {
+    const toolArgs = (args ?? {}) as DeleteFileToolArgs;
+    const filePath = toolArgs.path ?? '';
+    const resolution = resolvePathAction(cwd, filePath, settings.autoApproveDelete, settings.allowedDeletePaths, settings.deniedDeletePaths);
 
     if (resolution === 'deny') {
       return {
@@ -87,11 +104,10 @@ export class PolicyEvaluator {
     return { action: 'confirm' };
   }
 
-  private evaluateExecuteCommand(settings: any, args: any): ToolApprovalDecision {
-    const command = args?.command || '';
-    const allowed = (settings.allowedExecuteCommands || []) as string[];
-    const denied = (settings.deniedExecuteCommands || []) as string[];
-    const resolution = resolveCommandAction(command, settings.autoApproveExecute, allowed, denied);
+  private evaluateExecuteCommand(settings: AppSettings, args: unknown): ToolApprovalDecision {
+    const toolArgs = (args ?? {}) as ExecuteCommandToolArgs;
+    const command = toolArgs.command ?? '';
+    const resolution = resolveCommandAction(command, settings.autoApproveExecute, settings.allowedExecuteCommands, settings.deniedExecuteCommands);
 
     if (resolution === 'deny') {
       return {

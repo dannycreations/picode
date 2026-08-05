@@ -25,10 +25,10 @@ export type CommandHandler<T extends WebviewToExtensionMessage['type']> = (
 ) => Promise<void> | void;
 
 export class ChatMessageDispatcher {
-  private handlers = new Map<string, CommandHandler<any>>();
+  private handlers = new Map<WebviewToExtensionMessage['type'], CommandHandler<WebviewToExtensionMessage['type']>>();
 
   public register<T extends WebviewToExtensionMessage['type']>(type: T, handler: CommandHandler<T>): this {
-    this.handlers.set(type, handler);
+    this.handlers.set(type, handler as unknown as CommandHandler<WebviewToExtensionMessage['type']>);
     return this;
   }
 

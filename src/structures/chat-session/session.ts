@@ -170,7 +170,7 @@ export function calculateSessionStats(entries: SessionTreeEntry[], contextLimit:
 
   for (const entry of entries) {
     if (entry.type === 'message' && entry.message.role === 'assistant') {
-      const usage = entry.message.usage as any;
+      const usage = entry.message.usage;
       if (usage) {
         if (typeof usage.input === 'number') {
           tokensIn += usage.input;

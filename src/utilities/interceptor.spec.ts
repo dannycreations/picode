@@ -26,7 +26,7 @@ vi.mock('node:fs', () => {
 });
 
 describe('initializeFetchInterceptor', () => {
-  let originalFetch: any;
+  let originalFetch: typeof globalThis.fetch;
 
   beforeEach(() => {
     originalFetch = vi.fn().mockResolvedValue({
@@ -68,9 +68,9 @@ describe('initializeFetchInterceptor', () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     expect(writeFileSync).toHaveBeenCalled();
-    const [filePath, content] = (writeFileSync as any).mock.calls[0];
+    const [filePath, content] = vi.mocked(writeFileSync).mock.calls[0];
     expect(filePath).toContain('fetch-');
-    const parsed = JSON.parse(content);
+    const parsed = JSON.parse(String(content));
     expect(parsed.request.url).toBe('https://api.openai.com/v1/chat/completions');
     expect(parsed.request.method).toBe('POST');
     expect(parsed.request.body).toEqual({ message: 'hi' });

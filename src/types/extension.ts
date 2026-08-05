@@ -14,6 +14,8 @@ export interface AssistantMessageWithUsage {
       readonly total?: number;
     };
   };
+  readonly stopReason?: string;
+  readonly errorMessage?: string;
 }
 
 export interface EnvironmentMessageContent {
@@ -44,14 +46,21 @@ export interface SessionMessageContent {
   readonly data?: string;
 }
 
+export interface SessionMessageUsage {
+  readonly input?: number;
+  readonly output?: number;
+  readonly cacheRead?: number;
+  readonly cacheWrite?: number;
+  readonly totalTokens?: number;
+  readonly cost?: {
+    readonly total?: number;
+  };
+}
+
 export interface SessionMessage {
   readonly role: 'user' | 'assistant' | 'toolResult' | 'bashExecution';
   readonly content?: string | SessionMessageContent[];
-  readonly usage?: {
-    readonly cost?: {
-      readonly total?: number;
-    };
-  };
+  readonly usage?: SessionMessageUsage;
   readonly errorMessage?: string;
   readonly toolCallId?: string;
   readonly isError?: boolean;

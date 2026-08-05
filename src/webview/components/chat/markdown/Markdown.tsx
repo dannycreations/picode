@@ -13,9 +13,26 @@ import { CodeBlock } from '@webview/components/chat/CodeBlock';
 import { vscode } from '@webview/utilities/vscode';
 
 import type { FC, MouseEvent, ReactNode } from 'react';
+import type { Components } from 'react-markdown';
 
 interface MarkdownBlockProps {
   readonly markdown?: string;
+}
+
+interface MarkdownCodeNode {
+  readonly type: 'code';
+  lang?: string | null;
+}
+
+interface MarkdownGenericNode {
+  readonly type: string;
+  readonly lang?: string | null;
+  readonly children?: Array<MarkdownCodeNode | MarkdownGenericNode>;
+}
+
+interface MarkdownRoot {
+  readonly type: 'root';
+  readonly children: Array<MarkdownCodeNode | MarkdownGenericNode>;
 }
 
 const MarkdownLink: FC<{ href?: string; children?: ReactNode }> = ({ href, children, ...props }) => {
@@ -63,16 +80,16 @@ const MarkdownPre: FC<{ children?: ReactNode }> = ({ children }) => {
 };
 
 export const MarkdownBlock = memo(({ markdown }: MarkdownBlockProps) => {
-  const components = useMemo(
+  const components = useMemo<Components>(
     () => ({
-      table: ({ children, ...props }: any) => (
+      table: ({ children, ...props }) => (
         <div className="table-wrapper">
           <table {...props}>{children}</table>
         </div>
       ),
       a: MarkdownLink,
       pre: MarkdownPre,
-      code: ({ children, className, ...props }: any) => (
+      code: ({ children, className, ...props }) => (
         <code className={className} {...props}>
           {children}
         </code>
@@ -87,12 +104,12 @@ export const MarkdownBlock = memo(({ markdown }: MarkdownBlockProps) => {
         remarkPlugins={[
           remarkGfm,
           remarkMath,
-          () => (tree: any) => {
-            visit(tree, 'code', (node: any) => {
+          () => (tree: MarkdownRoot) => {
+            visit(tree, 'code', (node) => {
               if (!node.lang) {
                 node.lang = 'text';
               } else if (node.lang.includes('.')) {
-                node.lang = node.lang.split('.').pop();
+                node.lang = node.lang.split('.').pop() ?? 'text';
               }
             });
           },

@@ -1,3 +1,4 @@
+import assert from 'node:assert';
 import { workspace } from 'vscode';
 
 import { EventMapper } from '@extension/structures/agent-runtime/event';
@@ -68,9 +69,10 @@ function finalizeAttemptCompletion(session: AgentSession): void {
     }
   }
 
-  if (entryUpdated && typeof (session.sessionManager as any)['_rewriteFile'] === 'function') {
+  if (entryUpdated) {
     try {
-      (session.sessionManager as any)['_rewriteFile']();
+      assert(session.sessionManager['_rewriteFile'], 'SessionManager._rewriteFile not found');
+      session.sessionManager['_rewriteFile']();
     } catch (err) {
       console.error('Failed to rewrite session file with stopReason update:', err);
     }
@@ -233,7 +235,7 @@ export class AgentRunner {
 
   private handleSessionEvent(event: AgentSessionEvent, session: AgentSession): void {
     if (this.isAttemptCompletionAborted && event.type === 'message_end' && event.message.role === 'assistant') {
-      (event as any).type = 'ignored';
+      (event as { type: string }).type = 'ignored';
       const messages = session.agent.state.messages;
       if (messages && messages[messages.length - 1] === event.message) {
         messages.pop();

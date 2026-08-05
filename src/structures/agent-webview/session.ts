@@ -7,6 +7,10 @@ import { AgentModel, SessionTreeEntry } from '@extension/types/extension';
 import { ExtensionToWebviewMessage } from '@extension/types/webview';
 import { isProjectTrusted } from '@extension/utilities/vscode';
 
+import type { SessionInfo } from '@earendil-works/pi-coding-agent';
+import type { CalculatedStats } from '@extension/structures/chat-session/session';
+import type { ChatMessage, HistoryItem } from '@extension/types/webview';
+
 export type SessionInitData = Extract<ExtensionToWebviewMessage, { type: 'init_data' }>['payload'];
 
 export class SessionService {
@@ -28,10 +32,16 @@ export class SessionService {
     return { models, history, default_model: defaultModel };
   }
 
-  public async loadSessionDetails(sessionPath: string, cwd: string) {
+  public async loadSessionDetails(
+    sessionPath: string,
+    cwd: string,
+  ): Promise<{
+    messages: ChatMessage[];
+    stats: CalculatedStats;
+  }> {
     const sessionManager = SessionManager.open(sessionPath);
-    const entries = sessionManager.getEntries() as SessionTreeEntry[];
-    const chatMessages = convertSessionEntries(entries);
+    const entries = sessionManager.getEntries();
+    const chatMessages = convertSessionEntries(entries as SessionTreeEntry[]);
 
     const modelRuntime = await ModelRuntime.create();
     const models = modelRuntime.getModels();
@@ -41,8 +51,8 @@ export class SessionService {
 
     let sessionModelId = settingsManager.getDefaultModel();
     for (const entry of entries) {
-      if ((entry as any).type === 'model_change') {
-        sessionModelId = (entry as any).modelId || sessionModelId;
+      if (entry.type === 'model_change') {
+        sessionModelId = entry.modelId || sessionModelId;
       }
     }
 
@@ -54,16 +64,16 @@ export class SessionService {
       }
     }
 
-    const stats = calculateSessionStats(entries, contextLimit);
+    const stats = calculateSessionStats(entries as SessionTreeEntry[], contextLimit);
     return { messages: chatMessages, stats };
   }
 
-  public async fetchHistory(cwd: string, scope: 'all' | 'current') {
+  public async fetchHistory(cwd: string, scope: 'all' | 'current'): Promise<HistoryItem[]> {
     const sessions = scope === 'all' ? await SessionManager.listAll() : await SessionManager.list(cwd);
     return this.formatSessions(sessions);
   }
 
-  public async deleteSessions(paths: string[], scope: 'all' | 'current', cwd: string) {
+  public async deleteSessions(paths: string[], scope: 'all' | 'current', cwd: string): Promise<HistoryItem[]> {
     await Promise.allSettled(paths.map((p) => unlink(p)));
     return this.fetchHistory(cwd, scope);
   }
@@ -86,7 +96,7 @@ export class SessionService {
     return false;
   }
 
-  private formatSessions(sessions: Awaited<ReturnType<typeof SessionManager.list>>) {
+  private formatSessions(sessions: SessionInfo[]): HistoryItem[] {
     return sessions.map((s) => ({
       id: s.id,
       path: s.path,
