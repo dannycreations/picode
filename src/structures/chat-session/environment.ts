@@ -1,12 +1,13 @@
 import { access, readdir, readFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { AgentSession } from '@earendil-works/pi-coding-agent';
-import ignore, { Ignore } from 'ignore';
+import ignore from 'ignore';
 import { TabInputText, window } from 'vscode';
 
 import { SettingsService } from '@extension/core/settings';
 import { spawnGit } from '@extension/structures/commit-message/git';
 
+import type { Ignore } from 'ignore';
 import type { AgentToolState, EnvironmentMessage, EnvironmentMessageContent } from '@extension/types/extension';
 
 interface TodoItem {

@@ -3,13 +3,12 @@ import { getAgentDir, ModelRuntime, SessionManager, SettingsManager } from '@ear
 import { Uri, window, workspace } from 'vscode';
 
 import { calculateSessionStats, convertSessionEntries } from '@extension/structures/chat-session/session';
-import { AgentModel, SessionTreeEntry } from '@extension/types/extension';
-import { ExtensionToWebviewMessage } from '@extension/types/webview';
 import { isProjectTrusted } from '@extension/utilities/vscode';
 
 import type { SessionInfo } from '@earendil-works/pi-coding-agent';
 import type { CalculatedStats } from '@extension/structures/chat-session/session';
-import type { ChatMessage, HistoryItem } from '@extension/types/webview';
+import type { AgentModel, SessionTreeEntry } from '@extension/types/extension';
+import type { ChatMessage, ExtensionToWebviewMessage, HistoryItem } from '@extension/types/webview';
 
 export type SessionInitData = Extract<ExtensionToWebviewMessage, { type: 'init_data' }>['payload'];
 

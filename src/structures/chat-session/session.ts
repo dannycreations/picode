@@ -1,9 +1,8 @@
 import { getLastAssistantUsage } from '@earendil-works/pi-coding-agent';
 
-import { ChatMessage, ToolName } from '@extension/types/webview';
-
 import type { SessionEntry } from '@earendil-works/pi-coding-agent';
 import type { SessionMessageContent, SessionTreeEntry } from '@extension/types/extension';
+import type { ChatMessage, ToolName } from '@extension/types/webview';
 
 export function convertSessionEntries(entries: SessionTreeEntry[]): ChatMessage[] {
   const result: ChatMessage[] = [];

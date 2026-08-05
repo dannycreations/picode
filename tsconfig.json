@@ -10,10 +10,12 @@
     "target": "ESNext",
     "module": "ESNext",
     "moduleDetection": "force",
+    "moduleResolution": "bundler",
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
 
     "allowJs": false,
     "skipLibCheck": true,
+    "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
 
     "jsx": "react-jsx",
@@ -24,14 +26,16 @@
     "useDefineForClassFields": false,
     "isolatedModules": false,
     "erasableSyntaxOnly": false,
+    "verbatimModuleSyntax": true,
 
     "strict": true,
-    "noImplicitAny": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
+    "noImplicitReturns": true,
     "noImplicitOverride": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
+    "forceConsistentCasingInFileNames": true,
     "noPropertyAccessFromIndexSignature": true,
 
     "paths": {

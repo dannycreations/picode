@@ -4,11 +4,11 @@ import { AgentRunner } from '@extension/structures/agent-runtime/runner';
 import { createDefaultDispatcher } from '@extension/structures/agent-webview/dispatcher';
 import { SessionService } from '@extension/structures/agent-webview/session';
 import { WorkspaceService } from '@extension/structures/agent-webview/workspace';
-import { ExtensionToWebviewMessage, WebviewToExtensionMessage } from '@extension/types/webview';
 
 import type { CancellationToken, ExtensionContext, Webview, WebviewView, WebviewViewProvider, WebviewViewResolveContext } from 'vscode';
 import type { MessageHandlerContext } from '@extension/structures/agent-webview/dispatcher';
 import type { SessionInitData } from '@extension/structures/agent-webview/session';
+import type { ExtensionToWebviewMessage, WebviewToExtensionMessage } from '@extension/types/webview';
 
 export class ChatViewHtml {
   public static build(webview: Webview, extensionUri: Uri): string {

@@ -1,4 +1,4 @@
-import { WebviewToExtensionMessage } from '@extension/types/webview';
+import type { WebviewToExtensionMessage } from '@extension/types/webview';
 
 export interface WebviewApi<State> {
   readonly postMessage: (message: WebviewToExtensionMessage) => void;

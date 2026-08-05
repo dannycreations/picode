@@ -1,4 +1,6 @@
-import { MouseEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+import type { MouseEvent } from 'react';
 
 interface CopyOptions {
   readonly feedbackDuration?: number;

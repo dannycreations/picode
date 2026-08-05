@@ -1,4 +1,6 @@
-import { MouseEvent, useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
+
+import type { MouseEvent } from 'react';
 
 export const useCopyPrompt = (timeoutMs = 2000) => {
   const [copiedPath, setCopiedPath] = useState<string | null>(null);

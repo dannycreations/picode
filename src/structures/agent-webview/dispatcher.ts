@@ -2,11 +2,11 @@ import { window } from 'vscode';
 
 import { SettingsService } from '@extension/core/settings';
 import { AgentRunner } from '@extension/structures/agent-runtime/runner';
-import { ExtensionToWebviewMessage, WebviewToExtensionMessage } from '@extension/types/webview';
 
 import type { Webview } from 'vscode';
 import type { SessionInitData, SessionService } from '@extension/structures/agent-webview/session';
 import type { WorkspaceService } from '@extension/structures/agent-webview/workspace';
+import type { ExtensionToWebviewMessage, WebviewToExtensionMessage } from '@extension/types/webview';
 
 export type MessageHandlerContext = {
   readonly cwd: string;
