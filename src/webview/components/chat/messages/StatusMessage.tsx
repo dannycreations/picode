@@ -1,32 +1,10 @@
 import { cn } from 'cnfast';
-import { AlertTriangle, GitCommit, Info, RefreshCw, RotateCcw } from 'lucide-react';
+import { AlertTriangle, Info, RefreshCw } from 'lucide-react';
 
 import { formatTime } from '@extension/webview/components/chat/messages/helpers/common';
 
 import type { FC } from 'react';
 import type { ChatMessage } from '@extension/types/webview';
-
-export const CheckpointMessage: FC<{
-  readonly message: ChatMessage;
-  readonly onRestoreCheckpoint: (hash: string) => void;
-}> = ({ message, onRestoreCheckpoint }) => {
-  const hash = message.checkpointHash || '1a2b3c4';
-  return (
-    <div className="flex items-center justify-between gap-2 text-xs select-none">
-      <div className="flex items-center gap-2 text-vscode-foreground whitespace-nowrap">
-        <GitCommit size={14} className="text-vscode-focusBorder shrink-0" />
-        <span className="font-bold text-vscode-foreground">Checkpoint saved</span>
-        <span className="font-mono bg-vscode-badge-background text-vscode-badge-foreground px-1 py-0.5 rounded text-xs">{hash}</span>
-      </div>
-      <button
-        onClick={() => onRestoreCheckpoint(hash)}
-        className="ml-auto text-xs text-vscode-textLink-foreground hover:text-vscode-textLink-activeForeground bg-transparent border-none cursor-pointer flex items-center gap-1 font-semibold"
-      >
-        <RotateCcw size={10} /> Restore
-      </button>
-    </div>
-  );
-};
 
 export const ApiRequestMessage: FC<{ readonly message: ChatMessage }> = ({ message }) => {
   const isRunning = message.toolStatus === 'running';

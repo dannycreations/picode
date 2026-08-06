@@ -112,7 +112,10 @@ export const ChatView: FC = () => {
         <ChatHeader
           {...activeTask}
           onClose={handleCloseTask}
-          onCondense={() => alert('Condensing conversation context...')}
+          onCompact={() => {
+            if (!activeTask) return;
+            vscode?.postMessage({ type: 'compact', id: activeTask.id, path: activeTask.path, title: activeTask.title });
+          }}
           onExport={() => exportTaskAsJson(activeTask)}
           onDelete={!isAgentRunning && activeTask.path ? () => setShowDeleteActiveConfirm(true) : undefined}
           onViewRaw={() => vscode?.postMessage({ type: 'view_raw_task', path: activeTask.path })}
@@ -155,7 +158,6 @@ export const ChatView: FC = () => {
                       handleAnswerQuestion(questionId, text);
                     }}
                     onCopyToInput={handleCopyToInput}
-                    onRestoreCheckpoint={(hash) => alert(`Restoring repository state to checkpoint ${hash}`)}
                   />
                 </div>
               ));

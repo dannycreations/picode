@@ -72,6 +72,15 @@ export class SessionFactory {
       customTools: SessionFactory.CUSTOM_TOOLS.filter((tool) => !disabledTools.has(tool.name as ToolName)),
     });
 
+    const contextWindow = session.model?.contextWindow ?? 200000;
+    const reserveTokens = Math.round(((100 - settings.autoCompactContextPercent) / 100) * contextWindow);
+    session.settingsManager.applyOverrides({
+      compaction: {
+        enabled: settings.autoCompactContext,
+        reserveTokens,
+      },
+    });
+
     return session;
   }
 }

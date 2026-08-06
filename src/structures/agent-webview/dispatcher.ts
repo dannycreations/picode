@@ -73,6 +73,16 @@ export function createDefaultDispatcher(): ChatMessageDispatcher {
     .register('deny_tool', (msg, ctx) => ctx.agent.denyTool(msg.approval_id))
     .register('question_response', (msg, ctx) => ctx.agent.answerQuestion(msg.question_id, msg.text))
     .register('cancel_task', (_, ctx) => ctx.agent.abort())
+    .register('compact', async (msg, ctx) => {
+      const path = msg.path || ctx.agent.getSessionFile();
+      await ctx.agent.compact(path, ctx.webview);
+      if (!path) return;
+      const { messages, stats } = await ctx.sessionService.loadSessionDetails(path, ctx.cwd);
+      ctx.postMessage({
+        type: 'session_loaded',
+        payload: { id: msg.id, title: msg.title, messages, path, ...stats },
+      });
+    })
     .register('close_task', (_, ctx) => {
       try {
         ctx.agent.dispose();

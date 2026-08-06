@@ -54,7 +54,6 @@ export const QuestionMessage: FC<QuestionMessageProps> = ({ message, onAnswerQue
               <div key={`${idx}-${suggestion}`} className="relative group/suggestion">
                 <button
                   onClick={(event) => handleSuggestionClick(event, suggestion)}
-                  aria-label={suggestion}
                   className="w-full px-3 py-2 pr-9 text-left text-sm leading-normal whitespace-normal break-words rounded-md border border-vscode-editorGroup-border bg-vscode-input-background text-vscode-foreground hover:bg-vscode-list-hoverBackground hover:border-vscode-focusBorder cursor-pointer transition-colors"
                 >
                   {suggestion}

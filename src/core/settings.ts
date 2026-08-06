@@ -24,8 +24,8 @@ export interface AppSettings {
   readonly allowedExecuteCommands: readonly string[];
   readonly deniedExecuteCommands: readonly string[];
 
-  readonly autoCondenseContext: boolean;
-  readonly autoCondenseContextPercent: number;
+  readonly autoCompactContext: boolean;
+  readonly autoCompactContextPercent: number;
   readonly maxOpenTabsContext: number;
   readonly maxWorkspaceFiles: number;
   readonly maxGitStatusFiles: number;
@@ -52,8 +52,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   allowedExecuteCommands: [],
   deniedExecuteCommands: [],
 
-  autoCondenseContext: true,
-  autoCondenseContextPercent: 80,
+  autoCompactContext: true,
+  autoCompactContextPercent: 80,
   maxOpenTabsContext: 20,
   maxWorkspaceFiles: 100,
   maxGitStatusFiles: 20,
@@ -99,8 +99,8 @@ function parseAppSettings(input?: unknown, base = DEFAULT_SETTINGS): AppSettings
     allowedExecuteCommands: parseStringArray(raw.allowedExecuteCommands, base.allowedExecuteCommands),
     deniedExecuteCommands: parseStringArray(raw.deniedExecuteCommands, base.deniedExecuteCommands),
 
-    autoCondenseContext: parseBoolean(raw.autoCondenseContext, base.autoCondenseContext),
-    autoCondenseContextPercent: parseBoundedNumber(raw.autoCondenseContextPercent, base.autoCondenseContextPercent, { min: 0, max: 100 }),
+    autoCompactContext: parseBoolean(raw.autoCompactContext, base.autoCompactContext),
+    autoCompactContextPercent: parseBoundedNumber(raw.autoCompactContextPercent, base.autoCompactContextPercent, { min: 0, max: 100 }),
     maxOpenTabsContext: parseBoundedNumber(raw.maxOpenTabsContext, base.maxOpenTabsContext, { min: 0 }),
     maxWorkspaceFiles: parseBoundedNumber(raw.maxWorkspaceFiles, base.maxWorkspaceFiles, { min: 0 }),
     maxGitStatusFiles: parseBoundedNumber(raw.maxGitStatusFiles, base.maxGitStatusFiles, { min: 0 }),
@@ -138,7 +138,7 @@ export class SettingsRepository {
   public async initializeDefaults(defaults: AppSettings): Promise<void> {
     this.manager['globalSettings'].vscode = { ...defaults };
     this.manager['markModified']('vscode');
-    this.manager.setCompactionEnabled(defaults.autoCondenseContext);
+    this.manager.setCompactionEnabled(defaults.autoCompactContext);
     this.manager['save']();
     await this.manager.flush();
   }
@@ -201,7 +201,7 @@ export class SettingsService {
     await this.repository.reload();
     await this.repository.updateSetting(key, value);
 
-    if (key === 'autoCondenseContext') {
+    if (key === 'autoCompactContext') {
       this.repository.setCompactionEnabled(value === true);
     }
 

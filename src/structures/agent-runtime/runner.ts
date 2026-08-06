@@ -97,6 +97,7 @@ export class AgentRunner {
     'turn_end',
     'message_end',
     'agent_settled',
+    'compaction_start',
     'compaction_end',
   ]);
 
@@ -177,6 +178,19 @@ export class AgentRunner {
     this.question.answer(questionId, text);
   }
 
+  public async compact(path: string | undefined, webview: Webview): Promise<void> {
+    this.prepareRun(webview);
+    const cwd = getWorkspaceCwd();
+
+    const session = await this.getOrCreateSession(path, cwd);
+
+    try {
+      await session.compact();
+    } catch (err) {
+      this.messenger.postError(err);
+    }
+  }
+
   public abort(): void {
     this.question.cancelAll();
 
@@ -207,7 +221,7 @@ export class AgentRunner {
   }
 
   private async getOrCreateSession(path: string | undefined, cwd: string): Promise<AgentSession> {
-    if (this.session && path && this.session.sessionFile === path) {
+    if (this.session && (!path || this.session.sessionFile === path)) {
       return this.session;
     }
 

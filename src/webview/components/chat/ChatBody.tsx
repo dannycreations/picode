@@ -1,6 +1,6 @@
 import { AssistantMessage } from '@extension/webview/components/chat/messages/AssistantMessage';
 import { QuestionMessage } from '@extension/webview/components/chat/messages/QuestionMessage';
-import { ApiRequestMessage, CheckpointMessage, ErrorMessage, InfoMessage } from '@extension/webview/components/chat/messages/StatusMessage';
+import { ApiRequestMessage, ErrorMessage, InfoMessage } from '@extension/webview/components/chat/messages/StatusMessage';
 import { ToolMessage } from '@extension/webview/components/chat/messages/ToolMessage';
 import { UserMessage } from '@extension/webview/components/chat/messages/UserMessage';
 
@@ -14,10 +14,9 @@ interface ChatBodyProps {
   readonly onDenyTool: (msgId: string) => void;
   readonly onAnswerQuestion: (questionId: string, text: string) => void;
   readonly onCopyToInput: (text: string) => void;
-  readonly onRestoreCheckpoint: (hash: string) => void;
 }
 
-export const ChatBody: FC<ChatBodyProps> = ({ message, onApproveTool, onDenyTool, onAnswerQuestion, onCopyToInput, onRestoreCheckpoint }) => {
+export const ChatBody: FC<ChatBodyProps> = ({ message, onApproveTool, onDenyTool, onAnswerQuestion, onCopyToInput }) => {
   const renderMessageContent = () => {
     switch (message.sender) {
       case 'user':
@@ -36,7 +35,7 @@ export const ChatBody: FC<ChatBodyProps> = ({ message, onApproveTool, onDenyTool
         }
         return <ToolMessage message={message} onApproveTool={onApproveTool} onDenyTool={onDenyTool} />;
       case 'checkpoint':
-        return <CheckpointMessage message={message} onRestoreCheckpoint={onRestoreCheckpoint} />;
+        return <InfoMessage message={message} />;
       case 'api_request':
         return <ApiRequestMessage message={message} />;
       case 'error':

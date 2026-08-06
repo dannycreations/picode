@@ -106,6 +106,12 @@ export class EventMapper {
       case 'agent_settled':
         return { type: 'agent_settled' };
 
+      case 'compaction_start':
+        return {
+          type: 'agent_start',
+          payload: { path: session.sessionFile },
+        };
+
       default:
         return null;
     }

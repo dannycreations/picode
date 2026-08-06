@@ -10,21 +10,20 @@ export const ContextTab: FC<TabProps> = ({ draftSettings, handleFieldChange }) =
   return (
     <div className="flex flex-col gap-6 px-5 py-2">
       <SettingCheckbox
-        label="Automatic trigger condensing"
-        description="Automatically condense conversation context when it reaches the threshold."
-        checked={draftSettings.autoCondenseContext}
-        onChange={(val) => handleFieldChange('autoCondenseContext', val)}
+        label="Automatic trigger compaction"
+        description="Automatically compact conversation context when it reaches the threshold."
+        checked={draftSettings.autoCompactContext}
+        onChange={(val) => handleFieldChange('autoCompactContext', val)}
       >
         <SettingSlider
-          label="Condensing threshold"
+          label="Compaction threshold"
           icon={<FoldVertical size={14} className="text-vscode-descriptionForeground shrink-0" />}
-          value={draftSettings.autoCondenseContextPercent}
+          value={draftSettings.autoCompactContextPercent}
           min={10}
           max={100}
           unit="%"
-          description="The percentage of context window usage at which context condensing is triggered."
-          onChange={(val) => handleFieldChange('autoCondenseContextPercent', val)}
-          className="animate-fade-in"
+          description="The percentage of the context window in use for trigger."
+          onChange={(val) => handleFieldChange('autoCompactContextPercent', val)}
         />
       </SettingCheckbox>
 

@@ -19,7 +19,7 @@ export interface ChatHeaderProps {
   readonly contextLimit: number;
   readonly messages: ChatMessage[];
   readonly onClose: () => void;
-  readonly onCondense: () => void;
+  readonly onCompact: () => void;
   readonly onExport?: () => void;
   readonly onDelete?: () => void;
   readonly onViewRaw?: () => void;
@@ -63,7 +63,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
   contextLimit,
   messages,
   onClose,
-  onCondense,
+  onCompact,
   onExport,
   onDelete,
   onViewRaw,
@@ -120,8 +120,8 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
             <div className="flex items-center gap-2 shrink-0">
               {totalCost > 0 && <span className="text-xs font-mono text-vscode-foreground/80">${totalCost.toFixed(4)}</span>}
               <button
-                onClick={onCondense}
-                title="Intelligently condense context"
+                onClick={onCompact}
+                title="Compact context"
                 className="p-1 rounded text-vscode-descriptionForeground hover:text-vscode-foreground bg-transparent hover:bg-vscode-list-hoverBackground border-none cursor-pointer flex items-center"
               >
                 <FoldVertical size={14} />
@@ -145,8 +145,8 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
                       </span>
                       <ContextProgressBar percentage={contextPercentage} />
                       <button
-                        onClick={onCondense}
-                        title="Intelligently condense context"
+                        onClick={onCompact}
+                        title="Compact context"
                         className="p-1 rounded text-vscode-descriptionForeground hover:text-vscode-foreground bg-transparent hover:bg-vscode-list-hoverBackground border-none cursor-pointer flex items-center"
                       >
                         <FoldVertical size={14} />

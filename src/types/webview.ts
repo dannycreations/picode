@@ -17,15 +17,7 @@ export interface ActiveTaskState {
 }
 
 export type ToolName =
-  | 'attempt_completion'
-  | 'ask_question'
-  | 'write_file'
-  | 'write_to_file'
-  | 'execute_command'
-  | 'read_file'
-  | 'update_todo'
-  | 'edit_file'
-  | 'delete_file';
+  'attempt_completion' | 'ask_question' | 'write_file' | 'execute_command' | 'read_file' | 'update_todo' | 'edit_file' | 'delete_file';
 
 export interface ChatMessage {
   readonly id: string;
@@ -79,6 +71,7 @@ export type WebviewToExtensionMessage =
   | { type: 'open_image'; dataUrl: string }
   | { type: 'close_task' }
   | { type: 'cancel_task' }
+  | { type: 'compact'; id: string; path?: string; title: string }
   | { type: 'get_settings' }
   | ({ type: 'update_setting' } & SettingsData);
 

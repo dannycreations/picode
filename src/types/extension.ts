@@ -13,21 +13,11 @@ export interface AssistantMessageWithUsage {
   readonly errorMessage?: string;
 }
 
-export interface EnvironmentMessageContent {
-  readonly type: 'text' | 'thinking' | 'toolCall';
-  readonly text?: string;
-  readonly thinking?: string;
-}
-
 export interface EnvironmentMessage {
   readonly role: string;
   readonly toolName?: string;
   readonly details?: unknown;
   readonly content?: unknown;
-}
-
-export interface AgentToolState {
-  readonly name: string;
 }
 
 export interface SessionMessageContent {
