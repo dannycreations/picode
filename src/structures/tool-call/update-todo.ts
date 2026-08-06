@@ -34,7 +34,7 @@ export const updateTodoTool = defineTool({
           }
           return `- ${box} ${match[2]}`;
         }
-        return line; // Fallback to raw line if not matching checkbox
+        return line;
       });
 
       const updatedChecklist = checklistLines.join('\n');

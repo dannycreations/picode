@@ -32,31 +32,20 @@ export const writeFileTool = defineTool({
         }
       }
 
-      // Check if file exists to read old content for generating a diff
       let oldContent = '';
       let fileExists = false;
       try {
         oldContent = await readFile(resolvedPath, 'utf8');
         fileExists = true;
-      } catch {
-        // File does not exist yet
-      }
+      } catch {}
 
-      // Create parent directories
       await mkdir(dirname(resolvedPath), { recursive: true });
-
-      // Write content
       await writeFile(resolvedPath, finalContent, 'utf8');
-
-      // Generate diff
       const diffResult = generateDiffString(oldContent, finalContent);
 
       return {
         content: [{ type: 'text', text: diffResult.diff || `Successfully wrote content to ${params.path}` }],
-        details: {
-          diff: diffResult.diff,
-          fileExists,
-        },
+        details: { diff: diffResult.diff, fileExists },
       };
     } catch (err) {
       return {

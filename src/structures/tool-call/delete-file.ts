@@ -16,7 +16,6 @@ export const deleteFileTool = defineTool({
     try {
       const resolvedPath = resolve(ctx.cwd, params.path);
 
-      // Check if file exists
       try {
         await access(resolvedPath);
       } catch {

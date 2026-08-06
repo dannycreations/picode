@@ -22,11 +22,7 @@ function safeLiteralReplace(str: string, oldString: string, newString: string): 
   if (oldString === '' || !str.includes(oldString)) {
     return str;
   }
-  if (!newString.includes('$')) {
-    return str.replaceAll(oldString, newString);
-  }
-  const escapedNewString = newString.replaceAll('$', '$$$$');
-  return str.replaceAll(oldString, escapedNewString);
+  return str.replaceAll(oldString, () => newString);
 }
 
 function detectLineEnding(content: string): LineEnding {
@@ -34,12 +30,12 @@ function detectLineEnding(content: string): LineEnding {
 }
 
 function normalizeToLF(content: string): string {
-  return content.replace(/\r\n/g, '\n');
+  return content.replaceAll('\r\n', '\n');
 }
 
 function restoreLineEnding(contentLF: string, eol: LineEnding): string {
   if (eol === '\n') return contentLF;
-  return contentLF.replace(/\n/g, '\r\n');
+  return contentLF.replaceAll('\n', '\r\n');
 }
 
 function escapeRegExp(input: string): string {
@@ -48,38 +44,77 @@ function escapeRegExp(input: string): string {
 
 function buildWhitespaceTolerantRegex(oldLF: string): RegExp {
   if (oldLF === '') {
-    return new RegExp('(?!)', 'g');
+    return /(?!)/g;
   }
-  const parts = oldLF.match(/(\s+|\S+)/g) ?? [];
-  const whitespacePatternForRun = (run: string): string => {
-    if (run.includes('\n')) {
-      return '\\s+';
-    }
-    return '[\\t ]+';
-  };
-  const pattern = parts
-    .map((part) => {
-      if (/^\s+$/.test(part)) {
-        return whitespacePatternForRun(part);
+  let pattern = '';
+  let i = 0;
+  const len = oldLF.length;
+
+  while (i < len) {
+    if (/\s/.test(oldLF[i])) {
+      let hasNewline = false;
+      while (i < len && /\s/.test(oldLF[i])) {
+        if (oldLF[i] === '\n') {
+          hasNewline = true;
+        }
+        i++;
       }
-      return escapeRegExp(part);
-    })
-    .join('');
+      pattern += hasNewline ? '\\s+' : '[\\t ]+';
+    } else {
+      const start = i;
+      while (i < len && !/\s/.test(oldLF[i])) {
+        i++;
+      }
+      pattern += escapeRegExp(oldLF.slice(start, i));
+    }
+  }
   return new RegExp(pattern, 'g');
 }
 
 function buildTokenRegex(oldLF: string): RegExp {
-  const tokens = oldLF.split(/\s+/).filter(Boolean);
-  if (tokens.length === 0) {
-    return new RegExp('(?!)', 'g');
+  let pattern = '';
+  let i = 0;
+  const len = oldLF.length;
+  let hasToken = false;
+
+  while (i < len) {
+    while (i < len && /\s/.test(oldLF[i])) {
+      i++;
+    }
+    if (i >= len) break;
+
+    const start = i;
+    while (i < len && !/\s/.test(oldLF[i])) {
+      i++;
+    }
+
+    if (hasToken) {
+      pattern += '\\s+';
+    }
+    pattern += escapeRegExp(oldLF.slice(start, i));
+    hasToken = true;
   }
-  const pattern = tokens.map(escapeRegExp).join('\\s+');
+
+  if (!hasToken) {
+    return /(?!)/g;
+  }
   return new RegExp(pattern, 'g');
 }
 
 function countRegexMatches(content: string, regex: RegExp): number {
-  const stable = new RegExp(regex.source, regex.flags);
-  return Array.from(content.matchAll(stable)).length;
+  regex.lastIndex = 0;
+  let count = 0;
+  while (true) {
+    const match = regex.exec(content);
+    if (!match) break;
+    count++;
+    if (regex.lastIndex === match.index) {
+      // Prevent infinite loop on 0-width matches
+      regex.lastIndex++;
+    }
+  }
+  regex.lastIndex = 0;
+  return count;
 }
 
 export const editFileTool = defineTool({
@@ -99,14 +134,22 @@ export const editFileTool = defineTool({
 
       const resolvedPath = resolve(ctx.cwd, file_path);
 
-      // Check if file exists
       let fileExists = false;
       let originalContent = '';
       try {
         originalContent = await readFile(resolvedPath, 'utf8');
         fileExists = true;
-      } catch {
-        // File does not exist
+      } catch (err: unknown) {
+        const isEnoent = err && typeof err === 'object' && 'code' in err && (err as { code?: string }).code === 'ENOENT';
+        if (isEnoent) {
+          fileExists = false;
+        } else {
+          return {
+            content: [{ type: 'text', text: `Error reading file ${file_path}: ${err instanceof Error ? err.message : String(err)}` }],
+            details: {},
+            isError: true,
+          };
+        }
       }
 
       if (fileExists) {
@@ -150,20 +193,20 @@ export const editFileTool = defineTool({
         }
 
         let updatedLF = originalLF;
-        const wsRegex = buildWhitespaceTolerantRegex(oldLF);
-        const tokenRegex = buildTokenRegex(oldLF);
 
-        // Strategy 1: exact literal match
+        // Strategy 1: Exact literal match (fast path)
         const exactOccurrences = countOccurrences(originalLF, oldLF);
         if (exactOccurrences === expected_replacements) {
           updatedLF = safeLiteralReplace(originalLF, oldLF, newLF);
         } else {
-          // Strategy 2: whitespace-tolerant regex
+          // Strategy 2: Whitespace-tolerant regex (fallback)
+          const wsRegex = buildWhitespaceTolerantRegex(oldLF);
           const wsOccurrences = countRegexMatches(originalLF, wsRegex);
           if (wsOccurrences === expected_replacements) {
             updatedLF = originalLF.replace(wsRegex, () => newLF);
           } else {
-            // Strategy 3: token-based regex
+            // Strategy 3: Token-based regex (fallback)
+            const tokenRegex = buildTokenRegex(oldLF);
             const tokenOccurrences = countRegexMatches(originalLF, tokenRegex);
             if (tokenOccurrences === expected_replacements) {
               updatedLF = originalLF.replace(tokenRegex, () => newLF);
@@ -186,14 +229,11 @@ export const editFileTool = defineTool({
         await writeFile(resolvedPath, newContent, 'utf8');
       }
 
-      // Generate diff
       const diffResult = generateDiffString(originalContent, newContent);
 
       return {
         content: [{ type: 'text', text: diffResult.diff || `Successfully updated ${file_path}` }],
-        details: {
-          diff: diffResult.diff,
-        },
+        details: { diff: diffResult.diff },
       };
     } catch (err) {
       return {

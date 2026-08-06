@@ -40,9 +40,7 @@ export const askQuestionTool = defineTool({
 
       return {
         content: [{ type: 'text', text: response }],
-        details: {
-          response,
-        },
+        details: { response },
       };
     } catch (err) {
       return {
