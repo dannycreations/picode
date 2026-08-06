@@ -5,6 +5,35 @@ import { vscode } from '@webview/utilities/vscode';
 import type { Dispatch, RefObject, SetStateAction } from 'react';
 import type { ActiveTaskState, ChatMessage, ExtensionToWebviewMessage, HistoryItem, ModelItem } from '@extension/types/webview';
 
+interface ApiRequestSettlePatch {
+  readonly cost?: number;
+  readonly error?: string;
+}
+
+function settlePendingApiRequests(messages: ChatMessage[], patch: ApiRequestSettlePatch = {}): ChatMessage[] {
+  let changed = false;
+  const next = messages.map((m) => {
+    if (m.sender !== 'api_request' || m.toolStatus !== 'running') return m;
+    changed = true;
+    return {
+      ...m,
+      toolStatus: patch.error ? ('denied' as const) : ('completed' as const),
+      cost: patch.cost ?? m.cost,
+      errorMessage: patch.error ?? m.errorMessage,
+    };
+  });
+  return changed ? next : messages;
+}
+
+function appendErrorMessage(messages: ChatMessage[], id: string, error: string): ChatMessage[] {
+  if (messages.some((m) => m.id === id)) return messages;
+
+  const last = messages[messages.length - 1];
+  if (last?.sender === 'error' && (last.errorMessage ?? last.text) === error) return messages;
+
+  return [...messages, { id, sender: 'error', text: error, errorMessage: error, ts: Date.now() }];
+}
+
 export interface UseChatSessionReturn {
   readonly activeTask: ActiveTaskState | null;
   readonly models: ModelItem[];
@@ -104,13 +133,6 @@ export const useChatSession = (): UseChatSessionReturn => {
               return prev;
             }
 
-            let messages = prev.messages;
-            if (role === 'assistant') {
-              messages = messages.map((m) =>
-                m.sender === 'api_request' && m.toolStatus === 'running' ? { ...m, toolStatus: 'completed' as const } : m,
-              );
-            }
-
             const newMsg: ChatMessage = {
               id: `${role}-${timestamp || Date.now()}`,
               sender: isUser ? 'user' : 'assistant',
@@ -118,26 +140,76 @@ export const useChatSession = (): UseChatSessionReturn => {
               ts: timestamp || Date.now(),
             };
 
-            return { ...prev, messages: [...messages, newMsg] };
+            return { ...prev, messages: [...prev.messages, newMsg] };
+          });
+          break;
+        }
+
+        case 'api_request_start': {
+          const { id, timestamp } = msg.payload;
+          setIsAgentRunning(true);
+          setActiveTask((prev) => {
+            if (!prev) return null;
+            if (prev.messages.some((m) => m.id === id)) return prev;
+
+            const apiMsg: ChatMessage = {
+              id,
+              sender: 'api_request',
+              text: 'API Request',
+              ts: timestamp || Date.now(),
+              toolStatus: 'running',
+            };
+
+            return { ...prev, messages: [...settlePendingApiRequests(prev.messages), apiMsg] };
+          });
+          break;
+        }
+
+        case 'api_request_end': {
+          const { id, cost, error } = msg.payload;
+          setActiveTask((prev) => {
+            if (!prev) return null;
+
+            const target = prev.messages.find((m) => m.id === id && m.sender === 'api_request');
+            let messages = target
+              ? prev.messages.map((m) =>
+                  m === target
+                    ? {
+                        ...m,
+                        toolStatus: error ? ('denied' as const) : ('completed' as const),
+                        cost: cost ?? m.cost,
+                        errorMessage: error ?? m.errorMessage,
+                      }
+                    : m,
+                )
+              : settlePendingApiRequests(prev.messages, { cost, error });
+
+            if (error) {
+              messages = appendErrorMessage(messages, `${id}-error`, error);
+            }
+
+            return { ...prev, messages };
           });
           break;
         }
 
         case 'message_end': {
           const { role, cost } = msg.payload || {};
-          if (role === 'assistant' && cost !== undefined) {
-            setActiveTask((prev) => {
-              if (!prev) return null;
-              const messages = [...prev.messages];
+          if (role !== 'assistant') break;
+
+          setActiveTask((prev) => {
+            if (!prev) return null;
+            const messages = [...settlePendingApiRequests(prev.messages, { cost })];
+            if (cost !== undefined) {
               for (let i = messages.length - 1; i >= 0; i--) {
                 if (messages[i].sender === 'assistant') {
                   messages[i] = { ...messages[i], cost };
                   break;
                 }
               }
-              return { ...prev, messages };
-            });
-          }
+            }
+            return { ...prev, messages };
+          });
           break;
         }
 
@@ -237,10 +309,11 @@ export const useChatSession = (): UseChatSessionReturn => {
             prev
               ? {
                   ...prev,
-                  messages: [
-                    ...prev.messages,
-                    { id: `err-${Date.now()}`, sender: 'error', text: msg.payload.message, errorMessage: msg.payload.message, ts: Date.now() },
-                  ],
+                  messages: appendErrorMessage(
+                    settlePendingApiRequests(prev.messages, { error: msg.payload.message }),
+                    `err-${Date.now()}`,
+                    msg.payload.message,
+                  ),
                 }
               : null,
           );
@@ -248,6 +321,11 @@ export const useChatSession = (): UseChatSessionReturn => {
 
         case 'agent_settled':
           setIsAgentRunning(false);
+          setActiveTask((prev) => {
+            if (!prev) return null;
+            const messages = settlePendingApiRequests(prev.messages);
+            return messages === prev.messages ? prev : { ...prev, messages };
+          });
           break;
 
         case 'show_settings':

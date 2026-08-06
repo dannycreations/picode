@@ -48,14 +48,15 @@ export function convertSessionEntries(entries: SessionTreeEntry[]): ChatMessage[
 
         const timestamp = new Date(entry.timestamp).getTime();
         const cost = msg.usage?.cost?.total;
+        const errorMessage = msg.errorMessage;
 
-        // Insert a completed api_request message right before the assistant message
         result.push({
           id: `${entry.id}-api-req`,
           sender: 'api_request',
           text: 'API Request',
           ts: timestamp - 1,
-          toolStatus: 'completed',
+          toolStatus: errorMessage ? 'denied' : 'completed',
+          errorMessage,
           cost,
         });
 
@@ -84,13 +85,13 @@ export function convertSessionEntries(entries: SessionTreeEntry[]): ChatMessage[
           }
         }
 
-        if (msg.errorMessage) {
+        if (errorMessage) {
           result.push({
             id: entry.id + '-error',
             sender: 'error',
-            text: msg.errorMessage,
-            errorMessage: msg.errorMessage,
-            ts: new Date(entry.timestamp).getTime(),
+            text: errorMessage,
+            errorMessage,
+            ts: timestamp,
           });
         }
       } else if (msg.role === 'toolResult') {

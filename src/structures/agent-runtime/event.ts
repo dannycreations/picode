@@ -3,10 +3,11 @@ import type { AssistantMessageWithUsage } from '@extension/types/extension';
 import type { ExtensionToWebviewMessage, ToolName } from '@extension/types/webview';
 
 export class EventMapper {
-  private currentApiRequestId: string | null = null;
+  private apiRequestId: string | null = null;
+  private turnCounter = 0;
 
   public resetTurnState(): void {
-    this.currentApiRequestId = null;
+    this.apiRequestId = null;
   }
 
   public mapEvent(event: AgentSessionEvent, session: AgentSession, isAborted: boolean): ExtensionToWebviewMessage | null {
@@ -22,23 +23,24 @@ export class EventMapper {
         };
 
       case 'turn_start': {
-        this.currentApiRequestId = `api-req-${Date.now()}`;
+        this.apiRequestId = this.nextApiRequestId();
         return {
           type: 'api_request_start',
-          payload: { id: this.currentApiRequestId, timestamp: Date.now() },
+          payload: { id: this.apiRequestId, timestamp: Date.now() },
         };
       }
 
       case 'turn_end': {
-        const id = this.currentApiRequestId || `api-req-${Date.now()}`;
-        this.currentApiRequestId = null;
+        const id = this.apiRequestId || this.nextApiRequestId();
+        this.apiRequestId = null;
         const msg = event.message?.role === 'assistant' ? (event.message as AssistantMessageWithUsage) : undefined;
+        const isError = msg?.stopReason === 'error';
         return {
           type: 'api_request_end',
           payload: {
             id,
             cost: msg?.usage?.cost?.total,
-            error: msg?.stopReason === 'error' ? msg.errorMessage : undefined,
+            error: isError ? msg.errorMessage || 'The API request failed.' : undefined,
           },
         };
       }
@@ -122,5 +124,10 @@ export class EventMapper {
       console.error('Failed to create session stats message:', err);
       return null;
     }
+  }
+
+  private nextApiRequestId(): string {
+    this.turnCounter += 1;
+    return `api-req-${Date.now()}-${this.turnCounter}`;
   }
 }

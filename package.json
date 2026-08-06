@@ -88,6 +88,7 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@earendil-works/pi-ai": "^0.83.0",
     "@earendil-works/pi-coding-agent": "^0.83.0",
     "cnfast": "^0.1.0",
     "es-toolkit": "^1.50.0",
@@ -124,7 +125,7 @@
     "npm-check-updates": "^23.0.1",
     "prettier": "^3.9.6",
     "tailwindcss": "^4.3.3",
-    "tsx": "^4.23.7",
+    "tsx": "^4.23.9",
     "typescript": "^7.0.2",
     "vite": "^8.2.0",
     "vite-plugin-checker": "^0.14.5",
