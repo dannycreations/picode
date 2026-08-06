@@ -13,7 +13,7 @@ export interface UseMermaidRenderReturn {
   readonly handleSyntaxFix: () => void;
 }
 
-export const useMermaidRender = (originalCode: string): UseMermaidRenderReturn => {
+export const useMermaidRender = (originalCode: string, enabled: boolean): UseMermaidRenderReturn => {
   const [code, setCode] = useState(originalCode);
   const [svgContent, setSvgContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -26,7 +26,7 @@ export const useMermaidRender = (originalCode: string): UseMermaidRenderReturn =
   }, [originalCode]);
 
   useEffect(() => {
-    if (isFixing) return;
+    if (!enabled || isFixing) return;
     setIsLoading(true);
 
     const timer = setTimeout(() => {
@@ -46,7 +46,7 @@ export const useMermaidRender = (originalCode: string): UseMermaidRenderReturn =
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [code, isFixing]);
+  }, [code, isFixing, enabled]);
 
   const handleSyntaxFix = useCallback((): void => {
     if (isFixing) return;

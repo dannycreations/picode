@@ -79,10 +79,6 @@ class ShikiHighlighterManager {
   private readonly loadedLanguages = new Set<ExtendedLanguage>(['txt']);
   private readonly pendingLanguageLoads = new Map<ExtendedLanguage, Promise<void>>();
 
-  public isLoaded(language: string): boolean {
-    return this.loadedLanguages.has(normalizeLanguage(language));
-  }
-
   private async initialize(): Promise<Highlighter> {
     if (this.instance) return this.instance;
 
@@ -137,10 +133,6 @@ class ShikiHighlighterManager {
 }
 
 const shikiManager = new ShikiHighlighterManager();
-
-export function isLanguageLoaded(language: string): boolean {
-  return shikiManager.isLoaded(language);
-}
 
 export async function getHighlighter(language?: string): Promise<Highlighter> {
   return shikiManager.getHighlighter(language);

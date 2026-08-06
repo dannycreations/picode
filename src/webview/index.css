@@ -75,6 +75,11 @@
 
 /* Custom styles */
 
+.chat-row {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 96px;
+}
+
 .slash-command-match-textarea-highlight {
   background-color: color-mix(in srgb, var(--vscode-focusBorder) 30%, transparent);
   border-radius: 3px;

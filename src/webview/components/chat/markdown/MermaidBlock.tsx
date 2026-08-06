@@ -1,5 +1,6 @@
 import { cn } from 'cnfast';
 import { useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import { logger } from '@extension/core/logger';
 import { svgToPng } from '@extension/webview/components/chat/markdown/helpers/mermaid';
@@ -7,6 +8,7 @@ import { useMermaidRender } from '@extension/webview/components/chat/markdown/ho
 import { MermaidModal } from '@extension/webview/components/chat/markdown/MermaidModal';
 import { MermaidToolbar } from '@extension/webview/components/chat/markdown/MermaidToolbar';
 import { useCopyToClipboard } from '@extension/webview/hooks/useCopyToClipboard';
+import { useInViewport } from '@extension/webview/hooks/useInViewport';
 
 import type { FC, MouseEvent } from 'react';
 
@@ -21,7 +23,8 @@ export const MermaidBlock: FC<MermaidBlockProps> = ({ code: originalCode }) => {
   const [isErrorExpanded, setIsErrorExpanded] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
 
-  const { code, svgContent, isLoading, error, isFixing, handleSyntaxFix } = useMermaidRender(originalCode);
+  const { ref: rootRef, hasBeenVisible } = useInViewport<HTMLDivElement>();
+  const { code, svgContent, isLoading, error, isFixing, handleSyntaxFix } = useMermaidRender(originalCode, hasBeenVisible);
   const { showCopy, copy } = useCopyToClipboard();
 
   const handleCopy = async (e: MouseEvent) => {
@@ -45,7 +48,7 @@ export const MermaidBlock: FC<MermaidBlockProps> = ({ code: originalCode }) => {
   };
 
   return (
-    <div className="relative my-2 select-none">
+    <div ref={rootRef} className="relative my-2 select-none">
       {isLoading && (
         <div className="py-2 text-[var(--vscode-descriptionForeground)] italic text-xs">
           {isFixing ? 'Fixing Mermaid syntax...' : 'Loading diagram...'}
@@ -125,18 +128,20 @@ export const MermaidBlock: FC<MermaidBlockProps> = ({ code: originalCode }) => {
         </div>
       )}
 
-      {showModal && (
-        <MermaidModal
-          code={code}
-          svgContent={svgContent}
-          modalViewMode={modalViewMode}
-          showCopy={showCopy}
-          setModalViewMode={setModalViewMode}
-          onClose={() => setShowModal(false)}
-          onCopy={handleCopy}
-          onSave={handleSave}
-        />
-      )}
+      {showModal &&
+        createPortal(
+          <MermaidModal
+            code={code}
+            svgContent={svgContent}
+            modalViewMode={modalViewMode}
+            showCopy={showCopy}
+            setModalViewMode={setModalViewMode}
+            onClose={() => setShowModal(false)}
+            onCopy={handleCopy}
+            onSave={handleSave}
+          />,
+          document.body,
+        )}
     </div>
   );
 };

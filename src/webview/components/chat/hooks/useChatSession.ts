@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { findPendingQuestion } from '@extension/webview/components/chat/helpers/question';
 import { vscode } from '@webview/utilities/vscode';
@@ -389,7 +389,10 @@ export const useChatSession = (): UseChatSessionReturn => {
     return () => clearTimeout(timer);
   }, [pendingQuestionId]);
 
-  const handleAnswerQuestion = (questionId: string, text: string): void => {
+  // The handlers below are handed to memoised message rows, so they must stay
+  // referentially stable. State is read through functional updates rather than
+  // captured from the render scope to keep their dependency lists empty.
+  const handleAnswerQuestion = useCallback((questionId: string, text: string): void => {
     const answer = text.trim();
     if (!answer) return;
 
@@ -400,72 +403,75 @@ export const useChatSession = (): UseChatSessionReturn => {
     );
     setIsAgentRunning(true);
     vscode?.postMessage({ type: 'question_response', question_id: questionId, text: answer });
-  };
+  }, []);
 
-  const handleCopyToInput = (text: string): void => {
+  const handleCopyToInput = useCallback((text: string): void => {
     setInputValue((prev) => (prev ? `${prev}\n${text}` : text));
     setTimeout(() => textareaRef.current?.focus(), 0);
-  };
+  }, []);
 
-  const handleSendPrompt = (text: string, images: string[]): void => {
-    // A pending question owns the input box: the reply answers the tool call
-    // instead of starting a new turn.
-    if (pendingQuestion) {
-      handleAnswerQuestion(pendingQuestion.id, text);
-      return;
-    }
+  const handleSendPrompt = useCallback(
+    (text: string, images: string[]): void => {
+      // A pending question owns the input box: the reply answers the tool call
+      // instead of starting a new turn.
+      if (pendingQuestion) {
+        handleAnswerQuestion(pendingQuestion.id, text);
+        return;
+      }
 
-    setIsAgentRunning(true);
-    const userMsg: ChatMessage = {
-      id: 'u-' + Date.now(),
-      sender: 'user',
-      text,
-      images: images.length > 0 ? images : undefined,
-      ts: Date.now(),
-    };
-
-    const selectedProvider = models.find((m) => m.id === selectedModel)?.provider;
-
-    if (!activeTask) {
-      setActiveTask({
-        id: 'task-active',
-        title: text,
-        messages: [userMsg],
-        tokensIn: 0,
-        tokensOut: 0,
-        cacheWrites: 0,
-        cacheReads: 0,
-        totalCost: 0,
-        contextTokens: 0,
-        contextLimit: 200000,
-      });
-      vscode?.postMessage({ type: 'start_new_task', text, model_id: selectedModel, model_provider: selectedProvider, images });
-    } else {
-      setActiveTask((prev) => (prev ? { ...prev, messages: [...prev.messages, userMsg] } : null));
-      vscode?.postMessage({
-        type: 'send_message',
+      setIsAgentRunning(true);
+      const userMsg: ChatMessage = {
+        id: 'u-' + Date.now(),
+        sender: 'user',
         text,
-        path: activeTask.path,
-        model_id: selectedModel,
-        model_provider: selectedProvider,
-        images,
-      });
-    }
-  };
+        images: images.length > 0 ? images : undefined,
+        ts: Date.now(),
+      };
 
-  const handleToolResponse = (msgId: string, status: 'running' | 'denied', actionType: 'approve_tool' | 'deny_tool'): void => {
+      const selectedProvider = models.find((m) => m.id === selectedModel)?.provider;
+
+      if (!activeTask) {
+        setActiveTask({
+          id: 'task-active',
+          title: text,
+          messages: [userMsg],
+          tokensIn: 0,
+          tokensOut: 0,
+          cacheWrites: 0,
+          cacheReads: 0,
+          totalCost: 0,
+          contextTokens: 0,
+          contextLimit: 200000,
+        });
+        vscode?.postMessage({ type: 'start_new_task', text, model_id: selectedModel, model_provider: selectedProvider, images });
+      } else {
+        setActiveTask((prev) => (prev ? { ...prev, messages: [...prev.messages, userMsg] } : null));
+        vscode?.postMessage({
+          type: 'send_message',
+          text,
+          path: activeTask.path,
+          model_id: selectedModel,
+          model_provider: selectedProvider,
+          images,
+        });
+      }
+    },
+    [pendingQuestion, handleAnswerQuestion, models, selectedModel, activeTask],
+  );
+
+  const handleToolResponse = useCallback((msgId: string, status: 'running' | 'denied', actionType: 'approve_tool' | 'deny_tool'): void => {
     setIsAgentRunning(true);
     setActiveTask((prev) => (prev ? { ...prev, messages: prev.messages.map((m) => (m.id === msgId ? { ...m, toolStatus: status } : m)) } : null));
     vscode?.postMessage({ type: actionType, approval_id: msgId });
-  };
+  }, []);
 
-  const handleCloseTask = (): void => {
+  const handleCloseTask = useCallback((): void => {
     vscode?.postMessage({ type: 'close_task' });
     setActiveTask(null);
     setIsAgentRunning(false);
-  };
+  }, []);
 
-  const handleDeleteActiveTask = (): void => {
+  const handleDeleteActiveTask = useCallback((): void => {
     if (!activeTask) return;
     if (activeTask.path) {
       const deletedPath = activeTask.path;
@@ -475,7 +481,7 @@ export const useChatSession = (): UseChatSessionReturn => {
     vscode?.postMessage({ type: 'close_task' });
     setActiveTask(null);
     setIsAgentRunning(false);
-  };
+  }, [activeTask, scope]);
 
   return {
     activeTask,

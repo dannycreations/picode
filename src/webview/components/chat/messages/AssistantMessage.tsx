@@ -10,12 +10,14 @@ import type { ChatMessage } from '@extension/types/webview';
 
 interface AssistantMessageProps {
   readonly message: ChatMessage;
-  readonly hasReasoning: boolean;
-  readonly hasText: boolean;
 }
 
-export const AssistantMessage: FC<AssistantMessageProps> = ({ message, hasReasoning, hasText }) => {
+export const AssistantMessage: FC<AssistantMessageProps> = ({ message }) => {
   const [isReasoningExpanded, setIsReasoningExpanded] = useState(false);
+
+  const reasoning = message.reasoning?.trim() ?? '';
+  const hasReasoning = reasoning !== '';
+  const hasText = message.text.trim() !== '';
 
   return (
     <div className="group flex flex-col gap-1.5">
@@ -31,7 +33,7 @@ export const AssistantMessage: FC<AssistantMessageProps> = ({ message, hasReason
           </MessageHeader>
           {isReasoningExpanded && (
             <div className="ml-6 border-l border-vscode-descriptionForeground/20 pl-4 pb-1 text-vscode-descriptionForeground text-xs whitespace-pre-wrap leading-relaxed select-text">
-              {message.reasoning?.trim()}
+              {reasoning}
             </div>
           )}
         </div>

@@ -7,7 +7,8 @@ import { bundledLanguages } from 'shiki';
 
 import { logger } from '@extension/core/logger';
 import { useCopyToClipboard } from '@extension/webview/hooks/useCopyToClipboard';
-import { getHighlighter, isLanguageLoaded, normalizeLanguage } from '@webview/components/chat/helpers/highlighter';
+import { useInViewport } from '@extension/webview/hooks/useInViewport';
+import { getHighlighter, normalizeLanguage } from '@webview/components/chat/helpers/highlighter';
 
 import type { CSSProperties, FC, MouseEvent, ReactNode } from 'react';
 import type { ShikiTransformer } from 'shiki';
@@ -101,23 +102,26 @@ export interface CodeBlockProps {
   readonly onLanguageChange?: (language: string) => void;
 }
 
-export const useShikiHighlighter = (source: string, language: string): ReactNode => {
+interface PlainCodeProps {
+  readonly source: string;
+  readonly language: string;
+}
+
+const PlainCode: FC<PlainCodeProps> = ({ source, language }) => (
+  <pre style={{ padding: 0, margin: 0, backgroundColor: 'transparent' }}>
+    <code className={cn('hljs', `language-${language || 'txt'}`)}>{source}</code>
+  </pre>
+);
+
+export const useShikiHighlighter = (source: string, language: string, enabled: boolean): ReactNode => {
   const [highlightedCode, setHighlightedCode] = useState<ReactNode>(null);
 
   useEffect(() => {
+    if (!enabled) return;
+
     let isMounted = true;
 
-    const fallback = (
-      <pre style={{ padding: 0, margin: 0, backgroundColor: 'transparent' }}>
-        <code className={cn('hljs', `language-${language || 'txt'}`)}>{source}</code>
-      </pre>
-    );
-
     const highlight = async () => {
-      if (language && !isLanguageLoaded(language)) {
-        if (isMounted) setHighlightedCode(fallback);
-      }
-
       const highlighter = await getHighlighter(language);
       if (!isMounted) return;
 
@@ -146,25 +150,18 @@ export const useShikiHighlighter = (source: string, language: string): ReactNode
       });
 
       if (!isMounted) return;
-
-      try {
-        const reactElement = toJsxRuntime(hast, { Fragment, jsx, jsxs });
-        if (isMounted) setHighlightedCode(reactElement);
-      } catch (error) {
-        logger.error('Error converting HAST to JSX:', error);
-        if (isMounted) setHighlightedCode(fallback);
-      }
+      setHighlightedCode(toJsxRuntime(hast, { Fragment, jsx, jsxs }));
     };
 
-    highlight().catch((e) => {
-      logger.error('Syntax highlighting error:', e);
-      if (isMounted) setHighlightedCode(fallback);
+    highlight().catch((error) => {
+      logger.error('Syntax highlighting error:', error);
+      if (isMounted) setHighlightedCode(null);
     });
 
     return () => {
       isMounted = false;
     };
-  }, [source, language]);
+  }, [source, language, enabled]);
 
   return highlightedCode;
 };
@@ -187,7 +184,7 @@ export const CodeBlock = memo(
     const [isHovered, setIsHovered] = useState(false);
 
     const userChangedLanguageRef = useRef(false);
-    const codeBlockRef = useRef<HTMLDivElement>(null);
+    const { ref: codeBlockRef, hasBeenVisible } = useInViewport<HTMLDivElement>();
     const { showCopy, copy } = useCopyToClipboard();
 
     useEffect(() => {
@@ -197,7 +194,7 @@ export const CodeBlock = memo(
       }
     }, [language, currentLanguage]);
 
-    const highlightedCode = useShikiHighlighter(source, currentLanguage);
+    const highlightedCode = useShikiHighlighter(source, currentLanguage, hasBeenVisible);
 
     useEffect(() => {
       if (codeBlockRef.current) {
@@ -237,7 +234,7 @@ export const CodeBlock = memo(
             ...preStyle,
           }}
         >
-          {highlightedCode}
+          {highlightedCode ?? <PlainCode source={source} language={currentLanguage} />}
         </div>
 
         {isHovered && (

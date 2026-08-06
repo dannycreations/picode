@@ -1,5 +1,5 @@
 import { cn } from 'cnfast';
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import { ChatAction } from '@extension/webview/components/chat/ChatAction';
 import { ChatBody } from '@extension/webview/components/chat/ChatBody';
@@ -7,6 +7,7 @@ import { ChatFooter } from '@extension/webview/components/chat/ChatFooter';
 import { ChatHeader } from '@extension/webview/components/chat/ChatHeader';
 import { ChatInput } from '@extension/webview/components/chat/ChatInput';
 import { exportTaskAsJson } from '@extension/webview/components/chat/helpers/common';
+import { isRenderableMessage } from '@extension/webview/components/chat/helpers/message';
 import { useChatSession } from '@extension/webview/components/chat/hooks/useChatSession';
 import { HistoryPreview } from '@extension/webview/components/history/HistoryPreview';
 import { HistoryView } from '@extension/webview/components/history/HistoryView';
@@ -68,9 +69,35 @@ export const ChatView: FC = () => {
     handleDeleteActiveTask,
   } = useChatSession();
 
-  const { messagesEndRef, scrollContainerRef, showScrollToBottom, setShowScrollToBottom, handleScroll, scrollToBottom } = useAutoScroll(
-    activeTask?.messages ?? [],
-    activeTask?.id,
+  const { scrollRef, contentRef, showScrollToBottom, handleScroll, scrollToBottom } = useAutoScroll(activeTask?.id);
+
+  const messages = activeTask?.messages;
+  const visibleMessages = useMemo(() => (messages ?? []).filter(isRenderableMessage), [messages]);
+
+  // Acting on a row means the user is engaged with the newest output, so
+  // re-engage bottom-follow before the response to that action arrives.
+  const handleApproveTool = useCallback(
+    (msgId: string) => {
+      scrollToBottom();
+      handleToolResponse(msgId, 'running', 'approve_tool');
+    },
+    [scrollToBottom, handleToolResponse],
+  );
+
+  const handleDenyTool = useCallback(
+    (msgId: string) => {
+      scrollToBottom();
+      handleToolResponse(msgId, 'denied', 'deny_tool');
+    },
+    [scrollToBottom, handleToolResponse],
+  );
+
+  const handleAnswer = useCallback(
+    (questionId: string, text: string) => {
+      scrollToBottom();
+      handleAnswerQuestion(questionId, text);
+    },
+    [scrollToBottom, handleAnswerQuestion],
   );
 
   if (view === 'settings') {
@@ -140,38 +167,23 @@ export const ChatView: FC = () => {
       )}
 
       {/* Main Viewport */}
-      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
-        {activeTask ? (
-          <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 flex flex-col overflow-y-auto p-1.5">
-            {(() => {
-              const messages = activeTask.messages;
-              const visibleMessages = messages.filter((msg) => msg.toolName !== 'update_todo');
-
-              return visibleMessages.map((msg, idx, filteredArr) => (
-                <div id={`msg-${msg.id}`} key={msg.id}>
-                  <ChatBody
-                    message={msg}
-                    isLast={idx === filteredArr.length - 1}
-                    onApproveTool={(msgId) => {
-                      setShowScrollToBottom(false);
-                      handleToolResponse(msgId, 'running', 'approve_tool');
-                    }}
-                    onDenyTool={(msgId) => {
-                      setShowScrollToBottom(false);
-                      handleToolResponse(msgId, 'denied', 'deny_tool');
-                    }}
-                    onAnswerQuestion={(questionId, text) => {
-                      setShowScrollToBottom(false);
-                      handleAnswerQuestion(questionId, text);
-                    }}
-                    onCopyToInput={handleCopyToInput}
-                  />
-                </div>
-              ));
-            })()}
-            <div ref={messagesEndRef} />
+      {activeTask ? (
+        <div ref={scrollRef} onScroll={handleScroll} className="flex-1 min-h-0 overflow-y-auto">
+          <div ref={contentRef} className="flex flex-col p-1.5">
+            {visibleMessages.map((msg) => (
+              <ChatBody
+                key={msg.id}
+                message={msg}
+                onApproveTool={handleApproveTool}
+                onDenyTool={handleDenyTool}
+                onAnswerQuestion={handleAnswer}
+                onCopyToInput={handleCopyToInput}
+              />
+            ))}
           </div>
-        ) : (
+        </div>
+      ) : (
+        <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
           <div className="w-full flex-grow flex flex-col justify-start gap-4 px-3.5 transition-all duration-300">
             <div className="flex flex-col justify-center flex-grow py-4">
               <ChatLogo />
@@ -191,8 +203,8 @@ export const ChatView: FC = () => {
               )}
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Action Buttons */}
       <ChatAction
@@ -204,7 +216,7 @@ export const ChatView: FC = () => {
         onCloseTask={handleCloseTask}
         onContinueTask={() => {
           if (!activeTask) return;
-          setShowScrollToBottom(false);
+          scrollToBottom();
           vscode?.postMessage({
             type: 'continue_task',
             path: activeTask.path,
@@ -220,7 +232,7 @@ export const ChatView: FC = () => {
         inputValue={inputValue}
         setInputValue={setInputValue}
         onSend={(text, images) => {
-          setShowScrollToBottom(false);
+          scrollToBottom();
           handleSendPrompt(text, images);
         }}
         sendingDisabled={isInputDisabled}

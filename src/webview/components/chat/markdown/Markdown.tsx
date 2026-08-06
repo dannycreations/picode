@@ -1,5 +1,5 @@
 import { cn } from 'cnfast';
-import { memo, useMemo, useState } from 'react';
+import { memo, useDeferredValue, useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
@@ -79,7 +79,7 @@ const MarkdownPre: FC<{ children?: ReactNode }> = ({ children }) => {
   );
 };
 
-export const MarkdownBlock = memo(({ markdown }: MarkdownBlockProps) => {
+const MarkdownBlock = memo(({ markdown }: MarkdownBlockProps) => {
   const components = useMemo<Components>(
     () => ({
       table: ({ children, ...props }) => (
@@ -125,21 +125,22 @@ export const MarkdownBlock = memo(({ markdown }: MarkdownBlockProps) => {
 
 export interface MarkdownProps {
   readonly markdown?: string;
-  readonly partial?: boolean;
 }
 
-export const Markdown = memo(({ markdown, partial }: MarkdownProps) => {
+export const Markdown = memo(({ markdown }: MarkdownProps) => {
   const [isHovering, setIsHovering] = useState(false);
   const { showCopy, copy } = useCopyToClipboard(2000);
+
+  const deferredMarkdown = useDeferredValue(markdown ?? '');
 
   if (!markdown || markdown.length === 0) return null;
 
   return (
     <div onMouseEnter={() => setIsHovering(true)} onMouseLeave={() => setIsHovering(false)} className="relative w-full">
       <div className="break-words overflow-wrap-anywhere">
-        <MarkdownBlock markdown={markdown} />
+        <MarkdownBlock markdown={deferredMarkdown} />
       </div>
-      {markdown && !partial && isHovering && (
+      {isHovering && (
         <div className="absolute -bottom-1 right-2 animate-fade-in rounded z-10">
           <button
             className="p-1 h-6 w-6 flex items-center justify-center border-none text-[var(--vscode-editor-foreground)] bg-[var(--vscode-editor-background)] hover:bg-[var(--vscode-toolbar-hoverBackground)] cursor-pointer rounded transition-all duration-200"
