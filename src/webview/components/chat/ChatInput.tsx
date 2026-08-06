@@ -104,7 +104,10 @@ export const ChatInput: FC<ChatInputProps> = ({
 
   return (
     <div
-      className={cn('relative flex flex-col px-3.5 pb-1 outline-none w-full box-border bg-[var(--vscode-sideBar-background)] shrink-0', className)}
+      className={cn(
+        'relative flex flex-col px-3.5 pt-2 pb-1 outline-none w-full box-border bg-[var(--vscode-sideBar-background)] shrink-0',
+        className,
+      )}
     >
       <AttachedImagesPreview images={selectedImages} onRemove={(idx) => setSelectedImages((prev) => prev.filter((_, i) => i !== idx))} />
 

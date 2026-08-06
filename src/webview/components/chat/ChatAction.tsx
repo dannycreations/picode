@@ -26,7 +26,7 @@ export const ChatAction: FC<ChatActionProps> = ({
   if (!showActionButtons) return null;
 
   return (
-    <div className="flex gap-2 px-3.5 pt-2 pb-2 shrink-0">
+    <div className="flex gap-2 px-3.5 pt-2 shrink-0">
       {showScrollToBottom ? (
         <button
           onClick={onScrollToBottom}
