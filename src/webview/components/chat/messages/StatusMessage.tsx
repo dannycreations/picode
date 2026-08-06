@@ -76,11 +76,11 @@ export const ErrorMessage: FC<{ readonly message: ChatMessage }> = ({ message })
 );
 
 export const InfoMessage: FC<{ readonly message: ChatMessage }> = ({ message }) => (
-  <div className="flex items-center justify-between gap-2 text-xs select-none">
-    <div className="flex items-center gap-2 text-vscode-foreground whitespace-nowrap">
-      <Info size={14} className="text-vscode-focusBorder shrink-0" />
-      <span className="font-semibold text-vscode-foreground">{message.text}</span>
+  <div className="flex items-start justify-between gap-2 text-xs select-none">
+    <div className="flex items-start gap-2 text-vscode-foreground min-w-0">
+      <Info size={14} className="text-vscode-focusBorder shrink-0 mt-0.5" />
+      <span className="font-semibold text-vscode-foreground break-words">{message.text}</span>
     </div>
-    <span className="text-xs text-vscode-descriptionForeground font-normal ml-auto">{formatTime(message.ts)}</span>
+    <span className="text-xs text-vscode-descriptionForeground font-normal shrink-0 whitespace-nowrap">{formatTime(message.ts)}</span>
   </div>
 );

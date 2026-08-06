@@ -103,7 +103,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
           <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={onClose}
-              title="Close task and start a new one"
+              title="Close task"
               className="shrink-0 w-5 h-5 flex items-center justify-center rounded hover:bg-vscode-list-hoverBackground text-vscode-descriptionForeground hover:text-vscode-foreground bg-transparent border-none cursor-pointer"
             >
               <X size={14} />

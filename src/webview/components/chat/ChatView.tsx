@@ -135,9 +135,7 @@ export const ChatView: FC = () => {
           <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 flex flex-col overflow-y-auto p-1.5">
             {(() => {
               const messages = activeTask.messages;
-              const visibleMessages = messages.some((msg) => msg.toolName === 'attempt_completion')
-                ? messages.filter((msg) => msg.toolName === 'attempt_completion')
-                : messages.filter((msg) => msg.toolName !== 'update_todo');
+              const visibleMessages = messages.filter((msg) => msg.toolName !== 'update_todo');
 
               return visibleMessages.map((msg, idx, filteredArr) => (
                 <div id={`msg-${msg.id}`} key={msg.id}>
