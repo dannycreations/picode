@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { findPendingQuestion } from '@extension/webview/components/chat/helpers/question';
 import { vscode } from '@webview/utilities/vscode';
 
 import type { Dispatch, RefObject, SetStateAction } from 'react';
@@ -42,6 +43,7 @@ export interface UseChatSessionReturn {
   readonly pastTasks: HistoryItem[];
   readonly setPastTasks: Dispatch<SetStateAction<HistoryItem[]>>;
   readonly isAgentRunning: boolean;
+  readonly pendingQuestion: ChatMessage | undefined;
   readonly inputValue: string;
   readonly setInputValue: Dispatch<SetStateAction<string>>;
   readonly view: 'chat' | 'history' | 'settings';
@@ -51,6 +53,8 @@ export interface UseChatSessionReturn {
   readonly textareaRef: RefObject<HTMLTextAreaElement | null>;
   readonly handleSendPrompt: (text: string, images: string[]) => void;
   readonly handleToolResponse: (msgId: string, status: 'running' | 'denied', actionType: 'approve_tool' | 'deny_tool') => void;
+  readonly handleAnswerQuestion: (questionId: string, text: string) => void;
+  readonly handleCopyToInput: (text: string) => void;
   readonly handleCloseTask: () => void;
   readonly handleDeleteActiveTask: () => void;
 }
@@ -344,7 +348,41 @@ export const useChatSession = (): UseChatSessionReturn => {
   }, []);
 
   // Handlers
+  const pendingQuestion = useMemo(() => findPendingQuestion(activeTask?.messages ?? []), [activeTask?.messages]);
+
+  const pendingQuestionId = pendingQuestion?.id;
+  useEffect(() => {
+    if (!pendingQuestionId) return;
+    const timer = setTimeout(() => textareaRef.current?.focus(), 0);
+    return () => clearTimeout(timer);
+  }, [pendingQuestionId]);
+
+  const handleAnswerQuestion = (questionId: string, text: string): void => {
+    const answer = text.trim();
+    if (!answer) return;
+
+    // Settle the card optimistically so the suggestions stop accepting clicks
+    // while the tool result travels back from the extension host.
+    setActiveTask((prev) =>
+      prev ? { ...prev, messages: prev.messages.map((m) => (m.id === questionId ? { ...m, toolStatus: 'completed', diff: answer } : m)) } : null,
+    );
+    setIsAgentRunning(true);
+    vscode?.postMessage({ type: 'question_response', question_id: questionId, text: answer });
+  };
+
+  const handleCopyToInput = (text: string): void => {
+    setInputValue((prev) => (prev ? `${prev}\n${text}` : text));
+    setTimeout(() => textareaRef.current?.focus(), 0);
+  };
+
   const handleSendPrompt = (text: string, images: string[]): void => {
+    // A pending question owns the input box: the reply answers the tool call
+    // instead of starting a new turn.
+    if (pendingQuestion) {
+      handleAnswerQuestion(pendingQuestion.id, text);
+      return;
+    }
+
     setIsAgentRunning(true);
     const userMsg: ChatMessage = {
       id: 'u-' + Date.now(),
@@ -416,6 +454,7 @@ export const useChatSession = (): UseChatSessionReturn => {
     pastTasks,
     setPastTasks,
     isAgentRunning,
+    pendingQuestion,
     inputValue,
     setInputValue,
     view,
@@ -425,6 +464,8 @@ export const useChatSession = (): UseChatSessionReturn => {
     textareaRef,
     handleSendPrompt,
     handleToolResponse,
+    handleAnswerQuestion,
+    handleCopyToInput,
     handleCloseTask,
     handleDeleteActiveTask,
   };

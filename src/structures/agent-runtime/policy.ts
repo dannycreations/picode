@@ -24,7 +24,7 @@ interface ExecuteCommandToolArgs {
 
 export class PolicyEvaluator {
   public async evaluate(cwd: string, toolName: ToolName, args: unknown): Promise<ToolApprovalDecision> {
-    if (toolName === 'attempt_completion' || toolName === 'update_todo') {
+    if (toolName === 'attempt_completion' || toolName === 'update_todo' || toolName === 'ask_question') {
       return { action: 'approve' };
     }
 

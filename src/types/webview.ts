@@ -70,6 +70,7 @@ export type WebviewToExtensionMessage =
   | { type: 'continue_task'; path?: string; model_id?: string; model_provider?: string }
   | { type: 'approve_tool'; approval_id: string }
   | { type: 'deny_tool'; approval_id: string }
+  | { type: 'question_response'; question_id: string; text: string }
   | { type: 'view_raw_task'; path?: string }
   | { type: 'export_session'; path: string; id: string }
   | { type: 'open_file'; text: string; values?: { line: number } }

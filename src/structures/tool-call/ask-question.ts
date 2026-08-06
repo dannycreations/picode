@@ -1,56 +1,41 @@
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
-import { window } from 'vscode';
+
+import { QuestionBridge } from '@extension/structures/agent-runtime/question';
 
 import type { ToolName } from '@extension/types/webview';
 
 export const askQuestionTool = defineTool({
   name: 'ask_question' as ToolName,
   label: 'Ask Follow-up Question',
-  description: 'Ask the user a question to gather additional information or clarification needed to complete the task.',
+  description:
+    'Ask the user a question to gather additional information or clarification needed to complete the task. Always provide 2-4 specific, actionable suggested answers ordered from most to least likely.',
   parameters: Type.Object({
     question: Type.String({ description: 'The question to ask the user' }),
-    follow_up: Type.Array(
-      Type.Object({
-        text: Type.String({ description: 'Suggested answer text' }),
-        mode: Type.Optional(Type.Union([Type.String(), Type.Null()], { description: 'Optional mode switch' })),
-      }),
-      { description: 'Suggested answers' },
-    ),
+    follow_up: Type.Array(Type.Object({ text: Type.String({ description: 'A complete, self-contained suggested answer with no placeholders' }) }), {
+      description: 'Suggested answers presented as clickable options, ordered from most to least likely',
+    }),
   }),
-  async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
+  async execute(toolCallId, params, signal, _onUpdate, _ctx) {
     try {
-      const choices = params.follow_up.map((f) => f.text);
-      const customOption = 'Type a custom response...';
-      choices.push(customOption);
-
-      const selected = await window.showQuickPick(choices, {
-        placeHolder: params.question,
-        ignoreFocusOut: true,
-      });
-
-      if (selected === undefined) {
+      // The chat view renders the question straight from the tool call
+      // arguments, so an empty question would surface as an empty card.
+      if (!params.question.trim()) {
         return {
-          content: [{ type: 'text', text: 'Error: No response was provided by the user.' }],
+          content: [{ type: 'text', text: 'Error: Missing required parameter "question".' }],
           details: {},
           isError: true,
         };
       }
 
-      let response = selected;
-      if (selected === customOption) {
-        const typed = await window.showInputBox({
-          prompt: params.question,
-          ignoreFocusOut: true,
-        });
-        if (typed === undefined) {
-          return {
-            content: [{ type: 'text', text: 'Error: No response was provided by the user.' }],
-            details: {},
-            isError: true,
-          };
-        }
-        response = typed;
+      const response = await QuestionBridge.getInstance().ask(toolCallId, signal);
+
+      if (response === null || response.trim() === '') {
+        return {
+          content: [{ type: 'text', text: 'Error: No response was provided by the user.' }],
+          details: {},
+          isError: true,
+        };
       }
 
       return {

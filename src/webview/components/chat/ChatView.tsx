@@ -51,6 +51,7 @@ export const ChatView: FC = () => {
     pastTasks,
     setPastTasks,
     isAgentRunning,
+    pendingQuestion,
     inputValue,
     setInputValue,
     view,
@@ -60,6 +61,8 @@ export const ChatView: FC = () => {
     textareaRef,
     handleSendPrompt,
     handleToolResponse,
+    handleAnswerQuestion,
+    handleCopyToInput,
     handleCloseTask,
     handleDeleteActiveTask,
   } = useChatSession();
@@ -97,7 +100,10 @@ export const ChatView: FC = () => {
     );
   }
 
-  const isInputDisabled = isAgentRunning || (activeTask?.messages.some((m) => m.toolStatus === 'approval') ?? false);
+  // A pending question keeps the composer usable so the user can answer with
+  // free text instead of picking one of the suggestions.
+  const isAwaitingApproval = activeTask?.messages.some((m) => m.toolStatus === 'approval') ?? false;
+  const isInputDisabled = !pendingQuestion && (isAgentRunning || isAwaitingApproval);
 
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden max-w-5xl mx-auto bg-[var(--vscode-sideBar-background)]">
@@ -127,9 +133,13 @@ export const ChatView: FC = () => {
       <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
         {activeTask ? (
           <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 flex flex-col overflow-y-auto p-1.5">
-            {activeTask.messages
-              .filter((msg) => msg.toolName !== 'update_todo')
-              .map((msg, idx, filteredArr) => (
+            {(() => {
+              const messages = activeTask.messages;
+              const visibleMessages = messages.some((msg) => msg.toolName === 'attempt_completion')
+                ? messages.filter((msg) => msg.toolName === 'attempt_completion')
+                : messages.filter((msg) => msg.toolName !== 'update_todo');
+
+              return visibleMessages.map((msg, idx, filteredArr) => (
                 <div id={`msg-${msg.id}`} key={msg.id}>
                   <ChatBody
                     message={msg}
@@ -142,10 +152,16 @@ export const ChatView: FC = () => {
                       setShowScrollToBottom(false);
                       handleToolResponse(msgId, 'denied', 'deny_tool');
                     }}
+                    onAnswerQuestion={(questionId, text) => {
+                      setShowScrollToBottom(false);
+                      handleAnswerQuestion(questionId, text);
+                    }}
+                    onCopyToInput={handleCopyToInput}
                     onRestoreCheckpoint={(hash) => alert(`Restoring repository state to checkpoint ${hash}`)}
                   />
                 </div>
-              ))}
+              ));
+            })()}
             <div ref={messagesEndRef} />
           </div>
         ) : (
@@ -201,7 +217,7 @@ export const ChatView: FC = () => {
           handleSendPrompt(text, images);
         }}
         sendingDisabled={isInputDisabled}
-        placeholderText={activeTask ? 'Reply to Pi Code...' : 'Ask a question or type a command...'}
+        placeholderText={pendingQuestion ? 'Type your answer...' : activeTask ? 'Reply to Pi Code...' : 'Ask a question or type a command...'}
       />
 
       {/* Footer */}

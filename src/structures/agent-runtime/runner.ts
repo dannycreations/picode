@@ -3,6 +3,7 @@ import { workspace } from 'vscode';
 
 import { EventMapper } from '@extension/structures/agent-runtime/event';
 import { PolicyEvaluator } from '@extension/structures/agent-runtime/policy';
+import { QuestionBridge } from '@extension/structures/agent-runtime/question';
 import { SessionFactory } from '@extension/structures/agent-runtime/session';
 import { WebviewMessenger } from '@extension/structures/agent-runtime/webview';
 import { getEnvironmentDetails } from '@extension/structures/chat-session/environment';
@@ -88,6 +89,7 @@ export class AgentRunner {
   private readonly messenger = new WebviewMessenger();
   private readonly event = new EventMapper();
   private readonly policy = new PolicyEvaluator();
+  private readonly question = QuestionBridge.getInstance();
 
   private static readonly STATS_EVENT_TYPES = new Set<AgentSessionEvent['type']>([
     'agent_start',
@@ -170,7 +172,13 @@ export class AgentRunner {
     }
   }
 
+  public answerQuestion(questionId: string, text: string): void {
+    this.question.answer(questionId, text);
+  }
+
   public abort(): void {
+    this.question.cancelAll();
+
     if (this.session) {
       void this.session.abort().catch((err) => {
         console.error('Failed to abort session:', err);
@@ -182,6 +190,7 @@ export class AgentRunner {
     this.messenger.dispose();
     this.cleanupSession();
     this.pendingApprovals.clear();
+    this.question.cancelAll();
   }
 
   public getSessionFile(): string | undefined {
@@ -191,6 +200,7 @@ export class AgentRunner {
   private prepareRun(webview: Webview): void {
     this.messenger.attach(webview);
     this.pendingApprovals.clear();
+    this.question.cancelAll();
     this.isAttemptCompletionAborted = false;
     this.event.resetTurnState();
   }

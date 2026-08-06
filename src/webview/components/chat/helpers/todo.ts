@@ -11,17 +11,23 @@ export function extractTodos(messages: ChatMessage[]): TodoItem[] | undefined {
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i];
     if (msg.toolName === 'update_todo' && msg.diff) {
-      const lines = msg.diff.split('\n');
-      const list: TodoItem[] = [];
-      for (const line of lines) {
-        const match = line.match(/^(?:-\s*)?\[\s*([ xX\-~])\s*\]\s*(.+)$/);
-        if (match) {
+      try {
+        const parsed = JSON.parse(msg.diff);
+        const todos = parsed?.details?.todos;
+        if (typeof todos !== 'string') return undefined;
+
+        const list: TodoItem[] = [];
+        for (const line of todos.split('\n')) {
+          const match = line.match(/^-\s*\[([ xX\-~])\]\s*(.+)$/);
+          if (!match) continue;
           const indicator = match[1].toLowerCase();
-          const status = indicator === 'x' ? 'completed' : indicator === '-' || indicator === '~' ? 'in_progress' : 'pending';
+          const status: TodoStatus = indicator === 'x' ? 'completed' : indicator === '-' || indicator === '~' ? 'in_progress' : 'pending';
           list.push({ content: match[2], status });
         }
+        return list;
+      } catch {
+        return undefined;
       }
-      return list;
     }
   }
   return undefined;

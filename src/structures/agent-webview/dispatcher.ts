@@ -70,6 +70,7 @@ export function createDefaultDispatcher(): ChatMessageDispatcher {
     })
     .register('approve_tool', (msg, ctx) => ctx.agent.approveTool(msg.approval_id))
     .register('deny_tool', (msg, ctx) => ctx.agent.denyTool(msg.approval_id))
+    .register('question_response', (msg, ctx) => ctx.agent.answerQuestion(msg.question_id, msg.text))
     .register('cancel_task', (_, ctx) => ctx.agent.abort())
     .register('close_task', (_, ctx) => {
       try {
