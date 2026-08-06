@@ -46,6 +46,7 @@ export const ChatView: FC = () => {
   const {
     activeTask,
     models,
+    settings,
     selectedModel,
     setSelectedModel,
     pastTasks,
@@ -75,7 +76,13 @@ export const ChatView: FC = () => {
   if (view === 'settings') {
     return (
       <div className="fixed inset-0 flex flex-col overflow-hidden max-w-5xl mx-auto bg-[var(--vscode-sideBar-background)]">
-        <SettingsView onDone={() => setView('chat')} />
+        {settings ? (
+          <SettingsView settings={settings} onDone={() => setView('chat')} />
+        ) : (
+          <div className="flex items-center justify-center h-full text-[var(--vscode-descriptionForeground)] text-xs select-none">
+            Loading settings...
+          </div>
+        )}
       </div>
     );
   }

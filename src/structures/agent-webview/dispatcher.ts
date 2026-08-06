@@ -117,10 +117,6 @@ export function createDefaultDispatcher(): ChatMessageDispatcher {
       const history = await ctx.sessionService.deleteSessions(msg.paths, scope, ctx.cwd);
       ctx.postMessage({ type: 'history_data', payload: { history } });
     })
-    .register('get_settings', async (_, ctx) => {
-      const settings = await SettingsService.getInstance(ctx.cwd).load();
-      ctx.postMessage({ type: 'settings_data', payload: { settings } });
-    })
     .register('update_setting', async (msg, ctx) => {
       const settings = await SettingsService.getInstance(ctx.cwd).update(msg.key, msg.value);
       ctx.postMessage({ type: 'settings_data', payload: { settings } });

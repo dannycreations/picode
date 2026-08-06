@@ -2,6 +2,7 @@ import { unlink } from 'node:fs/promises';
 import { getAgentDir, ModelRuntime, SessionManager, SettingsManager } from '@earendil-works/pi-coding-agent';
 import { Uri, window, workspace } from 'vscode';
 
+import { SettingsService } from '@extension/core/settings';
 import { calculateSessionStats, convertSessionEntries } from '@extension/structures/chat-session/session';
 import { isProjectTrusted } from '@extension/utilities/vscode';
 
@@ -17,14 +18,18 @@ export class SessionService {
     const agentDir = getAgentDir();
     const isTrusted = isProjectTrusted(cwd);
 
-    const [modelRuntime, sessions] = await Promise.all([ModelRuntime.create(), SessionManager.list(cwd)]);
+    const [modelRuntime, sessions, settings] = await Promise.all([
+      ModelRuntime.create(),
+      SessionManager.list(cwd),
+      SettingsService.getInstance(cwd).load(),
+    ]);
     const models = modelRuntime.getModels().map((m) => ({ id: m.id, name: m.name, provider: m.provider }));
 
     const history = this.formatSessions(sessions);
     const settingsManager = SettingsManager.create(cwd, agentDir, { projectTrusted: isTrusted });
     const defaultModel = settingsManager.getDefaultModel();
 
-    return { models, history, default_model: defaultModel };
+    return { models, history, default_model: defaultModel, settings };
   }
 
   public async loadSessionDetails(

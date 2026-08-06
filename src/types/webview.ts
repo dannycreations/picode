@@ -82,11 +82,10 @@ export type WebviewToExtensionMessage =
   | { type: 'close_task' }
   | { type: 'cancel_task' }
   | { type: 'compact'; id: string; path?: string; title: string }
-  | { type: 'get_settings' }
   | ({ type: 'update_setting' } & SettingsData);
 
 export type ExtensionToWebviewMessage =
-  | { type: 'init_data'; payload: { models: ModelItem[]; history: HistoryItem[]; default_model?: string } }
+  | { type: 'init_data'; payload: { models: ModelItem[]; history: HistoryItem[]; default_model?: string; settings: AppSettings } }
   | { type: 'history_data'; payload: { history: HistoryItem[] } }
   | { type: 'settings_data'; payload: { settings: AppSettings } }
   | { type: 'session_loaded'; payload: ActiveTaskState }

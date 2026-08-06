@@ -4,6 +4,7 @@ import { findPendingQuestion } from '@extension/webview/components/chat/helpers/
 import { vscode } from '@webview/utilities/vscode';
 
 import type { Dispatch, RefObject, SetStateAction } from 'react';
+import type { AppSettings } from '@extension/core/settings';
 import type { ActiveTaskState, ChatMessage, ExtensionToWebviewMessage, HistoryItem, ModelItem } from '@extension/types/webview';
 
 interface ApiRequestSettlePatch {
@@ -38,6 +39,7 @@ function appendErrorMessage(messages: ChatMessage[], id: string, error: string):
 export interface UseChatSessionReturn {
   readonly activeTask: ActiveTaskState | null;
   readonly models: ModelItem[];
+  readonly settings: AppSettings | null;
   readonly selectedModel: string;
   readonly setSelectedModel: Dispatch<SetStateAction<string>>;
   readonly pastTasks: HistoryItem[];
@@ -62,6 +64,7 @@ export interface UseChatSessionReturn {
 export const useChatSession = (): UseChatSessionReturn => {
   const [activeTask, setActiveTask] = useState<ActiveTaskState | null>(null);
   const [models, setModels] = useState<ModelItem[]>([]);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
   const [selectedModel, setSelectedModel] = useState('pi-code');
   const [pastTasks, setPastTasks] = useState<HistoryItem[]>([]);
   const [isAgentRunning, setIsAgentRunning] = useState(false);
@@ -86,13 +89,14 @@ export const useChatSession = (): UseChatSessionReturn => {
   useEffect(() => {
     if (!vscode) return;
 
-    const handleMessage = (event: MessageEvent): void => {
-      const msg = event.data as ExtensionToWebviewMessage;
+    const handleMessage = (event: MessageEvent<ExtensionToWebviewMessage>): void => {
+      const msg = event.data;
       switch (msg.type) {
         case 'init_data': {
-          const { models: backendModels, history, default_model: defaultModel } = msg.payload;
+          const { models: backendModels, history, default_model: defaultModel, settings: backendSettings } = msg.payload;
           setModels(backendModels);
           setPastTasks(history);
+          setSettings(backendSettings ?? null);
           setSelectedModel(defaultModel || backendModels[0]?.id || 'pi-code');
           break;
         }
@@ -476,6 +480,7 @@ export const useChatSession = (): UseChatSessionReturn => {
   return {
     activeTask,
     models,
+    settings,
     selectedModel,
     setSelectedModel,
     pastTasks,

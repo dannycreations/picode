@@ -10,6 +10,7 @@ import { ContextTab } from '@extension/webview/components/setting/tabs/ContextTa
 import { ConfirmDialog } from '@extension/webview/components/shared/ConfirmDialog';
 
 import type { FC } from 'react';
+import type { AppSettings } from '@extension/core/settings';
 import type { SettingsTab } from '@extension/webview/components/setting/shared/types';
 
 const SETTINGS_TABS: SettingsTab[] = [
@@ -40,17 +41,17 @@ const SETTINGS_TABS: SettingsTab[] = [
 ];
 
 interface SettingsViewProps {
+  readonly settings: AppSettings;
   readonly onDone: () => void;
 }
 
-export const SettingsView: FC<SettingsViewProps> = ({ onDone }) => {
+export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
   const [activeTabId, setActiveTabId] = useState(SETTINGS_TABS[0].id);
   const [isDiscardDialogShow, setDiscardDialogShow] = useState(false);
 
-  const { draftSettings, originalSettings, isSaving, isChangeDetected, handleFieldChange, handleSave, resetDraft } = useSetting();
+  const { draftSettings, isSaving, isChangeDetected, handleFieldChange, handleSave, resetDraft } = useSetting(settings);
 
-  const isLoaded = draftSettings !== null && originalSettings !== null;
-  const { containerRef, isCollapsed } = useResponsive(500, isLoaded);
+  const { containerRef, isCollapsed } = useResponsive(500, true);
 
   const checkUnsavedChanges = (proceed: () => void) => {
     if (isChangeDetected) {
@@ -59,14 +60,6 @@ export const SettingsView: FC<SettingsViewProps> = ({ onDone }) => {
       proceed();
     }
   };
-
-  if (!draftSettings || !originalSettings) {
-    return (
-      <div className="flex items-center justify-center h-full bg-vscode-sideBar-background text-vscode-descriptionForeground text-xs select-none">
-        Loading settings...
-      </div>
-    );
-  }
 
   const activeTab = SETTINGS_TABS.find((tab) => tab.id === activeTabId) || SETTINGS_TABS[0];
   const ActiveTabComponent = activeTab.component;

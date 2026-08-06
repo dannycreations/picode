@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { vscode } from '@webview/utilities/vscode';
 
 import type { AppSettings } from '@extension/core/settings';
-import type { SettingsData } from '@extension/types/webview';
+import type { ExtensionToWebviewMessage, SettingsData } from '@extension/types/webview';
 
 export function areSettingsValuesEqual(a: unknown, b: unknown): boolean {
   if (Array.isArray(a) && Array.isArray(b)) {
@@ -14,8 +14,8 @@ export function areSettingsValuesEqual(a: unknown, b: unknown): boolean {
 }
 
 export interface UseSettingReturn {
-  readonly draftSettings: AppSettings | null;
-  readonly originalSettings: AppSettings | null;
+  readonly draftSettings: AppSettings;
+  readonly originalSettings: AppSettings;
   readonly isSaving: boolean;
   readonly isChangeDetected: boolean;
   readonly handleFieldChange: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void;
@@ -23,18 +23,14 @@ export interface UseSettingReturn {
   readonly resetDraft: () => void;
 }
 
-export const useSetting = (): UseSettingReturn => {
-  const [originalSettings, setOriginalSettings] = useState<AppSettings | null>(null);
-  const [draftSettings, setDraftSettings] = useState<AppSettings | null>(null);
+export const useSetting = (initialSettings: AppSettings): UseSettingReturn => {
+  const [originalSettings, setOriginalSettings] = useState<AppSettings>(initialSettings);
+  const [draftSettings, setDraftSettings] = useState<AppSettings>(initialSettings);
   const [isSaving, setIsSaving] = useState(false);
   const pendingUpdatesRef = useRef<SettingsData[]>([]);
 
   useEffect(() => {
-    vscode?.postMessage({ type: 'get_settings' });
-  }, []);
-
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
+    const handleMessage = (event: MessageEvent<ExtensionToWebviewMessage>) => {
       const msg = event.data;
       if (msg.type === 'settings_data' && msg.payload?.settings) {
         const s = msg.payload.settings as AppSettings;
@@ -60,18 +56,16 @@ export const useSetting = (): UseSettingReturn => {
   }, []);
 
   const isChangeDetected = (() => {
-    if (!draftSettings || !originalSettings) return false;
     const keys = Object.keys(draftSettings) as Array<keyof AppSettings>;
     return keys.some((key) => !areSettingsValuesEqual(draftSettings[key], originalSettings[key]));
   })();
 
   const handleFieldChange = <K extends keyof AppSettings>(key: K, value: AppSettings[K]): void => {
-    if (!draftSettings) return;
     setDraftSettings({ ...draftSettings, [key]: value });
   };
 
   const handleSave = (): void => {
-    if (!draftSettings || !originalSettings || isSaving) return;
+    if (isSaving) return;
 
     const updates: SettingsData[] = [];
     const keys = Object.keys(draftSettings) as Array<keyof AppSettings>;
