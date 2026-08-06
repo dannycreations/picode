@@ -3,6 +3,8 @@ import { dirname, resolve } from 'node:path';
 import { defineTool, generateDiffString } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
+import { resolveOutputLimits, truncateOutput } from '@extension/utilities/truncate';
+
 import type { ToolName } from '@extension/types/webview';
 
 type LineEnding = '\r\n' | '\n';
@@ -231,8 +233,16 @@ export const editFileTool = defineTool({
 
       const diffResult = generateDiffString(originalContent, newContent);
 
+      // Keep the full diff for the UI, but cap what the model receives.
+      const limits = await resolveOutputLimits(ctx.cwd);
+      const { text } = truncateOutput(diffResult.diff || `Successfully updated ${file_path}`, {
+        limits,
+        keep: 'head',
+        hint: `The edit succeeded; read "${file_path}" if you need to verify the remaining changes.`,
+      });
+
       return {
-        content: [{ type: 'text', text: diffResult.diff || `Successfully updated ${file_path}` }],
+        content: [{ type: 'text', text }],
         details: { diff: diffResult.diff },
       };
     } catch (err) {

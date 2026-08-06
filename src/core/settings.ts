@@ -1,5 +1,5 @@
 import assert from 'node:assert';
-import { getAgentDir, SettingsManager } from '@earendil-works/pi-coding-agent';
+import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, getAgentDir, SettingsManager } from '@earendil-works/pi-coding-agent';
 import { isObjectLike } from 'es-toolkit/compat';
 
 import { isProjectTrusted } from '@extension/utilities/vscode';
@@ -30,6 +30,8 @@ export interface AppSettings {
   readonly maxWorkspaceFiles: number;
   readonly maxGitStatusFiles: number;
   readonly maxConcurrentFileReads: number;
+  readonly maxToolOutputLines: number;
+  readonly maxToolOutputSizeKb: number;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -58,6 +60,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   maxWorkspaceFiles: 100,
   maxGitStatusFiles: 20,
   maxConcurrentFileReads: 10,
+  maxToolOutputLines: DEFAULT_MAX_LINES,
+  maxToolOutputSizeKb: DEFAULT_MAX_BYTES / 1024,
 };
 
 function parseBoolean(value: unknown, fallback: boolean): boolean {
@@ -105,6 +109,8 @@ function parseAppSettings(input?: unknown, base = DEFAULT_SETTINGS): AppSettings
     maxWorkspaceFiles: parseBoundedNumber(raw.maxWorkspaceFiles, base.maxWorkspaceFiles, { min: 0 }),
     maxGitStatusFiles: parseBoundedNumber(raw.maxGitStatusFiles, base.maxGitStatusFiles, { min: 0 }),
     maxConcurrentFileReads: parseBoundedNumber(raw.maxConcurrentFileReads, base.maxConcurrentFileReads, { min: 1 }),
+    maxToolOutputLines: parseBoundedNumber(raw.maxToolOutputLines, base.maxToolOutputLines, { min: 1 }),
+    maxToolOutputSizeKb: parseBoundedNumber(raw.maxToolOutputSizeKb, base.maxToolOutputSizeKb, { min: 1 }),
   };
 }
 

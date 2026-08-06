@@ -6,8 +6,10 @@ import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
 import { SettingsService } from '@extension/core/settings';
+import { DEFAULT_OUTPUT_LIMITS, shareOutputLimits, toOutputLimits, truncateOutput } from '@extension/utilities/truncate';
 
 import type { ToolName } from '@extension/types/webview';
+import type { OutputLimits } from '@extension/utilities/truncate';
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 const BINARY_CHECK_BYTES = 4096;
@@ -74,6 +76,28 @@ async function readAllFormattedLines(filePath: string, signal?: AbortSignal): Pr
   return lines;
 }
 
+function nextLineAfter(text: string): number | undefined {
+  const lastBreak = text.lastIndexOf('\n');
+  const lastLine = lastBreak === -1 ? text : text.slice(lastBreak + 1);
+  const match = /^(\d+)\|/.exec(lastLine);
+  return match ? Number(match[1]) + 1 : undefined;
+}
+
+function truncateFileSection(header: string, body: string, path: string, limits: OutputLimits): string {
+  const { text } = truncateOutput(body, {
+    limits,
+    keep: 'head',
+    hint: (truncation) => {
+      const next = nextLineAfter(truncation.content);
+      return next === undefined
+        ? `Use line_ranges on "${path}" to read a narrower slice.`
+        : `Use line_ranges starting at line ${next} on "${path}" to continue.`;
+    },
+  });
+
+  return `${header}\n${text}`;
+}
+
 export const readFileTool = defineTool({
   name: 'read_file' as ToolName,
   label: 'Read File',
@@ -100,13 +124,18 @@ export const readFileTool = defineTool({
   async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
     try {
       let maxConcurrent = 5;
+      let limits = DEFAULT_OUTPUT_LIMITS;
       try {
         const settingsService = SettingsService.getInstance(ctx.cwd);
         const settings = await settingsService.load();
         if (typeof settings?.maxConcurrentFileReads === 'number' && settings.maxConcurrentFileReads > 0) {
           maxConcurrent = settings.maxConcurrentFileReads;
         }
+        limits = toOutputLimits(settings);
       } catch {}
+
+      // Split the budget so one large file cannot consume the whole batch.
+      const perFileLimits = shareOutputLimits(limits, params.files.length);
 
       const fileResults: { result: string; hasError: boolean }[] = Array(params.files.length);
 
@@ -142,7 +171,8 @@ export const readFileTool = defineTool({
             return;
           }
 
-          let resultText = '';
+          let header = '';
+          let body = '';
 
           if (fileObj.line_ranges && fileObj.line_ranges.length > 0) {
             const maxRequestedLine = Math.max(...fileObj.line_ranges.map((range) => Math.max(1, range[1])));
@@ -150,7 +180,8 @@ export const readFileTool = defineTool({
             // Stream file up to the highest requested line number and stop early
             const lines = await readLinesUpTo(resolvedPath, maxRequestedLine, _signal);
 
-            const parts: string[] = [`File: ${fileObj.path} (Ranges: ${JSON.stringify(fileObj.line_ranges)})`];
+            header = `File: ${fileObj.path} (Ranges: ${JSON.stringify(fileObj.line_ranges)})`;
+            const parts: string[] = [];
 
             for (const range of fileObj.line_ranges) {
               const start = Math.max(1, range[0]);
@@ -165,13 +196,17 @@ export const readFileTool = defineTool({
                 parts.push(`${i}|${lines[i - 1]}`);
               }
             }
-            resultText = parts.join('\n');
+            body = parts.join('\n');
           } else {
             const numberedLines = await readAllFormattedLines(resolvedPath, _signal);
-            resultText = `File: ${fileObj.path}\n${numberedLines.join('\n')}`;
+            header = `File: ${fileObj.path}`;
+            body = numberedLines.join('\n');
           }
 
-          fileResults[index] = { result: resultText, hasError: false };
+          fileResults[index] = {
+            result: truncateFileSection(header, body, fileObj.path, perFileLimits),
+            hasError: false,
+          };
         } catch (err) {
           fileResults[index] = {
             result: `Error reading file ${fileObj.path}: ${err instanceof Error ? err.message : String(err)}`,
@@ -204,8 +239,15 @@ export const readFileTool = defineTool({
       const results = fileResults.map((r) => r?.result ?? 'Error: File processing failed.');
       const allFailed = fileResults.length > 0 && fileResults.every((r) => r?.hasError);
 
+      // Final cap: per-file headers and separators sit outside the shared budget.
+      const { text } = truncateOutput(results.join('\n\n'), {
+        limits,
+        keep: 'head',
+        hint: 'Request fewer files per call to see the rest.',
+      });
+
       return {
-        content: [{ type: 'text', text: results.join('\n\n') }],
+        content: [{ type: 'text', text }],
         details: {},
         isError: allFailed,
       };

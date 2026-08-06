@@ -31,7 +31,7 @@ export function getToolDiffMeta(toolName?: string): { label: string; icon: strin
     case 'delete_file':
       return { label: 'Execution Output', icon: 'trash' };
     default:
-      return { label: 'File Changes Diff', icon: 'diff' };
+      return { label: 'File Changes', icon: 'diff' };
   }
 }
 

@@ -5,7 +5,7 @@ import { commands, extensions, ProgressLocation, window, workspace } from 'vscod
 import { logger } from '@extension/core/logger';
 import { COMMIT_MESSAGE_PROMPT } from '@extension/core/prompt';
 import { buildGitContext, getGitChanges, getGitDiffContext, getRepoContext } from '@extension/structures/commit-message/git';
-import { extractCodeBlockMessage } from '@extension/utilities/markdown';
+import { extractCodeFenceMessage } from '@extension/utilities/markdown';
 import { isProjectTrusted } from '@extension/utilities/vscode';
 
 import type { Disposable, ExtensionContext, Uri } from 'vscode';
@@ -181,7 +181,7 @@ export function registerCommitMessageCommand(_: ExtensionContext): Disposable {
             .trim();
           logger.info(`Raw LLM response: ${rawMessage}`);
 
-          const cleanMessage = extractCodeBlockMessage(rawMessage);
+          const cleanMessage = extractCodeFenceMessage(rawMessage);
           logger.info(`Extracted commit message: ${cleanMessage}`);
 
           if (cleanMessage) {

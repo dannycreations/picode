@@ -3,6 +3,9 @@ import { dirname, resolve } from 'node:path';
 import { defineTool, generateDiffString } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
+import { stripCodeFence } from '@extension/utilities/markdown';
+import { resolveOutputLimits, truncateOutput } from '@extension/utilities/truncate';
+
 import type { ToolName } from '@extension/types/webview';
 
 export const writeFileTool = defineTool({
@@ -18,19 +21,7 @@ export const writeFileTool = defineTool({
       const resolvedPath = resolve(ctx.cwd, params.path);
 
       // Clean content from code block markers if present
-      let finalContent = params.content;
-      if (finalContent.startsWith('```')) {
-        const lines = finalContent.split('\n');
-        if (lines.length > 1) {
-          finalContent = lines.slice(1).join('\n');
-        }
-      }
-      if (finalContent.endsWith('```')) {
-        const lines = finalContent.split('\n');
-        if (lines.length > 1) {
-          finalContent = lines.slice(0, -1).join('\n');
-        }
-      }
+      const finalContent = stripCodeFence(params.content);
 
       let oldContent = '';
       let fileExists = false;
@@ -43,8 +34,16 @@ export const writeFileTool = defineTool({
       await writeFile(resolvedPath, finalContent, 'utf8');
       const diffResult = generateDiffString(oldContent, finalContent);
 
+      // Keep the full diff for the UI, but cap what the model receives.
+      const limits = await resolveOutputLimits(ctx.cwd);
+      const { text } = truncateOutput(diffResult.diff || `Successfully wrote content to ${params.path}`, {
+        limits,
+        keep: 'head',
+        hint: `The write succeeded; read "${params.path}" if you need to verify the remaining changes.`,
+      });
+
       return {
-        content: [{ type: 'text', text: diffResult.diff || `Successfully wrote content to ${params.path}` }],
+        content: [{ type: 'text', text }],
         details: { diff: diffResult.diff, fileExists },
       };
     } catch (err) {

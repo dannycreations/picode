@@ -62,6 +62,27 @@ export const ContextTab: FC<TabProps> = ({ draftSettings, handleFieldChange }) =
         description="Maximum number of files the 'read_file' tool can process concurrently. Higher values may speed up reading multiple small files but increase memory usage."
         onChange={(val) => handleFieldChange('maxConcurrentFileReads', val)}
       />
+
+      <SettingSlider
+        label="Tool output line limit"
+        value={draftSettings.maxToolOutputLines}
+        min={100}
+        max={10000}
+        step={100}
+        description="Maximum number of lines a single tool result may send to the model. Whichever limit is reached first, lines or size, triggers truncation."
+        onChange={(val) => handleFieldChange('maxToolOutputLines', val)}
+      />
+
+      <SettingSlider
+        label="Tool output size limit"
+        value={draftSettings.maxToolOutputSizeKb}
+        min={5}
+        max={500}
+        step={5}
+        unit="KB"
+        description="Maximum size a single tool result may send to the model. Truncated results keep a notice explaining how to retrieve the remaining output."
+        onChange={(val) => handleFieldChange('maxToolOutputSizeKb', val)}
+      />
     </div>
   );
 };

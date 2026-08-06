@@ -1,14 +1,15 @@
 import { spawn } from 'node:child_process';
 import { isAbsolute, resolve } from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
-import { defineTool } from '@earendil-works/pi-coding-agent';
+import { defineTool, formatSize } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
+
+import { resolveOutputLimits, truncateOutput } from '@extension/utilities/truncate';
 
 import type { CustomToolResult } from '@extension/types/extension';
 import type { ToolName } from '@extension/types/webview';
 
 const ANSI_PATTERN = /\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b[=>c()#%*+]/g;
-const MAX_OUTPUT_SIZE = 10 * 1024 * 1024;
 
 export function cleanCommandOutput(raw: string): string {
   if (!raw) return '';
@@ -52,6 +53,9 @@ export const executeCommandTool = defineTool({
     cwd: Type.Optional(Type.Union([Type.String(), Type.Null()], { description: 'Optional working directory for the command' })),
   }),
   async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+    const limits = await resolveOutputLimits(ctx.cwd);
+    const retainedBytes = limits.maxBytes * 2;
+
     return new Promise<CustomToolResult<{ exitCode: number | null; signalCode: string | null; output: string }>>((res) => {
       let resolvedCwd = ctx.cwd;
       if (typeof params.cwd === 'string' && params.cwd.trim() !== '') {
@@ -59,8 +63,8 @@ export const executeCommandTool = defineTool({
       }
 
       const output: string[] = [];
-      let totalOutputLength = 0;
-      let isTruncated = false;
+      let retainedLength = 0;
+      let totalLength = 0;
 
       const stdoutDecoder = new StringDecoder('utf8');
       const stderrDecoder = new StringDecoder('utf8');
@@ -68,16 +72,14 @@ export const executeCommandTool = defineTool({
       const appendOutput = (text: string) => {
         if (!text) return;
 
-        if (totalOutputLength >= MAX_OUTPUT_SIZE) {
-          if (!isTruncated) {
-            isTruncated = true;
-            output.push('\n[Output truncated: exceeded maximum size limit]\n');
-          }
-          return;
-        }
-
-        totalOutputLength += text.length;
+        totalLength += text.length;
         output.push(text);
+        retainedLength += text.length;
+
+        // Rolling window: drop the oldest chunks, tail truncation keeps the end.
+        while (retainedLength > retainedBytes && output.length > 1) {
+          retainedLength -= output.shift()!.length;
+        }
       };
 
       const cp = spawn(params.command, [], {
@@ -115,8 +117,21 @@ export const executeCommandTool = defineTool({
         const rawOutput = output.join('');
         const cleanOutput = cleanCommandOutput(rawOutput);
 
+        // The rolling window may already have dropped the head of a very noisy run.
+        const dropped = totalLength > retainedLength;
+        const droppedNote = dropped ? ` The command produced ${formatSize(totalLength)} in total.` : '';
+        const retry = `Re-run filtered through a search or pager (for example findstr, grep, head, or tail) to inspect the rest.${droppedNote}`;
+
+        const { text, truncation } = truncateOutput(cleanOutput, { limits, keep: 'tail', hint: retry });
+
+        // Streaming already discarded the head even though what remains fits the budget.
+        let modelText = text;
+        if (dropped && !truncation.truncated) {
+          modelText = `${text}\n\n[Truncated: showing only the end of the output (${formatSize(limits.maxBytes)} output limit). ${retry}]`;
+        }
+
         res({
-          content: [{ type: 'text', text: cleanOutput || `[Command completed with no output. ${exitInfo}]` }],
+          content: [{ type: 'text', text: modelText || `[Command completed with no output. ${exitInfo}]` }],
           details: { exitCode, signalCode, output: cleanOutput },
           isError: exitCode !== 0,
         });
