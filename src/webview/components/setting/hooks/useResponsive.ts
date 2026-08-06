@@ -7,7 +7,7 @@ export interface UseResponsiveReturn {
   readonly isCollapsed: boolean;
 }
 
-export const useResponsive = (threshold = 600, active = true): UseResponsiveReturn => {
+export const useResponsive = (threshold = 500, active = true): UseResponsiveReturn => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
 

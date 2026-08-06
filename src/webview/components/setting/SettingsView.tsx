@@ -41,7 +41,7 @@ export const SettingsView: FC<SettingsViewProps> = ({ onDone }) => {
   const { draftSettings, originalSettings, isSaving, isChangeDetected, handleFieldChange, handleSave, resetDraft } = useSetting();
 
   const isLoaded = draftSettings !== null && originalSettings !== null;
-  const { containerRef, isCollapsed } = useResponsive(600, isLoaded);
+  const { containerRef, isCollapsed } = useResponsive(500, isLoaded);
 
   const checkUnsavedChanges = (proceed: () => void) => {
     if (isChangeDetected) {
@@ -86,7 +86,7 @@ export const SettingsView: FC<SettingsViewProps> = ({ onDone }) => {
               'h-7 px-3 text-xs font-semibold rounded cursor-pointer transition-colors duration-150',
               isChangeDetected && !isSaving
                 ? 'bg-vscode-button-background text-vscode-button-foreground hover:bg-vscode-button-hoverBackground border-none'
-                : 'bg-vscode-button-secondaryBackground text-vscode-button-secondaryForeground hover:bg-vscode-button-secondaryHoverBackground border border-vscode-editorGroup-border opacity-50 cursor-not-allowed',
+                : 'bg-vscode-button-secondaryBackground text-vscode-button-secondaryForeground hover:bg-vscode-button-secondaryHoverBackground border-none opacity-50 cursor-not-allowed',
             )}
           >
             {isSaving ? 'Saving...' : 'Save'}

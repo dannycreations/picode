@@ -54,7 +54,7 @@ export const SettingList: FC<SettingListProps> = ({ label, description, placehol
             }
           }}
           placeholder={placeholder}
-          className="h-7 px-2 text-xs rounded border border-vscode-settings-textInputBorder bg-vscode-settings-textInputBackground text-vscode-settings-textInputForeground outline-none focus:border-vscode-focusBorder grow"
+          className="h-7 px-2 text-xs rounded border border-vscode-focusBorder bg-vscode-settings-textInputBackground text-vscode-settings-textInputForeground outline-none hover:ring-1 hover:ring-vscode-focusBorder focus:ring-1 focus:ring-vscode-focusBorder grow"
         />
         <button
           type="button"

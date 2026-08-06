@@ -34,7 +34,7 @@ export const HistoryFilter: FC<HistoryFilterProps> = ({
         value={searchQuery}
         onChange={(e) => onSearchChange(e.target.value)}
         placeholder="Search task descriptions..."
-        className="w-full pl-8 pr-8 py-1.5 text-xs bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-[var(--vscode-input-border)]/60 rounded focus:border-[var(--vscode-focusBorder)] focus:outline-none"
+        className="w-full pl-8 pr-8 py-1.5 text-xs bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-[var(--vscode-focusBorder)] rounded outline-none hover:ring-1 hover:ring-[var(--vscode-focusBorder)] focus:ring-1 focus:ring-[var(--vscode-focusBorder)]"
       />
       {searchQuery && (
         <button

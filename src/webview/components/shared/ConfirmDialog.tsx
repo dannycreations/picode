@@ -67,7 +67,8 @@ export const Button: FC<ButtonProps> = ({ variant = 'secondary', isLoading = fal
     'px-3 py-1.5 text-xs font-semibold rounded cursor-pointer transition-colors border flex items-center justify-center gap-2 select-none disabled:opacity-50 disabled:cursor-not-allowed';
 
   const variants = {
-    ghost: 'bg-transparent border-none text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] p-0 text-base leading-none',
+    ghost:
+      'bg-transparent border-transparent text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] p-0 text-base leading-none',
     secondary: 'bg-transparent hover:bg-[var(--vscode-list-hoverBackground)] border-[var(--vscode-panel-border)]/50 text-[var(--vscode-foreground)]',
     primary:
       'bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] border-transparent',
@@ -98,7 +99,7 @@ export const Modal: FC<ModalProps> = ({ isOpen, children, ariaLabelledBy, ariaDe
           aria-modal="true"
           aria-labelledby={ariaLabelledBy}
           aria-describedby={ariaDescribedBy}
-          className="bg-[var(--vscode-editor-background)] border border-[var(--vscode-panel-border)] rounded-md w-full max-w-sm overflow-hidden flex flex-col shadow-xl"
+          className="bg-[var(--vscode-editor-background)] border border-[var(--vscode-panel-border)] rounded-md w-full max-w-md overflow-hidden flex flex-col shadow-xl"
         >
           {children}
         </div>
