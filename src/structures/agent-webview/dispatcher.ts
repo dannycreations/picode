@@ -1,5 +1,6 @@
 import { window } from 'vscode';
 
+import { logger } from '@extension/core/logger';
 import { SettingsService } from '@extension/core/settings';
 import { AgentRunner } from '@extension/structures/agent-runtime/runner';
 
@@ -40,7 +41,7 @@ export class ChatMessageDispatcher {
       await handler(message, context);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
-      console.error(`Error handling message "${message.type}":`, err);
+      logger.error(`Error handling message "${message.type}":`, err);
       window.showErrorMessage(`Action failed (${message.type}): ${errorMessage}`);
     }
   }
@@ -76,7 +77,7 @@ export function createDefaultDispatcher(): ChatMessageDispatcher {
       try {
         ctx.agent.dispose();
       } catch (err) {
-        console.error('Failed to dispose agent runner:', err);
+        logger.error('Failed to dispose agent runner:', err);
       }
       ctx.recreateAgent();
     })

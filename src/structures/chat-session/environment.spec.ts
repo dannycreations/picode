@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildFileTree, renderFileTree } from './environment';
+import { buildFileTree, renderFileTree } from '@extension/structures/chat-session/environment';
 
 describe('renderFileTree', () => {
   it('renders a compact indented tree without repeating parent path segments', () => {

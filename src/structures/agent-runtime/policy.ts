@@ -1,3 +1,4 @@
+import { logger } from '@extension/core/logger';
 import { SettingsService } from '@extension/core/settings';
 import { resolveCommandAction, resolvePathAction, resolveReadPath } from '@extension/structures/agent-runtime/policy-action';
 
@@ -45,7 +46,7 @@ export class PolicyEvaluator {
           return { action: 'confirm' };
       }
     } catch (err) {
-      console.error('Failed to load settings for auto-approval:', err);
+      logger.error('Failed to load settings for auto-approval:', err);
       return { action: 'confirm' };
     }
   }

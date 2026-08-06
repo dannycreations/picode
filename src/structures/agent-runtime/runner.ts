@@ -1,6 +1,7 @@
 import assert from 'node:assert';
 import { workspace } from 'vscode';
 
+import { logger } from '@extension/core/logger';
 import { EventMapper } from '@extension/structures/agent-runtime/event';
 import { PolicyEvaluator } from '@extension/structures/agent-runtime/policy';
 import { QuestionBridge } from '@extension/structures/agent-runtime/question';
@@ -75,7 +76,7 @@ function finalizeAttemptCompletion(session: AgentSession): void {
       assert(session.sessionManager['_rewriteFile'], 'SessionManager._rewriteFile not found');
       session.sessionManager['_rewriteFile']();
     } catch (err) {
-      console.error('Failed to rewrite session file with stopReason update:', err);
+      logger.error('Failed to rewrite session file with stopReason update:', err);
     }
   }
 }
@@ -181,7 +182,7 @@ export class AgentRunner {
 
     if (this.session) {
       void this.session.abort().catch((err) => {
-        console.error('Failed to abort session:', err);
+        logger.error('Failed to abort session:', err);
       });
     }
   }
@@ -230,7 +231,7 @@ export class AgentRunner {
     try {
       await session.setModel(model);
     } catch (err) {
-      console.warn(`Could not apply selected model ${selectedModel.provider}/${selectedModel.id}:`, err);
+      logger.warn(`Could not apply selected model ${selectedModel.provider}/${selectedModel.id}:`, err);
     }
   }
 
@@ -301,7 +302,7 @@ export class AgentRunner {
       try {
         this.unsubscribeSessionEvents();
       } catch (err) {
-        console.error('Failed to unsubscribe session events during cleanup:', err);
+        logger.error('Failed to unsubscribe session events during cleanup:', err);
       }
       this.unsubscribeSessionEvents = null;
     }
@@ -310,7 +311,7 @@ export class AgentRunner {
       try {
         this.session.dispose();
       } catch (err) {
-        console.error('Failed to dispose session during cleanup:', err);
+        logger.error('Failed to dispose session during cleanup:', err);
       }
       this.session = null;
     }

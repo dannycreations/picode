@@ -1,7 +1,7 @@
 import { registerSessionResourceCleanup } from '@earendil-works/pi-ai';
 import { commands, window } from 'vscode';
 
-import { Logger } from '@extension/core/logger';
+import { logger } from '@extension/core/logger';
 import { registerAddToContextCommand } from '@extension/structures/add-to-context/command';
 import { ChatViewProvider } from '@extension/structures/agent-webview/provider';
 import { registerCommitMessageCommand } from '@extension/structures/commit-message/command';
@@ -13,8 +13,6 @@ import type { ExtensionContext } from 'vscode';
 export function activate(context: ExtensionContext): void {
   // initializeFetchInterceptor();
   registerSessionResourceCleanup(() => {});
-  const outputChannel = window.createOutputChannel('Pi Code');
-  const logger = new Logger(outputChannel, 'Pi Code');
   logger.info('Extension activated.');
 
   const chatViewProvider = new ChatViewProvider(context);
@@ -24,8 +22,7 @@ export function activate(context: ExtensionContext): void {
     }),
   );
 
-  const commitMessageLogger = new Logger(outputChannel, 'Commit Message');
-  const commitMessageDisposable = registerCommitMessageCommand(context, commitMessageLogger);
+  const commitMessageDisposable = registerCommitMessageCommand(context);
   context.subscriptions.push(commitMessageDisposable);
 
   const addToContextDisposable = registerAddToContextCommand();

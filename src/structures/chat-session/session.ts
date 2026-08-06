@@ -1,5 +1,7 @@
 import { getLastAssistantUsage } from '@earendil-works/pi-coding-agent';
 
+import { logger } from '@extension/core/logger';
+
 import type { SessionEntry } from '@earendil-works/pi-coding-agent';
 import type { SessionMessageContent, SessionTreeEntry } from '@extension/types/extension';
 import type { ChatMessage, ToolName } from '@extension/types/webview';
@@ -198,7 +200,7 @@ export function calculateSessionStats(entries: SessionTreeEntry[], contextLimit:
       contextTokens = lastUsage.totalTokens || lastUsage.input + lastUsage.output + (lastUsage.cacheRead || 0) + (lastUsage.cacheWrite || 0);
     }
   } catch (err) {
-    console.error('Failed to get last assistant usage:', err);
+    logger.error('Failed to get last assistant usage:', err);
   }
 
   return {

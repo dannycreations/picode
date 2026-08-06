@@ -1,5 +1,7 @@
 import { bundledLanguages, bundledThemes, createHighlighter } from 'shiki';
 
+import { logger } from '@extension/core/logger';
+
 import type { BundledLanguage, BundledTheme, Highlighter } from 'shiki';
 
 export type ExtendedLanguage = BundledLanguage | 'txt';
@@ -62,7 +64,7 @@ export function normalizeLanguage(language: string | undefined): ExtendedLanguag
   }
 
   if (language !== 'txt' && !warnedLanguages.has(language)) {
-    console.warn(`[Shiki] Unrecognized language '${language}', defaulting to 'txt'.`);
+    logger.warn(`Unrecognized language '${language}', defaulting to 'txt'.`);
     warnedLanguages.add(language);
   }
 
@@ -115,7 +117,7 @@ class ShikiHighlighterManager {
             await instance.loadLanguage(targetLang as BundledLanguage);
             this.loadedLanguages.add(targetLang);
           } catch (error) {
-            console.error(`[Shiki] Failed to load language '${targetLang}':`, error);
+            logger.error(`Failed to load language '${targetLang}':`, error);
             throw error;
           } finally {
             this.pendingLanguageLoads.delete(targetLang);
@@ -128,7 +130,7 @@ class ShikiHighlighterManager {
       await loadPromise;
       return instance;
     } catch (error) {
-      console.error('[Shiki] Error in getHighlighter:', error);
+      logger.error('Error in getHighlighter:', error);
       throw error;
     }
   }

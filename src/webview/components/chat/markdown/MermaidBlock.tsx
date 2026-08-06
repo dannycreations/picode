@@ -1,11 +1,12 @@
 import { cn } from 'cnfast';
 import { useRef, useState } from 'react';
 
+import { logger } from '@extension/core/logger';
 import { svgToPng } from '@extension/webview/components/chat/markdown/helpers/mermaid';
 import { useMermaidRender } from '@extension/webview/components/chat/markdown/hooks/useMermaidRender';
+import { MermaidModal } from '@extension/webview/components/chat/markdown/MermaidModal';
+import { MermaidToolbar } from '@extension/webview/components/chat/markdown/MermaidToolbar';
 import { useCopyToClipboard } from '@extension/webview/hooks/useCopyToClipboard';
-import { MermaidModal } from './MermaidModal';
-import { MermaidToolbar } from './MermaidToolbar';
 
 import type { FC, MouseEvent } from 'react';
 
@@ -39,7 +40,7 @@ export const MermaidBlock: FC<MermaidBlockProps> = ({ code: originalCode }) => {
       link.href = pngDataUrl;
       link.click();
     } catch (err) {
-      console.error('Error saving image:', err);
+      logger.error('Error saving image:', err);
     }
   };
 

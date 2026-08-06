@@ -1,3 +1,5 @@
+import { logger } from '@extension/core/logger';
+
 export function getEffectiveSelection(
   document: {
     readonly lineCount: number;
@@ -42,7 +44,7 @@ export function getEffectiveSelection(
       text: document.getText(range),
     };
   } catch (error) {
-    console.error('Error getting effective selection:', error);
+    logger.error('Error getting effective selection:', error);
     return null;
   }
 }

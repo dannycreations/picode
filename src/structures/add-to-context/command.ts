@@ -1,6 +1,7 @@
 import { relative } from 'node:path';
 import { commands, window, workspace } from 'vscode';
 
+import { logger } from '@extension/core/logger';
 import { getEffectiveSelection } from '@extension/structures/add-to-context/helpers';
 import { ChatViewProvider } from '@extension/structures/agent-webview/provider';
 
@@ -15,7 +16,7 @@ export function getRelativeFilePath(document: TextDocument): string {
     const relativePath = relative(workspaceFolder.uri.fsPath, document.uri.fsPath);
     return !relativePath || relativePath.startsWith('..') ? document.uri.fsPath : relativePath;
   } catch (error) {
-    console.error('Error getting file path:', error);
+    logger.error('Error getting file path:', error);
     return document.uri.fsPath;
   }
 }

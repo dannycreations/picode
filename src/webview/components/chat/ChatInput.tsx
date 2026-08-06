@@ -3,6 +3,7 @@ import { Image as ImageIcon, Send } from 'lucide-react';
 import { useRef, useState } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
 
+import { logger } from '@extension/core/logger';
 import { readFileAsDataUrl } from '@extension/webview/components/chat/helpers/common';
 
 import type { ChangeEvent, ClipboardEvent, FC, KeyboardEvent, RefObject } from 'react';
@@ -75,7 +76,7 @@ export const ChatInput: FC<ChatInputProps> = ({
         const dataUrl = await readFileAsDataUrl(file);
         setSelectedImages((prev) => [...prev, dataUrl]);
       } catch (err) {
-        console.error('Failed to attach image:', err);
+        logger.error('Failed to attach image:', err);
       }
     }
   };
@@ -93,7 +94,7 @@ export const ChatInput: FC<ChatInputProps> = ({
             const dataUrl = await readFileAsDataUrl(file);
             setSelectedImages((prev) => [...prev, dataUrl]);
           } catch (err) {
-            console.error('Failed to paste image:', err);
+            logger.error('Failed to paste image:', err);
           }
         }
       }

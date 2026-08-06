@@ -5,6 +5,7 @@ import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime';
 import { bundledLanguages } from 'shiki';
 
+import { logger } from '@extension/core/logger';
 import { useCopyToClipboard } from '@extension/webview/hooks/useCopyToClipboard';
 import { getHighlighter, isLanguageLoaded, normalizeLanguage } from '@webview/components/chat/helpers/highlighter';
 
@@ -150,13 +151,13 @@ export const useShikiHighlighter = (source: string, language: string): ReactNode
         const reactElement = toJsxRuntime(hast, { Fragment, jsx, jsxs });
         if (isMounted) setHighlightedCode(reactElement);
       } catch (error) {
-        console.error('[CodeBlock] Error converting HAST to JSX:', error);
+        logger.error('Error converting HAST to JSX:', error);
         if (isMounted) setHighlightedCode(fallback);
       }
     };
 
     highlight().catch((e) => {
-      console.error('[CodeBlock] Syntax highlighting error:', e);
+      logger.error('Syntax highlighting error:', e);
       if (isMounted) setHighlightedCode(fallback);
     });
 

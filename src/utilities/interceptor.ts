@@ -2,6 +2,8 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { workspace } from 'vscode';
 
+import { logger } from '@extension/core/logger';
+
 function safeJsonParse(text: string): unknown {
   try {
     return JSON.parse(text);
@@ -52,14 +54,14 @@ async function logInteraction(url: string, method: string, headers: Record<strin
     const fileName = `fetch-${timestamp}-${id}.json`;
     writeFileSync(join(debugDir, fileName), JSON.stringify(logData, null, 2), 'utf-8');
   } catch (err) {
-    console.error('Failed to log intercepted fetch interaction:', err);
+    logger.error('Failed to log intercepted fetch interaction:', err);
   }
 }
 
 export function initializeFetchInterceptor(): void {
   const originalFetch = globalThis.fetch;
   if (!originalFetch) {
-    console.warn('globalThis.fetch is not defined; cannot intercept requests.');
+    logger.warn('globalThis.fetch is not defined; cannot intercept requests.');
     return;
   }
 
@@ -122,7 +124,7 @@ export function initializeFetchInterceptor(): void {
         } catch {}
       }
     } catch (err) {
-      console.error('Error parsing request in fetch interceptor:', err);
+      logger.error('Error parsing request in fetch interceptor:', err);
     }
 
     const response = await originalFetch(input, init);
@@ -131,7 +133,7 @@ export function initializeFetchInterceptor(): void {
       const responseClone = response.clone();
       void logInteraction(url, method, headers, requestBodyText, responseClone);
     } catch (err) {
-      console.error('Error cloning response in fetch interceptor:', err);
+      logger.error('Error cloning response in fetch interceptor:', err);
     }
 
     return response;

@@ -1,3 +1,5 @@
+import { logger } from '@extension/core/logger';
+
 import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent';
 import type { TodoItem } from '@extension/structures/chat-session/todo';
 import type { AssistantMessageWithUsage } from '@extension/types/extension';
@@ -125,7 +127,7 @@ export class EventMapper {
         },
       };
     } catch (err) {
-      console.error('Failed to create session stats message:', err);
+      logger.error('Failed to create session stats message:', err);
       return null;
     }
   }

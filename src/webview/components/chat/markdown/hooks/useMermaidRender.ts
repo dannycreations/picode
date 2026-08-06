@@ -1,6 +1,7 @@
 import mermaid from 'mermaid-compact';
 import { useCallback, useEffect, useState } from 'react';
 
+import { logger } from '@extension/core/logger';
 import { applyDeterministicFixes } from '@extension/webview/components/chat/markdown/helpers/mermaid';
 
 export interface UseMermaidRenderReturn {
@@ -38,7 +39,7 @@ export const useMermaidRender = (originalCode: string): UseMermaidRenderReturn =
           setSvgContent(svg);
         })
         .catch((err) => {
-          console.warn('Mermaid parse/render failed:', err);
+          logger.warn('Mermaid parse/render failed:', err);
           setError(err instanceof Error ? err.message : 'Mermaid render error');
         })
         .finally(() => setIsLoading(false));

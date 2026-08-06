@@ -2,7 +2,7 @@ import { join } from 'node:path';
 import { getAgentDir, ModelRuntime, SettingsManager } from '@earendil-works/pi-coding-agent';
 import { commands, extensions, ProgressLocation, window, workspace } from 'vscode';
 
-import { Logger } from '@extension/core/logger';
+import { logger } from '@extension/core/logger';
 import { COMMIT_MESSAGE_PROMPT } from '@extension/core/prompt';
 import { buildGitContext, getGitChanges, getGitDiffContext, getRepoContext } from '@extension/structures/commit-message/git';
 import { extractCodeBlockMessage } from '@extension/utilities/markdown';
@@ -38,7 +38,7 @@ async function getGitRepository(uri?: Uri): Promise<GitRepository | null> {
 const lastUserInstructions = new Map<string, string>();
 const lastGeneratedMessages = new Map<string, string>();
 
-export function registerCommitMessageCommand(_: ExtensionContext, logger: Logger): Disposable {
+export function registerCommitMessageCommand(_: ExtensionContext): Disposable {
   return commands.registerCommand('pi-code.generateCommitMessage', async (scmRequest?: ScmRequest) => {
     logger.info('Generate Commit Message command triggered.');
     try {
@@ -155,7 +155,7 @@ export function registerCommitMessageCommand(_: ExtensionContext, logger: Logger
           }
 
           if (!model) {
-            logger.info('ERROR: No model configured or available.');
+            logger.error('ERROR: No model configured or available.');
             throw new Error('No model configured or available. Please configure your model settings in pi-agent.');
           }
           logger.info(`Selected model for completion: ${model.provider}/${model.id}`);
@@ -195,8 +195,7 @@ export function registerCommitMessageCommand(_: ExtensionContext, logger: Logger
       );
     } catch (error) {
       const errMessage = error instanceof Error ? error.stack || error.message : String(error);
-      logger.info(`ERROR: ${errMessage}`);
-      logger.show(true);
+      logger.error(`ERROR: ${errMessage}`);
       window.showErrorMessage(`Failed to generate commit message: ${error instanceof Error ? error.message : String(error)}`);
     }
   });
