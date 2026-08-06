@@ -4,11 +4,6 @@ import { resolve } from 'node:path';
 import { Range, Uri, window, workspace } from 'vscode';
 
 export class WorkspaceService {
-  public static getCwd(): string {
-    const workspaceFolders = workspace.workspaceFolders;
-    return workspaceFolders && workspaceFolders.length > 0 ? workspaceFolders[0].uri.fsPath : process.cwd();
-  }
-
   public async openFile(cwd: string, relativePath: string, line?: number): Promise<void> {
     const filePath = resolve(cwd, relativePath);
     const doc = await workspace.openTextDocument(Uri.file(filePath));

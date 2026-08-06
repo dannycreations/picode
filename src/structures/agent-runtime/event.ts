@@ -3,7 +3,7 @@ import { logger } from '@extension/core/logger';
 import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent';
 import type { TodoItem } from '@extension/structures/chat-session/todo';
 import type { AssistantMessageWithUsage } from '@extension/types/extension';
-import type { ExtensionToWebviewMessage, ToolName } from '@extension/types/webview';
+import type { ExtensionToWebviewMessage, StatsData, ToolName } from '@extension/types/webview';
 
 export class EventMapper {
   private apiRequestId: string | null = null;
@@ -22,7 +22,7 @@ export class EventMapper {
       case 'agent_start':
         return {
           type: 'agent_start',
-          payload: { path: session.sessionFile },
+          payload: { path: session.sessionFile, ...this.createStats(session) },
         };
 
       case 'turn_start': {
@@ -44,6 +44,7 @@ export class EventMapper {
             id,
             cost: msg?.usage?.cost?.total,
             error: isError ? msg.errorMessage || 'The API request failed.' : undefined,
+            ...this.createStats(session),
           },
         };
       }
@@ -77,6 +78,7 @@ export class EventMapper {
           payload: {
             role: event.message.role,
             cost: event.message.role === 'assistant' ? (event.message as AssistantMessageWithUsage).usage?.cost?.total : undefined,
+            ...this.createStats(session),
           },
         };
 
@@ -103,34 +105,38 @@ export class EventMapper {
         };
       }
 
-      case 'agent_settled':
-        return { type: 'agent_settled' };
+      case 'agent_settled': {
+        const stats = this.createStats(session);
+        return stats ? { type: 'agent_settled', payload: stats } : { type: 'agent_settled' };
+      }
 
       case 'compaction_start':
         return {
           type: 'agent_start',
-          payload: { path: session.sessionFile },
+          payload: { path: session.sessionFile, ...this.createStats(session) },
         };
+
+      case 'compaction_end': {
+        const stats = this.createStats(session);
+        return stats ? { type: 'compaction_end', payload: stats } : null;
+      }
 
       default:
         return null;
     }
   }
 
-  public createStatsMessage(session: AgentSession): ExtensionToWebviewMessage | null {
+  private createStats(session: AgentSession): StatsData | null {
     try {
       const stats = session.getSessionStats();
       return {
-        type: 'stats_update',
-        payload: {
-          tokensIn: stats.tokens.input,
-          tokensOut: stats.tokens.output,
-          cacheReads: stats.tokens.cacheRead,
-          cacheWrites: stats.tokens.cacheWrite,
-          totalCost: stats.cost,
-          contextTokens: stats.contextUsage?.tokens ?? 0,
-          contextLimit: stats.contextUsage?.contextWindow ?? session.model?.contextWindow ?? 200000,
-        },
+        tokensIn: stats.tokens.input,
+        tokensOut: stats.tokens.output,
+        cacheReads: stats.tokens.cacheRead,
+        cacheWrites: stats.tokens.cacheWrite,
+        totalCost: stats.cost,
+        contextTokens: stats.contextUsage?.tokens ?? 0,
+        contextLimit: stats.contextUsage?.contextWindow ?? session.model?.contextWindow ?? 200000,
       };
     } catch (err) {
       logger.error('Failed to create session stats message:', err);

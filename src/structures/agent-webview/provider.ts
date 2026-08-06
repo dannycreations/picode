@@ -4,10 +4,10 @@ import { AgentRunner } from '@extension/structures/agent-runtime/runner';
 import { createDefaultDispatcher } from '@extension/structures/agent-webview/dispatcher';
 import { SessionService } from '@extension/structures/agent-webview/session';
 import { WorkspaceService } from '@extension/structures/agent-webview/workspace';
+import { getWorkspaceCwd } from '@extension/utilities/vscode';
 
 import type { CancellationToken, ExtensionContext, Webview, WebviewView, WebviewViewProvider, WebviewViewResolveContext } from 'vscode';
 import type { MessageHandlerContext } from '@extension/structures/agent-webview/dispatcher';
-import type { SessionInitData } from '@extension/structures/agent-webview/session';
 import type { ExtensionToWebviewMessage, WebviewToExtensionMessage } from '@extension/types/webview';
 
 export class ChatViewHtml {
@@ -48,7 +48,6 @@ export class ChatViewProvider implements WebviewViewProvider {
   public static readonly viewType = 'pi-code.chatView';
   private static activeWebview: Webview | null = null;
 
-  private readonly cachedInitData: Record<string, SessionInitData> = {};
   private readonly sessionService = new SessionService();
   private readonly workspaceService = new WorkspaceService();
   private readonly dispatcher = createDefaultDispatcher();
@@ -72,7 +71,7 @@ export class ChatViewProvider implements WebviewViewProvider {
 
     webview.html = ChatViewHtml.build(webview, this.context.extensionUri);
 
-    const cwd = WorkspaceService.getCwd();
+    const cwd = getWorkspaceCwd();
 
     const listener = webview.onDidReceiveMessage((message: WebviewToExtensionMessage) => {
       const context: MessageHandlerContext = {
@@ -81,7 +80,6 @@ export class ChatViewProvider implements WebviewViewProvider {
         agent: this.agent,
         recreateAgent: () => (this.agent = new AgentRunner()),
         postMessage: (msg) => webview.postMessage(msg),
-        cachedInitData: this.cachedInitData,
         sessionService: this.sessionService,
         workspaceService: this.workspaceService,
       };

@@ -115,15 +115,17 @@ export const useChatSession = (): UseChatSessionReturn => {
           setIsAgentRunning(false);
           break;
 
-        case 'stats_update':
+        case 'compaction_end':
           setActiveTask((prev) => (prev ? { ...prev, ...msg.payload } : null));
           break;
 
         case 'agent_start':
           setIsAgentRunning(true);
-          if (msg.payload?.path) {
-            setActiveTask((prev) => (prev ? { ...prev, path: msg.payload.path } : null));
-          }
+          setActiveTask((prev) => {
+            if (!prev) return null;
+            const next = msg.payload?.path ? { ...prev, path: msg.payload.path } : prev;
+            return msg.payload?.stats ? { ...next, ...msg.payload.stats } : next;
+          });
           break;
 
         case 'message_start': {
@@ -170,7 +172,7 @@ export const useChatSession = (): UseChatSessionReturn => {
         }
 
         case 'api_request_end': {
-          const { id, cost, error } = msg.payload;
+          const { id, cost, error, stats } = msg.payload;
           setActiveTask((prev) => {
             if (!prev) return null;
 
@@ -192,13 +194,14 @@ export const useChatSession = (): UseChatSessionReturn => {
               messages = appendErrorMessage(messages, `${id}-error`, error);
             }
 
-            return { ...prev, messages };
+            const next = { ...prev, messages };
+            return stats ? { ...next, ...stats } : next;
           });
           break;
         }
 
         case 'message_end': {
-          const { role, cost } = msg.payload || {};
+          const { role, cost, stats } = msg.payload || {};
           if (role !== 'assistant') break;
 
           setActiveTask((prev) => {
@@ -212,7 +215,8 @@ export const useChatSession = (): UseChatSessionReturn => {
                 }
               }
             }
-            return { ...prev, messages };
+            const next = { ...prev, messages };
+            return stats ? { ...next, ...stats } : next;
           });
           break;
         }
@@ -351,7 +355,8 @@ export const useChatSession = (): UseChatSessionReturn => {
           setActiveTask((prev) => {
             if (!prev) return null;
             const messages = settlePendingApiRequests(prev.messages);
-            return messages === prev.messages ? prev : { ...prev, messages };
+            const next = messages === prev.messages ? prev : { ...prev, messages };
+            return msg.payload ? { ...next, ...msg.payload } : next;
           });
           break;
 

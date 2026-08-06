@@ -5,7 +5,7 @@ import { SettingsService } from '@extension/core/settings';
 import { AgentRunner } from '@extension/structures/agent-runtime/runner';
 
 import type { Webview } from 'vscode';
-import type { SessionInitData, SessionService } from '@extension/structures/agent-webview/session';
+import type { SessionService } from '@extension/structures/agent-webview/session';
 import type { WorkspaceService } from '@extension/structures/agent-webview/workspace';
 import type { ExtensionToWebviewMessage, WebviewToExtensionMessage } from '@extension/types/webview';
 
@@ -15,7 +15,6 @@ export type MessageHandlerContext = {
   readonly agent: AgentRunner;
   readonly recreateAgent: () => AgentRunner;
   readonly postMessage: (msg: ExtensionToWebviewMessage) => void;
-  readonly cachedInitData: Record<string, SessionInitData>;
   readonly sessionService: SessionService;
   readonly workspaceService: WorkspaceService;
 };
@@ -50,11 +49,7 @@ export class ChatMessageDispatcher {
 export function createDefaultDispatcher(): ChatMessageDispatcher {
   return new ChatMessageDispatcher()
     .register('init', async (_, ctx) => {
-      if (ctx.cachedInitData[ctx.cwd]) {
-        ctx.postMessage({ type: 'init_data', payload: ctx.cachedInitData[ctx.cwd] });
-      }
       const data = await ctx.sessionService.getInitData(ctx.cwd);
-      ctx.cachedInitData[ctx.cwd] = data;
       ctx.postMessage({ type: 'init_data', payload: data });
     })
     .register('start_new_task', (msg, ctx) => {
@@ -115,17 +110,11 @@ export function createDefaultDispatcher(): ChatMessageDispatcher {
     .register('get_history', async (msg, ctx) => {
       const scope = msg.scope || 'current';
       const history = await ctx.sessionService.fetchHistory(ctx.cwd, scope);
-      if (scope !== 'all') {
-        ctx.cachedInitData[ctx.cwd] = { ...ctx.cachedInitData[ctx.cwd], history };
-      }
       ctx.postMessage({ type: 'history_data', payload: { history } });
     })
     .register('delete_sessions', async (msg, ctx) => {
       const scope = msg.scope || 'current';
       const history = await ctx.sessionService.deleteSessions(msg.paths, scope, ctx.cwd);
-      if (scope !== 'all') {
-        ctx.cachedInitData[ctx.cwd] = { ...ctx.cachedInitData[ctx.cwd], history };
-      }
       ctx.postMessage({ type: 'history_data', payload: { history } });
     })
     .register('get_settings', async (_, ctx) => {

@@ -54,6 +54,16 @@ export interface ModelItem {
   readonly provider: string;
 }
 
+export interface StatsData {
+  readonly tokensIn: number;
+  readonly tokensOut: number;
+  readonly cacheWrites?: number;
+  readonly cacheReads?: number;
+  readonly totalCost: number;
+  readonly contextTokens: number;
+  readonly contextLimit: number;
+}
+
 export type WebviewToExtensionMessage =
   | { type: 'init' }
   | { type: 'get_history'; scope: 'current' | 'all' }
@@ -79,45 +89,19 @@ export type ExtensionToWebviewMessage =
   | { type: 'init_data'; payload: { models: ModelItem[]; history: HistoryItem[]; default_model?: string } }
   | { type: 'history_data'; payload: { history: HistoryItem[] } }
   | { type: 'settings_data'; payload: { settings: AppSettings } }
-  | {
-      type: 'session_loaded';
-      payload: {
-        id: string;
-        title: string;
-        messages: ChatMessage[];
-        path?: string;
-        tokensIn?: number;
-        tokensOut?: number;
-        cacheWrites?: number;
-        cacheReads?: number;
-        totalCost?: number;
-        contextTokens?: number;
-        contextLimit?: number;
-      };
-    }
-  | {
-      type: 'stats_update';
-      payload: {
-        tokensIn: number;
-        tokensOut: number;
-        cacheWrites?: number;
-        cacheReads?: number;
-        totalCost: number;
-        contextTokens: number;
-        contextLimit: number;
-      };
-    }
-  | { type: 'agent_start'; payload: { path?: string } }
+  | { type: 'session_loaded'; payload: ActiveTaskState }
+  | { type: 'agent_start'; payload: { path?: string; stats?: StatsData } }
   | { type: 'message_start'; payload: { role: string; timestamp?: number } }
   | { type: 'text_delta'; payload: { delta: string } }
   | { type: 'thinking_delta'; payload: { delta: string } }
-  | { type: 'message_end'; payload?: { role: string; cost?: number } }
+  | { type: 'message_end'; payload?: { role: string; cost?: number; stats?: StatsData } }
   | { type: 'api_request_start'; payload: { id: string; timestamp: number } }
-  | { type: 'api_request_end'; payload: { id: string; cost?: number; error?: string } }
+  | { type: 'api_request_end'; payload: { id: string; cost?: number; error?: string; stats?: StatsData } }
   | { type: 'tool_approval_request'; payload: { id: string; tool_name: ToolName; arguments: string } }
   | { type: 'tool_execution_start'; payload: { id: string; tool_name?: ToolName; arguments?: string } }
   | { type: 'tool_execution_end'; payload: { id: string; result?: string; todos?: TodoItem[]; is_error?: boolean } }
   | { type: 'agent_error'; payload: { message: string } }
-  | { type: 'agent_settled' }
+  | { type: 'agent_settled'; payload?: StatsData }
+  | { type: 'compaction_end'; payload: StatsData }
   | { type: 'show_settings' }
   | { type: 'set_chat_input'; payload: { text: string } };

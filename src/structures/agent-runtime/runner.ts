@@ -1,5 +1,4 @@
 import assert from 'node:assert';
-import { workspace } from 'vscode';
 
 import { logger } from '@extension/core/logger';
 import { EventMapper } from '@extension/structures/agent-runtime/event';
@@ -8,6 +7,7 @@ import { QuestionBridge } from '@extension/structures/agent-runtime/question';
 import { SessionFactory } from '@extension/structures/agent-runtime/session';
 import { WebviewMessenger } from '@extension/structures/agent-runtime/webview';
 import { getEnvironmentDetails } from '@extension/structures/chat-session/environment';
+import { getWorkspaceCwd } from '@extension/utilities/vscode';
 
 import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent';
 import type { Webview } from 'vscode';
@@ -24,11 +24,6 @@ export interface ImageAttachment {
   readonly type: 'image';
   readonly mimeType: string;
   readonly data: string;
-}
-
-function getWorkspaceCwd(): string {
-  const workspaceFolders = workspace.workspaceFolders;
-  return workspaceFolders && workspaceFolders.length > 0 ? workspaceFolders[0].uri.fsPath : process.cwd();
 }
 
 function parseImageAttachments(images?: string[]): ImageAttachment[] | undefined {
@@ -91,15 +86,6 @@ export class AgentRunner {
   private readonly event = new EventMapper();
   private readonly policy = new PolicyEvaluator();
   private readonly question = QuestionBridge.getInstance();
-
-  private static readonly STATS_EVENT_TYPES = new Set<AgentSessionEvent['type']>([
-    'agent_start',
-    'turn_end',
-    'message_end',
-    'agent_settled',
-    'compaction_start',
-    'compaction_end',
-  ]);
 
   public async startTask(
     promptText: string,
@@ -301,13 +287,6 @@ export class AgentRunner {
       this.isAttemptCompletionAborted = true;
       this.abort();
       finalizeAttemptCompletion(session);
-    }
-
-    if (AgentRunner.STATS_EVENT_TYPES.has(event.type)) {
-      const statsMsg = this.event.createStatsMessage(session);
-      if (statsMsg) {
-        this.messenger.post(statsMsg);
-      }
     }
   }
 
