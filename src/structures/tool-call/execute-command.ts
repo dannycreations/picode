@@ -6,6 +6,35 @@ import { Type } from 'typebox';
 import type { CustomToolResult } from '@extension/types/extension';
 import type { ToolName } from '@extension/types/webview';
 
+const ANSI_PATTERN =
+  // CSI sequences: ESC [ ... <final byte>
+  /\x1b\[[0-9;?]*[ -/]*[@-~]/g;
+
+const OSC_PATTERN =
+  // OSC sequences: ESC ] ... BEL or ESC \
+  /\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g;
+
+const BARE_ESC_PATTERN =
+  // Standalone escape-based controls not covered above (e.g. ESC c, ESC =, ESC >)
+  /\x1b[=>c()#%*+]/g;
+
+export function cleanCommandOutput(raw: string): string {
+  const withoutAnsi = raw.replace(OSC_PATTERN, '').replace(ANSI_PATTERN, '').replace(BARE_ESC_PATTERN, '');
+
+  // A '\r' without a '\n' means the terminal overwrote the current line in place
+  // (progress spinners, build status). Only the final segment survives on screen.
+  const cleanedLines = withoutAnsi.split('\n').map((line) => {
+    const segments = line.split('\r');
+    return segments[segments.length - 1];
+  });
+
+  return cleanedLines
+    .join('\n')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 export const executeCommandTool = defineTool({
   name: 'execute_command' as ToolName,
   label: 'Execute Command',
@@ -36,14 +65,15 @@ export const executeCommandTool = defineTool({
         finished = true;
 
         const exitInfo = exitCode !== null ? `Exit code: ${exitCode}` : `Killed by signal: ${signalCode}`;
-        const outputStr = output.join('');
+        const rawOutput = output.join('');
+        const cleanOutput = cleanCommandOutput(rawOutput);
 
         res({
-          content: [{ type: 'text', text: outputStr || `[Command completed with no output. ${exitInfo}]` }],
+          content: [{ type: 'text', text: cleanOutput || `[Command completed with no output. ${exitInfo}]` }],
           details: {
             exitCode,
             signalCode,
-            output: outputStr,
+            output: cleanOutput,
           },
           isError: exitCode !== 0,
         });
