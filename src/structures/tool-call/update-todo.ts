@@ -1,6 +1,9 @@
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
+import { parseTodoList } from '@extension/structures/chat-session/todo';
+
+import type { TodoItem } from '@extension/structures/chat-session/todo';
 import type { ToolName } from '@extension/types/webview';
 
 export const updateTodoTool = defineTool({
@@ -35,10 +38,11 @@ export const updateTodoTool = defineTool({
       });
 
       const updatedChecklist = checklistLines.join('\n');
+      const todos: TodoItem[] = parseTodoList(updatedChecklist);
 
       return {
         content: [{ type: 'text', text: 'update_todo success.' }],
-        details: { todos: updatedChecklist },
+        details: { todos },
       };
     } catch (err) {
       return {

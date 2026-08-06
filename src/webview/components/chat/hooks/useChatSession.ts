@@ -266,7 +266,15 @@ export const useChatSession = (): UseChatSessionReturn => {
               ...prev,
               messages: [
                 ...prev.messages,
-                { id, sender: 'tool', text: tool_name, toolName: tool_name, toolArgs, toolStatus: 'approval', ts: Date.now() },
+                {
+                  id,
+                  sender: 'tool',
+                  text: tool_name,
+                  toolName: tool_name,
+                  toolArgs,
+                  toolStatus: 'approval',
+                  ts: Date.now(),
+                },
               ],
             };
           });
@@ -286,7 +294,15 @@ export const useChatSession = (): UseChatSessionReturn => {
               ...prev,
               messages: [
                 ...prev.messages,
-                { id, sender: 'tool', text: tool_name || '', toolName: tool_name, toolArgs: toolArgs || '', toolStatus: 'running', ts: Date.now() },
+                {
+                  id,
+                  sender: 'tool',
+                  text: tool_name || '',
+                  toolName: tool_name,
+                  toolArgs: toolArgs || '',
+                  toolStatus: 'running',
+                  ts: Date.now(),
+                },
               ],
             };
           });
@@ -294,13 +310,20 @@ export const useChatSession = (): UseChatSessionReturn => {
         }
 
         case 'tool_execution_end': {
-          const { id, result, is_error } = msg.payload;
+          const { id, result, todos, is_error } = msg.payload;
           setActiveTask((prev) => {
             if (!prev) return null;
             return {
               ...prev,
               messages: prev.messages.map((m) =>
-                m.id === id ? { ...m, toolStatus: is_error ? 'denied' : 'completed', diff: is_error ? undefined : result } : m,
+                m.id === id
+                  ? {
+                      ...m,
+                      todos,
+                      toolStatus: is_error ? 'denied' : 'completed',
+                      diff: is_error ? undefined : result,
+                    }
+                  : m,
               ),
             };
           });

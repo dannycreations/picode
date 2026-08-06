@@ -1,5 +1,6 @@
 import type { ValueOf } from 'es-toolkit/types';
 import type { AppSettings } from '@extension/core/settings';
+import type { TodoItem } from '@extension/structures/chat-session/todo';
 
 export interface ActiveTaskState {
   readonly id: string;
@@ -38,6 +39,7 @@ export interface ChatMessage {
   readonly cost?: number;
   readonly checkpointHash?: string;
   readonly diff?: string;
+  readonly todos?: TodoItem[];
   readonly errorMessage?: string;
   readonly images?: string[];
 }
@@ -121,7 +123,7 @@ export type ExtensionToWebviewMessage =
   | { type: 'api_request_end'; payload: { id: string; cost?: number; error?: string } }
   | { type: 'tool_approval_request'; payload: { id: string; tool_name: ToolName; arguments: string } }
   | { type: 'tool_execution_start'; payload: { id: string; tool_name?: ToolName; arguments?: string } }
-  | { type: 'tool_execution_end'; payload: { id: string; result?: string; is_error?: boolean } }
+  | { type: 'tool_execution_end'; payload: { id: string; result?: string; todos?: TodoItem[]; is_error?: boolean } }
   | { type: 'agent_error'; payload: { message: string } }
   | { type: 'agent_settled' }
   | { type: 'show_settings' }

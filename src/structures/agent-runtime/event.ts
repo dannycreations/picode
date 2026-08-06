@@ -1,4 +1,5 @@
 import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent';
+import type { TodoItem } from '@extension/structures/chat-session/todo';
 import type { AssistantMessageWithUsage } from '@extension/types/extension';
 import type { ExtensionToWebviewMessage, ToolName } from '@extension/types/webview';
 
@@ -87,15 +88,18 @@ export class EventMapper {
           },
         };
 
-      case 'tool_execution_end':
+      case 'tool_execution_end': {
+        const toolResult = event.result as { details?: { todos?: TodoItem[] } } | undefined;
         return {
           type: 'tool_execution_end',
           payload: {
             id: event.toolCallId,
             result: typeof event.result === 'string' ? event.result : JSON.stringify(event.result),
+            todos: toolResult?.details?.todos,
             is_error: event.isError,
           },
         };
+      }
 
       case 'agent_settled':
         return { type: 'agent_settled' };

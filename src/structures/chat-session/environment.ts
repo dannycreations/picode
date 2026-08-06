@@ -1,5 +1,5 @@
 import { access, readdir, readFile } from 'node:fs/promises';
-import { join, relative } from 'node:path';
+import { basename, join, relative } from 'node:path';
 import { AgentSession } from '@earendil-works/pi-coding-agent';
 import ignore from 'ignore';
 import { TabInputText, window } from 'vscode';
@@ -8,26 +8,8 @@ import { SettingsService } from '@extension/core/settings';
 import { spawnGit } from '@extension/structures/commit-message/git';
 
 import type { Ignore } from 'ignore';
-import type { AgentToolState, EnvironmentMessage, EnvironmentMessageContent } from '@extension/types/extension';
-
-interface TodoItem {
-  readonly content: string;
-  readonly status: 'pending' | 'completed' | 'in_progress';
-}
-
-export function parseTodoList(todoListStr: string): TodoItem[] {
-  const lines = todoListStr.split(/\r?\n/);
-  const list: TodoItem[] = [];
-  for (const line of lines) {
-    const match = line.match(/^(?:-\s*)?\[\s*([ xX\-~])\s*\]\s*(.+)$/);
-    if (match) {
-      const indicator = match[1].toLowerCase();
-      const status = indicator === 'x' ? 'completed' : indicator === '-' || indicator === '~' ? 'in_progress' : 'pending';
-      list.push({ content: match[2].trim(), status });
-    }
-  }
-  return list;
-}
+import type { TodoItem } from '@extension/structures/chat-session/todo';
+import type { EnvironmentMessage } from '@extension/types/extension';
 
 const STATUS_MAP: Record<TodoItem['status'], string> = {
   pending: 'Pending',
@@ -148,23 +130,63 @@ export async function listFiles(cwd: string, limit = 200): Promise<{ paths: stri
   return { paths: resultPaths, hitLimit };
 }
 
-export function getLatestTodoList(messages: readonly EnvironmentMessage[]): string | undefined {
+interface FileTreeNode {
+  readonly name: string;
+  isDir: boolean;
+  readonly children: Map<string, FileTreeNode>;
+}
+
+export function buildFileTree(paths: readonly string[]): FileTreeNode {
+  const root: FileTreeNode = { name: '', isDir: true, children: new Map() };
+  for (const raw of paths) {
+    const isDir = raw.endsWith('/');
+    const segments = raw.replace(/\/+$/, '').split('/');
+    let node = root;
+    for (const segment of segments) {
+      let child = node.children.get(segment);
+      if (!child) {
+        child = { name: segment, isDir: false, children: new Map() };
+        node.children.set(segment, child);
+      }
+      node = child;
+    }
+    node.isDir = isDir;
+  }
+  return root;
+}
+
+function sortTreeNodes(nodes: FileTreeNode[]): FileTreeNode[] {
+  return [...nodes].sort((a, b) => {
+    if (a.isDir !== b.isDir) return a.isDir ? -1 : 1;
+    return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+  });
+}
+
+export function renderFileTree(root: FileTreeNode, rootLabel: string): string {
+  const lines: string[] = [rootLabel];
+
+  function walk(node: FileTreeNode, prefix: string): void {
+    const children = sortTreeNodes([...node.children.values()]);
+    children.forEach((child, index) => {
+      const isLast = index === children.length - 1;
+      const connector = isLast ? '└─ ' : '├─ ';
+      lines.push(`${prefix}${connector}${child.name}${child.isDir ? '/' : ''}`);
+      if (child.isDir) {
+        walk(child, prefix + (isLast ? '   ' : '│  '));
+      }
+    });
+  }
+
+  walk(root, '');
+  return lines.join('\n');
+}
+
+export function getLatestTodoList(messages: readonly EnvironmentMessage[]): TodoItem[] | undefined {
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i];
     if (msg.role === 'toolResult' && msg.toolName === 'update_todo') {
-      const details = msg.details as { todos?: string } | null | undefined;
-      if (details?.todos) {
-        return details.todos;
-      }
-      const content = msg.content;
-      if (Array.isArray(content)) {
-        const textContent = content.find((c: EnvironmentMessageContent) => c.type === 'text') as EnvironmentMessageContent | undefined;
-        if (textContent?.text) {
-          return textContent.text;
-        }
-      } else if (typeof content === 'string') {
-        return content;
-      }
+      const details = msg.details as { todos?: TodoItem[] } | null | undefined;
+      if (details?.todos) return details.todos;
     }
   }
   return undefined;
@@ -175,7 +197,7 @@ export async function getEnvironmentDetails(session: AgentSession, cwd: string, 
   const settingsService = SettingsService.getInstance(cwd);
   const settings = await settingsService.load();
 
-  // 1. VS Code Visible Files
+  // VS Code Visible Files
   const visibleFilePaths = window.visibleTextEditors
     ?.map((editor) => editor.document?.uri?.fsPath)
     .filter(Boolean)
@@ -187,7 +209,7 @@ export async function getEnvironmentDetails(session: AgentSession, cwd: string, 
     details += visibleFilePaths.map((p) => `- ${p}`).join('\n');
   }
 
-  // 2. VS Code Open Tabs
+  // VS Code Open Tabs
   const maxOpenTabsContext = settings.maxOpenTabsContext;
   let openTabPaths = window.tabGroups.all
     .flatMap((group) => group.tabs)
@@ -209,7 +231,7 @@ export async function getEnvironmentDetails(session: AgentSession, cwd: string, 
     }
   }
 
-  // 3. Current Time
+  // Current Time
   const now = new Date();
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const timeZoneOffset = -now.getTimezoneOffset() / 60;
@@ -218,7 +240,7 @@ export async function getEnvironmentDetails(session: AgentSession, cwd: string, 
   const timeZoneOffsetStr = `${timeZoneOffset >= 0 ? '+' : '-'}${timeZoneOffsetHours}:${timeZoneOffsetMinutes.toString().padStart(2, '0')}`;
   details += `\n\n### Current Time\n\n- **UTC**: ${now.toISOString()}\n- **User Time Zone**: ${timeZone} (UTC${timeZoneOffsetStr})`;
 
-  // 4. Git Status
+  // Git Status
   const maxGitStatusFiles = settings.maxGitStatusFiles;
   if (maxGitStatusFiles > 0) {
     try {
@@ -234,56 +256,34 @@ export async function getEnvironmentDetails(session: AgentSession, cwd: string, 
         }
         details += '\n```';
       }
-    } catch {
-      // Not a git repository or git fails, ignore
-    }
+    } catch {}
   }
 
-  // 5. Current Mode
-  const modelId = session.agent?.state?.model?.id || 'unknown';
-  const activeTools = session.agent?.state?.tools?.map((t: AgentToolState) => t.name).join(', ') || '';
-  const thinkingLevel = session.agent?.state?.thinkingLevel || 'off';
-  details += `\n\n### Current Mode\n\n- **Model**: ${modelId}\n- **Thinking Level**: ${thinkingLevel}\n- **Active Tools**: ${activeTools}`;
-
-  // 6. Current Workspace Directory Files
+  // Current Workspace Directory Files
   if (includeFileDetails) {
     const maxWorkspaceFiles = settings.maxWorkspaceFiles;
     if (maxWorkspaceFiles > 0) {
       details += `\n\n### Workspace Files (${cwd.replace(/\\/g, '/')})\n\n`;
       const isDesktop = cwd.replace(/\\/g, '/').toLowerCase().endsWith('/desktop');
       if (isDesktop) {
-        details += 'Desktop files not shown automatically. Use execute_command to explore if needed.';
+        details += 'Desktop files not shown automatically. Use `execute_command` to explore if needed.';
       } else {
         const { paths, hitLimit } = await listFiles(cwd, maxWorkspaceFiles);
-        const sorted = paths.sort((a, b) => {
-          const aParts = a.split('/');
-          const bParts = b.split('/');
-          for (let i = 0; i < Math.min(aParts.length, bParts.length); i++) {
-            if (aParts[i] !== bParts[i]) {
-              if (i + 1 === aParts.length && i + 1 < bParts.length) {
-                return -1;
-              }
-              if (i + 1 === bParts.length && i + 1 < aParts.length) {
-                return 1;
-              }
-              return aParts[i].localeCompare(bParts[i], undefined, { numeric: true, sensitivity: 'base' });
-            }
-          }
-          return aParts.length - bParts.length;
-        });
-        details += sorted.map((p) => `- ${p}`).join('\n');
+        details += renderFileTree(buildFileTree(paths), basename(cwd));
         if (hitLimit) {
-          details += '\n\n*(File list truncated. Use execute_command to list files in specific subdirectories if you need to explore further.)*';
+          details += '\n\n*(File list truncated. Use `execute_command` to list files in specific subdirectories if you need to explore further.)*';
         }
       }
     }
   }
 
-  // 7. Todo list / Reminder Section
-  const messages = session.agent?.state?.messages || [];
-  const todoListStr = getLatestTodoList(messages);
-  const todoList = todoListStr ? parseTodoList(todoListStr) : undefined;
-  const reminderSection = settings.enableTodoTool ? formatReminderSection(todoList) : '';
+  // Reminder Section / Todo list
+  let reminderSection = '';
+  if (settings.enableTodoTool) {
+    const messages = session.agent?.state?.messages || [];
+    const todoList = getLatestTodoList(messages);
+    reminderSection = formatReminderSection(todoList);
+  }
 
   const trimmedDetails = details.trim();
   const body = trimmedDetails ? `${trimmedDetails}\n\n${reminderSection}` : reminderSection;

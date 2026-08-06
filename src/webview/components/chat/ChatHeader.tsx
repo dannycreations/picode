@@ -2,7 +2,6 @@ import { cn } from 'cnfast';
 import { Check, ChevronDown, ChevronRight, CloudDownload, CloudUpload, Coins, Copy, Download, FileJson, FoldVertical, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 
-import { extractTodos } from '@extension/webview/components/chat/helpers/todo';
 import { useCopyToClipboard } from '@extension/webview/hooks/useCopyToClipboard';
 import { TodoView } from '@webview/components/chat/TodoView';
 
@@ -79,7 +78,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
     setIsExpanded(!isExpanded);
   };
 
-  const todos = extractTodos(messages);
+  const todos = messages.findLast((msg) => msg.toolName === 'update_todo' && msg.todos)?.todos;
 
   return (
     <div className="py-2 px-3.5 border-b border-vscode-editorGroup-border/30 bg-vscode-sideBar-background shrink-0 select-none">

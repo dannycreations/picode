@@ -2,10 +2,10 @@ import { cn } from 'cnfast';
 import { ArrowRight, Check, ListChecks, SquareDashed } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { getMostImportantTodo, getScrollIndex } from '@extension/webview/components/chat/helpers/todo';
+import { getMostImportantTodo, getScrollIndex } from '@extension/structures/chat-session/todo';
 
 import type { FC } from 'react';
-import type { TodoItem, TodoStatus } from '@extension/webview/components/chat/helpers/todo';
+import type { TodoItem, TodoStatus } from '@extension/structures/chat-session/todo';
 
 export interface TodoViewProps {
   readonly todos: TodoItem[];

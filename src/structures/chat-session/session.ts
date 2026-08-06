@@ -113,6 +113,7 @@ export function convertSessionEntries(entries: SessionTreeEntry[]): ChatMessage[
             ...existingToolMsg,
             toolStatus: msg.isError ? 'denied' : 'completed',
             diff: msg.details?.diff || contentText,
+            todos: msg.details?.todos,
             errorMessage: msg.isError ? contentText : existingToolMsg.errorMessage,
           };
         }

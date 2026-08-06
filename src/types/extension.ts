@@ -1,5 +1,6 @@
 import type { AgentToolResult } from '@earendil-works/pi-coding-agent';
 import type { Uri } from 'vscode';
+import type { TodoItem } from '@extension/structures/chat-session/todo';
 
 export interface AssistantMessageWithUsage {
   readonly role: 'assistant';
@@ -60,7 +61,7 @@ export interface SessionMessage {
   readonly isError?: boolean;
   readonly details?: {
     readonly diff?: string;
-    readonly todos?: string;
+    readonly todos?: TodoItem[];
   };
   readonly command?: string;
   readonly cancelled?: boolean;
