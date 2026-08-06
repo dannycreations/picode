@@ -57,13 +57,16 @@ export function createDefaultDispatcher(): ChatMessageDispatcher {
       ctx.postMessage({ type: 'init_data', payload: data });
     })
     .register('start_new_task', (msg, ctx) => {
-      void ctx.agent.startTask(msg.text, msg.model_id || '', ctx.webview, msg.images);
+      const model = msg.model_provider && msg.model_id ? { id: msg.model_id, provider: msg.model_provider } : undefined;
+      void ctx.agent.startTask(msg.text, model, ctx.webview, msg.images);
     })
     .register('send_message', (msg, ctx) => {
-      void ctx.agent.startTask(msg.text, '', ctx.webview, msg.images, msg.path);
+      const model = msg.model_provider && msg.model_id ? { id: msg.model_id, provider: msg.model_provider } : undefined;
+      void ctx.agent.startTask(msg.text, model, ctx.webview, msg.images, msg.path);
     })
     .register('continue_task', (msg, ctx) => {
-      void ctx.agent.continueTask(msg.path || '', ctx.webview);
+      const model = msg.model_provider && msg.model_id ? { id: msg.model_id, provider: msg.model_provider } : undefined;
+      void ctx.agent.continueTask(msg.path || '', ctx.webview, model);
     })
     .register('approve_tool', (msg, ctx) => ctx.agent.approveTool(msg.approval_id))
     .register('deny_tool', (msg, ctx) => ctx.agent.denyTool(msg.approval_id))

@@ -1,12 +1,6 @@
 import type { AgentToolResult } from '@earendil-works/pi-coding-agent';
 import type { Uri } from 'vscode';
 
-export interface AgentModel {
-  readonly id: string;
-  readonly name?: string;
-  readonly displayName?: string;
-}
-
 export interface AssistantMessageWithUsage {
   readonly role: 'assistant';
   readonly usage?: {

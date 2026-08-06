@@ -182,7 +182,12 @@ export const ChatView: FC = () => {
         onContinueTask={() => {
           if (!activeTask) return;
           setShowScrollToBottom(false);
-          vscode?.postMessage({ type: 'continue_task', path: activeTask.path });
+          vscode?.postMessage({
+            type: 'continue_task',
+            path: activeTask.path,
+            model_id: selectedModel,
+            model_provider: models.find((m) => m.id === selectedModel)?.provider,
+          });
         }}
       />
 

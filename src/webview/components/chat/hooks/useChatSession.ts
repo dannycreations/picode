@@ -3,11 +3,11 @@ import { useEffect, useRef, useState } from 'react';
 import { vscode } from '@webview/utilities/vscode';
 
 import type { Dispatch, RefObject, SetStateAction } from 'react';
-import type { ActiveTaskState, ChatMessage, ExtensionToWebviewMessage, HistoryItem } from '@extension/types/webview';
+import type { ActiveTaskState, ChatMessage, ExtensionToWebviewMessage, HistoryItem, ModelItem } from '@extension/types/webview';
 
 export interface UseChatSessionReturn {
   readonly activeTask: ActiveTaskState | null;
-  readonly models: { id: string; name: string }[];
+  readonly models: ModelItem[];
   readonly selectedModel: string;
   readonly setSelectedModel: Dispatch<SetStateAction<string>>;
   readonly pastTasks: HistoryItem[];
@@ -28,7 +28,7 @@ export interface UseChatSessionReturn {
 
 export const useChatSession = (): UseChatSessionReturn => {
   const [activeTask, setActiveTask] = useState<ActiveTaskState | null>(null);
-  const [models, setModels] = useState<{ id: string; name: string }[]>([]);
+  const [models, setModels] = useState<ModelItem[]>([]);
   const [selectedModel, setSelectedModel] = useState('pi-code');
   const [pastTasks, setPastTasks] = useState<HistoryItem[]>([]);
   const [isAgentRunning, setIsAgentRunning] = useState(false);
@@ -276,6 +276,8 @@ export const useChatSession = (): UseChatSessionReturn => {
       ts: Date.now(),
     };
 
+    const selectedProvider = models.find((m) => m.id === selectedModel)?.provider;
+
     if (!activeTask) {
       setActiveTask({
         id: 'task-active',
@@ -289,10 +291,17 @@ export const useChatSession = (): UseChatSessionReturn => {
         contextTokens: 0,
         contextLimit: 200000,
       });
-      vscode?.postMessage({ type: 'start_new_task', text, model_id: selectedModel, images });
+      vscode?.postMessage({ type: 'start_new_task', text, model_id: selectedModel, model_provider: selectedProvider, images });
     } else {
       setActiveTask((prev) => (prev ? { ...prev, messages: [...prev.messages, userMsg] } : null));
-      vscode?.postMessage({ type: 'send_message', text, path: activeTask.path, images });
+      vscode?.postMessage({
+        type: 'send_message',
+        text,
+        path: activeTask.path,
+        model_id: selectedModel,
+        model_provider: selectedProvider,
+        images,
+      });
     }
   };
 

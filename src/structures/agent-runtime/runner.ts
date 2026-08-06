@@ -9,7 +9,7 @@ import { getEnvironmentDetails } from '@extension/structures/chat-session/enviro
 
 import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent';
 import type { Webview } from 'vscode';
-import type { ToolName } from '@extension/types/webview';
+import type { ModelItem, ToolName } from '@extension/types/webview';
 
 export interface BeforeToolCallResult {
   readonly block?: boolean;
@@ -97,12 +97,21 @@ export class AgentRunner {
     'compaction_end',
   ]);
 
-  public async startTask(promptText: string, _modelId: string, webview: Webview, images?: string[], path?: string): Promise<void> {
+  public async startTask(
+    promptText: string,
+    selectedModel: Pick<ModelItem, 'id' | 'provider'> | undefined,
+    webview: Webview,
+    images?: string[],
+    path?: string,
+  ): Promise<void> {
     this.prepareRun(webview);
     const cwd = getWorkspaceCwd();
 
     try {
       const session = await this.getOrCreateSession(path, cwd);
+
+      // Apply and persist the model chosen in the footer before prompting.
+      await this.applySelectedModel(session, selectedModel);
 
       const isNewSession = session.agent.state.messages.length === 0;
       const envDetails = await getEnvironmentDetails(session, cwd, isNewSession);
@@ -120,12 +129,15 @@ export class AgentRunner {
     }
   }
 
-  public async continueTask(path: string, webview: Webview): Promise<void> {
+  public async continueTask(path: string, webview: Webview, selectedModel?: Pick<ModelItem, 'id' | 'provider'>): Promise<void> {
     this.prepareRun(webview);
     const cwd = getWorkspaceCwd();
 
     try {
       const session = await this.getOrCreateSession(path, cwd);
+
+      // Apply and persist the model chosen in the footer before continuing.
+      await this.applySelectedModel(session, selectedModel);
 
       const isNewSession = session.agent.state.messages.length === 0;
       const envDetails = await getEnvironmentDetails(session, cwd, isNewSession);
@@ -197,6 +209,19 @@ export class AgentRunner {
     this.subscribeToSessionEvents(session);
 
     return session;
+  }
+
+  private async applySelectedModel(session: AgentSession, selectedModel: Pick<ModelItem, 'id' | 'provider'> | undefined): Promise<void> {
+    if (!selectedModel || !selectedModel.id || !selectedModel.provider) return;
+
+    const model = session.modelRuntime.getModel(selectedModel.provider, selectedModel.id);
+    if (!model) return;
+
+    try {
+      await session.setModel(model);
+    } catch (err) {
+      console.warn(`Could not apply selected model ${selectedModel.provider}/${selectedModel.id}:`, err);
+    }
   }
 
   private setupBeforeToolCallHook(session: AgentSession, cwd: string): void {

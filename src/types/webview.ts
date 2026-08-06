@@ -42,6 +42,11 @@ export interface ChatMessage {
   readonly images?: string[];
 }
 
+export interface SettingsData {
+  readonly key: keyof AppSettings;
+  readonly value: ValueOf<AppSettings>;
+}
+
 export interface HistoryItem {
   readonly id: string;
   readonly path: string;
@@ -49,9 +54,10 @@ export interface HistoryItem {
   readonly ts: number;
 }
 
-export interface SettingsData {
-  readonly key: keyof AppSettings;
-  readonly value: ValueOf<AppSettings>;
+export interface ModelItem {
+  readonly id: string;
+  readonly name: string;
+  readonly provider: string;
 }
 
 export type WebviewToExtensionMessage =
@@ -59,9 +65,9 @@ export type WebviewToExtensionMessage =
   | { type: 'get_history'; scope: 'current' | 'all' }
   | { type: 'load_session'; id: string; path: string; title: string }
   | { type: 'delete_sessions'; paths: string[]; scope: 'current' | 'all' }
-  | { type: 'start_new_task'; text: string; model_id: string; images?: string[] }
-  | { type: 'send_message'; text: string; path?: string; images?: string[] }
-  | { type: 'continue_task'; path?: string }
+  | { type: 'start_new_task'; text: string; model_id: string; model_provider?: string; images?: string[] }
+  | { type: 'send_message'; text: string; path?: string; model_id?: string; model_provider?: string; images?: string[] }
+  | { type: 'continue_task'; path?: string; model_id?: string; model_provider?: string }
   | { type: 'approve_tool'; approval_id: string }
   | { type: 'deny_tool'; approval_id: string }
   | { type: 'view_raw_task'; path?: string }
@@ -74,7 +80,7 @@ export type WebviewToExtensionMessage =
   | ({ type: 'update_setting' } & SettingsData);
 
 export type ExtensionToWebviewMessage =
-  | { type: 'init_data'; payload: { models: { id: string; name: string }[]; history: HistoryItem[]; default_model?: string } }
+  | { type: 'init_data'; payload: { models: ModelItem[]; history: HistoryItem[]; default_model?: string } }
   | { type: 'history_data'; payload: { history: HistoryItem[] } }
   | { type: 'settings_data'; payload: { settings: AppSettings } }
   | {

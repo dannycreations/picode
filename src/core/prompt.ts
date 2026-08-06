@@ -14,7 +14,7 @@ export const COMMIT_MESSAGE_PROMPT = `Analyze the provided \`git diff\`, then ge
 ### 2. Body (Optional)
 
 - Must be separated from the header by one blank line.
-- Uses unordered list dashes to detail specific modifications.
+- Uses sentence-case declarations and unordered-list dashes to detail specific modifications.
 
 ### 3. Footer (Conditional)
 

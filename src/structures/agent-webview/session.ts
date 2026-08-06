@@ -7,7 +7,7 @@ import { isProjectTrusted } from '@extension/utilities/vscode';
 
 import type { SessionInfo } from '@earendil-works/pi-coding-agent';
 import type { CalculatedStats } from '@extension/structures/chat-session/session';
-import type { AgentModel, SessionTreeEntry } from '@extension/types/extension';
+import type { SessionTreeEntry } from '@extension/types/extension';
 import type { ChatMessage, ExtensionToWebviewMessage, HistoryItem } from '@extension/types/webview';
 
 export type SessionInitData = Extract<ExtensionToWebviewMessage, { type: 'init_data' }>['payload'];
@@ -18,11 +18,7 @@ export class SessionService {
     const isTrusted = isProjectTrusted(cwd);
 
     const [modelRuntime, sessions] = await Promise.all([ModelRuntime.create(), SessionManager.list(cwd)]);
-
-    const models = modelRuntime.getModels().map((m: AgentModel) => ({
-      id: m.id,
-      name: m.displayName || m.id,
-    }));
+    const models = modelRuntime.getModels().map((m) => ({ id: m.id, name: m.name, provider: m.provider }));
 
     const history = this.formatSessions(sessions);
     const settingsManager = SettingsManager.create(cwd, agentDir, { projectTrusted: isTrusted });

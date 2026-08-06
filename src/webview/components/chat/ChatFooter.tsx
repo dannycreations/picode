@@ -1,15 +1,11 @@
 import { cn } from 'cnfast';
 import { Check, ChevronDown } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 
 import { useClickOutside } from '@extension/webview/hooks/useClickOutside';
 
 import type { FC } from 'react';
-
-export interface ModelItem {
-  readonly id: string;
-  readonly name: string;
-}
+import type { ModelItem } from '@extension/types/webview';
 
 export interface ChatFooterProps {
   readonly currentModel: string;
@@ -18,20 +14,19 @@ export interface ChatFooterProps {
 }
 
 interface ModelDropdownMenuProps {
-  readonly searchQuery: string;
-  readonly setSearchQuery: (query: string) => void;
   readonly models: ModelItem[];
   readonly currentModel: string;
   readonly onSelectModel: (modelId: string) => void;
 }
 
-const ModelDropdownMenu: FC<ModelDropdownMenuProps> = ({ searchQuery, setSearchQuery, models, currentModel, onSelectModel }) => {
+const ModelDropdownMenu: FC<ModelDropdownMenuProps> = ({ models, currentModel, onSelectModel }) => {
+  const [searchQuery, setSearchQuery] = useState('');
   const filteredModels = models.filter(
     (m) => m.name.toLowerCase().includes(searchQuery.toLowerCase()) || m.id.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   return (
-    <div className="absolute bottom-full left-0 mb-1 w-64 bg-[var(--vscode-dropdown-background)] border border-[var(--vscode-dropdown-border)] rounded-md shadow-lg overflow-hidden flex flex-col z-50 max-h-60">
+    <div className="absolute bottom-full left-0 mb-1 w-64 bg-[var(--vscode-dropdown-background)] border border-[var(--vscode-panel-border)]/50 rounded-md shadow-lg overflow-hidden flex flex-col z-50 max-h-60">
       <div className="p-2 border-b border-[var(--vscode-panel-border)]/50 shrink-0">
         <input
           type="text"
@@ -72,18 +67,13 @@ const ModelDropdownMenu: FC<ModelDropdownMenuProps> = ({ searchQuery, setSearchQ
 
 export const ChatFooter: FC<ChatFooterProps> = ({ currentModel, onChangeModel, models }) => {
   const [showModelMenu, setShowModelMenu] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useClickOutside(dropdownRef, () => setShowModelMenu(false));
 
-  useEffect(() => {
-    if (!showModelMenu) setSearchQuery('');
-  }, [showModelMenu]);
-
   const displayModels = [...models];
   if (currentModel && !models.some((m) => m.id === currentModel)) {
-    displayModels.unshift({ id: currentModel, name: currentModel });
+    displayModels.unshift({ id: currentModel, name: currentModel, provider: '' });
   }
 
   const selectedModelObj = displayModels.find((m) => m.id === currentModel) || displayModels[0] || { id: '', name: 'No model selected' };
@@ -93,7 +83,7 @@ export const ChatFooter: FC<ChatFooterProps> = ({ currentModel, onChangeModel, m
       <div className="flex flex-row justify-start gap-1 grow relative" ref={dropdownRef}>
         <button
           onClick={() => setShowModelMenu(!showModelMenu)}
-          className="px-2 py-0.5 text-xs text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] bg-transparent hover:bg-[var(--vscode-list-hoverBackground)] border border-[var(--vscode-panel-border)]/40 rounded flex items-center gap-1 cursor-pointer truncate max-w-[180px]"
+          className="px-2 py-0.5 text-xs text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] bg-transparent hover:bg-[var(--vscode-list-hoverBackground)] border border-[var(--vscode-panel-border)]/50 rounded flex items-center gap-1 cursor-pointer truncate max-w-[180px]"
         >
           <span className="codicon codicon-robot scale-75" />
           <span className="truncate">{selectedModelObj.name}</span>
@@ -102,8 +92,6 @@ export const ChatFooter: FC<ChatFooterProps> = ({ currentModel, onChangeModel, m
 
         {showModelMenu && (
           <ModelDropdownMenu
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
             models={displayModels}
             currentModel={currentModel}
             onSelectModel={(modelId) => {
