@@ -36,7 +36,7 @@ export const SettingList: FC<SettingListProps> = ({ label, description, placehol
   };
 
   return (
-    <div className="flex flex-col gap-2 mt-2 ml-6 pl-3 border-l-2 border-vscode-button-background/60">
+    <div className="flex flex-col gap-2 mt-2">
       <div className="flex flex-col gap-0.5">
         <span className="text-xs font-semibold text-vscode-foreground">{label}</span>
         <span className="text-xs text-vscode-descriptionForeground leading-normal">{description}</span>

@@ -24,7 +24,7 @@ export const ContextTab: FC<TabProps> = ({ draftSettings, handleFieldChange }) =
           unit="%"
           description="The percentage of context window usage at which context condensing is triggered."
           onChange={(val) => handleFieldChange('autoCondenseContextPercent', val)}
-          className="ml-4 pl-3 border-l-2 border-vscode-button-background animate-fade-in"
+          className="animate-fade-in"
         />
       </SettingCheckbox>
 
