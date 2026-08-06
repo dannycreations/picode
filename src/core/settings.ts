@@ -4,8 +4,14 @@ import { isObjectLike } from 'es-toolkit/compat';
 
 import { isProjectTrusted } from '@extension/utilities/vscode';
 
-export interface ApprovalSettings {
+export interface AppSettings {
+  readonly enableTodoTool: boolean;
+  readonly enableAskQuestionTool: boolean;
+  readonly enableAgentRules: boolean;
+  readonly enableSkillDiscovery: boolean;
+
   readonly autoApproveRead: boolean;
+  readonly autoApproveSkillReads: boolean;
   readonly autoApproveWrite: boolean;
   readonly autoApproveDelete: boolean;
   readonly autoApproveExecute: boolean;
@@ -17,10 +23,7 @@ export interface ApprovalSettings {
   readonly deniedDeletePaths: readonly string[];
   readonly allowedExecuteCommands: readonly string[];
   readonly deniedExecuteCommands: readonly string[];
-}
 
-export interface ContextSettings {
-  readonly useAgentRules: boolean;
   readonly autoCondenseContext: boolean;
   readonly autoCondenseContextPercent: number;
   readonly maxOpenTabsContext: number;
@@ -29,10 +32,14 @@ export interface ContextSettings {
   readonly maxConcurrentFileReads: number;
 }
 
-export type AppSettings = ApprovalSettings & ContextSettings;
+export const DEFAULT_SETTINGS: AppSettings = {
+  enableTodoTool: true,
+  enableAskQuestionTool: true,
+  enableAgentRules: true,
+  enableSkillDiscovery: true,
 
-export const DEFAULT_APPROVAL_SETTINGS: ApprovalSettings = {
   autoApproveRead: false,
+  autoApproveSkillReads: false,
   autoApproveWrite: false,
   autoApproveDelete: false,
   autoApproveExecute: false,
@@ -44,21 +51,13 @@ export const DEFAULT_APPROVAL_SETTINGS: ApprovalSettings = {
   deniedDeletePaths: [],
   allowedExecuteCommands: [],
   deniedExecuteCommands: [],
-};
 
-export const DEFAULT_CONTEXT_SETTINGS: ContextSettings = {
-  useAgentRules: true,
   autoCondenseContext: true,
   autoCondenseContextPercent: 80,
   maxOpenTabsContext: 20,
   maxWorkspaceFiles: 100,
   maxGitStatusFiles: 20,
   maxConcurrentFileReads: 10,
-};
-
-export const DEFAULT_SETTINGS: AppSettings = {
-  ...DEFAULT_APPROVAL_SETTINGS,
-  ...DEFAULT_CONTEXT_SETTINGS,
 };
 
 function parseBoolean(value: unknown, fallback: boolean): boolean {
@@ -78,11 +77,16 @@ function parseBoundedNumber(value: unknown, fallback: number, options: { min?: n
   return Math.max(min, Math.min(max, value));
 }
 
-export function parseApprovalSettings(input?: unknown, base = DEFAULT_APPROVAL_SETTINGS): ApprovalSettings {
-  const raw = (isObjectLike(input) ? input : {}) as ApprovalSettings;
-
+function parseAppSettings(input?: unknown, base = DEFAULT_SETTINGS): AppSettings {
+  const raw = (isObjectLike(input) ? input : {}) as AppSettings;
   return {
+    enableTodoTool: parseBoolean(raw.enableTodoTool, base.enableTodoTool),
+    enableAskQuestionTool: parseBoolean(raw.enableAskQuestionTool, base.enableAskQuestionTool),
+    enableAgentRules: parseBoolean(raw.enableAgentRules, base.enableAgentRules),
+    enableSkillDiscovery: parseBoolean(raw.enableSkillDiscovery, base.enableSkillDiscovery),
+
     autoApproveRead: parseBoolean(raw.autoApproveRead, base.autoApproveRead),
+    autoApproveSkillReads: parseBoolean(raw.autoApproveSkillReads, base.autoApproveSkillReads),
     autoApproveWrite: parseBoolean(raw.autoApproveWrite, base.autoApproveWrite),
     autoApproveDelete: parseBoolean(raw.autoApproveDelete, base.autoApproveDelete),
     autoApproveExecute: parseBoolean(raw.autoApproveExecute, base.autoApproveExecute),
@@ -94,14 +98,7 @@ export function parseApprovalSettings(input?: unknown, base = DEFAULT_APPROVAL_S
     deniedDeletePaths: parseStringArray(raw.deniedDeletePaths, base.deniedDeletePaths),
     allowedExecuteCommands: parseStringArray(raw.allowedExecuteCommands, base.allowedExecuteCommands),
     deniedExecuteCommands: parseStringArray(raw.deniedExecuteCommands, base.deniedExecuteCommands),
-  };
-}
 
-export function parseContextSettings(input?: unknown, base = DEFAULT_CONTEXT_SETTINGS): ContextSettings {
-  const raw = (isObjectLike(input) ? input : {}) as ContextSettings;
-
-  return {
-    useAgentRules: parseBoolean(raw.useAgentRules, base.useAgentRules),
     autoCondenseContext: parseBoolean(raw.autoCondenseContext, base.autoCondenseContext),
     autoCondenseContextPercent: parseBoundedNumber(raw.autoCondenseContextPercent, base.autoCondenseContextPercent, { min: 0, max: 100 }),
     maxOpenTabsContext: parseBoundedNumber(raw.maxOpenTabsContext, base.maxOpenTabsContext, { min: 0 }),
@@ -109,10 +106,6 @@ export function parseContextSettings(input?: unknown, base = DEFAULT_CONTEXT_SET
     maxGitStatusFiles: parseBoundedNumber(raw.maxGitStatusFiles, base.maxGitStatusFiles, { min: 0 }),
     maxConcurrentFileReads: parseBoundedNumber(raw.maxConcurrentFileReads, base.maxConcurrentFileReads, { min: 1 }),
   };
-}
-
-export function parseAppSettings(input?: unknown, base = DEFAULT_SETTINGS): AppSettings {
-  return { ...parseApprovalSettings(input, base), ...parseContextSettings(input, base) };
 }
 
 export class SettingsRepository {

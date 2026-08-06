@@ -54,17 +54,22 @@ export class SessionFactory {
       cwd,
       agentDir,
       settingsManager,
-      noContextFiles: !settings.useAgentRules,
+      noContextFiles: !settings.enableAgentRules,
+      noSkills: !settings.enableSkillDiscovery,
     });
     await resourceLoader.reload();
+
+    const disabledTools: Set<ToolName> = new Set();
+    if (!settings.enableTodoTool) disabledTools.add('update_todo');
+    if (!settings.enableAskQuestionTool) disabledTools.add('ask_question');
 
     const { session } = await createAgentSession({
       cwd,
       sessionManager: sessionManagerOption,
       settingsManager,
       resourceLoader,
-      tools: SessionFactory.DEFAULT_TOOLS,
-      customTools: SessionFactory.CUSTOM_TOOLS,
+      tools: SessionFactory.DEFAULT_TOOLS.filter((tool) => !disabledTools.has(tool)),
+      customTools: SessionFactory.CUSTOM_TOOLS.filter((tool) => !disabledTools.has(tool.name as ToolName)),
     });
 
     return session;

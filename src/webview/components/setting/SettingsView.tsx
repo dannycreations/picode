@@ -1,9 +1,10 @@
 import { cn } from 'cnfast';
-import { ArrowLeft, Database, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Database, ShieldCheck, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 
 import { useResponsive } from '@extension/webview/components/setting/hooks/useResponsive';
 import { useSetting } from '@extension/webview/components/setting/hooks/useSetting';
+import { AbilityTab } from '@extension/webview/components/setting/tabs/AbilityTab';
 import { ApprovalTab } from '@extension/webview/components/setting/tabs/ApprovalTab';
 import { ContextTab } from '@extension/webview/components/setting/tabs/ContextTab';
 import { ConfirmDialog } from '@extension/webview/components/shared/ConfirmDialog';
@@ -13,11 +14,19 @@ import type { SettingsTab } from '@extension/webview/components/setting/shared/t
 
 const SETTINGS_TABS: SettingsTab[] = [
   {
+    id: 'ability',
+    label: 'Ability',
+    icon: Sparkles,
+    title: 'Ability',
+    description: 'Choose which optional abilities the agent can use while working on your tasks.',
+    component: AbilityTab,
+  },
+  {
     id: 'approval',
     label: 'Approval',
     icon: ShieldCheck,
     title: 'Approval',
-    description: 'Configure auto-approval settings for agent actions to balance speed and safety',
+    description: 'Configure auto-approval settings for agent actions to balance speed and safety.',
     component: ApprovalTab,
   },
   {
@@ -25,7 +34,7 @@ const SETTINGS_TABS: SettingsTab[] = [
     label: 'Context',
     icon: Database,
     title: 'Context',
-    description: "Control what information is included in the AI's context window, affecting token usage and response quality",
+    description: 'Control what information is included in the context window, affecting token usage and response quality.',
     component: ContextTab,
   },
 ];

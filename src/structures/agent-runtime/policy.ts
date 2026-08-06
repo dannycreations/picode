@@ -1,5 +1,5 @@
 import { SettingsService } from '@extension/core/settings';
-import { resolveCommandAction, resolvePathAction } from '@extension/utilities/action';
+import { resolveCommandAction, resolvePathAction, resolveReadPath } from '@extension/structures/agent-runtime/policy-action';
 
 import type { AppSettings } from '@extension/core/settings';
 import type { ToolApprovalDecision } from '@extension/structures/agent-runtime/runner';
@@ -54,9 +54,7 @@ export class PolicyEvaluator {
     const toolArgs = (args ?? {}) as ReadFileToolArgs;
     const files = toolArgs.files ?? [];
 
-    const resolutions = files.map((f) =>
-      resolvePathAction(cwd, f.path ?? '', settings.autoApproveRead, settings.allowedReadPaths, settings.deniedReadPaths),
-    );
+    const resolutions = files.map((f) => resolveReadPath(cwd, f.path ?? '', settings));
 
     if (resolutions.includes('deny')) {
       return {

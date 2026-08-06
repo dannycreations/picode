@@ -283,9 +283,9 @@ export async function getEnvironmentDetails(session: AgentSession, cwd: string, 
   const messages = session.agent?.state?.messages || [];
   const todoListStr = getLatestTodoList(messages);
   const todoList = todoListStr ? parseTodoList(todoListStr) : undefined;
-  const reminderSection = formatReminderSection(todoList);
+  const reminderSection = settings.enableTodoTool ? formatReminderSection(todoList) : '';
 
   const trimmedDetails = details.trim();
   const body = trimmedDetails ? `${trimmedDetails}\n\n${reminderSection}` : reminderSection;
-  return `## Environment Details\n\n${body}`;
+  return `## Environment Details\n\n${body}`.trim();
 }

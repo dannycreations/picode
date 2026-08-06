@@ -1,7 +1,10 @@
-import { isAbsolute, relative, resolve } from 'node:path';
+import { isAbsolute, join, relative, resolve } from 'node:path';
+import { CONFIG_DIR_NAME, getAgentDir } from '@earendil-works/pi-coding-agent';
 import { parse } from 'shell-quote';
 
-type DecisionAction = 'approve' | 'deny' | 'confirm';
+import type { AppSettings } from '@extension/core/settings';
+
+export type DecisionAction = 'approve' | 'deny' | 'confirm';
 
 const GLOB_CACHE_LIMIT = 500;
 const globCache = new Map<string, RegExp>();
@@ -353,4 +356,28 @@ export function getSingleCommandDecision(
   }
 
   return 'confirm';
+}
+
+function getSkillDirectories(cwd: string): readonly string[] {
+  return [join(getAgentDir(), 'skills'), join(cwd, CONFIG_DIR_NAME, 'skills')];
+}
+
+function isInsideDirectory(target: string, dir: string): boolean {
+  const normalizedTarget = resolve(target).replace(/\\/g, '/').replace(/\/+$/, '');
+  const normalizedDir = resolve(dir).replace(/\\/g, '/').replace(/\/+$/, '');
+  return normalizedTarget === normalizedDir || normalizedTarget.startsWith(`${normalizedDir}/`);
+}
+
+export function resolveReadPath(cwd: string, filePath: string, settings: AppSettings): DecisionAction {
+  const normalizedPath = filePath.replace(/\\/g, '/');
+  const isDenied = settings.deniedReadPaths.some((pat) => pat === '*' || matchesGlob(pat, normalizedPath));
+  if (isDenied) return 'deny';
+
+  if (settings.autoApproveRead && settings.autoApproveSkillReads) {
+    const resolved = resolve(cwd, filePath);
+    const insideSkillDir = getSkillDirectories(cwd).some((dir) => isInsideDirectory(resolved, dir));
+    if (insideSkillDir) return 'approve';
+  }
+
+  return resolvePathAction(cwd, filePath, settings.autoApproveRead, settings.allowedReadPaths, settings.deniedReadPaths);
 }

@@ -10,14 +10,8 @@ export const ContextTab: FC<TabProps> = ({ draftSettings, handleFieldChange }) =
   return (
     <div className="flex flex-col gap-6 px-5 py-2">
       <SettingCheckbox
-        label="Enable AGENTS.md rules"
-        description="Enable loading of AGENTS.md and CLAUDE.md files for agent-specific rules."
-        checked={draftSettings.useAgentRules}
-        onChange={(val) => handleFieldChange('useAgentRules', val)}
-      />
-
-      <SettingCheckbox
         label="Automatic trigger condensing"
+        description="Automatically condense conversation context when it reaches the threshold."
         checked={draftSettings.autoCondenseContext}
         onChange={(val) => handleFieldChange('autoCondenseContext', val)}
       >

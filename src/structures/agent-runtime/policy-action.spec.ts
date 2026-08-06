@@ -1,6 +1,49 @@
 import { describe, expect, it } from 'vitest';
 
-import { containsDangerousSubstitution, matchesGlob, parseCommand, resolveCommandAction, resolvePathAction } from '@extension/utilities/action';
+import { DEFAULT_SETTINGS } from '@extension/core/settings';
+import {
+  containsDangerousSubstitution,
+  matchesGlob,
+  parseCommand,
+  resolveCommandAction,
+  resolvePathAction,
+  resolveReadPath,
+} from '@extension/structures/agent-runtime/policy-action';
+
+describe('resolveReadPath', () => {
+  it('should auto-approve skill reads only when both autoApproveSkillReads and its parent autoApproveRead are enabled', () => {
+    const skillPath = '/workspace/.pi/skills/foo/SKILL.md';
+
+    // Parent off: skill reads are not auto-approved even if skill flag is on.
+    expect(
+      resolveReadPath('/workspace', skillPath, {
+        ...DEFAULT_SETTINGS,
+        autoApproveSkillReads: true,
+        autoApproveRead: false,
+      }),
+    ).toBe('confirm');
+
+    // Both on: skill reads are auto-approved.
+    expect(
+      resolveReadPath('/workspace', skillPath, {
+        ...DEFAULT_SETTINGS,
+        autoApproveSkillReads: true,
+        autoApproveRead: true,
+      }),
+    ).toBe('approve');
+  });
+
+  it('should respect the deny list above the skill auto-approve', () => {
+    expect(
+      resolveReadPath('/workspace', '/workspace/.pi/skills/foo/SKILL.md', {
+        ...DEFAULT_SETTINGS,
+        autoApproveSkillReads: true,
+        autoApproveRead: true,
+        deniedReadPaths: ['**/skills/**'],
+      }),
+    ).toBe('deny');
+  });
+});
 
 describe('resolvePathAction', () => {
   it('should confirm when auto-approve is enabled and allowed list is empty', () => {

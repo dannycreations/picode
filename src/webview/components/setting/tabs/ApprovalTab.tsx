@@ -1,4 +1,4 @@
-import { Edit, Eye, Terminal, Trash2 } from 'lucide-react';
+import { BookOpen, Edit, Eye, Terminal, Trash2 } from 'lucide-react';
 
 import { SettingCheckbox } from '@extension/webview/components/setting/shared/SettingCheckbox';
 import { SettingList } from '@extension/webview/components/setting/shared/SettingList';
@@ -18,6 +18,13 @@ export const ApprovalTab: FC<TabProps> = ({ draftSettings, handleFieldChange }) 
         onChange={(val) => handleFieldChange('autoApproveRead', val)}
       >
         <div className="flex flex-col gap-4">
+          <SettingCheckbox
+            label="Skill Reading"
+            icon={<BookOpen size={14} className="text-vscode-descriptionForeground shrink-0" />}
+            description="Automatically allow the agent to read skill files (`SKILL.md`) when it uses a skill."
+            checked={draftSettings.autoApproveSkillReads}
+            onChange={(val) => handleFieldChange('autoApproveSkillReads', val)}
+          />
           <SettingList
             label="Allowed Read Paths"
             description="Files matching these globs will be auto-approved for reading. Add * to allow all paths."
@@ -91,7 +98,7 @@ export const ApprovalTab: FC<TabProps> = ({ draftSettings, handleFieldChange }) 
       <SettingCheckbox
         label="Execute Commands"
         icon={<Terminal size={14} className="text-vscode-descriptionForeground shrink-0" />}
-        description="Automatically allow the agent to run terminal commands (`execute_command`). Warning: commands run in your terminal shell environment."
+        description="Automatically allow the agent to run terminal commands (`execute_command`) inside your terminal shell environment."
         checked={draftSettings.autoApproveExecute}
         onChange={(val) => handleFieldChange('autoApproveExecute', val)}
       >
