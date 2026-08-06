@@ -1,10 +1,9 @@
 import { unlink } from 'node:fs/promises';
-import { getAgentDir, ModelRuntime, SessionManager, SettingsManager } from '@earendil-works/pi-coding-agent';
+import { ModelRuntime, SessionManager } from '@earendil-works/pi-coding-agent';
 import { Uri, window, workspace } from 'vscode';
 
 import { SettingsService } from '@extension/core/settings';
 import { calculateSessionStats, convertSessionEntries } from '@extension/structures/chat-session/session';
-import { isProjectTrusted } from '@extension/utilities/vscode';
 
 import type { SessionInfo } from '@earendil-works/pi-coding-agent';
 import type { CalculatedStats } from '@extension/structures/chat-session/session';
@@ -14,20 +13,20 @@ import type { ChatMessage, ExtensionToWebviewMessage, HistoryItem } from '@exten
 export type SessionInitData = Extract<ExtensionToWebviewMessage, { type: 'init_data' }>['payload'];
 
 export class SessionService {
-  public async getInitData(cwd: string): Promise<SessionInitData> {
-    const agentDir = getAgentDir();
-    const isTrusted = isProjectTrusted(cwd);
+  private modelRuntimePromise: Promise<ModelRuntime> | null = null;
 
-    const [modelRuntime, sessions, settings] = await Promise.all([
-      ModelRuntime.create(),
-      SessionManager.list(cwd),
-      SettingsService.getInstance(cwd).load(),
-    ]);
+  private getModelRuntime(): Promise<ModelRuntime> {
+    this.modelRuntimePromise ??= ModelRuntime.create();
+    return this.modelRuntimePromise;
+  }
+
+  public async getInitData(cwd: string): Promise<SessionInitData> {
+    const settingsService = SettingsService.getInstance(cwd);
+    const [modelRuntime, sessions, settings] = await Promise.all([this.getModelRuntime(), SessionManager.list(cwd), settingsService.load()]);
     const models = modelRuntime.getModels().map((m) => ({ id: m.id, name: m.name, provider: m.provider }));
 
     const history = this.formatSessions(sessions);
-    const settingsManager = SettingsManager.create(cwd, agentDir, { projectTrusted: isTrusted });
-    const defaultModel = settingsManager.getDefaultModel();
+    const defaultModel = await settingsService.getDefaultModel();
 
     return { models, history, default_model: defaultModel, settings };
   }
@@ -43,13 +42,10 @@ export class SessionService {
     const entries = sessionManager.getEntries();
     const chatMessages = convertSessionEntries(entries as SessionTreeEntry[]);
 
-    const modelRuntime = await ModelRuntime.create();
+    const modelRuntime = await this.getModelRuntime();
     const models = modelRuntime.getModels();
-    const agentDir = getAgentDir();
-    const isTrusted = isProjectTrusted(cwd);
-    const settingsManager = SettingsManager.create(cwd, agentDir, { projectTrusted: isTrusted });
 
-    let sessionModelId = settingsManager.getDefaultModel();
+    let sessionModelId = await SettingsService.getInstance(cwd).getDefaultModel();
     for (const entry of entries) {
       if (entry.type === 'model_change') {
         sessionModelId = entry.modelId || sessionModelId;

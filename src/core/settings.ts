@@ -135,6 +135,10 @@ export class SettingsRepository {
     return this.manager.getProjectSettings()?.vscode;
   }
 
+  public getDefaultModel(): string | undefined {
+    return this.manager.getDefaultModel();
+  }
+
   public async initializeDefaults(defaults: AppSettings): Promise<void> {
     this.manager['globalSettings'].vscode = { ...defaults };
     this.manager['markModified']('vscode');
@@ -164,6 +168,8 @@ export class SettingsRepository {
 export class SettingsService {
   private static readonly instances = new Map<string, SettingsService>();
 
+  private defaultModel: string | undefined = undefined;
+
   public static getInstance(cwd?: string): SettingsService {
     const resolvedCwd = cwd || process.cwd();
     let instance = this.instances.get(resolvedCwd);
@@ -190,11 +196,16 @@ export class SettingsService {
     const parsedGlobal = parseAppSettings(rawGlobal, DEFAULT_SETTINGS);
     const rawProject = this.repository.getProjectSettings();
 
-    if (rawProject !== undefined) {
-      return parseAppSettings(rawProject, parsedGlobal);
-    }
+    const settings = rawProject !== undefined ? parseAppSettings(rawProject, parsedGlobal) : parsedGlobal;
+    this.defaultModel = this.repository.getDefaultModel();
+    return settings;
+  }
 
-    return parsedGlobal;
+  public async getDefaultModel(): Promise<string | undefined> {
+    if (this.defaultModel === undefined) {
+      await this.load();
+    }
+    return this.defaultModel;
   }
 
   public async update<K extends keyof AppSettings>(key: K, value: AppSettings[K]): Promise<AppSettings> {
