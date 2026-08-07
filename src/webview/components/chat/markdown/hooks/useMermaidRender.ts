@@ -2,7 +2,7 @@ import mermaid from 'mermaid-compact';
 import { useCallback, useEffect, useState } from 'react';
 
 import { logger } from '@extension/core/logger';
-import { applyDeterministicFixes } from '@extension/webview/components/chat/markdown/helpers/mermaid';
+import { applyDeterministicFixes } from '@webview/components/chat/markdown/helpers/mermaid';
 
 export interface UseMermaidRenderReturn {
   readonly code: string;

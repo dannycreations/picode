@@ -2,7 +2,7 @@ import { cn } from 'cnfast';
 import { Check, ChevronDown } from 'lucide-react';
 import { useRef, useState } from 'react';
 
-import { useClickOutside } from '@extension/webview/hooks/useClickOutside';
+import { useClickOutside } from '@webview/hooks/useClickOutside';
 
 import type { FC } from 'react';
 import type { ModelItem } from '@extension/types/webview';

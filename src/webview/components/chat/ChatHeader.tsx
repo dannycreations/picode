@@ -2,8 +2,8 @@ import { cn } from 'cnfast';
 import { Check, ChevronDown, ChevronRight, CloudDownload, CloudUpload, Coins, Copy, Download, FileJson, FoldVertical, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 
-import { useCopyToClipboard } from '@extension/webview/hooks/useCopyToClipboard';
 import { TodoView } from '@webview/components/chat/TodoView';
+import { useCopyToClipboard } from '@webview/hooks/useCopyToClipboard';
 
 import type { ComponentType, FC, MouseEvent } from 'react';
 import type { ChatMessage } from '@extension/types/webview';

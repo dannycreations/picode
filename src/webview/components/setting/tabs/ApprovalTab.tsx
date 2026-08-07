@@ -1,10 +1,10 @@
 import { Edit, Eye, Terminal, Trash2 } from 'lucide-react';
 
-import { SettingCheckbox } from '@extension/webview/components/setting/shared/SettingCheckbox';
-import { SettingList } from '@extension/webview/components/setting/shared/SettingList';
+import { SettingCheckbox } from '@webview/components/setting/shared/SettingCheckbox';
+import { SettingList } from '@webview/components/setting/shared/SettingList';
 
 import type { FC } from 'react';
-import type { TabProps } from '@extension/webview/components/setting/shared/types';
+import type { TabProps } from '@webview/components/setting/shared/types';
 
 export const ApprovalTab: FC<TabProps> = ({ draftSettings, handleFieldChange }) => {
   return (

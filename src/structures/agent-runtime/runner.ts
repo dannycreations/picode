@@ -1,6 +1,7 @@
 import assert from 'node:assert';
 
 import { logger } from '@extension/core/logger';
+import { listCommands } from '@extension/structures/agent-runtime/command';
 import { EventMapper } from '@extension/structures/agent-runtime/event';
 import { PolicyEvaluator } from '@extension/structures/agent-runtime/policy';
 import { QuestionBridge } from '@extension/structures/agent-runtime/question';
@@ -190,6 +191,9 @@ export class AgentRunner {
     try {
       await this.session?.reload();
       this.messenger.post({ type: 'info', payload: { text: 'Reloaded skills, context files, and configuration.' } });
+
+      const commands = await listCommands(getWorkspaceCwd());
+      this.messenger.post({ type: 'commands_data', payload: { commands } });
     } catch (err) {
       this.messenger.postError(err);
     }

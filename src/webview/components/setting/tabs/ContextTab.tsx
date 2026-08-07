@@ -1,10 +1,10 @@
 import { FoldVertical } from 'lucide-react';
 
-import { SettingCheckbox } from '@extension/webview/components/setting/shared/SettingCheckbox';
-import { SettingSlider } from '@extension/webview/components/setting/shared/SettingSlider';
+import { SettingCheckbox } from '@webview/components/setting/shared/SettingCheckbox';
+import { SettingSlider } from '@webview/components/setting/shared/SettingSlider';
 
 import type { FC } from 'react';
-import type { TabProps } from '@extension/webview/components/setting/shared/types';
+import type { TabProps } from '@webview/components/setting/shared/types';
 
 export const ContextTab: FC<TabProps> = ({ draftSettings, handleFieldChange }) => {
   return (

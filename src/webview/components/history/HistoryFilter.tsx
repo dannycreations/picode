@@ -2,7 +2,7 @@ import { cn } from 'cnfast';
 import { Check, Search, X } from 'lucide-react';
 
 import type { FC } from 'react';
-import type { HistoryScope, SortOption } from '@extension/webview/components/history/hooks/useHistoryFilter';
+import type { HistoryScope, SortOption } from '@webview/components/history/hooks/useHistoryFilter';
 
 interface HistoryFilterProps {
   readonly searchQuery: string;

@@ -1,3 +1,5 @@
+import type { ActiveTaskState } from '@extension/types/webview';
+
 export function formatTimeAgo(ts: number): string {
   const diffMs = Date.now() - ts;
 
@@ -16,4 +18,38 @@ export function formatTimeAgo(ts: number): string {
 
   const diffDays = Math.floor(diffHours / 24);
   return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+}
+
+export function downloadFile(filename: string, data: Blob | string): void {
+  const url = typeof data === 'string' ? data : URL.createObjectURL(data);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  if (typeof data !== 'string') {
+    URL.revokeObjectURL(url);
+  }
+}
+
+export function exportTaskAsJson(task: ActiveTaskState): void {
+  const jsonString = JSON.stringify(task.messages, null, 2);
+  const blob = new Blob([jsonString], { type: 'application/json' });
+  downloadFile(`pi-code-task-${task.id || Date.now()}.json`, blob);
+}
+
+export function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (e.target?.result) {
+        resolve(e.target.result as string);
+      } else {
+        reject(new Error('File reading resulted in empty payload.'));
+      }
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 }

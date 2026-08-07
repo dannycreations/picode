@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
-import { applyCommand, matchCommands, readCommandQuery } from '@extension/webview/components/chat/helpers/command';
+import { applyCommand, matchCommands, readCommandQuery } from '@webview/components/chat/helpers/command';
 
 import type { ChangeEvent, KeyboardEvent, RefObject } from 'react';
 import type { CommandItem } from '@extension/types/webview';

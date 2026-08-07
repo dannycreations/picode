@@ -153,13 +153,15 @@ export class SettingsRepository {
     await this.manager.flush();
   }
 
-  public async updateSetting<K extends keyof AppSettings>(key: K, value: AppSettings[K]): Promise<void> {
+  public async updateSettings(partial: Record<string, unknown>): Promise<void> {
     if (!isObjectLike(this.manager['globalSettings'].vscode)) {
       this.manager['globalSettings'].vscode = {};
     }
 
     const vscodeSettings = this.manager['globalSettings'].vscode;
-    vscodeSettings[key] = value;
+    for (const [key, value] of Object.entries(partial)) {
+      vscodeSettings[key] = value;
+    }
 
     this.manager['markModified']('vscode');
     this.manager['save']();
@@ -214,12 +216,12 @@ export class SettingsService {
     return this.defaultModel;
   }
 
-  public async update<K extends keyof AppSettings>(key: K, value: AppSettings[K]): Promise<AppSettings> {
+  public async updateSettings(partial: Partial<AppSettings>): Promise<AppSettings> {
     await this.repository.reload();
-    await this.repository.updateSetting(key, value);
+    await this.repository.updateSettings(partial as Record<string, unknown>);
 
-    if (key === 'autoCompactContext') {
-      this.repository.setCompactionEnabled(value === true);
+    if ('autoCompactContext' in partial) {
+      this.repository.setCompactionEnabled(partial.autoCompactContext === true);
     }
 
     return this.load();

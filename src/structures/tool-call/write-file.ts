@@ -1,10 +1,10 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
-import { defineTool, generateDiffString } from '@earendil-works/pi-coding-agent';
+import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
 import { stripCodeFence } from '@extension/utilities/markdown';
-import { resolveOutputLimits, truncateOutput } from '@extension/utilities/truncate';
+import { buildFileChangeResult } from '@extension/utilities/truncate';
 
 import type { ToolName } from '@extension/types/webview';
 
@@ -32,20 +32,15 @@ export const writeFileTool = defineTool({
 
       await mkdir(dirname(resolvedPath), { recursive: true });
       await writeFile(resolvedPath, finalContent, 'utf8');
-      const diffResult = generateDiffString(oldContent, finalContent);
 
-      // Keep the full diff for the UI, but cap what the model receives.
-      const limits = await resolveOutputLimits(ctx.cwd);
-      const { text } = truncateOutput(diffResult.diff || `Successfully wrote content to ${params.path}`, {
-        limits,
-        keep: 'head',
+      return buildFileChangeResult({
+        cwd: ctx.cwd,
+        oldContent,
+        newContent: finalContent,
+        successMessage: `Successfully wrote content to ${params.path}`,
         hint: `The write succeeded; read "${params.path}" if you need to verify the remaining changes.`,
+        extraDetails: { fileExists },
       });
-
-      return {
-        content: [{ type: 'text', text }],
-        details: { diff: diffResult.diff, fileExists },
-      };
     } catch (err) {
       return {
         content: [{ type: 'text', text: `Error writing to file: ${err instanceof Error ? err.message : String(err)}` }],

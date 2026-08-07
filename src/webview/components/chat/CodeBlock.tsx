@@ -6,9 +6,9 @@ import { Fragment, jsx, jsxs } from 'react/jsx-runtime';
 import { bundledLanguages } from 'shiki';
 
 import { logger } from '@extension/core/logger';
-import { useCopyToClipboard } from '@extension/webview/hooks/useCopyToClipboard';
-import { useInViewport } from '@extension/webview/hooks/useInViewport';
 import { getHighlighter, normalizeLanguage } from '@webview/components/chat/helpers/highlighter';
+import { useCopyToClipboard } from '@webview/hooks/useCopyToClipboard';
+import { useInViewport } from '@webview/hooks/useInViewport';
 
 import type { CSSProperties, FC, MouseEvent, ReactNode } from 'react';
 import type { ShikiTransformer } from 'shiki';

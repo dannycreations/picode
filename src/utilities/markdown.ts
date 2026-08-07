@@ -1,9 +1,3 @@
-export interface FencedBlock {
-  readonly start: number;
-  readonly end: number;
-  readonly body: string;
-}
-
 interface FenceInfo {
   readonly char: string;
   readonly length: number;

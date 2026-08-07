@@ -1,19 +1,19 @@
 import { cn } from 'cnfast';
 import { useCallback, useMemo, useState } from 'react';
 
-import { ChatAction } from '@extension/webview/components/chat/ChatAction';
-import { ChatBody } from '@extension/webview/components/chat/ChatBody';
-import { ChatFooter } from '@extension/webview/components/chat/ChatFooter';
-import { ChatHeader } from '@extension/webview/components/chat/ChatHeader';
-import { ChatInput } from '@extension/webview/components/chat/ChatInput';
-import { exportTaskAsJson } from '@extension/webview/components/chat/helpers/common';
-import { isRenderableMessage } from '@extension/webview/components/chat/helpers/message';
-import { useChatSession } from '@extension/webview/components/chat/hooks/useChatSession';
-import { HistoryPreview } from '@extension/webview/components/history/HistoryPreview';
-import { HistoryView } from '@extension/webview/components/history/HistoryView';
-import { SettingsView } from '@extension/webview/components/setting/SettingsView';
-import { ConfirmDialog } from '@extension/webview/components/shared/ConfirmDialog';
-import { useAutoScroll } from '@extension/webview/hooks/useAutoScroll';
+import { ChatAction } from '@webview/components/chat/ChatAction';
+import { ChatBody } from '@webview/components/chat/ChatBody';
+import { ChatFooter } from '@webview/components/chat/ChatFooter';
+import { ChatHeader } from '@webview/components/chat/ChatHeader';
+import { ChatInput } from '@webview/components/chat/ChatInput';
+import { isRenderableMessage } from '@webview/components/chat/helpers/message';
+import { useChatSession } from '@webview/components/chat/hooks/useChatSession';
+import { HistoryPreview } from '@webview/components/history/HistoryPreview';
+import { HistoryView } from '@webview/components/history/HistoryView';
+import { SettingsView } from '@webview/components/setting/SettingsView';
+import { ConfirmDialog } from '@webview/components/shared/ConfirmDialog';
+import { useAutoScroll } from '@webview/hooks/useAutoScroll';
+import { exportTaskAsJson } from '@webview/utilities/common';
 import { vscode } from '@webview/utilities/vscode';
 
 import type { FC } from 'react';
@@ -53,7 +53,6 @@ export const ChatView: FC = () => {
     pastTasks,
     setPastTasks,
     commands,
-    refreshCommands,
     isAgentRunning,
     pendingQuestion,
     inputValue,
@@ -235,7 +234,6 @@ export const ChatView: FC = () => {
         inputValue={inputValue}
         setInputValue={setInputValue}
         commands={commands}
-        onFocus={refreshCommands}
         onSend={(text, images) => {
           scrollToBottom();
           handleSendPrompt(text, images);

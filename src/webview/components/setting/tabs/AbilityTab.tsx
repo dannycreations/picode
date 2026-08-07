@@ -1,9 +1,9 @@
 import { BookOpen, FileText, ListChecks, MessageCircleQuestion } from 'lucide-react';
 
-import { SettingCheckbox } from '@extension/webview/components/setting/shared/SettingCheckbox';
+import { SettingCheckbox } from '@webview/components/setting/shared/SettingCheckbox';
 
 import type { FC } from 'react';
-import type { TabProps } from '@extension/webview/components/setting/shared/types';
+import type { TabProps } from '@webview/components/setting/shared/types';
 
 export const AbilityTab: FC<TabProps> = ({ draftSettings, handleFieldChange }) => {
   return (

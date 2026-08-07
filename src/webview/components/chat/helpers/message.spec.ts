@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getRowContainmentStyle, getRowHeightEstimate, isRenderableMessage } from '@extension/webview/components/chat/helpers/message';
+import { getRowContainmentStyle, getRowHeightEstimate, isRenderableMessage } from '@webview/components/chat/helpers/message';
 
 import type { ChatMessage } from '@extension/types/webview';
 

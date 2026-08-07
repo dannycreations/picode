@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { findPendingQuestion, parseQuestionAnswer, parseQuestionData } from '@extension/webview/components/chat/helpers/question';
+import { findPendingQuestion, parseQuestionAnswer, parseQuestionData } from '@webview/components/chat/helpers/question';
 
 import type { ChatMessage } from '@extension/types/webview';
 

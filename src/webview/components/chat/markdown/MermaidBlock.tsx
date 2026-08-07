@@ -3,12 +3,13 @@ import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { logger } from '@extension/core/logger';
-import { svgToPng } from '@extension/webview/components/chat/markdown/helpers/mermaid';
-import { useMermaidRender } from '@extension/webview/components/chat/markdown/hooks/useMermaidRender';
-import { MermaidModal } from '@extension/webview/components/chat/markdown/MermaidModal';
-import { MermaidToolbar } from '@extension/webview/components/chat/markdown/MermaidToolbar';
-import { useCopyToClipboard } from '@extension/webview/hooks/useCopyToClipboard';
-import { useInViewport } from '@extension/webview/hooks/useInViewport';
+import { svgToPng } from '@webview/components/chat/markdown/helpers/mermaid';
+import { useMermaidRender } from '@webview/components/chat/markdown/hooks/useMermaidRender';
+import { MermaidModal } from '@webview/components/chat/markdown/MermaidModal';
+import { MermaidToolbar } from '@webview/components/chat/markdown/MermaidToolbar';
+import { useCopyToClipboard } from '@webview/hooks/useCopyToClipboard';
+import { useInViewport } from '@webview/hooks/useInViewport';
+import { downloadFile } from '@webview/utilities/common';
 
 import type { FC, MouseEvent } from 'react';
 
@@ -38,10 +39,7 @@ export const MermaidBlock: FC<MermaidBlockProps> = ({ code: originalCode }) => {
 
     try {
       const pngDataUrl = await svgToPng(svgEl);
-      const link = document.createElement('a');
-      link.download = 'mermaid-diagram.png';
-      link.href = pngDataUrl;
-      link.click();
+      downloadFile('mermaid-diagram.png', pngDataUrl);
     } catch (err) {
       logger.error('Error saving image:', err);
     }

@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { findPendingQuestion } from '@extension/webview/components/chat/helpers/question';
+import { findPendingQuestion } from '@webview/components/chat/helpers/question';
 import { vscode } from '@webview/utilities/vscode';
 
 import type { Dispatch, RefObject, SetStateAction } from 'react';
 import type { AppSettings } from '@extension/core/settings';
 import type { ActiveTaskState, ChatMessage, CommandItem, ExtensionToWebviewMessage, HistoryItem, ModelItem } from '@extension/types/webview';
-
-const COMMANDS_REFRESH_INTERVAL_MS = 10_000;
 
 interface ApiRequestSettlePatch {
   readonly cost?: number;
@@ -56,7 +54,6 @@ export interface UseChatSessionReturn {
   readonly pastTasks: HistoryItem[];
   readonly setPastTasks: Dispatch<SetStateAction<HistoryItem[]>>;
   readonly commands: CommandItem[];
-  readonly refreshCommands: () => void;
   readonly isAgentRunning: boolean;
   readonly pendingQuestion: ChatMessage | undefined;
   readonly inputValue: string;
@@ -87,17 +84,21 @@ export const useChatSession = (): UseChatSessionReturn => {
   const [scope, setScope] = useState<'current' | 'all'>('current');
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const lastCommandsRefreshRef = useRef(0);
 
-  // Initial setup & History fetch
+  const loadedHistoryScopesRef = useRef<Set<'current' | 'all'>>(new Set());
+  const requestedHistoryScopeRef = useRef<'current' | 'all' | null>(null);
+  const historyDirtyRef = useRef(true);
+
   useEffect(() => {
     vscode?.postMessage({ type: 'init' });
   }, []);
 
   useEffect(() => {
-    if (view === 'history') {
-      vscode?.postMessage({ type: 'get_history', scope });
-    }
+    if (view !== 'history') return;
+    if (loadedHistoryScopesRef.current.has(scope) && !historyDirtyRef.current) return;
+
+    requestedHistoryScopeRef.current = scope;
+    vscode?.postMessage({ type: 'get_history', scope });
   }, [view, scope]);
 
   // Extension Message Handler
@@ -114,11 +115,23 @@ export const useChatSession = (): UseChatSessionReturn => {
           setSettings(backendSettings ?? null);
           setCommands(backendCommands ?? []);
           setSelectedModel(defaultModel || backendModels[0]?.id || 'pi-code');
+          loadedHistoryScopesRef.current.add('current');
+          historyDirtyRef.current = false;
           break;
         }
 
         case 'history_data':
           setPastTasks(msg.payload.history);
+          if (requestedHistoryScopeRef.current) {
+            loadedHistoryScopesRef.current.add(requestedHistoryScopeRef.current);
+            requestedHistoryScopeRef.current = null;
+          }
+          historyDirtyRef.current = false;
+          break;
+
+        case 'history_deleted':
+          setPastTasks((prev) => prev.filter((item) => !msg.payload.paths.includes(item.path)));
+          historyDirtyRef.current = true;
           break;
 
         case 'commands_data':
@@ -457,14 +470,6 @@ export const useChatSession = (): UseChatSessionReturn => {
     setTimeout(() => textareaRef.current?.focus(), 0);
   }, []);
 
-  const refreshCommands = useCallback((): void => {
-    const now = Date.now();
-    if (now - lastCommandsRefreshRef.current < COMMANDS_REFRESH_INTERVAL_MS) return;
-
-    lastCommandsRefreshRef.current = now;
-    vscode?.postMessage({ type: 'get_commands' });
-  }, []);
-
   const handleSendPrompt = useCallback(
     (text: string, images: string[]): void => {
       // A pending question owns the input box: the reply answers the tool call
@@ -548,6 +553,7 @@ export const useChatSession = (): UseChatSessionReturn => {
       const deletedPath = activeTask.path;
       setPastTasks((prev) => prev.filter((item) => item.path !== deletedPath));
       vscode?.postMessage({ type: 'delete_sessions', paths: [deletedPath], scope });
+      historyDirtyRef.current = true;
     }
     vscode?.postMessage({ type: 'close_task' });
     setActiveTask(null);
@@ -563,7 +569,6 @@ export const useChatSession = (): UseChatSessionReturn => {
     pastTasks,
     setPastTasks,
     commands,
-    refreshCommands,
     isAgentRunning,
     pendingQuestion,
     inputValue,

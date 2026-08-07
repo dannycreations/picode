@@ -2,10 +2,10 @@ import { cn } from 'cnfast';
 import { CheckCircle, ChevronUp, ClipboardCheck, Play, PocketKnife, ShieldAlert, X } from 'lucide-react';
 import { useState } from 'react';
 
-import { Markdown } from '@extension/webview/components/chat/markdown/Markdown';
-import { getToolDiffMeta, getToolLanguage, parseCompletionResult } from '@extension/webview/components/chat/messages/helpers/common';
-import { MessageHeader } from '@extension/webview/components/chat/messages/MessageHeader';
 import { CodeBlock } from '@webview/components/chat/CodeBlock';
+import { Markdown } from '@webview/components/chat/markdown/Markdown';
+import { getToolDiffMeta, getToolLanguage, parseCompletionResult } from '@webview/components/chat/messages/helpers/common';
+import { MessageHeader } from '@webview/components/chat/messages/MessageHeader';
 
 import type { FC } from 'react';
 import type { ChatMessage } from '@extension/types/webview';

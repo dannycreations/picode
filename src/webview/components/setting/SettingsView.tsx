@@ -2,16 +2,16 @@ import { cn } from 'cnfast';
 import { ArrowLeft, Database, ShieldCheck, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 
-import { useResponsive } from '@extension/webview/components/setting/hooks/useResponsive';
-import { useSetting } from '@extension/webview/components/setting/hooks/useSetting';
-import { AbilityTab } from '@extension/webview/components/setting/tabs/AbilityTab';
-import { ApprovalTab } from '@extension/webview/components/setting/tabs/ApprovalTab';
-import { ContextTab } from '@extension/webview/components/setting/tabs/ContextTab';
-import { ConfirmDialog } from '@extension/webview/components/shared/ConfirmDialog';
+import { useResponsive } from '@webview/components/setting/hooks/useResponsive';
+import { useSetting } from '@webview/components/setting/hooks/useSetting';
+import { AbilityTab } from '@webview/components/setting/tabs/AbilityTab';
+import { ApprovalTab } from '@webview/components/setting/tabs/ApprovalTab';
+import { ContextTab } from '@webview/components/setting/tabs/ContextTab';
+import { ConfirmDialog } from '@webview/components/shared/ConfirmDialog';
 
 import type { FC } from 'react';
 import type { AppSettings } from '@extension/core/settings';
-import type { SettingsTab } from '@extension/webview/components/setting/shared/types';
+import type { SettingsTab } from '@webview/components/setting/shared/types';
 
 const SETTINGS_TABS: SettingsTab[] = [
   {

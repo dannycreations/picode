@@ -1,7 +1,7 @@
 import { User } from 'lucide-react';
 
-import { splitCommand } from '@extension/webview/components/chat/helpers/command';
-import { MessageHeader } from '@extension/webview/components/chat/messages/MessageHeader';
+import { splitCommand } from '@webview/components/chat/helpers/command';
+import { MessageHeader } from '@webview/components/chat/messages/MessageHeader';
 import { vscode } from '@webview/utilities/vscode';
 
 import type { FC } from 'react';

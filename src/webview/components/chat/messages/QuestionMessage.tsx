@@ -1,9 +1,9 @@
 import { cn } from 'cnfast';
 import { ClipboardCopy, CornerDownRight, MessageCircleQuestionMark, ShieldAlert } from 'lucide-react';
 
-import { parseQuestionAnswer, parseQuestionData } from '@extension/webview/components/chat/helpers/question';
-import { Markdown } from '@extension/webview/components/chat/markdown/Markdown';
-import { MessageHeader } from '@extension/webview/components/chat/messages/MessageHeader';
+import { parseQuestionAnswer, parseQuestionData } from '@webview/components/chat/helpers/question';
+import { Markdown } from '@webview/components/chat/markdown/Markdown';
+import { MessageHeader } from '@webview/components/chat/messages/MessageHeader';
 
 import type { FC, MouseEvent } from 'react';
 import type { ChatMessage } from '@extension/types/webview';

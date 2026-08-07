@@ -1,4 +1,3 @@
-import type { ValueOf } from 'es-toolkit/types';
 import type { AppSettings } from '@extension/core/settings';
 import type { TodoItem } from '@extension/structures/chat-session/todo';
 
@@ -36,10 +35,9 @@ export interface ChatMessage {
   readonly images?: string[];
 }
 
-export interface SettingsData {
-  readonly key: keyof AppSettings;
-  readonly value: ValueOf<AppSettings>;
-}
+export type SettingsPatch = {
+  -readonly [K in keyof AppSettings]?: AppSettings[K];
+};
 
 export interface HistoryItem {
   readonly id: string;
@@ -75,7 +73,6 @@ export interface StatsData {
 export type WebviewToExtensionMessage =
   | { type: 'init' }
   | { type: 'get_history'; scope: 'current' | 'all' }
-  | { type: 'get_commands' }
   | { type: 'load_session'; id: string; path: string; title: string }
   | { type: 'delete_sessions'; paths: string[]; scope: 'current' | 'all' }
   | { type: 'start_new_task'; text: string; model_id: string; model_provider?: string; images?: string[] }
@@ -92,7 +89,7 @@ export type WebviewToExtensionMessage =
   | { type: 'cancel_task' }
   | { type: 'compact'; id: string; path?: string; title: string }
   | { type: 'reload' }
-  | ({ type: 'update_setting' } & SettingsData);
+  | { type: 'update_settings'; settings: SettingsPatch };
 
 export type ExtensionToWebviewMessage =
   | {
@@ -106,6 +103,7 @@ export type ExtensionToWebviewMessage =
       };
     }
   | { type: 'history_data'; payload: { history: HistoryItem[] } }
+  | { type: 'history_deleted'; payload: { paths: string[] } }
   | { type: 'commands_data'; payload: { commands: CommandItem[] } }
   | { type: 'settings_data'; payload: { settings: AppSettings } }
   | { type: 'session_loaded'; payload: ActiveTaskState }

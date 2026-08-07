@@ -2,8 +2,8 @@ import { cn } from 'cnfast';
 import { ChevronUp, Lightbulb, MessageCircle } from 'lucide-react';
 import { useState } from 'react';
 
-import { Markdown } from '@extension/webview/components/chat/markdown/Markdown';
-import { MessageHeader } from '@extension/webview/components/chat/messages/MessageHeader';
+import { Markdown } from '@webview/components/chat/markdown/Markdown';
+import { MessageHeader } from '@webview/components/chat/messages/MessageHeader';
 
 import type { FC } from 'react';
 import type { ChatMessage } from '@extension/types/webview';

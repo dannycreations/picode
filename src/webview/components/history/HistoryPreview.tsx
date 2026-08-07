@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 
-import { HistoryCard } from '@extension/webview/components/history/HistoryCard';
-import { ConfirmDialog } from '@extension/webview/components/shared/ConfirmDialog';
+import { HistoryCard } from '@webview/components/history/HistoryCard';
+import { ConfirmDialog } from '@webview/components/shared/ConfirmDialog';
 
 import type { FC, MouseEvent } from 'react';
 import type { HistoryItem } from '@extension/types/webview';

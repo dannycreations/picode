@@ -1,6 +1,6 @@
 import { cn } from 'cnfast';
 
-import { usePanZoom } from '@extension/webview/components/chat/markdown/hooks/usePanZoom';
+import { usePanZoom } from '@webview/components/chat/markdown/hooks/usePanZoom';
 
 import type { FC, MouseEvent } from 'react';
 

@@ -144,17 +144,12 @@ export function createDefaultDispatcher(): ChatMessageDispatcher {
       const history = await ctx.sessionService.fetchHistory(ctx.cwd, scope);
       ctx.postMessage({ type: 'history_data', payload: { history } });
     })
-    .register('get_commands', async (_, ctx) => {
-      const commands = await ctx.sessionService.fetchCommands(ctx.cwd);
-      ctx.postMessage({ type: 'commands_data', payload: { commands } });
-    })
     .register('delete_sessions', async (msg, ctx) => {
-      const scope = msg.scope || 'current';
-      const history = await ctx.sessionService.deleteSessions(msg.paths, scope, ctx.cwd);
-      ctx.postMessage({ type: 'history_data', payload: { history } });
+      const deleted = await ctx.sessionService.deleteSessions(msg.paths);
+      ctx.postMessage({ type: 'history_deleted', payload: { paths: deleted } });
     })
-    .register('update_setting', async (msg, ctx) => {
-      const settings = await SettingsService.getInstance(ctx.cwd).update(msg.key, msg.value);
+    .register('update_settings', async (msg, ctx) => {
+      const settings = await SettingsService.getInstance(ctx.cwd).updateSettings(msg.settings);
       ctx.postMessage({ type: 'settings_data', payload: { settings } });
     });
 }

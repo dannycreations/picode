@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { applyCommand, matchCommands, readCommandQuery, readCommandToken, splitCommand } from '@extension/webview/components/chat/helpers/command';
+import { applyCommand, matchCommands, readCommandQuery, readCommandToken, splitCommand } from '@webview/components/chat/helpers/command';
 
 import type { CommandItem } from '@extension/types/webview';
 

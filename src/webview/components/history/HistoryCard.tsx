@@ -1,9 +1,9 @@
 import { cn } from 'cnfast';
 import { Calendar, Check, Copy, Download, FileJson, Trash2 } from 'lucide-react';
 
-import { HistoryButton } from '@extension/webview/components/history/HistoryButton';
-import { useCopyToClipboard } from '@extension/webview/hooks/useCopyToClipboard';
-import { formatTimeAgo } from '@extension/webview/utilities/common';
+import { HistoryButton } from '@webview/components/history/HistoryButton';
+import { useCopyToClipboard } from '@webview/hooks/useCopyToClipboard';
+import { formatTimeAgo } from '@webview/utilities/common';
 
 import type { FC, MouseEvent } from 'react';
 import type { HistoryItem } from '@extension/types/webview';

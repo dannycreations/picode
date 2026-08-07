@@ -1,11 +1,11 @@
 import { memo } from 'react';
 
-import { getRowContainmentStyle } from '@extension/webview/components/chat/helpers/message';
-import { AssistantMessage } from '@extension/webview/components/chat/messages/AssistantMessage';
-import { QuestionMessage } from '@extension/webview/components/chat/messages/QuestionMessage';
-import { ApiRequestMessage, ErrorMessage, InfoMessage } from '@extension/webview/components/chat/messages/StatusMessage';
-import { ToolMessage } from '@extension/webview/components/chat/messages/ToolMessage';
-import { UserMessage } from '@extension/webview/components/chat/messages/UserMessage';
+import { getRowContainmentStyle } from '@webview/components/chat/helpers/message';
+import { AssistantMessage } from '@webview/components/chat/messages/AssistantMessage';
+import { QuestionMessage } from '@webview/components/chat/messages/QuestionMessage';
+import { ApiRequestMessage, ErrorMessage, InfoMessage } from '@webview/components/chat/messages/StatusMessage';
+import { ToolMessage } from '@webview/components/chat/messages/ToolMessage';
+import { UserMessage } from '@webview/components/chat/messages/UserMessage';
 
 import type { ChatMessage, CommandItem } from '@extension/types/webview';
 

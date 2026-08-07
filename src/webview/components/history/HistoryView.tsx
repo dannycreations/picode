@@ -1,16 +1,16 @@
 import { ArrowLeft, Folder } from 'lucide-react';
 import { useCallback, useState } from 'react';
 
-import { HistoryCard } from '@extension/webview/components/history/HistoryCard';
-import { HistoryFilter } from '@extension/webview/components/history/HistoryFilter';
-import { HistoryPagination } from '@extension/webview/components/history/HistoryPagination';
-import { HistorySelection } from '@extension/webview/components/history/HistorySelection';
-import { useHistoryFilter } from '@extension/webview/components/history/hooks/useHistoryFilter';
-import { ConfirmDialog } from '@extension/webview/components/shared/ConfirmDialog';
+import { HistoryCard } from '@webview/components/history/HistoryCard';
+import { HistoryFilter } from '@webview/components/history/HistoryFilter';
+import { HistoryPagination } from '@webview/components/history/HistoryPagination';
+import { HistorySelection } from '@webview/components/history/HistorySelection';
+import { useHistoryFilter } from '@webview/components/history/hooks/useHistoryFilter';
+import { ConfirmDialog } from '@webview/components/shared/ConfirmDialog';
 
 import type { FC, MouseEvent } from 'react';
 import type { HistoryItem } from '@extension/types/webview';
-import type { HistoryScope } from '@extension/webview/components/history/hooks/useHistoryFilter';
+import type { HistoryScope } from '@webview/components/history/hooks/useHistoryFilter';
 
 interface HistoryViewProps {
   readonly history: HistoryItem[];

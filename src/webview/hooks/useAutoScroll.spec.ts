@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { AT_BOTTOM_THRESHOLD_PX, hasScrolledAwayFromPin, isAtBottom, shouldReleaseFollow } from '@extension/webview/hooks/useAutoScroll';
+import { AT_BOTTOM_THRESHOLD_PX, hasScrolledAwayFromPin, isAtBottom, shouldReleaseFollow } from '@webview/hooks/useAutoScroll';
 
-import type { ScrollMetrics } from '@extension/webview/hooks/useAutoScroll';
+import type { ScrollMetrics } from '@webview/hooks/useAutoScroll';
 
 function createMetrics(overrides: Partial<ScrollMetrics> = {}): ScrollMetrics {
   return { scrollTop: 900, scrollHeight: 1400, clientHeight: 500, ...overrides };

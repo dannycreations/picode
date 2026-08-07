@@ -1,7 +1,7 @@
 import { cn } from 'cnfast';
 import { useEffect, useMemo, useRef } from 'react';
 
-import { COMMAND_SOURCE_LABEL } from '@extension/webview/components/chat/helpers/command';
+import { COMMAND_SOURCE_LABEL } from '@webview/components/chat/helpers/command';
 
 import type { FC } from 'react';
 import type { CommandItem } from '@extension/types/webview';

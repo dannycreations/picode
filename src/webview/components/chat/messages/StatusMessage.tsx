@@ -1,7 +1,7 @@
 import { cn } from 'cnfast';
 import { AlertTriangle, Info, RefreshCw } from 'lucide-react';
 
-import { formatTime } from '@extension/webview/components/chat/messages/helpers/common';
+import { formatTime } from '@webview/components/chat/messages/helpers/common';
 
 import type { FC } from 'react';
 import type { ChatMessage } from '@extension/types/webview';

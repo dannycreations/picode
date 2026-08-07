@@ -1,4 +1,4 @@
-import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, formatSize, truncateHead, truncateTail } from '@earendil-works/pi-coding-agent';
+import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, formatSize, generateDiffString, truncateHead, truncateTail } from '@earendil-works/pi-coding-agent';
 
 import { logger } from '@extension/core/logger';
 import { SettingsService } from '@extension/core/settings';
@@ -94,4 +94,28 @@ export function truncateOutput(content: string, options: TruncateOutputOptions):
 
   const text = truncation.content ? `${truncation.content}\n\n${notice}` : notice;
   return { text, truncation };
+}
+
+export interface FileChangeResultOptions {
+  readonly cwd: string;
+  readonly oldContent: string;
+  readonly newContent: string;
+  readonly successMessage: string;
+  readonly hint: string;
+  readonly extraDetails?: Record<string, unknown>;
+}
+
+export async function buildFileChangeResult(opts: FileChangeResultOptions) {
+  const diffResult = generateDiffString(opts.oldContent, opts.newContent);
+  const limits = await resolveOutputLimits(opts.cwd);
+  const { text } = truncateOutput(diffResult.diff || opts.successMessage, {
+    limits,
+    keep: 'head',
+    hint: opts.hint,
+  });
+
+  return {
+    content: [{ type: 'text' as const, text }],
+    details: { diff: diffResult.diff, ...(opts.extraDetails ?? {}) },
+  };
 }

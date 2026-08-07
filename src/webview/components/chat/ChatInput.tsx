@@ -4,10 +4,10 @@ import { useMemo, useRef, useState } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
 
 import { logger } from '@extension/core/logger';
-import { CommandMenu } from '@extension/webview/components/chat/CommandMenu';
-import { splitCommand } from '@extension/webview/components/chat/helpers/command';
-import { readFileAsDataUrl } from '@extension/webview/components/chat/helpers/common';
-import { useChatCommand } from '@extension/webview/components/chat/hooks/useChatCommand';
+import { CommandMenu } from '@webview/components/chat/CommandMenu';
+import { splitCommand } from '@webview/components/chat/helpers/command';
+import { useChatCommand } from '@webview/components/chat/hooks/useChatCommand';
+import { readFileAsDataUrl } from '@webview/utilities/common';
 
 import type { ChangeEvent, ClipboardEvent, FC, KeyboardEvent, RefObject } from 'react';
 import type { CommandItem } from '@extension/types/webview';

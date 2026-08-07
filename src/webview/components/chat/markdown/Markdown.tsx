@@ -6,10 +6,10 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import { visit } from 'unist-util-visit';
 
-import { extractCodeFromChildren, parseFileUri } from '@extension/webview/components/chat/markdown/helpers/markdown';
-import { MermaidBlock } from '@extension/webview/components/chat/markdown/MermaidBlock';
-import { useCopyToClipboard } from '@extension/webview/hooks/useCopyToClipboard';
 import { CodeBlock } from '@webview/components/chat/CodeBlock';
+import { extractCodeFromChildren, parseFileUri } from '@webview/components/chat/markdown/helpers/markdown';
+import { MermaidBlock } from '@webview/components/chat/markdown/MermaidBlock';
+import { useCopyToClipboard } from '@webview/hooks/useCopyToClipboard';
 import { vscode } from '@webview/utilities/vscode';
 
 import type { FC, MouseEvent, ReactNode } from 'react';
