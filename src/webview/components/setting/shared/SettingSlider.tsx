@@ -1,5 +1,3 @@
-import { cn } from 'cnfast';
-
 import type { FC, ReactNode } from 'react';
 
 interface SettingSliderProps {
@@ -12,28 +10,16 @@ interface SettingSliderProps {
   readonly icon?: ReactNode;
   readonly unit?: string;
   readonly step?: number;
-  readonly className?: string;
 }
 
-export const SettingSlider: FC<SettingSliderProps> = ({
-  label,
-  value,
-  min,
-  max,
-  onChange,
-  description,
-  icon,
-  unit = '',
-  step = 1,
-  className = '',
-}) => {
+export const SettingSlider: FC<SettingSliderProps> = ({ label, value, min, max, onChange, description, icon, unit = '', step = 1 }) => {
   const percentage = ((value - min) / (max - min)) * 100;
   const trackStyle = {
     background: `linear-gradient(to right, var(--vscode-button-background) ${percentage}%, var(--vscode-input-background) ${percentage}%)`,
   };
 
   return (
-    <div className={cn('flex flex-col gap-2', className)}>
+    <div className="flex flex-col gap-2">
       <div className="flex items-center gap-2 text-xs font-semibold text-vscode-foreground">
         {icon}
         <span>{label}</span>

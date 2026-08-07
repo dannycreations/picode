@@ -131,7 +131,6 @@ export const useChatSession = (): UseChatSessionReturn => {
 
         case 'history_deleted':
           setPastTasks((prev) => prev.filter((item) => !msg.payload.paths.includes(item.path)));
-          historyDirtyRef.current = true;
           break;
 
         case 'commands_data':
@@ -552,13 +551,12 @@ export const useChatSession = (): UseChatSessionReturn => {
     if (activeTask.path) {
       const deletedPath = activeTask.path;
       setPastTasks((prev) => prev.filter((item) => item.path !== deletedPath));
-      vscode?.postMessage({ type: 'delete_sessions', paths: [deletedPath], scope });
-      historyDirtyRef.current = true;
+      vscode?.postMessage({ type: 'delete_sessions', paths: [deletedPath] });
     }
     vscode?.postMessage({ type: 'close_task' });
     setActiveTask(null);
     setIsAgentRunning(false);
-  }, [activeTask, scope]);
+  }, [activeTask]);
 
   return {
     activeTask,

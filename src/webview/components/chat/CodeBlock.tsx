@@ -10,7 +10,7 @@ import { getHighlighter, normalizeLanguage } from '@webview/components/chat/help
 import { useCopyToClipboard } from '@webview/hooks/useCopyToClipboard';
 import { useInViewport } from '@webview/hooks/useInViewport';
 
-import type { CSSProperties, FC, MouseEvent, ReactNode } from 'react';
+import type { FC, MouseEvent, ReactNode } from 'react';
 import type { ShikiTransformer } from 'shiki';
 import type { ExtendedLanguage } from '@webview/components/chat/helpers/highlighter';
 
@@ -93,13 +93,10 @@ export const CodeToolbar: FC<CodeToolbarProps> = ({
 
 export interface CodeBlockProps {
   readonly source?: string;
-  readonly rawSource?: string;
   readonly language: string;
-  readonly preStyle?: CSSProperties;
   readonly initialWordWrap?: boolean;
   readonly collapsedHeight?: number;
   readonly initialWindowShade?: boolean;
-  readonly onLanguageChange?: (language: string) => void;
 }
 
 interface PlainCodeProps {
@@ -167,16 +164,7 @@ export const useShikiHighlighter = (source: string, language: string, enabled: b
 };
 
 export const CodeBlock = memo(
-  ({
-    source = '',
-    rawSource,
-    language,
-    preStyle,
-    initialWordWrap = true,
-    initialWindowShade = true,
-    collapsedHeight = 500,
-    onLanguageChange,
-  }: CodeBlockProps) => {
+  ({ source = '', language, initialWordWrap = true, initialWindowShade = true, collapsedHeight = 500 }: CodeBlockProps) => {
     const [wordWrap, setWordWrap] = useState(initialWordWrap);
     const [windowShade, setWindowShade] = useState(initialWindowShade);
     const [currentLanguage, setCurrentLanguage] = useState(() => normalizeLanguage(language));
@@ -205,10 +193,9 @@ export const CodeBlock = memo(
     const handleCopy = useCallback(
       (e: MouseEvent) => {
         e.stopPropagation();
-        const textToCopy = rawSource !== undefined ? rawSource : source;
-        if (textToCopy) copy(textToCopy, e);
+        if (source) copy(source, e);
       },
-      [source, rawSource, copy],
+      [source, copy],
     );
 
     if (source.length === 0) return null;
@@ -231,7 +218,6 @@ export const CodeBlock = memo(
             overflowWrap: wordWrap ? 'break-word' : 'normal',
             fontSize: 'var(--vscode-editor-font-size, var(--vscode-font-size, 12px))',
             fontFamily: 'var(--vscode-editor-font-family, monospace)',
-            ...preStyle,
           }}
         >
           {highlightedCode ?? <PlainCode source={source} language={currentLanguage} />}
@@ -243,7 +229,6 @@ export const CodeBlock = memo(
             onLanguageChange={(newLang) => {
               userChangedLanguageRef.current = true;
               setCurrentLanguage(newLang);
-              onLanguageChange?.(newLang);
             }}
             showCollapseButton={showCollapseButton}
             windowShade={windowShade}

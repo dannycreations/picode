@@ -5,8 +5,6 @@ import { createPortal } from 'react-dom';
 
 import type { FC, ReactNode } from 'react';
 
-export type DialogVariant = 'danger' | 'warning' | 'primary';
-
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   readonly variant?: 'ghost' | 'secondary' | 'danger' | 'primary';
   readonly isLoading?: boolean;
@@ -14,7 +12,6 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 
 export interface ModalProps {
   readonly isOpen: boolean;
-  readonly onClose: () => void;
   readonly children: ReactNode;
   readonly ariaLabelledBy?: string;
   readonly ariaDescribedBy?: string;
@@ -27,9 +24,6 @@ export interface ConfirmDialogProps {
   readonly warningText?: string;
   readonly confirmLabel?: string;
   readonly cancelLabel?: string;
-  readonly variant?: DialogVariant;
-  readonly isLoading?: boolean;
-  readonly children?: ReactNode;
   readonly onConfirm: () => void;
   readonly onCancel: () => void;
 }
@@ -134,12 +128,6 @@ export const ModalFooter: FC<{ children: ReactNode }> = ({ children }) => (
   </div>
 );
 
-const VARIANT_BUTTON_MAP: Record<DialogVariant, 'danger' | 'primary'> = {
-  danger: 'danger',
-  warning: 'primary',
-  primary: 'primary',
-};
-
 export const ConfirmDialog: FC<ConfirmDialogProps> = ({
   isOpen,
   title,
@@ -147,9 +135,6 @@ export const ConfirmDialog: FC<ConfirmDialogProps> = ({
   warningText = 'This action cannot be undone. Please confirm you want to continue.',
   confirmLabel = 'Delete',
   cancelLabel = 'Cancel',
-  variant = 'danger',
-  isLoading = false,
-  children,
   onConfirm,
   onCancel,
 }) => {
@@ -159,7 +144,7 @@ export const ConfirmDialog: FC<ConfirmDialogProps> = ({
   useModalKeyboard({ isOpen, onEscape: onCancel, onEnter: onConfirm });
 
   return (
-    <Modal isOpen={isOpen} onClose={onCancel} ariaLabelledBy={titleId} ariaDescribedBy={description ? descriptionId : undefined}>
+    <Modal isOpen={isOpen} ariaLabelledBy={titleId} ariaDescribedBy={description ? descriptionId : undefined}>
       <ModalHeader onClose={onCancel}>
         <h3 id={titleId} className="font-semibold text-xs uppercase tracking-wider text-[var(--vscode-foreground)] m-0">
           {title}
@@ -173,8 +158,6 @@ export const ConfirmDialog: FC<ConfirmDialogProps> = ({
           </p>
         )}
 
-        {children}
-
         {warningText && (
           <div className="text-[var(--vscode-errorForeground)] bg-[var(--vscode-input-background)] p-3 rounded border border-[var(--vscode-panel-border)]/50 text-xs">
             {warningText}
@@ -183,10 +166,10 @@ export const ConfirmDialog: FC<ConfirmDialogProps> = ({
       </ModalBody>
 
       <ModalFooter>
-        <Button variant="secondary" onClick={onCancel} disabled={isLoading}>
+        <Button variant="secondary" onClick={onCancel}>
           {cancelLabel}
         </Button>
-        <Button variant={VARIANT_BUTTON_MAP[variant]} onClick={onConfirm} isLoading={isLoading}>
+        <Button variant="danger" onClick={onConfirm}>
           {confirmLabel}
         </Button>
       </ModalFooter>

@@ -152,7 +152,6 @@ export function convertSessionEntries(entries: SessionTreeEntry[]): ChatMessage[
           id: entry.id,
           sender: 'checkpoint',
           text: 'Checkpoint saved',
-          checkpointHash: entry.label,
           ts: new Date(entry.timestamp).getTime(),
         });
       }

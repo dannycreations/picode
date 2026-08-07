@@ -124,7 +124,7 @@ export const ChatView: FC = () => {
           onDone={() => setView('chat')}
           onDeleteTasks={(paths) => {
             setPastTasks((prev) => prev.filter((item) => !paths.includes(item.path)));
-            vscode?.postMessage({ type: 'delete_sessions', paths, scope });
+            vscode?.postMessage({ type: 'delete_sessions', paths });
           }}
           scope={scope}
           setScope={setScope}
@@ -199,7 +199,7 @@ export const ChatView: FC = () => {
                   onViewAllHistory={() => setView('history')}
                   onDeleteTask={(path) => {
                     setPastTasks((prev) => prev.filter((i) => i.path !== path));
-                    vscode?.postMessage({ type: 'delete_sessions', paths: [path], scope });
+                    vscode?.postMessage({ type: 'delete_sessions', paths: [path] });
                   }}
                 />
               )}

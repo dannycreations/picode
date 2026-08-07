@@ -28,7 +28,6 @@ export interface ChatMessage {
   readonly toolStatus?: 'approval' | 'approved' | 'running' | 'completed' | 'denied';
   readonly reasoning?: string;
   readonly cost?: number;
-  readonly checkpointHash?: string;
   readonly diff?: string;
   readonly todos?: TodoItem[];
   readonly errorMessage?: string;
@@ -74,7 +73,7 @@ export type WebviewToExtensionMessage =
   | { type: 'init' }
   | { type: 'get_history'; scope: 'current' | 'all' }
   | { type: 'load_session'; id: string; path: string; title: string }
-  | { type: 'delete_sessions'; paths: string[]; scope: 'current' | 'all' }
+  | { type: 'delete_sessions'; paths: string[] }
   | { type: 'start_new_task'; text: string; model_id: string; model_provider?: string; images?: string[] }
   | { type: 'send_message'; text: string; path?: string; model_id?: string; model_provider?: string; images?: string[] }
   | { type: 'continue_task'; path?: string; model_id?: string; model_provider?: string }

@@ -114,7 +114,7 @@ function parseAppSettings(input?: unknown, base = DEFAULT_SETTINGS): AppSettings
   };
 }
 
-export class SettingsRepository {
+class SettingsRepository {
   private readonly manager: SettingsManager;
 
   public constructor(cwd: string) {

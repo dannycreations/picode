@@ -5,9 +5,7 @@ import { logger } from '@extension/core/logger';
 import type { MouseEvent } from 'react';
 
 interface CopyOptions {
-  readonly feedbackDuration?: number;
   readonly onSuccess?: () => void;
-  readonly onError?: (error: Error) => void;
 }
 
 export async function copyToClipboard(text: string, options?: CopyOptions): Promise<boolean> {
@@ -17,7 +15,6 @@ export async function copyToClipboard(text: string, options?: CopyOptions): Prom
     return true;
   } catch (error) {
     const err = error instanceof Error ? error : new Error('Failed to copy to clipboard');
-    options?.onError?.(err);
     logger.error('Failed to copy to clipboard:', err);
     return false;
   }

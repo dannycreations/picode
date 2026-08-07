@@ -22,7 +22,7 @@ export class EventMapper {
       case 'agent_start':
         return {
           type: 'agent_start',
-          payload: { path: session.sessionFile, ...this.createStats(session) },
+          payload: { path: session.sessionFile, stats: this.createStats(session) ?? undefined },
         };
 
       case 'turn_start': {
@@ -44,7 +44,7 @@ export class EventMapper {
             id,
             cost: msg?.usage?.cost?.total,
             error: isError ? msg.errorMessage || 'The API request failed.' : undefined,
-            ...this.createStats(session),
+            stats: this.createStats(session) ?? undefined,
           },
         };
       }
@@ -78,7 +78,7 @@ export class EventMapper {
           payload: {
             role: event.message.role,
             cost: event.message.role === 'assistant' ? (event.message as AssistantMessageWithUsage).usage?.cost?.total : undefined,
-            ...this.createStats(session),
+            stats: this.createStats(session) ?? undefined,
           },
         };
 
@@ -113,7 +113,7 @@ export class EventMapper {
       case 'compaction_start':
         return {
           type: 'agent_start',
-          payload: { path: session.sessionFile, ...this.createStats(session) },
+          payload: { path: session.sessionFile, stats: this.createStats(session) ?? undefined },
         };
 
       case 'compaction_end': {

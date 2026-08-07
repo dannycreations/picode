@@ -18,10 +18,8 @@ export interface ChatInputProps {
   readonly onSend: (text: string, images: string[]) => void;
   readonly sendingDisabled: boolean;
   readonly placeholderText?: string;
-  readonly className?: string;
   readonly textareaRef?: RefObject<HTMLTextAreaElement | null>;
   readonly commands?: readonly CommandItem[];
-  readonly onFocus?: () => void;
 }
 
 const AttachedImagesPreview: FC<{
@@ -53,10 +51,8 @@ export const ChatInput: FC<ChatInputProps> = ({
   onSend,
   sendingDisabled,
   placeholderText = 'Ask a question or type a command...',
-  className = '',
   textareaRef,
   commands = [],
-  onFocus,
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
@@ -127,12 +123,7 @@ export const ChatInput: FC<ChatInputProps> = ({
   const isSendButtonActive = (inputValue.trim().length > 0 || selectedImages.length > 0) && !sendingDisabled;
 
   return (
-    <div
-      className={cn(
-        'relative flex flex-col px-3.5 pt-2 pb-1 outline-none w-full box-border bg-[var(--vscode-sideBar-background)] shrink-0',
-        className,
-      )}
-    >
+    <div className={cn('relative flex flex-col px-3.5 pt-2 pb-1 outline-none w-full box-border bg-[var(--vscode-sideBar-background)] shrink-0')}>
       {command.isOpen && (
         <CommandMenu commands={command.matches} selectedIndex={command.selectedIndex} onSelect={command.select} onHover={command.setSelectedIndex} />
       )}
@@ -174,7 +165,6 @@ export const ChatInput: FC<ChatInputProps> = ({
             onChange={handleChange}
             onFocus={() => {
               setIsFocused(true);
-              onFocus?.();
             }}
             onBlur={() => {
               setIsFocused(false);
