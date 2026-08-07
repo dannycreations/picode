@@ -49,7 +49,7 @@ export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
   const [activeTabId, setActiveTabId] = useState(SETTINGS_TABS[0].id);
   const [isDiscardDialogShow, setDiscardDialogShow] = useState(false);
 
-  const { draftSettings, isSaving, isChangeDetected, handleFieldChange, handleSave, resetDraft } = useSetting(settings);
+  const { draftSettings, isChangeDetected, handleFieldChange, handleSave, resetDraft } = useSetting(settings);
 
   const { containerRef, isCollapsed } = useResponsive(500, true);
 
@@ -82,16 +82,16 @@ export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
         <div className="flex items-center gap-2 shrink-0">
           <button
             type="button"
-            disabled={!isChangeDetected || isSaving}
+            disabled={!isChangeDetected}
             onClick={handleSave}
             className={cn(
               'h-7 px-3 text-xs font-semibold rounded cursor-pointer transition-colors duration-150',
-              isChangeDetected && !isSaving
+              isChangeDetected
                 ? 'bg-vscode-button-background text-vscode-button-foreground hover:bg-vscode-button-hoverBackground border-none'
                 : 'bg-vscode-button-secondaryBackground text-vscode-button-secondaryForeground hover:bg-vscode-button-secondaryHoverBackground border-none opacity-50 cursor-not-allowed',
             )}
           >
-            {isSaving ? 'Saving...' : 'Save'}
+            Save
           </button>
         </div>
       </div>

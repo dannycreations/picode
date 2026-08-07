@@ -1,4 +1,4 @@
-import { BookOpen, Edit, Eye, Terminal, Trash2 } from 'lucide-react';
+import { Edit, Eye, Terminal, Trash2 } from 'lucide-react';
 
 import { SettingCheckbox } from '@extension/webview/components/setting/shared/SettingCheckbox';
 import { SettingList } from '@extension/webview/components/setting/shared/SettingList';
@@ -20,7 +20,6 @@ export const ApprovalTab: FC<TabProps> = ({ draftSettings, handleFieldChange }) 
         <div className="flex flex-col gap-4">
           <SettingCheckbox
             label="Skill Reading"
-            icon={<BookOpen size={14} className="text-vscode-descriptionForeground shrink-0" />}
             description="Automatically allow the agent to read skill files (`SKILL.md`) when it uses a skill."
             checked={draftSettings.autoApproveSkillReads}
             onChange={(val) => handleFieldChange('autoApproveSkillReads', val)}

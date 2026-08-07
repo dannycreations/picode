@@ -100,8 +100,13 @@ export const useChatSession = (): UseChatSessionReturn => {
           setSelectedModel(defaultModel || backendModels[0]?.id || 'pi-code');
           break;
         }
+
         case 'history_data':
           setPastTasks(msg.payload.history);
+          break;
+
+        case 'settings_data':
+          setSettings(msg.payload.settings);
           break;
 
         case 'session_loaded':
