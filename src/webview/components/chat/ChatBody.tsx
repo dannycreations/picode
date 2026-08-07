@@ -7,21 +7,22 @@ import { ApiRequestMessage, ErrorMessage, InfoMessage } from '@extension/webview
 import { ToolMessage } from '@extension/webview/components/chat/messages/ToolMessage';
 import { UserMessage } from '@extension/webview/components/chat/messages/UserMessage';
 
-import type { ChatMessage } from '@extension/types/webview';
+import type { ChatMessage, CommandItem } from '@extension/types/webview';
 
 interface ChatBodyProps {
   readonly message: ChatMessage;
+  readonly commands: readonly CommandItem[];
   readonly onApproveTool: (msgId: string) => void;
   readonly onDenyTool: (msgId: string) => void;
   readonly onAnswerQuestion: (questionId: string, text: string) => void;
   readonly onCopyToInput: (text: string) => void;
 }
 
-export const ChatBody = memo<ChatBodyProps>(({ message, onApproveTool, onDenyTool, onAnswerQuestion, onCopyToInput }) => {
+export const ChatBody = memo<ChatBodyProps>(({ message, commands, onApproveTool, onDenyTool, onAnswerQuestion, onCopyToInput }) => {
   const renderMessageContent = () => {
     switch (message.sender) {
       case 'user':
-        return <UserMessage message={message} />;
+        return <UserMessage message={message} commands={commands} />;
       case 'assistant':
         return <AssistantMessage message={message} />;
       case 'tool':

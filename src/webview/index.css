@@ -80,11 +80,23 @@
   contain-intrinsic-size: auto 96px;
 }
 
-.slash-command-match-textarea-highlight {
+.chat-input-text {
+  @apply p-2.5 pb-1 font-sans text-sm leading-normal box-border;
+}
+
+.command-match {
   background-color: color-mix(in srgb, var(--vscode-focusBorder) 30%, transparent);
   border-radius: 3px;
   box-shadow: 0 0 0 0.5px color-mix(in srgb, var(--vscode-focusBorder) 30%, transparent);
   color: transparent;
+}
+
+.command-chip {
+  background-color: color-mix(in srgb, var(--vscode-focusBorder) 22%, transparent);
+  border-radius: 3px;
+  box-shadow: 0 0 0 0.5px color-mix(in srgb, var(--vscode-focusBorder) 30%, transparent);
+  font-family: var(--vscode-editor-font-family, monospace);
+  padding: 1px 4px;
 }
 
 @keyframes slow-pulse {

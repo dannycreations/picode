@@ -39,7 +39,7 @@ export const AbilityTab: FC<TabProps> = ({ draftSettings, handleFieldChange }) =
       <SettingCheckbox
         label="Skill Discovery"
         icon={<BookOpen size={14} className="text-vscode-descriptionForeground shrink-0" />}
-        description="Let the agent discover and use skills (`SKILL.md` files) for specialized tasks."
+        description="Let the agent pick skills (`SKILL.md` files) on its own. When off, skills stay available and you load one explicitly with `/skill:<name>`."
         checked={draftSettings.enableSkillDiscovery}
         onChange={(val) => handleFieldChange('enableSkillDiscovery', val)}
       />

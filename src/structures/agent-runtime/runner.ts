@@ -177,6 +177,24 @@ export class AgentRunner {
     }
   }
 
+  public async reload(webview: Webview): Promise<void> {
+    this.messenger.attach(webview);
+
+    if (this.session?.isStreaming || this.session?.isCompacting) {
+      this.messenger.post({ type: 'info', payload: { text: 'Wait for the current task to finish before reloading.' } });
+      return;
+    }
+
+    this.messenger.post({ type: 'info', payload: { text: 'Reloading skills, context files, and configuration…' } });
+
+    try {
+      await this.session?.reload();
+      this.messenger.post({ type: 'info', payload: { text: 'Reloaded skills, context files, and configuration.' } });
+    } catch (err) {
+      this.messenger.postError(err);
+    }
+  }
+
   public abort(): void {
     this.question.cancelAll();
 

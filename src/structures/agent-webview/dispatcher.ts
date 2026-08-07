@@ -2,6 +2,7 @@ import { window } from 'vscode';
 
 import { logger } from '@extension/core/logger';
 import { SettingsService } from '@extension/core/settings';
+import { parseBuiltinCommand } from '@extension/structures/agent-runtime/command';
 import { AgentRunner } from '@extension/structures/agent-runtime/runner';
 
 import type { Webview } from 'vscode';
@@ -46,6 +47,20 @@ export class ChatMessageDispatcher {
   }
 }
 
+async function runCompact(ctx: MessageHandlerContext, id: string, title: string, path: string | undefined): Promise<void> {
+  if (!path) {
+    ctx.postMessage({ type: 'info', payload: { text: 'Open or start a task before using /compact.' } });
+    return;
+  }
+
+  await ctx.agent.compact(path, ctx.webview);
+  const { messages, stats } = await ctx.sessionService.loadSessionDetails(path, ctx.cwd);
+  ctx.postMessage({
+    type: 'session_loaded',
+    payload: { id: id || 'task-active', title: title || '', messages, path, ...stats },
+  });
+}
+
 export function createDefaultDispatcher(): ChatMessageDispatcher {
   return new ChatMessageDispatcher()
     .register('init', async (_, ctx) => {
@@ -53,10 +68,30 @@ export function createDefaultDispatcher(): ChatMessageDispatcher {
       ctx.postMessage({ type: 'init_data', payload: data });
     })
     .register('start_new_task', (msg, ctx) => {
+      const builtin = parseBuiltinCommand(msg.text);
+      if (builtin === 'reload') {
+        void ctx.agent.reload(ctx.webview);
+        return;
+      }
+      if (builtin === 'compact') {
+        void runCompact(ctx, 'task-active', '', ctx.agent.getSessionFile());
+        return;
+      }
+
       const model = msg.model_provider && msg.model_id ? { id: msg.model_id, provider: msg.model_provider } : undefined;
       void ctx.agent.startTask(msg.text, model, ctx.webview, msg.images);
     })
     .register('send_message', (msg, ctx) => {
+      const builtin = parseBuiltinCommand(msg.text);
+      if (builtin === 'reload') {
+        void ctx.agent.reload(ctx.webview);
+        return;
+      }
+      if (builtin === 'compact') {
+        void runCompact(ctx, 'task-active', '', msg.path || ctx.agent.getSessionFile());
+        return;
+      }
+
       const model = msg.model_provider && msg.model_id ? { id: msg.model_id, provider: msg.model_provider } : undefined;
       void ctx.agent.startTask(msg.text, model, ctx.webview, msg.images, msg.path);
     })
@@ -68,15 +103,12 @@ export function createDefaultDispatcher(): ChatMessageDispatcher {
     .register('deny_tool', (msg, ctx) => ctx.agent.denyTool(msg.approval_id))
     .register('question_response', (msg, ctx) => ctx.agent.answerQuestion(msg.question_id, msg.text))
     .register('cancel_task', (_, ctx) => ctx.agent.abort())
+    .register('reload', (_, ctx) => {
+      void ctx.agent.reload(ctx.webview);
+    })
     .register('compact', async (msg, ctx) => {
       const path = msg.path || ctx.agent.getSessionFile();
-      await ctx.agent.compact(path, ctx.webview);
-      if (!path) return;
-      const { messages, stats } = await ctx.sessionService.loadSessionDetails(path, ctx.cwd);
-      ctx.postMessage({
-        type: 'session_loaded',
-        payload: { id: msg.id, title: msg.title, messages, path, ...stats },
-      });
+      await runCompact(ctx, msg.id, msg.title, path);
     })
     .register('close_task', (_, ctx) => {
       try {
@@ -111,6 +143,10 @@ export function createDefaultDispatcher(): ChatMessageDispatcher {
       const scope = msg.scope || 'current';
       const history = await ctx.sessionService.fetchHistory(ctx.cwd, scope);
       ctx.postMessage({ type: 'history_data', payload: { history } });
+    })
+    .register('get_commands', async (_, ctx) => {
+      const commands = await ctx.sessionService.fetchCommands(ctx.cwd);
+      ctx.postMessage({ type: 'commands_data', payload: { commands } });
     })
     .register('delete_sessions', async (msg, ctx) => {
       const scope = msg.scope || 'current';

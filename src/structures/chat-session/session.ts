@@ -1,10 +1,18 @@
-import { getLastAssistantUsage } from '@earendil-works/pi-coding-agent';
+import { getLastAssistantUsage, parseSkillBlock } from '@earendil-works/pi-coding-agent';
 
 import { logger } from '@extension/core/logger';
 
 import type { SessionEntry } from '@earendil-works/pi-coding-agent';
 import type { SessionMessageContent, SessionTreeEntry } from '@extension/types/extension';
 import type { ChatMessage, ToolName } from '@extension/types/webview';
+
+export function collapseSkillBlock(text: string): string {
+  const parsed = parseSkillBlock(text);
+  if (!parsed) return text;
+
+  const command = `/skill:${parsed.name}`;
+  return parsed.userMessage ? `${command} ${parsed.userMessage}` : command;
+}
 
 export function convertSessionEntries(entries: SessionTreeEntry[]): ChatMessage[] {
   const result: ChatMessage[] = [];
@@ -28,7 +36,7 @@ export function convertSessionEntries(entries: SessionTreeEntry[]): ChatMessage[
         result.push({
           id: entry.id,
           sender: 'user',
-          text: text.trim(),
+          text: collapseSkillBlock(text.trim()),
           images: images.length > 0 ? images : undefined,
           ts: new Date(entry.timestamp).getTime(),
         });

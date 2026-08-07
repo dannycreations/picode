@@ -54,6 +54,14 @@ export interface ModelItem {
   readonly provider: string;
 }
 
+export interface CommandItem {
+  readonly name: 'reload' | 'compact' | (string & {});
+  readonly source: 'builtin' | 'skill';
+  readonly description?: string;
+  readonly detail?: string;
+  readonly builtin?: boolean;
+}
+
 export interface StatsData {
   readonly tokensIn: number;
   readonly tokensOut: number;
@@ -67,6 +75,7 @@ export interface StatsData {
 export type WebviewToExtensionMessage =
   | { type: 'init' }
   | { type: 'get_history'; scope: 'current' | 'all' }
+  | { type: 'get_commands' }
   | { type: 'load_session'; id: string; path: string; title: string }
   | { type: 'delete_sessions'; paths: string[]; scope: 'current' | 'all' }
   | { type: 'start_new_task'; text: string; model_id: string; model_provider?: string; images?: string[] }
@@ -82,11 +91,22 @@ export type WebviewToExtensionMessage =
   | { type: 'close_task' }
   | { type: 'cancel_task' }
   | { type: 'compact'; id: string; path?: string; title: string }
+  | { type: 'reload' }
   | ({ type: 'update_setting' } & SettingsData);
 
 export type ExtensionToWebviewMessage =
-  | { type: 'init_data'; payload: { models: ModelItem[]; history: HistoryItem[]; default_model?: string; settings: AppSettings } }
+  | {
+      type: 'init_data';
+      payload: {
+        models: ModelItem[];
+        history: HistoryItem[];
+        default_model?: string;
+        settings: AppSettings;
+        commands: CommandItem[];
+      };
+    }
   | { type: 'history_data'; payload: { history: HistoryItem[] } }
+  | { type: 'commands_data'; payload: { commands: CommandItem[] } }
   | { type: 'settings_data'; payload: { settings: AppSettings } }
   | { type: 'session_loaded'; payload: ActiveTaskState }
   | { type: 'agent_start'; payload: { path?: string; stats?: StatsData } }
@@ -102,5 +122,6 @@ export type ExtensionToWebviewMessage =
   | { type: 'agent_error'; payload: { message: string } }
   | { type: 'agent_settled'; payload?: StatsData }
   | { type: 'compaction_end'; payload: StatsData }
+  | { type: 'info'; payload: { text: string } }
   | { type: 'show_settings' }
   | { type: 'set_chat_input'; payload: { text: string } };

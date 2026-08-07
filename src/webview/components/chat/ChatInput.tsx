@@ -1,12 +1,16 @@
 import { cn } from 'cnfast';
 import { Image as ImageIcon, Send } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
 
 import { logger } from '@extension/core/logger';
+import { CommandMenu } from '@extension/webview/components/chat/CommandMenu';
+import { splitCommand } from '@extension/webview/components/chat/helpers/command';
 import { readFileAsDataUrl } from '@extension/webview/components/chat/helpers/common';
+import { useChatCommand } from '@extension/webview/components/chat/hooks/useChatCommand';
 
 import type { ChangeEvent, ClipboardEvent, FC, KeyboardEvent, RefObject } from 'react';
+import type { CommandItem } from '@extension/types/webview';
 
 export interface ChatInputProps {
   readonly inputValue: string;
@@ -16,6 +20,8 @@ export interface ChatInputProps {
   readonly placeholderText?: string;
   readonly className?: string;
   readonly textareaRef?: RefObject<HTMLTextAreaElement | null>;
+  readonly commands?: readonly CommandItem[];
+  readonly onFocus?: () => void;
 }
 
 const AttachedImagesPreview: FC<{
@@ -49,10 +55,19 @@ export const ChatInput: FC<ChatInputProps> = ({
   placeholderText = 'Ask a question or type a command...',
   className = '',
   textareaRef,
+  commands = [],
+  onFocus,
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fallbackTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const matchRef = useRef<HTMLDivElement>(null);
+
+  const resolvedTextareaRef = textareaRef ?? fallbackTextareaRef;
+
+  const command = useChatCommand({ commands, value: inputValue, setValue: setInputValue, textareaRef: resolvedTextareaRef });
+  const match = useMemo(() => splitCommand(inputValue, commands), [inputValue, commands]);
 
   const handleSend = () => {
     if ((inputValue.trim() || selectedImages.length > 0) && !sendingDisabled) {
@@ -63,10 +78,18 @@ export const ChatInput: FC<ChatInputProps> = ({
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    // The picker owns navigation and acceptance keys while it is open.
+    if (command.handleKeyDown(e)) return;
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
+    setInputValue(e.target.value);
+    command.handleChange(e);
   };
 
   const handleAttachImage = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -110,6 +133,10 @@ export const ChatInput: FC<ChatInputProps> = ({
         className,
       )}
     >
+      {command.isOpen && (
+        <CommandMenu commands={command.matches} selectedIndex={command.selectedIndex} onSelect={command.select} onHover={command.setSelectedIndex} />
+      )}
+
       <AttachedImagesPreview images={selectedImages} onRemove={(idx) => setSelectedImages((prev) => prev.filter((_, i) => i !== idx))} />
 
       <div
@@ -120,20 +147,55 @@ export const ChatInput: FC<ChatInputProps> = ({
             : 'border-[var(--vscode-input-border,transparent)] bg-[var(--vscode-input-background)]',
         )}
       >
-        <TextareaAutosize
-          ref={textareaRef}
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
-          onKeyDown={handleKeyDown}
-          onPaste={handlePaste}
-          placeholder={placeholderText}
-          disabled={sendingDisabled}
-          minRows={3}
-          maxRows={6}
-          className="w-full p-2.5 pb-1 bg-transparent text-[var(--vscode-input-foreground)] font-sans text-sm leading-normal border-none outline-none resize-none z-10 box-border scrollbar-none"
-        />
+        <div className="relative flex">
+          <div
+            ref={matchRef}
+            aria-hidden="true"
+            className={cn(
+              'chat-input-text',
+              'absolute inset-0 overflow-hidden whitespace-pre-wrap break-words text-transparent pointer-events-none select-none',
+            )}
+          >
+            {match ? (
+              <>
+                <mark className="command-match">{match.command}</mark>
+                {match.rest}
+              </>
+            ) : (
+              inputValue
+            )}
+            {/* A block box collapses its trailing newline; pad it so the mirror keeps the textarea's height. */}
+            {inputValue.endsWith('\n') ? '\n' : ''}
+          </div>
+
+          <TextareaAutosize
+            ref={resolvedTextareaRef}
+            value={inputValue}
+            onChange={handleChange}
+            onFocus={() => {
+              setIsFocused(true);
+              onFocus?.();
+            }}
+            onBlur={() => {
+              setIsFocused(false);
+              command.close();
+            }}
+            onKeyDown={handleKeyDown}
+            onSelect={command.syncCaret}
+            onPaste={handlePaste}
+            onScroll={(e) => {
+              if (matchRef.current) matchRef.current.scrollTop = e.currentTarget.scrollTop;
+            }}
+            placeholder={placeholderText}
+            disabled={sendingDisabled}
+            minRows={3}
+            maxRows={6}
+            className={cn(
+              'chat-input-text',
+              'relative w-full bg-transparent text-[var(--vscode-input-foreground)] border-none outline-none resize-none z-10 scrollbar-none',
+            )}
+          />
+        </div>
 
         <div className="flex justify-between items-center px-2.5 pb-2 pt-1 z-20 pointer-events-auto">
           <div />

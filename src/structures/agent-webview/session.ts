@@ -2,13 +2,15 @@ import { unlink } from 'node:fs/promises';
 import { ModelRuntime, SessionManager } from '@earendil-works/pi-coding-agent';
 import { Uri, window, workspace } from 'vscode';
 
+import { logger } from '@extension/core/logger';
 import { SettingsService } from '@extension/core/settings';
+import { listCommands } from '@extension/structures/agent-runtime/command';
 import { calculateSessionStats, convertSessionEntries } from '@extension/structures/chat-session/session';
 
 import type { SessionInfo } from '@earendil-works/pi-coding-agent';
 import type { CalculatedStats } from '@extension/structures/chat-session/session';
 import type { SessionTreeEntry } from '@extension/types/extension';
-import type { ChatMessage, ExtensionToWebviewMessage, HistoryItem } from '@extension/types/webview';
+import type { ChatMessage, CommandItem, ExtensionToWebviewMessage, HistoryItem } from '@extension/types/webview';
 
 export type SessionInitData = Extract<ExtensionToWebviewMessage, { type: 'init_data' }>['payload'];
 
@@ -22,13 +24,27 @@ export class SessionService {
 
   public async getInitData(cwd: string): Promise<SessionInitData> {
     const settingsService = SettingsService.getInstance(cwd);
-    const [modelRuntime, sessions, settings] = await Promise.all([this.getModelRuntime(), SessionManager.list(cwd), settingsService.load()]);
+    const [modelRuntime, sessions, settings, commands] = await Promise.all([
+      this.getModelRuntime(),
+      SessionManager.list(cwd),
+      settingsService.load(),
+      this.fetchCommands(cwd),
+    ]);
     const models = modelRuntime.getModels().map((m) => ({ id: m.id, name: m.name, provider: m.provider }));
 
     const history = this.formatSessions(sessions);
     const defaultModel = await settingsService.getDefaultModel();
 
-    return { models, history, default_model: defaultModel, settings };
+    return { models, history, default_model: defaultModel, settings, commands };
+  }
+
+  public async fetchCommands(cwd: string): Promise<CommandItem[]> {
+    try {
+      return await listCommands(cwd);
+    } catch (err) {
+      logger.error('Failed to list commands:', err);
+      return [];
+    }
   }
 
   public async loadSessionDetails(

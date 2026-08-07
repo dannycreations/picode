@@ -52,6 +52,8 @@ export const ChatView: FC = () => {
     setSelectedModel,
     pastTasks,
     setPastTasks,
+    commands,
+    refreshCommands,
     isAgentRunning,
     pendingQuestion,
     inputValue,
@@ -174,6 +176,7 @@ export const ChatView: FC = () => {
               <ChatBody
                 key={msg.id}
                 message={msg}
+                commands={commands}
                 onApproveTool={handleApproveTool}
                 onDenyTool={handleDenyTool}
                 onAnswerQuestion={handleAnswer}
@@ -231,6 +234,8 @@ export const ChatView: FC = () => {
         textareaRef={textareaRef}
         inputValue={inputValue}
         setInputValue={setInputValue}
+        commands={commands}
+        onFocus={refreshCommands}
         onSend={(text, images) => {
           scrollToBottom();
           handleSendPrompt(text, images);

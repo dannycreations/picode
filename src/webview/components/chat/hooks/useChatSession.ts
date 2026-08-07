@@ -5,7 +5,9 @@ import { vscode } from '@webview/utilities/vscode';
 
 import type { Dispatch, RefObject, SetStateAction } from 'react';
 import type { AppSettings } from '@extension/core/settings';
-import type { ActiveTaskState, ChatMessage, ExtensionToWebviewMessage, HistoryItem, ModelItem } from '@extension/types/webview';
+import type { ActiveTaskState, ChatMessage, CommandItem, ExtensionToWebviewMessage, HistoryItem, ModelItem } from '@extension/types/webview';
+
+const COMMANDS_REFRESH_INTERVAL_MS = 10_000;
 
 interface ApiRequestSettlePatch {
   readonly cost?: number;
@@ -36,6 +38,15 @@ function appendErrorMessage(messages: ChatMessage[], id: string, error: string):
   return [...messages, { id, sender: 'error', text: error, errorMessage: error, ts: Date.now() }];
 }
 
+function appendInfoMessage(messages: ChatMessage[], id: string, text: string): ChatMessage[] {
+  if (messages.some((m) => m.id === id)) return messages;
+
+  const last = messages[messages.length - 1];
+  if (last?.sender === 'info' && last.text === text) return messages;
+
+  return [...messages, { id, sender: 'info', text, ts: Date.now() }];
+}
+
 export interface UseChatSessionReturn {
   readonly activeTask: ActiveTaskState | null;
   readonly models: ModelItem[];
@@ -44,6 +55,8 @@ export interface UseChatSessionReturn {
   readonly setSelectedModel: Dispatch<SetStateAction<string>>;
   readonly pastTasks: HistoryItem[];
   readonly setPastTasks: Dispatch<SetStateAction<HistoryItem[]>>;
+  readonly commands: CommandItem[];
+  readonly refreshCommands: () => void;
   readonly isAgentRunning: boolean;
   readonly pendingQuestion: ChatMessage | undefined;
   readonly inputValue: string;
@@ -67,12 +80,14 @@ export const useChatSession = (): UseChatSessionReturn => {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [selectedModel, setSelectedModel] = useState('pi-code');
   const [pastTasks, setPastTasks] = useState<HistoryItem[]>([]);
+  const [commands, setCommands] = useState<CommandItem[]>([]);
   const [isAgentRunning, setIsAgentRunning] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [view, setView] = useState<'chat' | 'history' | 'settings'>('chat');
   const [scope, setScope] = useState<'current' | 'all'>('current');
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const lastCommandsRefreshRef = useRef(0);
 
   // Initial setup & History fetch
   useEffect(() => {
@@ -93,16 +108,21 @@ export const useChatSession = (): UseChatSessionReturn => {
       const msg = event.data;
       switch (msg.type) {
         case 'init_data': {
-          const { models: backendModels, history, default_model: defaultModel, settings: backendSettings } = msg.payload;
+          const { models: backendModels, history, default_model: defaultModel, settings: backendSettings, commands: backendCommands } = msg.payload;
           setModels(backendModels);
           setPastTasks(history);
           setSettings(backendSettings ?? null);
+          setCommands(backendCommands ?? []);
           setSelectedModel(defaultModel || backendModels[0]?.id || 'pi-code');
           break;
         }
 
         case 'history_data':
           setPastTasks(msg.payload.history);
+          break;
+
+        case 'commands_data':
+          setCommands(msg.payload.commands);
           break;
 
         case 'settings_data':
@@ -369,6 +389,28 @@ export const useChatSession = (): UseChatSessionReturn => {
           });
           break;
 
+        case 'info':
+          setView('chat');
+          setActiveTask((prev) => {
+            const id = `info-${Date.now()}`;
+            if (!prev) {
+              return {
+                id: 'task-active',
+                title: 'Pi',
+                messages: [{ id, sender: 'info', text: msg.payload.text, ts: Date.now() }],
+                tokensIn: 0,
+                tokensOut: 0,
+                cacheWrites: 0,
+                cacheReads: 0,
+                totalCost: 0,
+                contextTokens: 0,
+                contextLimit: 200000,
+              };
+            }
+            return { ...prev, messages: appendInfoMessage(prev.messages, id, msg.payload.text) };
+          });
+          break;
+
         case 'show_settings':
           setView('settings');
           break;
@@ -415,12 +457,36 @@ export const useChatSession = (): UseChatSessionReturn => {
     setTimeout(() => textareaRef.current?.focus(), 0);
   }, []);
 
+  const refreshCommands = useCallback((): void => {
+    const now = Date.now();
+    if (now - lastCommandsRefreshRef.current < COMMANDS_REFRESH_INTERVAL_MS) return;
+
+    lastCommandsRefreshRef.current = now;
+    vscode?.postMessage({ type: 'get_commands' });
+  }, []);
+
   const handleSendPrompt = useCallback(
     (text: string, images: string[]): void => {
       // A pending question owns the input box: the reply answers the tool call
       // instead of starting a new turn.
       if (pendingQuestion) {
         handleAnswerQuestion(pendingQuestion.id, text);
+        return;
+      }
+
+      // Builtin commands are executed by the extension and must not create a
+      // chat bubble or start an agent run.
+      const builtin = commands.find((c) => c.builtin && `/${c.name}` === text.trim());
+      if (builtin?.name === 'reload') {
+        vscode?.postMessage({ type: 'reload' });
+        return;
+      }
+      if (builtin?.name === 'compact') {
+        vscode?.postMessage(
+          activeTask
+            ? { type: 'compact', id: activeTask.id, path: activeTask.path, title: activeTask.title }
+            : { type: 'compact', id: '', path: undefined, title: '' },
+        );
         return;
       }
 
@@ -461,7 +527,7 @@ export const useChatSession = (): UseChatSessionReturn => {
         });
       }
     },
-    [pendingQuestion, handleAnswerQuestion, models, selectedModel, activeTask],
+    [pendingQuestion, handleAnswerQuestion, models, selectedModel, activeTask, commands],
   );
 
   const handleToolResponse = useCallback((msgId: string, status: 'running' | 'denied', actionType: 'approve_tool' | 'deny_tool'): void => {
@@ -496,6 +562,8 @@ export const useChatSession = (): UseChatSessionReturn => {
     setSelectedModel,
     pastTasks,
     setPastTasks,
+    commands,
+    refreshCommands,
     isAgentRunning,
     pendingQuestion,
     inputValue,
