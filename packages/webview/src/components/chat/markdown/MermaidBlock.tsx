@@ -25,7 +25,7 @@ export const MermaidBlock: FC<MermaidBlockProps> = ({ code: originalCode }) => {
   const [isHovering, setIsHovering] = useState(false);
 
   const { ref: rootRef, hasBeenVisible } = useInViewport<HTMLDivElement>();
-  const { code, svgContent, isLoading, error, isFixing, handleSyntaxFix } = useMermaidRender(originalCode, hasBeenVisible);
+  const { code, svgContent, isLoading, error, handleSyntaxFix } = useMermaidRender(originalCode, hasBeenVisible);
   const { showCopy, copy } = useCopyToClipboard();
 
   const handleCopy = async (e: MouseEvent) => {
@@ -47,11 +47,7 @@ export const MermaidBlock: FC<MermaidBlockProps> = ({ code: originalCode }) => {
 
   return (
     <div ref={rootRef} className="relative my-2 select-none">
-      {isLoading && (
-        <div className="py-2 text-[var(--vscode-descriptionForeground)] italic text-xs">
-          {isFixing ? 'Fixing Mermaid syntax...' : 'Loading diagram...'}
-        </div>
-      )}
+      {isLoading && <div className="py-2 text-[var(--vscode-descriptionForeground)] italic text-xs">Loading diagram...</div>}
 
       {error ? (
         <div className="mt-0 overflow-hidden mb-2 border border-[var(--vscode-editorGroup-border)] rounded">
@@ -70,10 +66,9 @@ export const MermaidBlock: FC<MermaidBlockProps> = ({ code: originalCode }) => {
               <button
                 className="p-1 h-6 w-6 flex items-center justify-center bg-transparent border-none text-[var(--vscode-editor-foreground)] cursor-pointer hover:bg-[var(--vscode-toolbar-hoverBackground)] rounded"
                 onClick={handleSyntaxFix}
-                disabled={isFixing}
                 title="Auto-fix common syntax issues"
               >
-                <span className={cn('codicon', `codicon-${isFixing ? 'loading animate-spin' : 'wand'}`)} />
+                <span className="codicon codicon-wand" />
               </button>
               <button
                 className="p-1 h-6 w-6 flex items-center justify-center bg-transparent border-none text-[var(--vscode-editor-foreground)] cursor-pointer hover:bg-[var(--vscode-toolbar-hoverBackground)] rounded"

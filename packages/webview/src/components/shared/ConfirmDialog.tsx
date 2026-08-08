@@ -6,8 +6,7 @@ import { createPortal } from 'react-dom';
 import type { FC, ReactNode } from 'react';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  readonly variant?: 'ghost' | 'secondary' | 'danger' | 'primary';
-  readonly isLoading?: boolean;
+  readonly variant?: 'secondary' | 'danger';
 }
 
 export interface ModalProps {
@@ -57,22 +56,17 @@ const useModalKeyboard = ({ isOpen, onEscape, onEnter }: UseModalKeyboardProps) 
   }, [isOpen, onEscape, onEnter]);
 };
 
-export const Button: FC<ButtonProps> = ({ variant = 'secondary', isLoading = false, children, className = '', disabled, ...props }) => {
+export const Button: FC<ButtonProps> = ({ variant = 'secondary', children, className = '', disabled, ...props }) => {
   const baseStyles =
     'px-3 py-1.5 text-xs font-semibold rounded cursor-pointer transition-colors border flex items-center justify-center gap-2 select-none disabled:opacity-50 disabled:cursor-not-allowed';
 
   const variants = {
-    ghost:
-      'bg-transparent border-transparent text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] p-0 text-base leading-none',
     secondary: 'bg-transparent hover:bg-[var(--vscode-list-hoverBackground)] border-[var(--vscode-panel-border)]/50 text-[var(--vscode-foreground)]',
-    primary:
-      'bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] border-transparent',
     danger: 'bg-[var(--vscode-errorForeground)]/90 hover:bg-[var(--vscode-errorForeground)] text-white border-transparent',
   };
 
   return (
-    <button disabled={disabled || isLoading} className={cn(baseStyles, variants[variant], className)} {...props}>
-      {isLoading ? <span className="animate-spin text-xs">🌀</span> : null}
+    <button disabled={disabled} className={cn(baseStyles, variants[variant], className)} {...props}>
       {children}
     </button>
   );

@@ -5,7 +5,7 @@ export const BUILTIN_COMMANDS = [
   { name: 'compact', description: 'Summarize the current conversation to free up context.' },
 ] as const satisfies ReadonlyArray<{ name: string; description: string }>;
 
-export type BuiltinCommandName = (typeof BUILTIN_COMMANDS)[number]['name'];
+type BuiltinCommandName = (typeof BUILTIN_COMMANDS)[number]['name'];
 
 function isBuiltinCommand(name: string): name is BuiltinCommandName {
   return BUILTIN_COMMANDS.some((command) => command.name === name);

@@ -151,18 +151,17 @@ export class SettingsService {
   private defaultModel: string | undefined = undefined;
   private cachedSettings: AppSettings | null = null;
 
-  public static getInstance(cwd?: string): SettingsService {
-    const resolvedCwd = cwd || process.cwd();
-    let instance = this.instances.get(resolvedCwd);
+  public static getInstance(cwd: string): SettingsService {
+    let instance = this.instances.get(cwd);
     if (!instance) {
-      const repository = new SettingsRepository(resolvedCwd);
+      const repository = new SettingsRepository(cwd);
       instance = new SettingsService(repository);
-      this.instances.set(resolvedCwd, instance);
+      this.instances.set(cwd, instance);
     }
     return instance;
   }
 
-  public constructor(private readonly repository: SettingsRepository) {}
+  private constructor(private readonly repository: SettingsRepository) {}
 
   public async load(): Promise<AppSettings> {
     if (this.cachedSettings) {

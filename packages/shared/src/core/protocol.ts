@@ -1,4 +1,4 @@
-import type { AppSettings, SettingsPatch } from '@pi-code/shared/core/settings';
+import type { AppSettings } from '@pi-code/shared/core/settings';
 import type { TodoItem } from '@pi-code/shared/utilities/todo';
 
 export interface ActiveTaskState extends StatsData {
@@ -76,7 +76,7 @@ export type WebviewToExtensionMessage =
   | { type: 'cancel_task' }
   | { type: 'compact'; id: string; path?: string; title: string }
   | { type: 'reload' }
-  | { type: 'update_settings'; settings: SettingsPatch };
+  | { type: 'update_settings'; settings: Partial<AppSettings> };
 
 export type ExtensionToWebviewMessage =
   | {

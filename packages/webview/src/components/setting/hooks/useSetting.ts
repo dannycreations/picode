@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 
 import { vscode } from '@pi-code/webview/utilities/vscode';
 
-import type { ExtensionToWebviewMessage } from '@pi-code/shared/core/protocol';
-import type { AppSettings, SettingsPatch } from '@pi-code/shared/core/settings';
+import type { AppSettings } from '@pi-code/shared/core/settings';
 
 export function areSettingsValuesEqual(a: unknown, b: unknown): boolean {
   if (Array.isArray(a) && Array.isArray(b)) {
@@ -15,37 +14,22 @@ export function areSettingsValuesEqual(a: unknown, b: unknown): boolean {
 
 export interface UseSettingReturn {
   readonly draftSettings: AppSettings;
-  readonly originalSettings: AppSettings;
-  readonly isSaving: boolean;
   readonly isChangeDetected: boolean;
   readonly handleFieldChange: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void;
   readonly handleSave: () => void;
   readonly resetDraft: () => void;
 }
 
-export const useSetting = (initialSettings: AppSettings): UseSettingReturn => {
-  const [originalSettings, setOriginalSettings] = useState<AppSettings>(initialSettings);
-  const [draftSettings, setDraftSettings] = useState<AppSettings>(initialSettings);
-  const [isSaving, setIsSaving] = useState(false);
+export const useSetting = (settings: AppSettings): UseSettingReturn => {
+  const [draftSettings, setDraftSettings] = useState<AppSettings>(settings);
 
   useEffect(() => {
-    const handleMessage = (event: MessageEvent<ExtensionToWebviewMessage>) => {
-      const msg = event.data;
-      if (msg.type === 'settings_data' && msg.payload?.settings) {
-        const s = msg.payload.settings as AppSettings;
-        setOriginalSettings(s);
-        setDraftSettings(s);
-        setIsSaving(false);
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
+    setDraftSettings(settings);
+  }, [settings]);
 
   const isChangeDetected = (() => {
     const keys = Object.keys(draftSettings) as Array<keyof AppSettings>;
-    return keys.some((key) => !areSettingsValuesEqual(draftSettings[key], originalSettings[key]));
+    return keys.some((key) => !areSettingsValuesEqual(draftSettings[key], settings[key]));
   })();
 
   const handleFieldChange = <K extends keyof AppSettings>(key: K, value: AppSettings[K]): void => {
@@ -53,30 +37,25 @@ export const useSetting = (initialSettings: AppSettings): UseSettingReturn => {
   };
 
   const handleSave = (): void => {
-    if (isSaving) return;
-
-    const updates = {} as SettingsPatch;
+    const updates: Partial<AppSettings> = {};
     const keys = Object.keys(draftSettings) as Array<keyof AppSettings>;
     for (const key of keys) {
-      if (!areSettingsValuesEqual(draftSettings[key], originalSettings[key])) {
+      if (!areSettingsValuesEqual(draftSettings[key], settings[key])) {
         (updates as Record<string, unknown>)[key] = draftSettings[key];
       }
     }
 
     if (Object.keys(updates).length === 0) return;
 
-    setIsSaving(true);
     vscode?.postMessage({ type: 'update_settings', settings: updates });
   };
 
   const resetDraft = (): void => {
-    setDraftSettings(originalSettings);
+    setDraftSettings(settings);
   };
 
   return {
     draftSettings,
-    originalSettings,
-    isSaving,
     isChangeDetected,
     handleFieldChange,
     handleSave,

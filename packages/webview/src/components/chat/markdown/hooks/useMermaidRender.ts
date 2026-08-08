@@ -9,7 +9,6 @@ export interface UseMermaidRenderReturn {
   readonly svgContent: string;
   readonly isLoading: boolean;
   readonly error: string | null;
-  readonly isFixing: boolean;
   readonly handleSyntaxFix: () => void;
 }
 
@@ -17,7 +16,6 @@ export const useMermaidRender = (originalCode: string, enabled: boolean): UseMer
   const [code, setCode] = useState(originalCode);
   const [svgContent, setSvgContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isFixing, setIsFixing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -26,7 +24,7 @@ export const useMermaidRender = (originalCode: string, enabled: boolean): UseMer
   }, [originalCode]);
 
   useEffect(() => {
-    if (!enabled || isFixing) return;
+    if (!enabled) return;
     setIsLoading(true);
 
     const timer = setTimeout(() => {
@@ -46,25 +44,18 @@ export const useMermaidRender = (originalCode: string, enabled: boolean): UseMer
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [code, isFixing, enabled]);
+  }, [code, enabled]);
 
   const handleSyntaxFix = useCallback((): void => {
-    if (isFixing) return;
-    setIsLoading(true);
-    setIsFixing(true);
-
     const fixed = applyDeterministicFixes(code);
     setCode(fixed);
-    setIsFixing(false);
-    setIsLoading(false);
-  }, [code, isFixing]);
+  }, [code]);
 
   return {
     code,
     svgContent,
     isLoading,
     error,
-    isFixing,
     handleSyntaxFix,
   };
 };

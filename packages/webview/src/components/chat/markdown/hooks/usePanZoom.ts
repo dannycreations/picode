@@ -11,7 +11,6 @@ export interface UsePanZoomReturn {
   readonly startDrag: (e: MouseEvent) => void;
   readonly onDrag: (e: MouseEvent) => void;
   readonly stopDrag: () => void;
-  readonly resetPanZoom: () => void;
 }
 
 export const usePanZoom = (): UsePanZoomReturn => {
@@ -53,11 +52,6 @@ export const usePanZoom = (): UsePanZoomReturn => {
     setIsDragging(false);
   }, []);
 
-  const resetPanZoom = useCallback((): void => {
-    setZoomLevel(1);
-    setDragPosition({ x: 0, y: 0 });
-  }, []);
-
   return {
     zoomLevel,
     dragPosition,
@@ -67,6 +61,5 @@ export const usePanZoom = (): UsePanZoomReturn => {
     startDrag,
     onDrag,
     stopDrag,
-    resetPanZoom,
   };
 };

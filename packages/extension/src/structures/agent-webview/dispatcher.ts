@@ -1,7 +1,7 @@
 import { window } from 'vscode';
 
 import { SettingsService } from '@pi-code/extension/core/settings';
-import { runBuiltinCommand, runCompact } from '@pi-code/extension/structures/chat-command/builtin';
+import { runCompact } from '@pi-code/extension/structures/chat-command/builtin';
 import { logger } from '@pi-code/shared/core/logger';
 import { toErrorMessage } from '@pi-code/shared/utilities/common';
 
@@ -48,13 +48,9 @@ export function createDefaultDispatcher(): ChatMessageDispatcher {
       ctx.postMessage({ type: 'init_data', payload: data });
     })
     .register('start_new_task', (msg, ctx) => {
-      if (runBuiltinCommand(ctx, msg.text, undefined)) return;
-
       void ctx.agent.startTask(msg.text, toModelSelection(msg), ctx.webview, msg.images);
     })
     .register('send_message', (msg, ctx) => {
-      if (runBuiltinCommand(ctx, msg.text, msg.path)) return;
-
       void ctx.agent.startTask(msg.text, toModelSelection(msg), ctx.webview, msg.images, msg.path);
     })
     .register('continue_task', (msg, ctx) => {

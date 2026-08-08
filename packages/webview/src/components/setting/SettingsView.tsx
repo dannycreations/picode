@@ -51,7 +51,7 @@ export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
 
   const { draftSettings, isChangeDetected, handleFieldChange, handleSave, resetDraft } = useSetting(settings);
 
-  const { containerRef, isCollapsed } = useResponsive(500, true);
+  const { containerRef, isCollapsed } = useResponsive(550);
 
   const checkUnsavedChanges = (proceed: () => void) => {
     if (isChangeDetected) {

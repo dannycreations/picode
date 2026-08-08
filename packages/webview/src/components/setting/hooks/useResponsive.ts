@@ -7,12 +7,11 @@ export interface UseResponsiveReturn {
   readonly isCollapsed: boolean;
 }
 
-export const useResponsive = (threshold = 500, active = true): UseResponsiveReturn => {
+export const useResponsive = (threshold: number): UseResponsiveReturn => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {
-    if (!active) return;
     const container = containerRef.current;
     if (!container) return;
 
@@ -24,7 +23,7 @@ export const useResponsive = (threshold = 500, active = true): UseResponsiveRetu
 
     observer.observe(container);
     return () => observer.disconnect();
-  }, [active, threshold]);
+  }, [threshold]);
 
   return { containerRef, isCollapsed };
 };
