@@ -1,10 +1,12 @@
 import { getLastAssistantUsage, parseSkillBlock } from '@earendil-works/pi-coding-agent';
 
+import { DEFAULT_CONTEXT_LIMIT } from '@extension/core/constants';
 import { logger } from '@extension/core/logger';
+import { toBase64DataUrl } from '@extension/utilities/codec';
 
 import type { SessionEntry } from '@earendil-works/pi-coding-agent';
 import type { SessionMessageContent, SessionTreeEntry } from '@extension/types/extension';
-import type { ChatMessage, ToolName } from '@extension/types/webview';
+import type { ChatMessage, StatsData, ToolName } from '@extension/types/webview';
 
 export function collapseSkillBlock(text: string): string {
   const parsed = parseSkillBlock(text);
@@ -31,7 +33,7 @@ export function convertSessionEntries(entries: SessionTreeEntry[]): ChatMessage[
             .join('\n');
           images = msg.content
             .filter((c: SessionMessageContent) => c.type === 'image' && c.data)
-            .map((c: SessionMessageContent) => `data:${c.mimeType || 'image/png'};base64,${c.data}`);
+            .map((c: SessionMessageContent) => toBase64DataUrl(c.data ?? '', c.mimeType ?? ''));
         }
         result.push({
           id: entry.id,
@@ -160,17 +162,7 @@ export function convertSessionEntries(entries: SessionTreeEntry[]): ChatMessage[
   return result;
 }
 
-export interface CalculatedStats {
-  readonly tokensIn: number;
-  readonly tokensOut: number;
-  readonly cacheWrites?: number;
-  readonly cacheReads?: number;
-  readonly totalCost: number;
-  readonly contextTokens: number;
-  readonly contextLimit: number;
-}
-
-export function calculateSessionStats(entries: SessionTreeEntry[], contextLimit: number = 200000): CalculatedStats {
+export function calculateSessionStats(entries: SessionTreeEntry[], contextLimit: number = DEFAULT_CONTEXT_LIMIT): StatsData {
   let tokensIn = 0;
   let tokensOut = 0;
   let cacheWrites = 0;

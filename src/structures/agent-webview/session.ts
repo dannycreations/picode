@@ -2,15 +2,15 @@ import { unlink } from 'node:fs/promises';
 import { ModelRuntime, SessionManager } from '@earendil-works/pi-coding-agent';
 import { Uri, window, workspace } from 'vscode';
 
+import { DEFAULT_CONTEXT_LIMIT } from '@extension/core/constants';
 import { logger } from '@extension/core/logger';
 import { SettingsService } from '@extension/core/settings';
-import { listCommands } from '@extension/structures/agent-runtime/command';
+import { listCommands } from '@extension/structures/chat-command/command';
 import { calculateSessionStats, convertSessionEntries } from '@extension/structures/chat-session/session';
 
 import type { SessionInfo } from '@earendil-works/pi-coding-agent';
-import type { CalculatedStats } from '@extension/structures/chat-session/session';
 import type { SessionTreeEntry } from '@extension/types/extension';
-import type { ChatMessage, CommandItem, ExtensionToWebviewMessage, HistoryItem } from '@extension/types/webview';
+import type { ChatMessage, CommandItem, ExtensionToWebviewMessage, HistoryItem, StatsData } from '@extension/types/webview';
 
 export type SessionInitData = Extract<ExtensionToWebviewMessage, { type: 'init_data' }>['payload'];
 
@@ -52,7 +52,7 @@ export class SessionService {
     cwd: string,
   ): Promise<{
     messages: ChatMessage[];
-    stats: CalculatedStats;
+    stats: StatsData;
   }> {
     const sessionManager = SessionManager.open(sessionPath);
     const entries = sessionManager.getEntries();
@@ -68,7 +68,7 @@ export class SessionService {
       }
     }
 
-    let contextLimit = 200000;
+    let contextLimit: number = DEFAULT_CONTEXT_LIMIT;
     if (sessionModelId) {
       const matchedModel = models.find((m) => m.id === sessionModelId);
       if (matchedModel?.contextWindow) {

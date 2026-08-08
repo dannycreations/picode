@@ -7,7 +7,7 @@ import { WorkspaceService } from '@extension/structures/agent-webview/workspace'
 import { getWorkspaceCwd } from '@extension/utilities/vscode';
 
 import type { CancellationToken, ExtensionContext, Webview, WebviewView, WebviewViewProvider, WebviewViewResolveContext } from 'vscode';
-import type { MessageHandlerContext } from '@extension/structures/agent-webview/dispatcher';
+import type { MessageHandlerContext } from '@extension/structures/agent-webview/types';
 import type { ExtensionToWebviewMessage, WebviewToExtensionMessage } from '@extension/types/webview';
 
 export class ChatViewHtml {

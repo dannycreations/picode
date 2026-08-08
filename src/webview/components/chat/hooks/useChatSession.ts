@@ -1,11 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { DEFAULT_CONTEXT_LIMIT } from '@extension/core/constants';
+import { parseBuiltinCommand } from '@extension/structures/chat-command/builtin';
 import { findPendingQuestion } from '@webview/components/chat/helpers/question';
 import { vscode } from '@webview/utilities/vscode';
 
 import type { Dispatch, RefObject, SetStateAction } from 'react';
 import type { AppSettings } from '@extension/core/settings';
-import type { ActiveTaskState, ChatMessage, CommandItem, ExtensionToWebviewMessage, HistoryItem, ModelItem } from '@extension/types/webview';
+import type {
+  ActiveTaskState,
+  ChatMessage,
+  CommandItem,
+  ExtensionToWebviewMessage,
+  HistoryItem,
+  ModelItem,
+  StatsData,
+} from '@extension/types/webview';
 
 interface ApiRequestSettlePatch {
   readonly cost?: number;
@@ -70,6 +80,16 @@ export interface UseChatSessionReturn {
   readonly handleCloseTask: () => void;
   readonly handleDeleteActiveTask: () => void;
 }
+
+export const EMPTY_STATS: StatsData = {
+  tokensIn: 0,
+  tokensOut: 0,
+  cacheWrites: 0,
+  cacheReads: 0,
+  totalCost: 0,
+  contextTokens: 0,
+  contextLimit: DEFAULT_CONTEXT_LIMIT,
+};
 
 export const useChatSession = (): UseChatSessionReturn => {
   const [activeTask, setActiveTask] = useState<ActiveTaskState | null>(null);
@@ -142,16 +162,7 @@ export const useChatSession = (): UseChatSessionReturn => {
           break;
 
         case 'session_loaded':
-          setActiveTask({
-            ...msg.payload,
-            tokensIn: msg.payload.tokensIn ?? 0,
-            tokensOut: msg.payload.tokensOut ?? 0,
-            cacheWrites: msg.payload.cacheWrites ?? 0,
-            cacheReads: msg.payload.cacheReads ?? 0,
-            totalCost: msg.payload.totalCost ?? 0,
-            contextTokens: msg.payload.contextTokens ?? 0,
-            contextLimit: msg.payload.contextLimit ?? 200000,
-          });
+          setActiveTask({ ...EMPTY_STATS, ...msg.payload });
           setView('chat');
           setIsAgentRunning(false);
           break;
@@ -410,13 +421,7 @@ export const useChatSession = (): UseChatSessionReturn => {
                 id: 'task-active',
                 title: 'Pi',
                 messages: [{ id, sender: 'info', text: msg.payload.text, ts: Date.now() }],
-                tokensIn: 0,
-                tokensOut: 0,
-                cacheWrites: 0,
-                cacheReads: 0,
-                totalCost: 0,
-                contextTokens: 0,
-                contextLimit: 200000,
+                ...EMPTY_STATS,
               };
             }
             return { ...prev, messages: appendInfoMessage(prev.messages, id, msg.payload.text) };
@@ -479,18 +484,21 @@ export const useChatSession = (): UseChatSessionReturn => {
       }
 
       // Builtin commands are executed by the extension and must not create a
-      // chat bubble or start an agent run.
-      const builtin = commands.find((c) => c.builtin && `/${c.name}` === text.trim());
-      if (builtin?.name === 'reload') {
+      // chat bubble or start an agent run. This is parsed from the text itself
+      // rather than the fetched command list, so it stays correct before the
+      // `init_data` response arrives.
+      const builtin = parseBuiltinCommand(text);
+      if (builtin === 'reload') {
         vscode?.postMessage({ type: 'reload' });
         return;
       }
-      if (builtin?.name === 'compact') {
-        vscode?.postMessage(
-          activeTask
-            ? { type: 'compact', id: activeTask.id, path: activeTask.path, title: activeTask.title }
-            : { type: 'compact', id: '', path: undefined, title: '' },
-        );
+      if (builtin === 'compact') {
+        vscode?.postMessage({
+          type: 'compact',
+          id: activeTask?.id ?? '',
+          path: activeTask?.path,
+          title: activeTask?.title ?? '',
+        });
         return;
       }
 
@@ -510,13 +518,7 @@ export const useChatSession = (): UseChatSessionReturn => {
           id: 'task-active',
           title: text,
           messages: [userMsg],
-          tokensIn: 0,
-          tokensOut: 0,
-          cacheWrites: 0,
-          cacheReads: 0,
-          totalCost: 0,
-          contextTokens: 0,
-          contextLimit: 200000,
+          ...EMPTY_STATS,
         });
         vscode?.postMessage({ type: 'start_new_task', text, model_id: selectedModel, model_provider: selectedProvider, images });
       } else {
@@ -531,7 +533,7 @@ export const useChatSession = (): UseChatSessionReturn => {
         });
       }
     },
-    [pendingQuestion, handleAnswerQuestion, models, selectedModel, activeTask, commands],
+    [pendingQuestion, handleAnswerQuestion, models, selectedModel, activeTask],
   );
 
   const handleToolResponse = useCallback((msgId: string, status: 'running' | 'denied', actionType: 'approve_tool' | 'deny_tool'): void => {

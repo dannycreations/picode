@@ -1,3 +1,4 @@
+import { DEFAULT_CONTEXT_LIMIT } from '@extension/core/constants';
 import { logger } from '@extension/core/logger';
 
 import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent';
@@ -136,7 +137,7 @@ export class EventMapper {
         cacheWrites: stats.tokens.cacheWrite,
         totalCost: stats.cost,
         contextTokens: stats.contextUsage?.tokens ?? 0,
-        contextLimit: stats.contextUsage?.contextWindow ?? session.model?.contextWindow ?? 200000,
+        contextLimit: stats.contextUsage?.contextWindow ?? session.model?.contextWindow ?? DEFAULT_CONTEXT_LIMIT,
       };
     } catch (err) {
       logger.error('Failed to create session stats message:', err);

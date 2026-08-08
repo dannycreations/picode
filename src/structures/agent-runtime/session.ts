@@ -1,5 +1,6 @@
 import { AgentSession, createAgentSession, SessionManager } from '@earendil-works/pi-coding-agent';
 
+import { DEFAULT_CONTEXT_LIMIT } from '@extension/core/constants';
 import { createAgentResources } from '@extension/structures/agent-runtime/resource';
 import { askQuestionTool } from '@extension/structures/tool-call/ask-question';
 import { attemptCompletionTool } from '@extension/structures/tool-call/attempt-completion';
@@ -52,7 +53,7 @@ export class SessionFactory {
       customTools: SessionFactory.CUSTOM_TOOLS.filter((tool) => !disabledTools.has(tool.name as ToolName)),
     });
 
-    const contextWindow = session.model?.contextWindow ?? 200000;
+    const contextWindow = session.model?.contextWindow ?? DEFAULT_CONTEXT_LIMIT;
     const reserveTokens = Math.round(((100 - settings.autoCompactContextPercent) / 100) * contextWindow);
     session.settingsManager.applyOverrides({
       compaction: {

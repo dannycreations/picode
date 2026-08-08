@@ -1,13 +1,14 @@
 import assert from 'node:assert';
 
 import { logger } from '@extension/core/logger';
-import { listCommands } from '@extension/structures/agent-runtime/command';
 import { EventMapper } from '@extension/structures/agent-runtime/event';
 import { PolicyEvaluator } from '@extension/structures/agent-runtime/policy';
 import { QuestionBridge } from '@extension/structures/agent-runtime/question';
 import { SessionFactory } from '@extension/structures/agent-runtime/session';
 import { WebviewMessenger } from '@extension/structures/agent-runtime/webview';
+import { listCommands } from '@extension/structures/chat-command/command';
 import { getEnvironmentDetails } from '@extension/structures/chat-session/environment';
+import { parseBase64DataUrl } from '@extension/utilities/codec';
 import { getWorkspaceCwd } from '@extension/utilities/vscode';
 
 import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent';
@@ -32,8 +33,8 @@ function parseImageAttachments(images?: string[]): ImageAttachment[] | undefined
 
   return images
     .map((img) => {
-      const match = img.match(/^data:([^;]+);base64,(.+)$/);
-      return match ? { type: 'image' as const, mimeType: match[1], data: match[2] } : null;
+      const parts = parseBase64DataUrl(img);
+      return parts ? { type: 'image' as const, mimeType: parts.mimeType, data: parts.data } : null;
     })
     .filter((item): item is ImageAttachment => item !== null);
 }

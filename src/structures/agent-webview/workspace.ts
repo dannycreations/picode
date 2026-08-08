@@ -3,6 +3,8 @@ import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { Range, Uri, window, workspace } from 'vscode';
 
+import { extensionForMimeType, parseBase64DataUrl } from '@extension/utilities/codec';
+
 export class WorkspaceService {
   public async openFile(cwd: string, relativePath: string, line?: number): Promise<void> {
     const filePath = resolve(cwd, relativePath);
@@ -21,14 +23,13 @@ export class WorkspaceService {
   }
 
   public async openBase64Image(dataUrl: string): Promise<void> {
-    const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
-    if (!match) return;
+    const parts = parseBase64DataUrl(dataUrl);
+    if (!parts) return;
 
-    const [, mimeType, base64Data] = match;
-    const ext = mimeType.split('/')[1] || 'png';
+    const ext = extensionForMimeType(parts.mimeType);
     const tempFilePath = resolve(tmpdir(), `pi-code-img-${Date.now()}.${ext}`);
 
-    await writeFile(tempFilePath, Buffer.from(base64Data, 'base64'));
+    await writeFile(tempFilePath, Buffer.from(parts.data, 'base64'));
 
     const { commands } = await import('vscode');
     await commands.executeCommand('vscode.open', Uri.file(tempFilePath));

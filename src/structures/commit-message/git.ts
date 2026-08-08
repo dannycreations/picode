@@ -1,6 +1,8 @@
 import { spawnSync } from 'node:child_process';
-import { closeSync, existsSync, openSync, readFileSync, readSync, statSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+
+import { isBinaryFileSync } from '@extension/utilities/binary';
 
 export interface GitChange {
   readonly relativePath: string;
@@ -23,26 +25,6 @@ export function spawnGit(args: string[], cwd: string): string {
     throw new Error(`Git command failed: ${result.stderr}`);
   }
   return result.stdout;
-}
-
-function isBinaryFile(filePath: string): boolean {
-  try {
-    if (!existsSync(filePath)) return false;
-    const stat = statSync(filePath);
-    if (stat.isDirectory()) return false;
-    const buffer = Buffer.alloc(8000);
-    const fd = openSync(filePath, 'r');
-    const bytesRead = readSync(fd, buffer, 0, 8000, 0);
-    closeSync(fd);
-    for (let i = 0; i < bytesRead; i++) {
-      if (buffer[i] === 0) {
-        return true;
-      }
-    }
-    return false;
-  } catch {
-    return false;
-  }
 }
 
 export function getGitChanges(cwd: string): { changes: GitChange[]; useStaged: boolean } {
@@ -109,7 +91,7 @@ export function getGitDiffContext(cwd: string, changes: GitChange[], useStaged: 
 
   const untrackedFiles = changes.filter((c) => c.isUntracked);
   for (const file of untrackedFiles) {
-    if (isBinaryFile(file.absolutePath)) {
+    if (isBinaryFileSync(file.absolutePath)) {
       diffContext += `\nBinary file ${file.relativePath} is untracked\n`;
       continue;
     }

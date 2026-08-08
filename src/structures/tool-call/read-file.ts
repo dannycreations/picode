@@ -1,36 +1,18 @@
 import { createReadStream } from 'node:fs';
-import { open, stat } from 'node:fs/promises';
+import { stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
 import { SettingsService } from '@extension/core/settings';
+import { isBinaryFile } from '@extension/utilities/binary';
 import { DEFAULT_OUTPUT_LIMITS, shareOutputLimits, toOutputLimits, truncateOutput } from '@extension/utilities/truncate';
 
 import type { ToolName } from '@extension/types/webview';
 import type { OutputLimits } from '@extension/utilities/truncate';
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
-const BINARY_CHECK_BYTES = 4096;
-
-async function isBinaryFile(filePath: string): Promise<boolean> {
-  let fileHandle;
-  try {
-    fileHandle = await open(filePath, 'r');
-    const buffer = Buffer.alloc(BINARY_CHECK_BYTES);
-    const { bytesRead } = await fileHandle.read(buffer, 0, BINARY_CHECK_BYTES, 0);
-
-    for (let i = 0; i < bytesRead; i++) {
-      if (buffer[i] === 0) {
-        return true;
-      }
-    }
-    return false;
-  } finally {
-    await fileHandle?.close();
-  }
-}
 
 async function readLinesUpTo(filePath: string, maxLines: number, signal?: AbortSignal): Promise<string[]> {
   const stream = createReadStream(filePath, { encoding: 'utf8', signal });

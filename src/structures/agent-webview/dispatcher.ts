@@ -2,23 +2,10 @@ import { window } from 'vscode';
 
 import { logger } from '@extension/core/logger';
 import { SettingsService } from '@extension/core/settings';
-import { parseBuiltinCommand } from '@extension/structures/agent-runtime/command';
-import { AgentRunner } from '@extension/structures/agent-runtime/runner';
+import { runBuiltinCommand, runCompact } from '@extension/structures/chat-command/builtin';
 
-import type { Webview } from 'vscode';
-import type { SessionService } from '@extension/structures/agent-webview/session';
-import type { WorkspaceService } from '@extension/structures/agent-webview/workspace';
-import type { ExtensionToWebviewMessage, WebviewToExtensionMessage } from '@extension/types/webview';
-
-export type MessageHandlerContext = {
-  readonly cwd: string;
-  readonly webview: Webview;
-  readonly agent: AgentRunner;
-  readonly recreateAgent: () => AgentRunner;
-  readonly postMessage: (msg: ExtensionToWebviewMessage) => void;
-  readonly sessionService: SessionService;
-  readonly workspaceService: WorkspaceService;
-};
+import type { MessageHandlerContext } from '@extension/structures/agent-webview/types';
+import type { ModelItem, WebviewToExtensionMessage } from '@extension/types/webview';
 
 export type CommandHandler<T extends WebviewToExtensionMessage['type']> = (
   message: Extract<WebviewToExtensionMessage, { type: T }>,
@@ -47,18 +34,10 @@ export class ChatMessageDispatcher {
   }
 }
 
-async function runCompact(ctx: MessageHandlerContext, id: string, title: string, path: string | undefined): Promise<void> {
-  if (!path) {
-    ctx.postMessage({ type: 'info', payload: { text: 'Open or start a task before using /compact.' } });
-    return;
-  }
+type ModelSelection = Pick<ModelItem, 'id' | 'provider'>;
 
-  await ctx.agent.compact(path, ctx.webview);
-  const { messages, stats } = await ctx.sessionService.loadSessionDetails(path, ctx.cwd);
-  ctx.postMessage({
-    type: 'session_loaded',
-    payload: { id: id || 'task-active', title: title || '', messages, path, ...stats },
-  });
+function toModelSelection(msg: { model_id?: string; model_provider?: string }): ModelSelection | undefined {
+  return msg.model_provider && msg.model_id ? { id: msg.model_id, provider: msg.model_provider } : undefined;
 }
 
 export function createDefaultDispatcher(): ChatMessageDispatcher {
@@ -68,36 +47,17 @@ export function createDefaultDispatcher(): ChatMessageDispatcher {
       ctx.postMessage({ type: 'init_data', payload: data });
     })
     .register('start_new_task', (msg, ctx) => {
-      const builtin = parseBuiltinCommand(msg.text);
-      if (builtin === 'reload') {
-        void ctx.agent.reload(ctx.webview);
-        return;
-      }
-      if (builtin === 'compact') {
-        void runCompact(ctx, 'task-active', '', ctx.agent.getSessionFile());
-        return;
-      }
+      if (runBuiltinCommand(ctx, msg.text, undefined)) return;
 
-      const model = msg.model_provider && msg.model_id ? { id: msg.model_id, provider: msg.model_provider } : undefined;
-      void ctx.agent.startTask(msg.text, model, ctx.webview, msg.images);
+      void ctx.agent.startTask(msg.text, toModelSelection(msg), ctx.webview, msg.images);
     })
     .register('send_message', (msg, ctx) => {
-      const builtin = parseBuiltinCommand(msg.text);
-      if (builtin === 'reload') {
-        void ctx.agent.reload(ctx.webview);
-        return;
-      }
-      if (builtin === 'compact') {
-        void runCompact(ctx, 'task-active', '', msg.path || ctx.agent.getSessionFile());
-        return;
-      }
+      if (runBuiltinCommand(ctx, msg.text, msg.path)) return;
 
-      const model = msg.model_provider && msg.model_id ? { id: msg.model_id, provider: msg.model_provider } : undefined;
-      void ctx.agent.startTask(msg.text, model, ctx.webview, msg.images, msg.path);
+      void ctx.agent.startTask(msg.text, toModelSelection(msg), ctx.webview, msg.images, msg.path);
     })
     .register('continue_task', (msg, ctx) => {
-      const model = msg.model_provider && msg.model_id ? { id: msg.model_id, provider: msg.model_provider } : undefined;
-      void ctx.agent.continueTask(msg.path || '', ctx.webview, model);
+      void ctx.agent.continueTask(msg.path || '', ctx.webview, toModelSelection(msg));
     })
     .register('approve_tool', (msg, ctx) => ctx.agent.approveTool(msg.approval_id))
     .register('deny_tool', (msg, ctx) => ctx.agent.denyTool(msg.approval_id))
