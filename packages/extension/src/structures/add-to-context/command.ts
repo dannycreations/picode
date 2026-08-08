@@ -3,7 +3,7 @@ import { commands, window, workspace } from 'vscode';
 
 import { getEffectiveSelection } from '@pi-code/extension/structures/add-to-context/helpers';
 import { ChatViewProvider } from '@pi-code/extension/structures/agent-webview/provider';
-import { logger } from '@pi-code/shared/logger';
+import { logger } from '@pi-code/shared/core/logger';
 
 import type { Disposable, TextDocument } from 'vscode';
 

@@ -5,7 +5,7 @@ import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime';
 import { bundledLanguages } from 'shiki';
 
-import { logger } from '@pi-code/shared/logger';
+import { logger } from '@pi-code/shared/core/logger';
 import { getHighlighter, normalizeLanguage } from '@pi-code/webview/components/chat/helpers/highlighter';
 import { useCopyToClipboard } from '@pi-code/webview/hooks/useCopyToClipboard';
 import { useInViewport } from '@pi-code/webview/hooks/useInViewport';

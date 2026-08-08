@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { vscode } from '@pi-code/webview/utilities/vscode';
 
 import type { Dispatch, SetStateAction } from 'react';
-import type { ExtensionToWebviewMessage, HistoryItem } from '@pi-code/shared/protocol';
+import type { ExtensionToWebviewMessage, HistoryItem } from '@pi-code/shared/core/protocol';
 
 export type HistoryScope = 'current' | 'all';
 
@@ -50,10 +50,6 @@ export const useChatHistory = ({ view, scope }: UseChatHistoryProps): UseChatHis
           requestedHistoryScopeRef.current = null;
         }
         historyDirtyRef.current = false;
-        break;
-
-      case 'history_deleted':
-        setPastTasks((prev) => prev.filter((item) => !msg.payload.paths.includes(item.path)));
         break;
     }
   }, []);

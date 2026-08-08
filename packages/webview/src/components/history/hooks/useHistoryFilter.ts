@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import type { Dispatch, SetStateAction } from 'react';
-import type { HistoryItem } from '@pi-code/shared/protocol';
+import type { HistoryItem } from '@pi-code/shared/core/protocol';
 
 export type SortOption = 'newest' | 'oldest' | 'alphabetical';
 export type HistoryScope = 'current' | 'all';

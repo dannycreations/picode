@@ -1,4 +1,4 @@
-import { logger } from '@pi-code/shared/logger';
+import { logger } from '@pi-code/shared/core/logger';
 
 export function getEffectiveSelection(
   document: {

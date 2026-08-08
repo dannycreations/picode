@@ -5,7 +5,7 @@ import { MessageHeader } from '@pi-code/webview/components/chat/messages/Message
 import { vscode } from '@pi-code/webview/utilities/vscode';
 
 import type { FC } from 'react';
-import type { ChatMessage, CommandItem } from '@pi-code/shared/protocol';
+import type { ChatMessage, CommandItem } from '@pi-code/shared/core/protocol';
 
 export interface UserMessageProps {
   readonly message: ChatMessage;

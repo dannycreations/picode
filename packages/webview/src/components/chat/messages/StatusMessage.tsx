@@ -4,7 +4,7 @@ import { AlertTriangle, Info, RefreshCw } from 'lucide-react';
 import { formatTime } from '@pi-code/webview/components/chat/messages/helpers/common';
 
 import type { FC } from 'react';
-import type { ChatMessage } from '@pi-code/shared/protocol';
+import type { ChatMessage } from '@pi-code/shared/core/protocol';
 
 export const ApiRequestMessage: FC<{ readonly message: ChatMessage }> = ({ message }) => {
   const isRunning = message.toolStatus === 'running';

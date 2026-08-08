@@ -1,4 +1,4 @@
-import type { ActiveTaskState } from '@pi-code/shared/protocol';
+import type { ActiveTaskState } from '@pi-code/shared/core/protocol';
 
 export function formatTimeAgo(ts: number): string {
   const diffMs = Date.now() - ts;

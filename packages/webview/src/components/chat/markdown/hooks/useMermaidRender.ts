@@ -1,7 +1,7 @@
 import mermaid from 'mermaid-compact';
 import { useCallback, useEffect, useState } from 'react';
 
-import { logger } from '@pi-code/shared/logger';
+import { logger } from '@pi-code/shared/core/logger';
 import { applyDeterministicFixes } from '@pi-code/webview/components/chat/markdown/helpers/mermaid';
 
 export interface UseMermaidRenderReturn {

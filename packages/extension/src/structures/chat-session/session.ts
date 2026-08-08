@@ -1,12 +1,12 @@
 import { getLastAssistantUsage, parseSkillBlock } from '@earendil-works/pi-coding-agent';
 
 import { toBase64DataUrl } from '@pi-code/extension/utilities/codec';
-import { DEFAULT_CONTEXT_LIMIT } from '@pi-code/shared/constants';
-import { logger } from '@pi-code/shared/logger';
+import { DEFAULT_CONTEXT_LIMIT } from '@pi-code/shared/core/constants';
+import { logger } from '@pi-code/shared/core/logger';
 
 import type { SessionEntry } from '@earendil-works/pi-coding-agent';
 import type { SessionMessageContent, SessionTreeEntry } from '@pi-code/extension/types/extension';
-import type { ChatMessage, StatsData, ToolName } from '@pi-code/shared/protocol';
+import type { ChatMessage, StatsData, ToolName } from '@pi-code/shared/core/protocol';
 
 export function collapseSkillBlock(text: string): string {
   const parsed = parseSkillBlock(text);

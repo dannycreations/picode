@@ -3,7 +3,9 @@ import { resolve } from 'node:path';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
-import type { ToolName } from '@pi-code/shared/protocol';
+import { toErrorMessage } from '@pi-code/shared/utilities/common';
+
+import type { ToolName } from '@pi-code/shared/core/protocol';
 
 export const deleteFileTool = defineTool({
   name: 'delete_file' as ToolName,
@@ -42,7 +44,7 @@ export const deleteFileTool = defineTool({
       }
     } catch (err) {
       return {
-        content: [{ type: 'text', text: `Error deleting file: ${err instanceof Error ? err.message : String(err)}` }],
+        content: [{ type: 'text', text: `Error deleting file: ${toErrorMessage(err)}` }],
         details: {},
         isError: true,
       };

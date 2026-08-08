@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import type { ChatMessage } from '@pi-code/shared/protocol';
+import type { ChatMessage } from '@pi-code/shared/core/protocol';
 
 function hasContent(value: string | undefined): boolean {
   return value !== undefined && value.trim() !== '';
@@ -31,10 +31,6 @@ const ROW_HEIGHT_ESTIMATE_PX: Record<ChatMessage['sender'], number> = {
 };
 
 const rowContainmentStyles = new Map<ChatMessage['sender'], CSSProperties>();
-
-export function getRowHeightEstimate(sender: ChatMessage['sender']): number {
-  return ROW_HEIGHT_ESTIMATE_PX[sender];
-}
 
 export function getRowContainmentStyle(sender: ChatMessage['sender']): CSSProperties {
   let style = rowContainmentStyles.get(sender);

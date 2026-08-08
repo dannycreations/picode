@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getMostImportantTodo, getScrollIndex, parseTodoList } from '@pi-code/shared/todo';
+import { getMostImportantTodo, getScrollIndex, parseTodoList } from '@pi-code/shared/utilities/todo';
 
 describe('parseTodoList', () => {
   it('should map checkbox indicators to statuses', () => {

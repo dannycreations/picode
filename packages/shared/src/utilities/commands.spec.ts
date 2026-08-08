@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseBuiltinCommand } from '@pi-code/shared/commands';
+import { parseBuiltinCommand } from '@pi-code/shared/utilities/commands';
 
 describe('parseBuiltinCommand', () => {
   it('parses a bare builtin invocation', () => {

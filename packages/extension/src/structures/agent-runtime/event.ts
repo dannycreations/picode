@@ -1,10 +1,10 @@
-import { DEFAULT_CONTEXT_LIMIT } from '@pi-code/shared/constants';
-import { logger } from '@pi-code/shared/logger';
+import { DEFAULT_CONTEXT_LIMIT } from '@pi-code/shared/core/constants';
+import { logger } from '@pi-code/shared/core/logger';
 
 import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent';
 import type { AssistantMessageWithUsage } from '@pi-code/extension/types/extension';
-import type { ExtensionToWebviewMessage, StatsData, ToolName } from '@pi-code/shared/protocol';
-import type { TodoItem } from '@pi-code/shared/todo';
+import type { ExtensionToWebviewMessage, StatsData, ToolName } from '@pi-code/shared/core/protocol';
+import type { TodoItem } from '@pi-code/shared/utilities/todo';
 
 export class EventMapper {
   private apiRequestId: string | null = null;

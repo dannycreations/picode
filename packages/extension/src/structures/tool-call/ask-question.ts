@@ -2,8 +2,9 @@ import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
 import { QuestionBridge } from '@pi-code/extension/structures/agent-runtime/question';
+import { toErrorMessage } from '@pi-code/shared/utilities/common';
 
-import type { ToolName } from '@pi-code/shared/protocol';
+import type { ToolName } from '@pi-code/shared/core/protocol';
 
 export const askQuestionTool = defineTool({
   name: 'ask_question' as ToolName,
@@ -44,7 +45,7 @@ export const askQuestionTool = defineTool({
       };
     } catch (err) {
       return {
-        content: [{ type: 'text', text: `Error asking question: ${err instanceof Error ? err.message : String(err)}` }],
+        content: [{ type: 'text', text: `Error asking question: ${toErrorMessage(err)}` }],
         details: {},
         isError: true,
       };

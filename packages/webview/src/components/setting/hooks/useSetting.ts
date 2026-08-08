@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 
 import { vscode } from '@pi-code/webview/utilities/vscode';
 
-import type { ExtensionToWebviewMessage } from '@pi-code/shared/protocol';
-import type { AppSettings, SettingsPatch } from '@pi-code/shared/settings';
+import type { ExtensionToWebviewMessage } from '@pi-code/shared/core/protocol';
+import type { AppSettings, SettingsPatch } from '@pi-code/shared/core/settings';
 
 export function areSettingsValuesEqual(a: unknown, b: unknown): boolean {
   if (Array.isArray(a) && Array.isArray(b)) {

@@ -1,6 +1,6 @@
 import { bundledLanguages, createHighlighter } from 'shiki';
 
-import { logger } from '@pi-code/shared/logger';
+import { logger } from '@pi-code/shared/core/logger';
 
 import type { BundledLanguage, Highlighter } from 'shiki';
 

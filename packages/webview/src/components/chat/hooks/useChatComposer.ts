@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 
 import type { Dispatch, RefObject, SetStateAction } from 'react';
-import type { ExtensionToWebviewMessage } from '@pi-code/shared/protocol';
+import type { ExtensionToWebviewMessage } from '@pi-code/shared/core/protocol';
 
 export interface UseChatComposerReturn {
   readonly view: 'chat' | 'history' | 'settings';

@@ -9,7 +9,7 @@ import {
   truncateOutput,
 } from '@pi-code/extension/utilities/truncate';
 
-import type { AppSettings } from '@pi-code/shared/settings';
+import type { AppSettings } from '@pi-code/shared/core/settings';
 
 const limits = { maxLines: 5, maxBytes: 1024 };
 

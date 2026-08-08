@@ -1,4 +1,4 @@
-import { parseBuiltinCommand } from '@pi-code/shared/commands';
+import { parseBuiltinCommand } from '@pi-code/shared/utilities/commands';
 
 import type { MessageHandlerContext } from '@pi-code/extension/structures/agent-webview/types';
 

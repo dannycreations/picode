@@ -6,7 +6,7 @@ import { TodoView } from '@pi-code/webview/components/chat/TodoView';
 import { useCopyToClipboard } from '@pi-code/webview/hooks/useCopyToClipboard';
 
 import type { ComponentType, FC, MouseEvent } from 'react';
-import type { ChatMessage, StatsData } from '@pi-code/shared/protocol';
+import type { ChatMessage, StatsData } from '@pi-code/shared/core/protocol';
 
 export interface ChatHeaderProps extends StatsData {
   readonly title: string;

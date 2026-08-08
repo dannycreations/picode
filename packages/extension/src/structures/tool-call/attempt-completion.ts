@@ -1,7 +1,9 @@
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
-import type { ToolName } from '@pi-code/shared/protocol';
+import { toErrorMessage } from '@pi-code/shared/utilities/common';
+
+import type { ToolName } from '@pi-code/shared/core/protocol';
 
 export const attemptCompletionTool = defineTool({
   name: 'attempt_completion' as ToolName,
@@ -18,7 +20,7 @@ export const attemptCompletionTool = defineTool({
       };
     } catch (err) {
       return {
-        content: [{ type: 'text', text: `Error completing task: ${err instanceof Error ? err.message : String(err)}` }],
+        content: [{ type: 'text', text: `Error completing task: ${toErrorMessage(err)}` }],
         details: {},
         isError: true,
       };

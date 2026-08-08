@@ -6,7 +6,7 @@ import { Markdown } from '@pi-code/webview/components/chat/markdown/Markdown';
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
 
 import type { FC } from 'react';
-import type { ChatMessage } from '@pi-code/shared/protocol';
+import type { ChatMessage } from '@pi-code/shared/core/protocol';
 
 interface AssistantMessageProps {
   readonly message: ChatMessage;

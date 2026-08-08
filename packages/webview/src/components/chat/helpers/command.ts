@@ -1,4 +1,4 @@
-import type { CommandItem } from '@pi-code/shared/protocol';
+import type { CommandItem } from '@pi-code/shared/core/protocol';
 
 const TOKEN_PATTERN = /^\/(\S*)/;
 const WORD_BOUNDARY_PATTERN = /[:\-_./]/;

@@ -4,7 +4,7 @@ import { SettingsService } from '@pi-code/extension/core/settings';
 import { isProjectTrusted } from '@pi-code/extension/utilities/vscode';
 
 import type { ResourceDiagnostic, Skill } from '@earendil-works/pi-coding-agent';
-import type { AppSettings } from '@pi-code/shared/settings';
+import type { AppSettings } from '@pi-code/shared/core/settings';
 
 interface SkillsResult {
   readonly skills: Skill[];

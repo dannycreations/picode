@@ -2,10 +2,11 @@ import { window } from 'vscode';
 
 import { SettingsService } from '@pi-code/extension/core/settings';
 import { runBuiltinCommand, runCompact } from '@pi-code/extension/structures/chat-command/builtin';
-import { logger } from '@pi-code/shared/logger';
+import { logger } from '@pi-code/shared/core/logger';
+import { toErrorMessage } from '@pi-code/shared/utilities/common';
 
 import type { MessageHandlerContext } from '@pi-code/extension/structures/agent-webview/types';
-import type { ModelItem, WebviewToExtensionMessage } from '@pi-code/shared/protocol';
+import type { ModelItem, WebviewToExtensionMessage } from '@pi-code/shared/core/protocol';
 
 export type CommandHandler<T extends WebviewToExtensionMessage['type']> = (
   message: Extract<WebviewToExtensionMessage, { type: T }>,
@@ -27,7 +28,7 @@ export class ChatMessageDispatcher {
     try {
       await handler(message, context);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
+      const errorMessage = toErrorMessage(err);
       logger.error(`Error handling message "${message.type}":`, err);
       window.showErrorMessage(`Action failed (${message.type}): ${errorMessage}`);
     }
@@ -105,8 +106,7 @@ export function createDefaultDispatcher(): ChatMessageDispatcher {
       ctx.postMessage({ type: 'history_data', payload: { history } });
     })
     .register('delete_sessions', async (msg, ctx) => {
-      const deleted = await ctx.sessionService.deleteSessions(msg.paths);
-      ctx.postMessage({ type: 'history_deleted', payload: { paths: deleted } });
+      await ctx.sessionService.deleteSessions(msg.paths);
     })
     .register('update_settings', async (msg, ctx) => {
       const settings = await SettingsService.getInstance(ctx.cwd).updateSettings(msg.settings);

@@ -3,14 +3,14 @@ import { Image as ImageIcon, Send } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
 
-import { logger } from '@pi-code/shared/logger';
+import { logger } from '@pi-code/shared/core/logger';
 import { CommandMenu } from '@pi-code/webview/components/chat/CommandMenu';
 import { splitCommand } from '@pi-code/webview/components/chat/helpers/command';
 import { useChatCommand } from '@pi-code/webview/components/chat/hooks/useChatCommand';
 import { readFileAsDataUrl } from '@pi-code/webview/utilities/common';
 
 import type { ChangeEvent, ClipboardEvent, FC, KeyboardEvent, RefObject } from 'react';
-import type { CommandItem } from '@pi-code/shared/protocol';
+import type { CommandItem } from '@pi-code/shared/core/protocol';
 
 export interface ChatInputProps {
   readonly inputValue: string;

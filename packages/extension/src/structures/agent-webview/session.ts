@@ -5,12 +5,12 @@ import { Uri, window, workspace } from 'vscode';
 import { SettingsService } from '@pi-code/extension/core/settings';
 import { listCommands } from '@pi-code/extension/structures/chat-command/command';
 import { calculateSessionStats, convertSessionEntries } from '@pi-code/extension/structures/chat-session/session';
-import { DEFAULT_CONTEXT_LIMIT } from '@pi-code/shared/constants';
-import { logger } from '@pi-code/shared/logger';
+import { DEFAULT_CONTEXT_LIMIT } from '@pi-code/shared/core/constants';
+import { logger } from '@pi-code/shared/core/logger';
 
 import type { SessionInfo } from '@earendil-works/pi-coding-agent';
 import type { SessionTreeEntry } from '@pi-code/extension/types/extension';
-import type { ChatMessage, CommandItem, ExtensionToWebviewMessage, HistoryItem, StatsData } from '@pi-code/shared/protocol';
+import type { ChatMessage, CommandItem, ExtensionToWebviewMessage, HistoryItem, StatsData } from '@pi-code/shared/core/protocol';
 
 export type SessionInitData = Extract<ExtensionToWebviewMessage, { type: 'init_data' }>['payload'];
 

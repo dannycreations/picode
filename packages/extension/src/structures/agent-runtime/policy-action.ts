@@ -2,7 +2,7 @@ import { isAbsolute, join, relative, resolve } from 'node:path';
 import { CONFIG_DIR_NAME, getAgentDir } from '@earendil-works/pi-coding-agent';
 import { parse } from 'shell-quote';
 
-import type { AppSettings } from '@pi-code/shared/settings';
+import type { AppSettings } from '@pi-code/shared/core/settings';
 
 export type DecisionAction = 'approve' | 'deny' | 'confirm';
 

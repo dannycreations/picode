@@ -3,7 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { applyCommand, matchCommands, readCommandQuery } from '@pi-code/webview/components/chat/helpers/command';
 
 import type { ChangeEvent, KeyboardEvent, RefObject } from 'react';
-import type { CommandItem } from '@pi-code/shared/protocol';
+import type { CommandItem } from '@pi-code/shared/core/protocol';
 
 export interface UseCommandProps {
   readonly commands: readonly CommandItem[];

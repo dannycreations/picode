@@ -6,7 +6,7 @@ import { COMMIT_MESSAGE_PROMPT } from '@pi-code/extension/core/prompt';
 import { buildGitContext, getGitChanges, getGitDiffContext, getRepoContext } from '@pi-code/extension/structures/commit-message/git';
 import { extractCodeFenceMessage } from '@pi-code/extension/utilities/markdown';
 import { isProjectTrusted } from '@pi-code/extension/utilities/vscode';
-import { logger } from '@pi-code/shared/logger';
+import { logger } from '@pi-code/shared/core/logger';
 
 import type { Disposable, Uri } from 'vscode';
 import type { GitExtension, GitRepository, LlmResponseContent, ScmRequest } from '@pi-code/extension/types/extension';

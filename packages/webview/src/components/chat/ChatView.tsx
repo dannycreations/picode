@@ -21,7 +21,7 @@ import { exportTaskAsJson } from '@pi-code/webview/utilities/common';
 import { vscode } from '@pi-code/webview/utilities/vscode';
 
 import type { FC } from 'react';
-import type { ExtensionToWebviewMessage, HistoryItem } from '@pi-code/shared/protocol';
+import type { ExtensionToWebviewMessage, HistoryItem } from '@pi-code/shared/core/protocol';
 
 export const ChatLogo: FC = () => {
   return (

@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import type { ComponentType } from 'react';
-import type { AppSettings } from '@pi-code/shared/settings';
+import type { AppSettings } from '@pi-code/shared/core/settings';
 
 export interface TabProps {
   readonly draftSettings: AppSettings;

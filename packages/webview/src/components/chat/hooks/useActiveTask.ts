@@ -1,9 +1,9 @@
 import { useCallback, useMemo, useState } from 'react';
 
-import { DEFAULT_CONTEXT_LIMIT } from '@pi-code/shared/constants';
+import { DEFAULT_CONTEXT_LIMIT } from '@pi-code/shared/core/constants';
 import { findPendingQuestion } from '@pi-code/webview/components/chat/helpers/question';
 
-import type { ActiveTaskState, ChatMessage, ExtensionToWebviewMessage, StatsData } from '@pi-code/shared/protocol';
+import type { ActiveTaskState, ChatMessage, ExtensionToWebviewMessage, StatsData } from '@pi-code/shared/core/protocol';
 
 interface ApiRequestSettlePatch {
   readonly cost?: number;

@@ -5,7 +5,7 @@ import { useRef, useState } from 'react';
 import { useClickOutside } from '@pi-code/webview/hooks/useClickOutside';
 
 import type { FC } from 'react';
-import type { ModelItem } from '@pi-code/shared/protocol';
+import type { ModelItem } from '@pi-code/shared/core/protocol';
 
 export interface ChatFooterProps {
   readonly currentModel: string;

@@ -4,7 +4,7 @@ import { HistoryCard } from '@pi-code/webview/components/history/HistoryCard';
 import { ConfirmDialog } from '@pi-code/webview/components/shared/ConfirmDialog';
 
 import type { FC, MouseEvent } from 'react';
-import type { HistoryItem } from '@pi-code/shared/protocol';
+import type { HistoryItem } from '@pi-code/shared/core/protocol';
 
 interface HistoryPreviewProps {
   readonly history: HistoryItem[];

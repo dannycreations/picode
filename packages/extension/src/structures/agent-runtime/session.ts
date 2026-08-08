@@ -9,9 +9,9 @@ import { executeCommandTool } from '@pi-code/extension/structures/tool-call/exec
 import { readFileTool } from '@pi-code/extension/structures/tool-call/read-file';
 import { updateTodoTool } from '@pi-code/extension/structures/tool-call/update-todo';
 import { writeFileTool } from '@pi-code/extension/structures/tool-call/write-file';
-import { DEFAULT_CONTEXT_LIMIT } from '@pi-code/shared/constants';
+import { DEFAULT_CONTEXT_LIMIT } from '@pi-code/shared/core/constants';
 
-import type { ToolName } from '@pi-code/shared/protocol';
+import type { ToolName } from '@pi-code/shared/core/protocol';
 
 export class SessionFactory {
   private static readonly CUSTOM_TOOLS = [

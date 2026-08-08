@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { getRowContainmentStyle, getRowHeightEstimate, isRenderableMessage } from '@pi-code/webview/components/chat/helpers/message';
+import { getRowContainmentStyle, isRenderableMessage } from '@pi-code/webview/components/chat/helpers/message';
 
-import type { ChatMessage } from '@pi-code/shared/protocol';
+import type { ChatMessage } from '@pi-code/shared/core/protocol';
 
 const SENDERS = ['user', 'assistant', 'tool', 'error', 'checkpoint', 'info', 'api_request'] as const;
 
@@ -37,20 +37,6 @@ describe('isRenderableMessage', () => {
     for (const sender of SENDERS.filter((s) => s !== 'assistant')) {
       expect(isRenderableMessage(createMessage({ sender, text: '' }))).toBe(true);
     }
-  });
-});
-
-describe('getRowHeightEstimate', () => {
-  it('should provide a usable placeholder for every sender', () => {
-    for (const sender of SENDERS) {
-      expect(getRowHeightEstimate(sender)).toBeGreaterThan(0);
-    }
-  });
-
-  it('should scale with how much content a row typically holds', () => {
-    expect(getRowHeightEstimate('info')).toBeLessThan(getRowHeightEstimate('user'));
-    expect(getRowHeightEstimate('user')).toBeLessThan(getRowHeightEstimate('tool'));
-    expect(getRowHeightEstimate('tool')).toBeLessThan(getRowHeightEstimate('assistant'));
   });
 });
 

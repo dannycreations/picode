@@ -8,7 +8,7 @@ import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
 
 import type { CancellationToken, ExtensionContext, Webview, WebviewView, WebviewViewProvider, WebviewViewResolveContext } from 'vscode';
 import type { MessageHandlerContext } from '@pi-code/extension/structures/agent-webview/types';
-import type { ExtensionToWebviewMessage, WebviewToExtensionMessage } from '@pi-code/shared/protocol';
+import type { ExtensionToWebviewMessage, WebviewToExtensionMessage } from '@pi-code/shared/core/protocol';
 
 export class ChatViewHtml {
   public static build(webview: Webview, extensionUri: Uri): string {

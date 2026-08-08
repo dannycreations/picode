@@ -1,4 +1,4 @@
-import type { WebviewToExtensionMessage } from '@pi-code/shared/protocol';
+import type { WebviewToExtensionMessage } from '@pi-code/shared/core/protocol';
 
 export interface WebviewApi<State> {
   readonly postMessage: (message: WebviewToExtensionMessage) => void;

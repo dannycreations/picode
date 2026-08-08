@@ -4,7 +4,7 @@ import { commands, window } from 'vscode';
 import { registerAddToContextCommand } from '@pi-code/extension/structures/add-to-context/command';
 import { ChatViewProvider } from '@pi-code/extension/structures/agent-webview/provider';
 import { registerCommitMessageCommand } from '@pi-code/extension/structures/commit-message/command';
-import { logger } from '@pi-code/shared/logger';
+import { logger } from '@pi-code/shared/core/logger';
 
 import type { ExtensionContext } from 'vscode';
 

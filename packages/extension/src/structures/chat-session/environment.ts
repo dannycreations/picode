@@ -9,7 +9,7 @@ import { spawnGit } from '@pi-code/extension/structures/commit-message/git';
 
 import type { Ignore } from 'ignore';
 import type { EnvironmentMessage } from '@pi-code/extension/types/extension';
-import type { TodoItem } from '@pi-code/shared/todo';
+import type { TodoItem } from '@pi-code/shared/utilities/todo';
 
 const STATUS_MAP: Record<TodoItem['status'], string> = {
   pending: 'Pending',

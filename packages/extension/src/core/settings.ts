@@ -4,7 +4,7 @@ import { isObjectLike } from 'es-toolkit/compat';
 
 import { isProjectTrusted } from '@pi-code/extension/utilities/vscode';
 
-import type { AppSettings } from '@pi-code/shared/settings';
+import type { AppSettings } from '@pi-code/shared/core/settings';
 
 export const DEFAULT_SETTINGS: AppSettings = {
   enableTodoTool: true,

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { applyCommand, matchCommands, readCommandQuery, readCommandToken, splitCommand } from '@pi-code/webview/components/chat/helpers/command';
 
-import type { CommandItem } from '@pi-code/shared/protocol';
+import type { CommandItem } from '@pi-code/shared/core/protocol';
 
 const COMMANDS: CommandItem[] = [
   { name: 'skill:pdf-form', source: 'skill', description: 'Fill PDF forms' },

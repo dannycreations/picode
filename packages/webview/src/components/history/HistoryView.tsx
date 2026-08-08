@@ -9,7 +9,7 @@ import { useHistoryFilter } from '@pi-code/webview/components/history/hooks/useH
 import { ConfirmDialog } from '@pi-code/webview/components/shared/ConfirmDialog';
 
 import type { FC, MouseEvent } from 'react';
-import type { HistoryItem } from '@pi-code/shared/protocol';
+import type { HistoryItem } from '@pi-code/shared/core/protocol';
 import type { HistoryScope } from '@pi-code/webview/components/history/hooks/useHistoryFilter';
 
 interface HistoryViewProps {

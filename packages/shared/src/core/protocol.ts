@@ -1,5 +1,5 @@
-import type { AppSettings, SettingsPatch } from '@pi-code/shared/settings';
-import type { TodoItem } from '@pi-code/shared/todo';
+import type { AppSettings, SettingsPatch } from '@pi-code/shared/core/settings';
+import type { TodoItem } from '@pi-code/shared/utilities/todo';
 
 export interface ActiveTaskState extends StatsData {
   readonly id: string;
@@ -18,7 +18,7 @@ export interface ChatMessage {
   readonly ts: number;
   readonly toolName?: ToolName;
   readonly toolArgs?: string;
-  readonly toolStatus?: 'approval' | 'approved' | 'running' | 'completed' | 'denied';
+  readonly toolStatus?: 'approval' | 'running' | 'completed' | 'denied';
   readonly reasoning?: string;
   readonly cost?: number;
   readonly diff?: string;
@@ -45,7 +45,6 @@ export interface CommandItem {
   readonly source: 'builtin' | 'skill';
   readonly description?: string;
   readonly detail?: string;
-  readonly builtin?: boolean;
 }
 
 export interface StatsData {
@@ -91,7 +90,6 @@ export type ExtensionToWebviewMessage =
       };
     }
   | { type: 'history_data'; payload: { history: HistoryItem[] } }
-  | { type: 'history_deleted'; payload: { paths: string[] } }
   | { type: 'commands_data'; payload: { commands: CommandItem[] } }
   | { type: 'settings_data'; payload: { settings: AppSettings } }
   | { type: 'session_loaded'; payload: ActiveTaskState }

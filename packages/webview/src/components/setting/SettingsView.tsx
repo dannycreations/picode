@@ -10,7 +10,7 @@ import { ContextTab } from '@pi-code/webview/components/setting/tabs/ContextTab'
 import { ConfirmDialog } from '@pi-code/webview/components/shared/ConfirmDialog';
 
 import type { FC } from 'react';
-import type { AppSettings } from '@pi-code/shared/settings';
+import type { AppSettings } from '@pi-code/shared/core/settings';
 import type { SettingsTab } from '@pi-code/webview/components/setting/shared/types';
 
 const SETTINGS_TABS: SettingsTab[] = [

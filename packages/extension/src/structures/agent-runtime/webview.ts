@@ -1,5 +1,7 @@
+import { toErrorMessage } from '@pi-code/shared/utilities/common';
+
 import type { Webview } from 'vscode';
-import type { ExtensionToWebviewMessage } from '@pi-code/shared/protocol';
+import type { ExtensionToWebviewMessage } from '@pi-code/shared/core/protocol';
 
 const FLUSH_INTERVAL_MS = 16;
 
@@ -38,7 +40,7 @@ export class WebviewMessenger {
     this.post({
       type: 'agent_error',
       payload: {
-        message: err instanceof Error ? err.message : String(err),
+        message: toErrorMessage(err),
       },
     });
   }

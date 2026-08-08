@@ -5,8 +5,9 @@ import { Type } from 'typebox';
 
 import { stripCodeFence } from '@pi-code/extension/utilities/markdown';
 import { buildFileChangeResult } from '@pi-code/extension/utilities/truncate';
+import { toErrorMessage } from '@pi-code/shared/utilities/common';
 
-import type { ToolName } from '@pi-code/shared/protocol';
+import type { ToolName } from '@pi-code/shared/core/protocol';
 
 export const writeFileTool = defineTool({
   name: 'write_file' as ToolName,
@@ -43,7 +44,7 @@ export const writeFileTool = defineTool({
       });
     } catch (err) {
       return {
-        content: [{ type: 'text', text: `Error writing to file: ${err instanceof Error ? err.message : String(err)}` }],
+        content: [{ type: 'text', text: `Error writing to file: ${toErrorMessage(err)}` }],
         details: {},
         isError: true,
       };

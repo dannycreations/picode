@@ -1,10 +1,10 @@
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, formatSize, generateDiffString, truncateHead, truncateTail } from '@earendil-works/pi-coding-agent';
 
 import { SettingsService } from '@pi-code/extension/core/settings';
-import { logger } from '@pi-code/shared/logger';
+import { logger } from '@pi-code/shared/core/logger';
 
 import type { TruncationResult } from '@earendil-works/pi-coding-agent';
-import type { AppSettings } from '@pi-code/shared/settings';
+import type { AppSettings } from '@pi-code/shared/core/settings';
 
 const BYTES_PER_KILOBYTE = 1024;
 

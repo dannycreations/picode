@@ -6,7 +6,7 @@ import { useCopyToClipboard } from '@pi-code/webview/hooks/useCopyToClipboard';
 import { formatTimeAgo } from '@pi-code/webview/utilities/common';
 
 import type { FC, MouseEvent } from 'react';
-import type { HistoryItem } from '@pi-code/shared/protocol';
+import type { HistoryItem } from '@pi-code/shared/core/protocol';
 
 interface HistoryCardProps {
   readonly item: HistoryItem;

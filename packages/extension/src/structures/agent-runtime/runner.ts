@@ -9,11 +9,11 @@ import { listCommands } from '@pi-code/extension/structures/chat-command/command
 import { getEnvironmentDetails } from '@pi-code/extension/structures/chat-session/environment';
 import { parseBase64DataUrl } from '@pi-code/extension/utilities/codec';
 import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
-import { logger } from '@pi-code/shared/logger';
+import { logger } from '@pi-code/shared/core/logger';
 
 import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent';
 import type { Webview } from 'vscode';
-import type { ModelItem, ToolName } from '@pi-code/shared/protocol';
+import type { ModelItem, ToolName } from '@pi-code/shared/core/protocol';
 
 export interface BeforeToolCallResult {
   readonly block?: boolean;

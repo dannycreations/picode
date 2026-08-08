@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { COMMAND_SOURCE_LABEL } from '@pi-code/webview/components/chat/helpers/command';
 
 import type { FC } from 'react';
-import type { CommandItem } from '@pi-code/shared/protocol';
+import type { CommandItem } from '@pi-code/shared/core/protocol';
 
 export interface CommandMenuProps {
   readonly commands: readonly CommandItem[];

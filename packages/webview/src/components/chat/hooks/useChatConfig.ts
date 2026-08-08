@@ -1,8 +1,8 @@
 import { useCallback, useState } from 'react';
 
 import type { Dispatch, SetStateAction } from 'react';
-import type { CommandItem, ExtensionToWebviewMessage, ModelItem } from '@pi-code/shared/protocol';
-import type { AppSettings } from '@pi-code/shared/settings';
+import type { CommandItem, ExtensionToWebviewMessage, ModelItem } from '@pi-code/shared/core/protocol';
+import type { AppSettings } from '@pi-code/shared/core/settings';
 
 export interface UseChatConfigReturn {
   readonly models: ModelItem[];

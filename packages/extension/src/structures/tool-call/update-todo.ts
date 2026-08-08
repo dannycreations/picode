@@ -1,10 +1,10 @@
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
-import { parseTodoList } from '@pi-code/shared/todo';
+import { toErrorMessage } from '@pi-code/shared/utilities/common';
+import { parseTodoList } from '@pi-code/shared/utilities/todo';
 
-import type { ToolName } from '@pi-code/shared/protocol';
-import type { TodoItem } from '@pi-code/shared/todo';
+import type { ToolName } from '@pi-code/shared/core/protocol';
 
 export const updateTodoTool = defineTool({
   name: 'update_todo' as ToolName,
@@ -15,38 +15,13 @@ export const updateTodoTool = defineTool({
   }),
   async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
     try {
-      // Parse to validate/clean (just ensuring it is formatted well)
-      const lines = params.todos
-        .split(/\r?\n/)
-        .map((line) => line.trim())
-        .filter(Boolean);
-
-      const checklistLines = lines.map((line) => {
-        // Match standard checkbox patterns: [ ], [x], [-]
-        const match = line.match(/^(?:-\s*)?\[\s*([ xX\-~])\s*\]\s*(.+)$/);
-        if (match) {
-          let box = '[ ]';
-          const indicator = match[1].toLowerCase();
-          if (indicator === 'x') {
-            box = '[x]';
-          } else if (indicator === '-' || indicator === '~') {
-            box = '[-]';
-          }
-          return `- ${box} ${match[2]}`;
-        }
-        return line;
-      });
-
-      const updatedChecklist = checklistLines.join('\n');
-      const todos: TodoItem[] = parseTodoList(updatedChecklist);
-
       return {
         content: [{ type: 'text', text: 'update_todo success.' }],
-        details: { todos },
+        details: { todos: parseTodoList(params.todos) },
       };
     } catch (err) {
       return {
-        content: [{ type: 'text', text: `Error updating todo list: ${err instanceof Error ? err.message : String(err)}` }],
+        content: [{ type: 'text', text: `Error updating todo list: ${toErrorMessage(err)}` }],
         details: {},
         isError: true,
       };

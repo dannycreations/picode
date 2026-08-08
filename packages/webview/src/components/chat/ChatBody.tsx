@@ -7,7 +7,7 @@ import { ApiRequestMessage, ErrorMessage, InfoMessage } from '@pi-code/webview/c
 import { ToolMessage } from '@pi-code/webview/components/chat/messages/ToolMessage';
 import { UserMessage } from '@pi-code/webview/components/chat/messages/UserMessage';
 
-import type { ChatMessage, CommandItem } from '@pi-code/shared/protocol';
+import type { ChatMessage, CommandItem } from '@pi-code/shared/core/protocol';
 
 interface ChatBodyProps {
   readonly message: ChatMessage;

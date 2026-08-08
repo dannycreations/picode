@@ -1,6 +1,6 @@
 import type { AgentToolResult } from '@earendil-works/pi-coding-agent';
 import type { Uri } from 'vscode';
-import type { TodoItem } from '@pi-code/shared/todo';
+import type { TodoItem } from '@pi-code/shared/utilities/todo';
 
 export interface AssistantMessageWithUsage {
   readonly role: 'assistant';

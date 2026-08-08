@@ -1,11 +1,11 @@
 import { useCallback } from 'react';
 
-import { parseBuiltinCommand } from '@pi-code/shared/commands';
+import { parseBuiltinCommand } from '@pi-code/shared/utilities/commands';
 import { EMPTY_STATS } from '@pi-code/webview/components/chat/hooks/useActiveTask';
 import { vscode } from '@pi-code/webview/utilities/vscode';
 
 import type { Dispatch, RefObject, SetStateAction } from 'react';
-import type { ActiveTaskState, ChatMessage, HistoryItem, ModelItem } from '@pi-code/shared/protocol';
+import type { ActiveTaskState, ChatMessage, HistoryItem, ModelItem } from '@pi-code/shared/core/protocol';
 
 export interface UseChatActionsProps {
   readonly activeTask: ActiveTaskState | null;

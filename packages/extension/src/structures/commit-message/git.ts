@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { isBinaryFileSync } from '@pi-code/extension/utilities/binary';
+import { toErrorMessage } from '@pi-code/shared/utilities/common';
 
 export interface GitChange {
   readonly relativePath: string;
@@ -85,7 +86,7 @@ export function getGitDiffContext(cwd: string, changes: GitChange[], useStaged: 
       args.push(...filePaths);
       diffContext += spawnGit(args, cwd);
     } catch (err) {
-      diffContext += `Error generating diff for standard files: ${err instanceof Error ? err.message : String(err)}\n`;
+      diffContext += `Error generating diff for standard files: ${toErrorMessage(err)}\n`;
     }
   }
 
@@ -106,7 +107,7 @@ export function getGitDiffContext(cwd: string, changes: GitChange[], useStaged: 
             .join('\n') + '\n';
       }
     } catch (err) {
-      diffContext += `\nError reading untracked file ${file.relativePath}: ${err instanceof Error ? err.message : String(err)}\n`;
+      diffContext += `\nError reading untracked file ${file.relativePath}: ${toErrorMessage(err)}\n`;
     }
   }
 

@@ -2,7 +2,7 @@ import { cn } from 'cnfast';
 import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-import { logger } from '@pi-code/shared/logger';
+import { logger } from '@pi-code/shared/core/logger';
 import { svgToPng } from '@pi-code/webview/components/chat/markdown/helpers/mermaid';
 import { useMermaidRender } from '@pi-code/webview/components/chat/markdown/hooks/useMermaidRender';
 import { MermaidModal } from '@pi-code/webview/components/chat/markdown/MermaidModal';

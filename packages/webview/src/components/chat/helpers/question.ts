@@ -1,4 +1,4 @@
-import type { ChatMessage } from '@pi-code/shared/protocol';
+import type { ChatMessage } from '@pi-code/shared/core/protocol';
 
 export interface QuestionData {
   readonly question: string;

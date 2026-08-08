@@ -4,8 +4,9 @@ import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
 import { buildFileChangeResult } from '@pi-code/extension/utilities/truncate';
+import { toErrorMessage } from '@pi-code/shared/utilities/common';
 
-import type { ToolName } from '@pi-code/shared/protocol';
+import type { ToolName } from '@pi-code/shared/core/protocol';
 
 type LineEnding = '\r\n' | '\n';
 
@@ -147,7 +148,7 @@ export const editFileTool = defineTool({
           fileExists = false;
         } else {
           return {
-            content: [{ type: 'text', text: `Error reading file ${file_path}: ${err instanceof Error ? err.message : String(err)}` }],
+            content: [{ type: 'text', text: `Error reading file ${file_path}: ${toErrorMessage(err)}` }],
             details: {},
             isError: true,
           };
@@ -240,7 +241,7 @@ export const editFileTool = defineTool({
       });
     } catch (err) {
       return {
-        content: [{ type: 'text', text: `Error editing file: ${err instanceof Error ? err.message : String(err)}` }],
+        content: [{ type: 'text', text: `Error editing file: ${toErrorMessage(err)}` }],
         details: {},
         isError: true,
       };

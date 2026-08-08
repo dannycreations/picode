@@ -8,9 +8,10 @@ import { Type } from 'typebox';
 import { SettingsService } from '@pi-code/extension/core/settings';
 import { isBinaryFile } from '@pi-code/extension/utilities/binary';
 import { DEFAULT_OUTPUT_LIMITS, shareOutputLimits, toOutputLimits, truncateOutput } from '@pi-code/extension/utilities/truncate';
+import { toErrorMessage } from '@pi-code/shared/utilities/common';
 
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
-import type { ToolName } from '@pi-code/shared/protocol';
+import type { ToolName } from '@pi-code/shared/core/protocol';
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 
@@ -191,7 +192,7 @@ export const readFileTool = defineTool({
           };
         } catch (err) {
           fileResults[index] = {
-            result: `Error reading file ${fileObj.path}: ${err instanceof Error ? err.message : String(err)}`,
+            result: `Error reading file ${fileObj.path}: ${toErrorMessage(err)}`,
             hasError: true,
           };
         }
@@ -235,7 +236,7 @@ export const readFileTool = defineTool({
       };
     } catch (err) {
       return {
-        content: [{ type: 'text', text: `Error: ${err instanceof Error ? err.message : String(err)}` }],
+        content: [{ type: 'text', text: `Error: ${toErrorMessage(err)}` }],
         details: {},
         isError: true,
       };

@@ -2,10 +2,10 @@ import { cn } from 'cnfast';
 import { ArrowRight, Check, ListChecks, SquareDashed } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { getMostImportantTodo, getScrollIndex } from '@pi-code/shared/todo';
+import { getMostImportantTodo, getScrollIndex } from '@pi-code/shared/utilities/todo';
 
 import type { FC } from 'react';
-import type { TodoItem, TodoStatus } from '@pi-code/shared/todo';
+import type { TodoItem, TodoStatus } from '@pi-code/shared/utilities/todo';
 
 export interface TodoViewProps {
   readonly todos: TodoItem[];

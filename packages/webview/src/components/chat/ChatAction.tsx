@@ -1,5 +1,5 @@
 import type { FC } from 'react';
-import type { ActiveTaskState } from '@pi-code/shared/protocol';
+import type { ActiveTaskState } from '@pi-code/shared/core/protocol';
 
 interface ChatActionProps {
   readonly showScrollToBottom: boolean;

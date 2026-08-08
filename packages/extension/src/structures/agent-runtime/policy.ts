@@ -1,10 +1,10 @@
 import { SettingsService } from '@pi-code/extension/core/settings';
 import { resolveCommandAction, resolvePathAction, resolveReadPath } from '@pi-code/extension/structures/agent-runtime/policy-action';
-import { logger } from '@pi-code/shared/logger';
+import { logger } from '@pi-code/shared/core/logger';
 
 import type { ToolApprovalDecision } from '@pi-code/extension/structures/agent-runtime/runner';
-import type { ToolName } from '@pi-code/shared/protocol';
-import type { AppSettings } from '@pi-code/shared/settings';
+import type { ToolName } from '@pi-code/shared/core/protocol';
+import type { AppSettings } from '@pi-code/shared/core/settings';
 
 interface ReadFileToolArgs {
   readonly files?: ReadonlyArray<{ path?: string }>;
