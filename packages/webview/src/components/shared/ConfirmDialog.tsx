@@ -28,13 +28,13 @@ export interface ConfirmDialogProps {
   readonly onCancel: () => void;
 }
 
-interface UseModalKeyboardOptions {
+interface UseModalKeyboardProps {
   readonly isOpen: boolean;
   readonly onEscape?: () => void;
   readonly onEnter?: () => void;
 }
 
-const useModalKeyboard = ({ isOpen, onEscape, onEnter }: UseModalKeyboardOptions) => {
+const useModalKeyboard = ({ isOpen, onEscape, onEnter }: UseModalKeyboardProps) => {
   useEffect(() => {
     if (!isOpen) return;
 

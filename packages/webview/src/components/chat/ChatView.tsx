@@ -1,5 +1,5 @@
 import { cn } from 'cnfast';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ChatAction } from '@pi-code/webview/components/chat/ChatAction';
 import { ChatBody } from '@pi-code/webview/components/chat/ChatBody';
@@ -7,7 +7,11 @@ import { ChatFooter } from '@pi-code/webview/components/chat/ChatFooter';
 import { ChatHeader } from '@pi-code/webview/components/chat/ChatHeader';
 import { ChatInput } from '@pi-code/webview/components/chat/ChatInput';
 import { isRenderableMessage } from '@pi-code/webview/components/chat/helpers/message';
-import { useChatSession } from '@pi-code/webview/components/chat/hooks/useChatSession';
+import { useActiveTask } from '@pi-code/webview/components/chat/hooks/useActiveTask';
+import { useChatActions } from '@pi-code/webview/components/chat/hooks/useChatActions';
+import { useChatComposer } from '@pi-code/webview/components/chat/hooks/useChatComposer';
+import { useChatConfig } from '@pi-code/webview/components/chat/hooks/useChatConfig';
+import { useChatHistory } from '@pi-code/webview/components/chat/hooks/useChatHistory';
 import { HistoryPreview } from '@pi-code/webview/components/history/HistoryPreview';
 import { HistoryView } from '@pi-code/webview/components/history/HistoryView';
 import { SettingsView } from '@pi-code/webview/components/setting/SettingsView';
@@ -17,7 +21,7 @@ import { exportTaskAsJson } from '@pi-code/webview/utilities/common';
 import { vscode } from '@pi-code/webview/utilities/vscode';
 
 import type { FC } from 'react';
-import type { HistoryItem } from '@pi-code/shared/protocol';
+import type { ExtensionToWebviewMessage, HistoryItem } from '@pi-code/shared/protocol';
 
 export const ChatLogo: FC = () => {
   return (
@@ -44,31 +48,56 @@ export const ChatView: FC = () => {
   const [historyExpanded, setHistoryExpanded] = useState(true);
   const [showDeleteActiveConfirm, setShowDeleteActiveConfirm] = useState(false);
 
-  const {
-    activeTask,
-    models,
-    settings,
-    selectedModel,
-    setSelectedModel,
-    pastTasks,
-    setPastTasks,
-    commands,
-    isAgentRunning,
-    pendingQuestion,
-    inputValue,
-    setInputValue,
-    view,
-    setView,
-    scope,
-    setScope,
-    textareaRef,
-    handleSendPrompt,
-    handleToolResponse,
-    handleAnswerQuestion,
-    handleCopyToInput,
-    handleCloseTask,
-    handleDeleteActiveTask,
-  } = useChatSession();
+  const composer = useChatComposer();
+  const config = useChatConfig();
+  const history = useChatHistory({ view: composer.view, scope: composer.scope });
+  const task = useActiveTask();
+
+  // Fan every incoming extension message out to the domain hook that owns its
+  // state. Each hook's onMessage ignores the message types it does not handle.
+  useEffect(() => {
+    if (!vscode) return;
+
+    const handleMessage = (event: MessageEvent<ExtensionToWebviewMessage>): void => {
+      const msg = event.data;
+      composer.onMessage(msg);
+      config.onMessage(msg);
+      history.onMessage(msg);
+      task.onMessage(msg);
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [composer.onMessage, config.onMessage, history.onMessage, task.onMessage]);
+
+  useEffect(() => {
+    vscode?.postMessage({ type: 'init' });
+  }, []);
+
+  // Focus the composer when a pending question appears.
+  const pendingQuestionId = task.pendingQuestion?.id;
+  useEffect(() => {
+    if (!pendingQuestionId) return;
+    const timer = setTimeout(() => composer.textareaRef.current?.focus(), 0);
+    return () => clearTimeout(timer);
+  }, [pendingQuestionId, composer.textareaRef]);
+
+  const { activeTask, isAgentRunning, pendingQuestion } = task;
+  const { models, settings, selectedModel, setSelectedModel, commands } = config;
+  const { pastTasks, setPastTasks } = history;
+  const { view, setView, scope, setScope, inputValue, setInputValue, textareaRef } = composer;
+
+  const { handleSendPrompt, handleToolResponse, handleAnswerQuestion, handleCopyToInput, handleCloseTask, handleDeleteActiveTask } = useChatActions({
+    activeTask: task.activeTask,
+    models: config.models,
+    selectedModel: config.selectedModel,
+    pendingQuestion: task.pendingQuestion,
+    setActiveTask: task.setActiveTask,
+    setIsAgentRunning: task.setIsAgentRunning,
+    setPastTasks: history.setPastTasks,
+    setInputValue: composer.setInputValue,
+    textareaRef: composer.textareaRef,
+  });
 
   const { scrollRef, contentRef, showScrollToBottom, handleScroll, scrollToBottom } = useAutoScroll(activeTask?.id);
 

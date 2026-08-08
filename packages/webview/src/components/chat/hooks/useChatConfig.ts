@@ -1,0 +1,44 @@
+import { useCallback, useState } from 'react';
+
+import type { Dispatch, SetStateAction } from 'react';
+import type { CommandItem, ExtensionToWebviewMessage, ModelItem } from '@pi-code/shared/protocol';
+import type { AppSettings } from '@pi-code/shared/settings';
+
+export interface UseChatConfigReturn {
+  readonly models: ModelItem[];
+  readonly settings: AppSettings | null;
+  readonly commands: CommandItem[];
+  readonly selectedModel: string;
+  readonly setSelectedModel: Dispatch<SetStateAction<string>>;
+  readonly onMessage: (msg: ExtensionToWebviewMessage) => void;
+}
+
+export const useChatConfig = (): UseChatConfigReturn => {
+  const [models, setModels] = useState<ModelItem[]>([]);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [selectedModel, setSelectedModel] = useState('pi-code');
+  const [commands, setCommands] = useState<CommandItem[]>([]);
+
+  const onMessage = useCallback((msg: ExtensionToWebviewMessage): void => {
+    switch (msg.type) {
+      case 'init_data': {
+        const { models: backendModels, default_model: defaultModel, settings: backendSettings, commands: backendCommands } = msg.payload;
+        setModels(backendModels);
+        setSettings(backendSettings ?? null);
+        setCommands(backendCommands ?? []);
+        setSelectedModel(defaultModel || backendModels[0]?.id || 'pi-code');
+        break;
+      }
+
+      case 'commands_data':
+        setCommands(msg.payload.commands);
+        break;
+
+      case 'settings_data':
+        setSettings(msg.payload.settings);
+        break;
+    }
+  }, []);
+
+  return { models, settings, commands, selectedModel, setSelectedModel, onMessage };
+};

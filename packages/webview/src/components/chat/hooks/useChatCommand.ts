@@ -5,14 +5,14 @@ import { applyCommand, matchCommands, readCommandQuery } from '@pi-code/webview/
 import type { ChangeEvent, KeyboardEvent, RefObject } from 'react';
 import type { CommandItem } from '@pi-code/shared/protocol';
 
-export interface UseCommandOptions {
+export interface UseCommandProps {
   readonly commands: readonly CommandItem[];
   readonly value: string;
   readonly setValue: (value: string) => void;
   readonly textareaRef: RefObject<HTMLTextAreaElement | null>;
 }
 
-export interface UseCommandResult {
+export interface UseCommandReturn {
   readonly isOpen: boolean;
   readonly matches: CommandItem[];
   readonly selectedIndex: number;
@@ -24,7 +24,7 @@ export interface UseCommandResult {
   readonly syncCaret: () => void;
 }
 
-export const useChatCommand = ({ commands, value, setValue, textareaRef }: UseCommandOptions): UseCommandResult => {
+export const useChatCommand = ({ commands, value, setValue, textareaRef }: UseCommandProps): UseCommandReturn => {
   const [caret, setCaret] = useState(0);
   const [isDismissed, setIsDismissed] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
