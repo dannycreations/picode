@@ -1,0 +1,152 @@
+import { DEFAULT_CONTEXT_LIMIT } from '@pi-code/shared/constants';
+import { logger } from '@pi-code/shared/logger';
+
+import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent';
+import type { AssistantMessageWithUsage } from '@pi-code/extension/types/extension';
+import type { ExtensionToWebviewMessage, StatsData, ToolName } from '@pi-code/shared/protocol';
+import type { TodoItem } from '@pi-code/shared/todo';
+
+export class EventMapper {
+  private apiRequestId: string | null = null;
+  private turnCounter = 0;
+
+  public resetTurnState(): void {
+    this.apiRequestId = null;
+  }
+
+  public mapEvent(event: AgentSessionEvent, session: AgentSession, isAborted: boolean): ExtensionToWebviewMessage | null {
+    if (isAborted) {
+      return event.type === 'agent_settled' ? { type: 'agent_settled' } : null;
+    }
+
+    switch (event.type) {
+      case 'agent_start':
+        return {
+          type: 'agent_start',
+          payload: { path: session.sessionFile, stats: this.createStats(session) ?? undefined },
+        };
+
+      case 'turn_start': {
+        this.apiRequestId = this.nextApiRequestId();
+        return {
+          type: 'api_request_start',
+          payload: { id: this.apiRequestId, timestamp: Date.now() },
+        };
+      }
+
+      case 'turn_end': {
+        const id = this.apiRequestId || this.nextApiRequestId();
+        this.apiRequestId = null;
+        const msg = event.message?.role === 'assistant' ? (event.message as AssistantMessageWithUsage) : undefined;
+        const isError = msg?.stopReason === 'error';
+        return {
+          type: 'api_request_end',
+          payload: {
+            id,
+            cost: msg?.usage?.cost?.total,
+            error: isError ? msg.errorMessage || 'The API request failed.' : undefined,
+            stats: this.createStats(session) ?? undefined,
+          },
+        };
+      }
+
+      case 'message_start':
+        if (event.message.role !== 'user' && event.message.role !== 'assistant') {
+          return null;
+        }
+        return {
+          type: 'message_start',
+          payload: { role: event.message.role, timestamp: event.message.timestamp },
+        };
+
+      case 'message_update': {
+        const type = event.assistantMessageEvent.type;
+        if (type === 'text_delta' || type === 'thinking_delta') {
+          return {
+            type,
+            payload: { delta: event.assistantMessageEvent.delta },
+          };
+        }
+        return null;
+      }
+
+      case 'message_end':
+        if (event.message.role !== 'user' && event.message.role !== 'assistant') {
+          return null;
+        }
+        return {
+          type: 'message_end',
+          payload: {
+            role: event.message.role,
+            cost: event.message.role === 'assistant' ? (event.message as AssistantMessageWithUsage).usage?.cost?.total : undefined,
+            stats: this.createStats(session) ?? undefined,
+          },
+        };
+
+      case 'tool_execution_start':
+        return {
+          type: 'tool_execution_start',
+          payload: {
+            id: event.toolCallId,
+            tool_name: event.toolName as ToolName,
+            arguments: JSON.stringify(event.args),
+          },
+        };
+
+      case 'tool_execution_end': {
+        const toolResult = event.result as { details?: { todos?: TodoItem[] } } | undefined;
+        return {
+          type: 'tool_execution_end',
+          payload: {
+            id: event.toolCallId,
+            result: typeof event.result === 'string' ? event.result : JSON.stringify(event.result),
+            todos: toolResult?.details?.todos,
+            is_error: event.isError,
+          },
+        };
+      }
+
+      case 'agent_settled': {
+        const stats = this.createStats(session);
+        return stats ? { type: 'agent_settled', payload: stats } : { type: 'agent_settled' };
+      }
+
+      case 'compaction_start':
+        return {
+          type: 'agent_start',
+          payload: { path: session.sessionFile, stats: this.createStats(session) ?? undefined },
+        };
+
+      case 'compaction_end': {
+        const stats = this.createStats(session);
+        return stats ? { type: 'compaction_end', payload: stats } : null;
+      }
+
+      default:
+        return null;
+    }
+  }
+
+  private createStats(session: AgentSession): StatsData | null {
+    try {
+      const stats = session.getSessionStats();
+      return {
+        tokensIn: stats.tokens.input,
+        tokensOut: stats.tokens.output,
+        cacheReads: stats.tokens.cacheRead,
+        cacheWrites: stats.tokens.cacheWrite,
+        totalCost: stats.cost,
+        contextTokens: stats.contextUsage?.tokens ?? 0,
+        contextLimit: stats.contextUsage?.contextWindow ?? session.model?.contextWindow ?? DEFAULT_CONTEXT_LIMIT,
+      };
+    } catch (err) {
+      logger.error('Failed to create session stats message:', err);
+      return null;
+    }
+  }
+
+  private nextApiRequestId(): string {
+    this.turnCounter += 1;
+    return `api-req-${Date.now()}-${this.turnCounter}`;
+  }
+}

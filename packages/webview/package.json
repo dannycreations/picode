@@ -1,0 +1,41 @@
+{
+  "name": "@pi-code/webview",
+  "version": "0.0.1",
+  "description": "React user interface rendered inside the Pi Code chat webview",
+  "license": "GPL",
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "check": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@pi-code/shared": "workspace:*",
+    "cnfast": "^0.1.0",
+    "hast-util-to-jsx-runtime": "^2.3.6",
+    "katex": "^0.18.1",
+    "lucide-react": "^1.30.0",
+    "mermaid-compact": "^0.0.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-markdown": "^10.1.0",
+    "react-textarea-autosize": "^8.5.9",
+    "rehype-katex": "^7.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
+    "shiki": "^4.4.2",
+    "unist-util-visit": "^5.1.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.3",
+    "@types/node": "24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^6.0.5",
+    "@vscode/codicons": "^0.0.45",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.1",
+    "vitest": "^4.1.10"
+  }
+}

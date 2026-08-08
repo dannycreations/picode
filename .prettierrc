@@ -8,18 +8,7 @@
   "trailingComma": "all",
   "quoteProps": "as-needed",
   "plugins": ["@ianvs/prettier-plugin-sort-imports"],
-  "importOrder": [
-    "<THIRD_PARTY_MODULES>",
-    "",
-    "^@extension",
-    "^@webview",
-    "^[.]",
-    "",
-    "<TYPES>",
-    "<TYPES>^@extension",
-    "<TYPES>^@webview",
-    "<TYPES>^[.]"
-  ],
+  "importOrder": ["<THIRD_PARTY_MODULES>", "", "^@pi-code", "^[.]", "", "<TYPES>", "<TYPES>^@pi-code", "<TYPES>^[.]"],
   "importOrderParserPlugins": ["typescript", "jsx", "decorators-legacy"],
   "importOrderTypeScriptVersion": "4.4.0"
 }

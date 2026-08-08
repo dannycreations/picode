@@ -144,3 +144,6 @@ vite.config.ts.timestamp-*
 
 bin/
 context/
+
+# Mirrored from the workspace root when packaging the extension
+/packages/extension/LICENSE

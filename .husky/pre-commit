@@ -1,7 +1,7 @@
 echo "Running pre-commit checks..."
 
 echo "Running Format..."
-if ! OUTPUT=$(npm run format -- --no-color 2>&1); then
+if ! OUTPUT=$(pnpm run format --no-color 2>&1); then
   echo "$OUTPUT"
   echo "❌ Format script failed to run"
   exit 1

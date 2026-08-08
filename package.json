@@ -1,133 +1,28 @@
 {
-  "name": "pi-code",
-  "version": "0.0.1",
-  "description": "Manage Pi Agent inside Visual Studio Code",
-  "displayName": "Pi Code",
-  "publisher": "dannycreations",
+  "name": "pi-code-workspace",
   "license": "GPL",
   "type": "module",
-  "main": "./dist/index.cjs",
+  "private": true,
   "engines": {
-    "node": ">=24.13.3",
-    "vscode": ">=1.125.0"
-  },
-  "contributes": {
-    "viewsContainers": {
-      "activitybar": [
-        {
-          "id": "pi-code",
-          "title": "Pi Code",
-          "icon": "$(comment-discussion)"
-        }
-      ]
-    },
-    "views": {
-      "pi-code": [
-        {
-          "type": "webview",
-          "id": "pi-code.chatView",
-          "name": "Chat",
-          "icon": "$(comment-discussion)"
-        }
-      ]
-    },
-    "commands": [
-      {
-        "command": "pi-code.generateCommitMessage",
-        "title": "Generate Commit Message with Pi",
-        "icon": "$(sparkle)"
-      },
-      {
-        "command": "pi-code.addToContext",
-        "title": "Add to Context",
-        "category": "Pi Code"
-      },
-      {
-        "command": "pi-code.settingsButtonClicked",
-        "title": "Settings",
-        "icon": "$(settings-gear)"
-      }
-    ],
-    "menus": {
-      "view/title": [
-        {
-          "command": "pi-code.settingsButtonClicked",
-          "group": "navigation@10",
-          "when": "view == pi-code.chatView"
-        }
-      ],
-      "editor/context": [
-        {
-          "command": "pi-code.addToContext",
-          "when": "editorTextFocus",
-          "group": "pi-code@1"
-        }
-      ],
-      "scm/input": [
-        {
-          "command": "pi-code.generateCommitMessage",
-          "group": "navigation"
-        }
-      ],
-      "scm/title": [
-        {
-          "command": "pi-code.generateCommitMessage",
-          "when": "scmProvider == git",
-          "group": "navigation"
-        }
-      ]
-    }
+    "node": ">=24.13.3"
   },
   "scripts": {
-    "build": "tsx scripts/build.ts",
-    "setup": "tsx scripts/setup.ts",
-    "check": "npm run format && tsc --noEmit",
+    "build": "pnpm -r run build",
+    "check": "pnpm run format && tsc --noEmit && pnpm -r run check",
     "format": "prettier --write .",
-    "test": "vitest run",
-    "update": "npm-check-updates -u -x @types/node",
+    "test": "pnpm -r run test",
+    "setup": "tsx scripts/setup.ts",
+    "update": "npm-check-updates -u -x @types/node --workspaces --root",
     "prepare": "husky"
-  },
-  "dependencies": {
-    "@earendil-works/pi-ai": "^0.84.0",
-    "@earendil-works/pi-coding-agent": "^0.84.0",
-    "cnfast": "^0.1.0",
-    "es-toolkit": "^1.50.0",
-    "hast-util-to-jsx-runtime": "^2.3.6",
-    "ignore": "^7.0.6",
-    "katex": "^0.18.1",
-    "lucide-react": "^1.28.0",
-    "mermaid-compact": "^0.0.1",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
-    "react-markdown": "^10.1.0",
-    "react-textarea-autosize": "^8.5.9",
-    "rehype-katex": "^7.0.1",
-    "remark-gfm": "^4.0.1",
-    "remark-math": "^6.0.0",
-    "shell-quote": "^1.10.0",
-    "shiki": "^4.4.2",
-    "typebox": "^1.3.10",
-    "unist-util-visit": "^5.1.0"
   },
   "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "^4.7.1",
-    "@tailwindcss/cli": "^4.3.3",
     "@types/node": "24.13.3",
-    "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.4",
-    "@types/vscode": "^1.125.0",
-    "@vitejs/plugin-react": "^6.0.5",
-    "@vscode/codicons": "^0.0.45",
-    "@vscode/vsce": "^3.9.2",
     "husky": "^9.1.7",
-    "npm-check-updates": "^23.0.1",
+    "npm-check-updates": "^23.0.2",
     "prettier": "^3.9.6",
-    "tailwindcss": "^4.3.3",
-    "tsx": "^4.23.9",
-    "typescript": "^7.0.2",
-    "vite": "^8.2.0",
-    "vite-plugin-checker": "^0.14.5",
-    "vitest": "^4.1.10"
+    "tsx": "^4.23.11",
+    "typescript": "^7.0.2"
   },
   "packageManager": "pnpm@11.20.0"
 }

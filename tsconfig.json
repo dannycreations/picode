@@ -1,47 +1,8 @@
 {
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.tsbuildinfo",
-    "rootDir": "src",
-    "outDir": "dist",
-    "noEmit": true,
-    "declaration": false,
-    "stripInternal": true,
-
-    "target": "ESNext",
-    "module": "ESNext",
-    "moduleDetection": "force",
-    "moduleResolution": "bundler",
-    "lib": ["ESNext", "DOM", "DOM.Iterable"],
-
-    "allowJs": false,
-    "skipLibCheck": true,
-    "resolveJsonModule": true,
-    "allowImportingTsExtensions": true,
-
-    "jsx": "react-jsx",
-    "types": ["react", "vite/client"],
-
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "useDefineForClassFields": false,
-    "isolatedModules": false,
-    "erasableSyntaxOnly": false,
-    "verbatimModuleSyntax": true,
-
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noImplicitReturns": true,
-    "noImplicitOverride": true,
-    "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true,
-    "forceConsistentCasingInFileNames": true,
-    "noPropertyAccessFromIndexSignature": true,
-
-    "paths": {
-      "@extension/*": ["./src/*"],
-      "@webview/*": ["./src/webview/*"]
-    }
+    "lib": ["ESNext"],
+    "types": ["node"]
   },
-  "include": ["src"]
+  "include": ["scripts"]
 }

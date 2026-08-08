@@ -1,0 +1,17 @@
+{
+  "name": "@pi-code/shared",
+  "version": "0.0.1",
+  "license": "GPL",
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  }
+}
