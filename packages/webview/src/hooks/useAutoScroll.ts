@@ -12,7 +12,7 @@ export interface ScrollMetrics {
 export const AT_BOTTOM_THRESHOLD_PX = 32;
 
 // Upward drift from the last pin that reads as a deliberate scroll rather than layout noise.
-export const PIN_RELEASE_TOLERANCE_PX = 4;
+const PIN_RELEASE_TOLERANCE_PX = 4;
 
 export function isAtBottom(metrics: ScrollMetrics, threshold: number = AT_BOTTOM_THRESHOLD_PX): boolean {
   return metrics.scrollHeight - metrics.scrollTop - metrics.clientHeight <= threshold;

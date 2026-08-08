@@ -7,7 +7,7 @@ export const BUILTIN_COMMANDS = [
 
 export type BuiltinCommandName = (typeof BUILTIN_COMMANDS)[number]['name'];
 
-export function isBuiltinCommand(name: string): name is BuiltinCommandName {
+function isBuiltinCommand(name: string): name is BuiltinCommandName {
   return BUILTIN_COMMANDS.some((command) => command.name === name);
 }
 

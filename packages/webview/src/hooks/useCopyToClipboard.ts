@@ -8,7 +8,7 @@ interface CopyOptions {
   readonly onSuccess?: () => void;
 }
 
-export async function copyToClipboard(text: string, options?: CopyOptions): Promise<boolean> {
+async function copyToClipboard(text: string, options?: CopyOptions): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(text);
     options?.onSuccess?.();
@@ -20,7 +20,7 @@ export async function copyToClipboard(text: string, options?: CopyOptions): Prom
   }
 }
 
-export interface UseCopyToClipboardReturn {
+interface UseCopyToClipboardReturn {
   readonly showCopy: boolean;
   readonly copy: (text: string, e?: MouseEvent) => Promise<boolean>;
 }

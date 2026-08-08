@@ -1,8 +1,8 @@
-import { bundledLanguages, bundledThemes, createHighlighter } from 'shiki';
+import { bundledLanguages, createHighlighter } from 'shiki';
 
 import { logger } from '@pi-code/shared/logger';
 
-import type { BundledLanguage, BundledTheme, Highlighter } from 'shiki';
+import type { BundledLanguage, Highlighter } from 'shiki';
 
 export type ExtendedLanguage = BundledLanguage | 'txt';
 
@@ -84,7 +84,7 @@ class ShikiHighlighterManager {
 
     if (!this.initPromise) {
       this.initPromise = createHighlighter({
-        themes: Object.keys(bundledThemes) as BundledTheme[],
+        themes: ['github-light', 'github-dark'],
         langs: INITIAL_LANGUAGES,
       }).then((instance) => {
         this.instance = instance;

@@ -1,17 +1,10 @@
-import type { AppSettings } from './settings';
-import type { TodoItem } from './todo';
+import type { AppSettings, SettingsPatch } from '@pi-code/shared/settings';
+import type { TodoItem } from '@pi-code/shared/todo';
 
-export interface ActiveTaskState {
+export interface ActiveTaskState extends StatsData {
   readonly id: string;
   readonly title: string;
   readonly messages: ChatMessage[];
-  readonly tokensIn: number;
-  readonly tokensOut: number;
-  readonly cacheWrites?: number;
-  readonly cacheReads?: number;
-  readonly totalCost: number;
-  readonly contextTokens: number;
-  readonly contextLimit: number;
   readonly path?: string;
 }
 
@@ -33,10 +26,6 @@ export interface ChatMessage {
   readonly errorMessage?: string;
   readonly images?: string[];
 }
-
-export type SettingsPatch = {
-  -readonly [K in keyof AppSettings]?: AppSettings[K];
-};
 
 export interface HistoryItem {
   readonly id: string;

@@ -22,7 +22,7 @@ export function activate(context: ExtensionContext): void {
     }),
   );
 
-  const commitMessageDisposable = registerCommitMessageCommand(context);
+  const commitMessageDisposable = registerCommitMessageCommand();
   context.subscriptions.push(commitMessageDisposable);
 
   const addToContextDisposable = registerAddToContextCommand();

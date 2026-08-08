@@ -6,17 +6,10 @@ import { TodoView } from '@pi-code/webview/components/chat/TodoView';
 import { useCopyToClipboard } from '@pi-code/webview/hooks/useCopyToClipboard';
 
 import type { ComponentType, FC, MouseEvent } from 'react';
-import type { ChatMessage } from '@pi-code/shared/protocol';
+import type { ChatMessage, StatsData } from '@pi-code/shared/protocol';
 
-export interface ChatHeaderProps {
+export interface ChatHeaderProps extends StatsData {
   readonly title: string;
-  readonly tokensIn: number;
-  readonly tokensOut: number;
-  readonly cacheWrites?: number;
-  readonly cacheReads?: number;
-  readonly totalCost: number;
-  readonly contextTokens: number;
-  readonly contextLimit: number;
   readonly messages: ChatMessage[];
   readonly onClose: () => void;
   readonly onCompact: () => void;

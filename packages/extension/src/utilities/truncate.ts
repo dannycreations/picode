@@ -6,7 +6,7 @@ import { logger } from '@pi-code/shared/logger';
 import type { TruncationResult } from '@earendil-works/pi-coding-agent';
 import type { AppSettings } from '@pi-code/shared/settings';
 
-export const BYTES_PER_KILOBYTE = 1024;
+const BYTES_PER_KILOBYTE = 1024;
 
 export interface OutputLimits {
   readonly maxLines: number;

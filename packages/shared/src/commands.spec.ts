@@ -1,20 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { BUILTIN_COMMANDS, isBuiltinCommand, parseBuiltinCommand } from './commands';
-
-describe('isBuiltinCommand', () => {
-  it('recognises every advertised builtin', () => {
-    for (const command of BUILTIN_COMMANDS) {
-      expect(isBuiltinCommand(command.name)).toBe(true);
-    }
-  });
-
-  it('rejects unknown and skill commands', () => {
-    expect(isBuiltinCommand('skill:review')).toBe(false);
-    expect(isBuiltinCommand('compct')).toBe(false);
-    expect(isBuiltinCommand('')).toBe(false);
-  });
-});
+import { parseBuiltinCommand } from '@pi-code/shared/commands';
 
 describe('parseBuiltinCommand', () => {
   it('parses a bare builtin invocation', () => {

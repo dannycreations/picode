@@ -27,3 +27,7 @@ export interface AppSettings {
   readonly maxToolOutputLines: number;
   readonly maxToolOutputSizeKb: number;
 }
+
+export type SettingsPatch = {
+  -readonly [K in keyof AppSettings]?: AppSettings[K];
+};

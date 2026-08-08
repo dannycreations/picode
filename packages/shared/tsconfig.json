@@ -2,7 +2,9 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "lib": ["ESNext", "DOM"],
-    "types": []
+    "paths": {
+      "@pi-code/shared/*": ["./src/*"]
+    }
   },
   "include": ["src"]
 }

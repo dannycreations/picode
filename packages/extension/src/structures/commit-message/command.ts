@@ -8,7 +8,7 @@ import { extractCodeFenceMessage } from '@pi-code/extension/utilities/markdown';
 import { isProjectTrusted } from '@pi-code/extension/utilities/vscode';
 import { logger } from '@pi-code/shared/logger';
 
-import type { Disposable, ExtensionContext, Uri } from 'vscode';
+import type { Disposable, Uri } from 'vscode';
 import type { GitExtension, GitRepository, LlmResponseContent, ScmRequest } from '@pi-code/extension/types/extension';
 
 async function getGitRepository(uri?: Uri): Promise<GitRepository | null> {
@@ -38,7 +38,7 @@ async function getGitRepository(uri?: Uri): Promise<GitRepository | null> {
 const lastUserInstructions = new Map<string, string>();
 const lastGeneratedMessages = new Map<string, string>();
 
-export function registerCommitMessageCommand(_: ExtensionContext): Disposable {
+export function registerCommitMessageCommand(): Disposable {
   return commands.registerCommand('pi-code.generateCommitMessage', async (scmRequest?: ScmRequest) => {
     logger.info('Generate Commit Message command triggered.');
     try {
@@ -124,7 +124,7 @@ export function registerCommitMessageCommand(_: ExtensionContext): Disposable {
           logger.info(`Fully assembled prompt (character length: ${prompt.length})`);
 
           const agentDir = getAgentDir();
-          const authPath = join(agentDir, 'n');
+          const authPath = join(agentDir, 'auth.json');
           const modelsPath = join(agentDir, 'models.json');
           logger.info(`Configuration paths - Agent directory: ${agentDir}`);
           logger.info(`Configuration paths - Credentials file: ${authPath}`);

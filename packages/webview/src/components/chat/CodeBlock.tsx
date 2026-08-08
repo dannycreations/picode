@@ -14,7 +14,10 @@ import type { FC, MouseEvent, ReactNode } from 'react';
 import type { ShikiTransformer } from 'shiki';
 import type { ExtendedLanguage } from '@pi-code/webview/components/chat/helpers/highlighter';
 
-export const CODE_BLOCK_BG_COLOR = 'var(--vscode-editor-background, var(--vscode-sideBar-background, rgb(30, 30, 30)))';
+const CODE_BLOCK_BG_COLOR = 'var(--vscode-editor-background, var(--vscode-sideBar-background, rgb(30, 30, 30)))';
+
+const ICON_BUTTON_CLASS =
+  'w-6 h-6 flex items-center justify-center border-none text-[var(--vscode-editor-foreground)] bg-transparent hover:bg-[var(--vscode-toolbar-hoverBackground)] cursor-pointer rounded';
 
 interface CodeToolbarProps {
   readonly currentLanguage: string;
@@ -64,28 +67,16 @@ export const CodeToolbar: FC<CodeToolbarProps> = ({
     </select>
 
     {showCollapseButton && (
-      <button
-        className="w-6 h-6 flex items-center justify-center border-none text-[var(--vscode-editor-foreground)] bg-transparent hover:bg-[var(--vscode-toolbar-hoverBackground)] cursor-pointer rounded"
-        onClick={onToggleWindowShade}
-        title={windowShade ? 'Expand' : 'Collapse'}
-      >
+      <button className={ICON_BUTTON_CLASS} onClick={onToggleWindowShade} title={windowShade ? 'Expand' : 'Collapse'}>
         {windowShade ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
       </button>
     )}
 
-    <button
-      className="w-6 h-6 flex items-center justify-center border-none text-[var(--vscode-editor-foreground)] bg-transparent hover:bg-[var(--vscode-toolbar-hoverBackground)] cursor-pointer rounded"
-      onClick={onToggleWordWrap}
-      title={wordWrap ? 'Disable wrap' : 'Enable wrap'}
-    >
+    <button className={ICON_BUTTON_CLASS} onClick={onToggleWordWrap} title={wordWrap ? 'Disable wrap' : 'Enable wrap'}>
       {wordWrap ? <AlignJustify size={14} /> : <WrapText size={14} />}
     </button>
 
-    <button
-      className="w-6 h-6 flex items-center justify-center border-none text-[var(--vscode-editor-foreground)] bg-transparent hover:bg-[var(--vscode-toolbar-hoverBackground)] cursor-pointer rounded"
-      onClick={onCopy}
-      title="Copy code"
-    >
+    <button className={ICON_BUTTON_CLASS} onClick={onCopy} title="Copy code">
       {showCopy ? <Check size={14} /> : <Copy size={14} />}
     </button>
   </div>

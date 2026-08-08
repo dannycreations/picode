@@ -14,17 +14,6 @@ import { DEFAULT_CONTEXT_LIMIT } from '@pi-code/shared/constants';
 import type { ToolName } from '@pi-code/shared/protocol';
 
 export class SessionFactory {
-  private static readonly DEFAULT_TOOLS: ToolName[] = [
-    'delete_file',
-    'edit_file',
-    'read_file',
-    'write_file',
-    'execute_command',
-    'ask_question',
-    'attempt_completion',
-    'update_todo',
-  ];
-
   private static readonly CUSTOM_TOOLS = [
     deleteFileTool,
     editFileTool,
@@ -35,6 +24,8 @@ export class SessionFactory {
     attemptCompletionTool,
     updateTodoTool,
   ];
+
+  private static readonly DEFAULT_TOOLS: ToolName[] = SessionFactory.CUSTOM_TOOLS.map((tool) => tool.name as ToolName);
 
   public static async create(cwd: string, sessionPath?: string): Promise<AgentSession> {
     const sessionManagerOption = sessionPath ? SessionManager.open(sessionPath) : undefined;

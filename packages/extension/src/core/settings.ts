@@ -149,6 +149,7 @@ export class SettingsService {
   private static readonly instances = new Map<string, SettingsService>();
 
   private defaultModel: string | undefined = undefined;
+  private cachedSettings: AppSettings | null = null;
 
   public static getInstance(cwd?: string): SettingsService {
     const resolvedCwd = cwd || process.cwd();
@@ -164,6 +165,10 @@ export class SettingsService {
   public constructor(private readonly repository: SettingsRepository) {}
 
   public async load(): Promise<AppSettings> {
+    if (this.cachedSettings) {
+      return this.cachedSettings;
+    }
+
     await this.repository.reload();
 
     let rawGlobal = this.repository.getGlobalSettings();
@@ -178,6 +183,7 @@ export class SettingsService {
 
     const settings = rawProject !== undefined ? parseAppSettings(rawProject, parsedGlobal) : parsedGlobal;
     this.defaultModel = this.repository.getDefaultModel();
+    this.cachedSettings = settings;
     return settings;
   }
 
@@ -196,6 +202,7 @@ export class SettingsService {
       this.repository.setCompactionEnabled(partial.autoCompactContext === true);
     }
 
+    this.cachedSettings = null;
     return this.load();
   }
 }
