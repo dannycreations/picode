@@ -12,7 +12,7 @@ import { readFileAsDataUrl } from '@pi-code/webview/utilities/common';
 import type { ChangeEvent, ClipboardEvent, FC, KeyboardEvent, RefObject } from 'react';
 import type { CommandItem } from '@pi-code/shared/core/protocol';
 
-export interface ChatInputProps {
+interface ChatInputProps {
   readonly inputValue: string;
   readonly setInputValue: (val: string) => void;
   readonly onSend: (text: string, images: string[]) => void;

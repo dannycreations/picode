@@ -11,7 +11,7 @@ interface SkillsResult {
   readonly diagnostics: ResourceDiagnostic[];
 }
 
-export interface AgentResources {
+interface AgentResources {
   readonly settings: AppSettings;
   readonly agentDir: string;
   readonly settingsManager: SettingsManager;

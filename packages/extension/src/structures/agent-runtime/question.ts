@@ -13,7 +13,7 @@ export class QuestionBridge {
   }
 
   public ask(questionId: string, signal?: AbortSignal): Promise<string | null> {
-    this.cancel(questionId);
+    this.pending.get(questionId)?.(null);
 
     if (signal?.aborted) {
       return Promise.resolve(null);
@@ -40,10 +40,6 @@ export class QuestionBridge {
 
     resolve(text);
     return true;
-  }
-
-  public cancel(questionId: string): void {
-    this.pending.get(questionId)?.(null);
   }
 
   public cancelAll(): void {

@@ -30,7 +30,7 @@ export interface SessionMessageContent {
   readonly data?: string;
 }
 
-export interface SessionMessageUsage {
+interface SessionMessageUsage {
   readonly input?: number;
   readonly output?: number;
   readonly cacheRead?: number;
@@ -40,7 +40,7 @@ export interface SessionMessageUsage {
   };
 }
 
-export interface SessionMessage {
+interface SessionMessage {
   readonly role: 'user' | 'assistant' | 'toolResult' | 'bashExecution';
   readonly content?: string | SessionMessageContent[];
   readonly usage?: SessionMessageUsage;
@@ -56,21 +56,21 @@ export interface SessionMessage {
   readonly output?: string;
 }
 
-export interface SessionEntryMessage {
+interface SessionEntryMessage {
   readonly id: string;
   readonly type: 'message';
   readonly timestamp: string;
   readonly message: SessionMessage;
 }
 
-export interface SessionEntryCompaction {
+interface SessionEntryCompaction {
   readonly id: string;
   readonly type: 'compaction';
   readonly timestamp: string;
   readonly summary: string;
 }
 
-export interface SessionEntryLabel {
+interface SessionEntryLabel {
   readonly id: string;
   readonly type: 'label';
   readonly timestamp: string;
@@ -86,7 +86,7 @@ export interface GitRepository {
   };
 }
 
-export interface GitAPI {
+interface GitAPI {
   readonly repositories: readonly GitRepository[];
 }
 

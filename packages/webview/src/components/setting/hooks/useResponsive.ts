@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import type { RefObject } from 'react';
 
-export interface UseResponsiveReturn {
+interface UseResponsiveReturn {
   readonly containerRef: RefObject<HTMLDivElement | null>;
   readonly isCollapsed: boolean;
 }

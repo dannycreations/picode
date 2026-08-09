@@ -15,14 +15,14 @@ import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-
 import type { Webview } from 'vscode';
 import type { ModelItem, ToolName } from '@pi-code/shared/core/protocol';
 
-export interface BeforeToolCallResult {
+interface BeforeToolCallResult {
   readonly block?: boolean;
   readonly reason?: string;
 }
 
 export type ToolApprovalDecision = { action: 'approve' } | { action: 'deny'; reason: string } | { action: 'confirm' };
 
-export interface ImageAttachment {
+interface ImageAttachment {
   readonly type: 'image';
   readonly mimeType: string;
   readonly data: string;

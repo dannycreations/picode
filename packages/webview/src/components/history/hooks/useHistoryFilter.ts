@@ -5,7 +5,7 @@ import type { HistoryItem, HistoryScope } from '@pi-code/shared/core/protocol';
 
 export type SortOption = 'newest' | 'oldest' | 'alphabetical';
 
-export interface UseHistoryFilterReturn {
+interface UseHistoryFilterReturn {
   readonly searchQuery: string;
   readonly setSearchQuery: Dispatch<SetStateAction<string>>;
   readonly sortBy: SortOption;

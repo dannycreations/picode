@@ -26,7 +26,7 @@ export function shouldReleaseFollow(metrics: ScrollMetrics, pinnedTop: number): 
   return hasScrolledAwayFromPin(metrics.scrollTop, pinnedTop) && !isAtBottom(metrics);
 }
 
-export interface UseAutoScrollReturn {
+interface UseAutoScrollReturn {
   readonly scrollRef: RefObject<HTMLDivElement | null>;
   readonly contentRef: RefCallback<HTMLDivElement>;
   readonly showScrollToBottom: boolean;

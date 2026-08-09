@@ -12,7 +12,7 @@ export function areSettingsValuesEqual(a: unknown, b: unknown): boolean {
   return a === b;
 }
 
-export interface UseSettingReturn {
+interface UseSettingReturn {
   readonly draftSettings: AppSettings;
   readonly isChangeDetected: boolean;
   readonly handleFieldChange: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void;

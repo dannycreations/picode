@@ -296,7 +296,7 @@ function matchesCommandPattern(pattern: string, command: string): boolean {
   return false;
 }
 
-export function getSingleCommandDecision(command: string, allowedPatterns: readonly string[], deniedPatterns: readonly string[]): DecisionAction {
+function getSingleCommandDecision(command: string, allowedPatterns: readonly string[], deniedPatterns: readonly string[]): DecisionAction {
   const trimmedCmd = command.trim();
   if (!trimmedCmd) {
     return 'approve';

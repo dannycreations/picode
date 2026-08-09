@@ -7,7 +7,7 @@ import { useClickOutside } from '@pi-code/webview/hooks/useClickOutside';
 import type { FC } from 'react';
 import type { ModelItem } from '@pi-code/shared/core/protocol';
 
-export interface ChatFooterProps {
+interface ChatFooterProps {
   readonly currentModel: string;
   readonly onChangeModel: (model: string) => void;
   readonly models: ModelItem[];

@@ -5,7 +5,7 @@ import type { RefObject } from 'react';
 // How far outside the viewport content starts preparing itself.
 const PREFETCH_MARGIN_PX = 600;
 
-export interface UseInViewportReturn<T extends Element> {
+interface UseInViewportReturn<T extends Element> {
   readonly ref: RefObject<T | null>;
   readonly hasBeenVisible: boolean;
 }

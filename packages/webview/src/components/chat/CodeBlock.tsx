@@ -84,7 +84,7 @@ const CodeToolbar: FC<CodeToolbarProps> = ({
   </div>
 );
 
-export interface CodeBlockProps {
+interface CodeBlockProps {
   readonly source?: string;
   readonly language: string;
 }

@@ -5,18 +5,18 @@ import { createPortal } from 'react-dom';
 
 import type { FC, ReactNode } from 'react';
 
-export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   readonly variant?: 'secondary' | 'danger';
 }
 
-export interface ModalProps {
+interface ModalProps {
   readonly isOpen: boolean;
   readonly children: ReactNode;
   readonly ariaLabelledBy?: string;
   readonly ariaDescribedBy?: string;
 }
 
-export interface ConfirmDialogProps {
+interface ConfirmDialogProps {
   readonly isOpen: boolean;
   readonly title: string;
   readonly description?: string;

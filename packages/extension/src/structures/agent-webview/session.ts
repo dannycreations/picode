@@ -12,7 +12,7 @@ import type { SessionInfo } from '@earendil-works/pi-coding-agent';
 import type { SessionTreeEntry } from '@pi-code/extension/types/extension';
 import type { ChatMessage, CommandItem, ExtensionToWebviewMessage, HistoryItem, HistoryScope, StatsData } from '@pi-code/shared/core/protocol';
 
-export type SessionInitData = Extract<ExtensionToWebviewMessage, { type: 'init_data' }>['payload'];
+type SessionInitData = Extract<ExtensionToWebviewMessage, { type: 'init_data' }>['payload'];
 
 export class SessionService {
   private modelRuntimePromise: Promise<ModelRuntime> | null = null;

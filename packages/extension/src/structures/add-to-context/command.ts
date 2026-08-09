@@ -7,7 +7,7 @@ import { logger } from '@pi-code/shared/core/logger';
 
 import type { Disposable, TextDocument } from 'vscode';
 
-export function getRelativeFilePath(document: TextDocument): string {
+function getRelativeFilePath(document: TextDocument): string {
   try {
     const workspaceFolder = workspace.getWorkspaceFolder(document.uri);
     if (!workspaceFolder) {

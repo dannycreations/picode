@@ -53,7 +53,7 @@ export const EMPTY_STATS: StatsData = {
   contextLimit: DEFAULT_CONTEXT_LIMIT,
 };
 
-export interface UseActiveTaskReturn {
+interface UseActiveTaskReturn {
   readonly activeTask: ActiveTaskState | null;
   readonly isAgentRunning: boolean;
   readonly setActiveTask: React.Dispatch<React.SetStateAction<ActiveTaskState | null>>;
@@ -175,30 +175,19 @@ export const useActiveTask = (): UseActiveTaskReturn => {
         break;
       }
 
-      case 'text_delta': {
-        const { delta } = msg.payload;
+      case 'stream_delta': {
+        const { text, thinking } = msg.payload;
         setActiveTask((prev) => {
           if (!prev) return null;
           const messages = [...prev.messages];
           for (let i = messages.length - 1; i >= 0; i--) {
             if (messages[i].sender === 'assistant') {
-              messages[i] = { ...messages[i], text: messages[i].text + delta };
-              break;
-            }
-          }
-          return { ...prev, messages };
-        });
-        break;
-      }
-
-      case 'thinking_delta': {
-        const { delta } = msg.payload;
-        setActiveTask((prev) => {
-          if (!prev) return null;
-          const messages = [...prev.messages];
-          for (let i = messages.length - 1; i >= 0; i--) {
-            if (messages[i].sender === 'assistant') {
-              messages[i] = { ...messages[i], reasoning: (messages[i].reasoning || '') + delta };
+              const message = messages[i];
+              messages[i] = {
+                ...message,
+                text: text ? message.text + text : message.text,
+                reasoning: thinking ? (message.reasoning || '') + thinking : message.reasoning,
+              };
               break;
             }
           }

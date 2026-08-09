@@ -110,4 +110,5 @@ export type ExtensionToWebviewMessage =
   | { type: 'compaction_end'; payload: StatsData }
   | { type: 'info'; payload: { text: string } }
   | { type: 'show_settings' }
-  | { type: 'set_chat_input'; payload: { text: string } };
+  | { type: 'set_chat_input'; payload: { text: string } }
+  | { type: 'stream_delta'; payload: { text?: string; thinking?: string } };

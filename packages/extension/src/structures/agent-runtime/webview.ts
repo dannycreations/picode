@@ -66,12 +66,15 @@ export class WebviewMessenger {
       this.thinkingBuffer = '';
       return;
     }
-    if (this.textBuffer) {
-      void this.webview.postMessage({ type: 'text_delta', payload: { delta: this.textBuffer } });
+    if (this.textBuffer || this.thinkingBuffer) {
+      void this.webview.postMessage({
+        type: 'stream_delta',
+        payload: {
+          text: this.textBuffer || undefined,
+          thinking: this.thinkingBuffer || undefined,
+        },
+      });
       this.textBuffer = '';
-    }
-    if (this.thinkingBuffer) {
-      void this.webview.postMessage({ type: 'thinking_delta', payload: { delta: this.thinkingBuffer } });
       this.thinkingBuffer = '';
     }
   }

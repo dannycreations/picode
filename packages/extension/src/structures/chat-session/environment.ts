@@ -17,7 +17,7 @@ const STATUS_MAP: Record<TodoItem['status'], string> = {
   completed: 'Completed',
 };
 
-export function formatReminderSection(todoList?: TodoItem[]): string {
+function formatReminderSection(todoList?: TodoItem[]): string {
   const lines: string[] = ['### Reminders\n'];
 
   if (!todoList || todoList.length === 0) {
@@ -54,7 +54,7 @@ async function loadGitignore(dir: string): Promise<Ignore | null> {
   }
 }
 
-export async function listFiles(cwd: string, limit = 200): Promise<{ paths: string[]; hitLimit: boolean }> {
+async function listFiles(cwd: string, limit = 200): Promise<{ paths: string[]; hitLimit: boolean }> {
   const resultPaths: string[] = [];
   let hitLimit = false;
 
@@ -181,7 +181,7 @@ export function renderFileTree(root: FileTreeNode, rootLabel: string): string {
   return lines.join('\n');
 }
 
-export function getLatestTodoList(messages: readonly EnvironmentMessage[]): TodoItem[] | undefined {
+function getLatestTodoList(messages: readonly EnvironmentMessage[]): TodoItem[] | undefined {
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i];
     if (msg.role === 'toolResult' && msg.toolName === 'update_todo') {

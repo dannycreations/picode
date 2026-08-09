@@ -7,7 +7,7 @@ import { vscode } from '@pi-code/webview/utilities/vscode';
 import type { FC } from 'react';
 import type { ChatMessage, CommandItem } from '@pi-code/shared/core/protocol';
 
-export interface UserMessageProps {
+interface UserMessageProps {
   readonly message: ChatMessage;
   readonly commands: readonly CommandItem[];
 }

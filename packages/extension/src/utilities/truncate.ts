@@ -18,17 +18,17 @@ export const DEFAULT_OUTPUT_LIMITS: OutputLimits = {
   maxBytes: DEFAULT_MAX_BYTES,
 };
 
-export type TruncateKeep = 'head' | 'tail';
+type TruncateKeep = 'head' | 'tail';
 
-export type TruncationHint = string | ((truncation: TruncationResult) => string | undefined);
+type TruncationHint = string | ((truncation: TruncationResult) => string | undefined);
 
-export interface TruncateOutputOptions {
+interface TruncateOutputOptions {
   readonly limits: OutputLimits;
   readonly keep?: TruncateKeep;
   readonly hint?: TruncationHint;
 }
 
-export interface TruncatedOutput {
+interface TruncatedOutput {
   readonly text: string;
   readonly truncation: TruncationResult;
 }
@@ -96,7 +96,7 @@ export function truncateOutput(content: string, options: TruncateOutputOptions):
   return { text, truncation };
 }
 
-export interface FileChangeResultOptions {
+interface FileChangeResultOptions {
   readonly cwd: string;
   readonly oldContent: string;
   readonly newContent: string;

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-export interface ParsedFileUri {
+interface ParsedFileUri {
   readonly filePath: string;
   readonly line?: number;
 }

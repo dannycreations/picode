@@ -7,7 +7,7 @@ import { TaskActions } from '@pi-code/webview/components/shared/TaskActions';
 import type { FC, MouseEvent } from 'react';
 import type { ChatMessage, StatsData } from '@pi-code/shared/core/protocol';
 
-export interface ChatHeaderProps extends StatsData {
+interface ChatHeaderProps extends StatsData {
   readonly title: string;
   readonly messages: ChatMessage[];
   readonly onClose: () => void;

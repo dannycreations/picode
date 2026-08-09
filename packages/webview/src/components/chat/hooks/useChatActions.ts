@@ -7,7 +7,7 @@ import { vscode } from '@pi-code/webview/utilities/vscode';
 import type { Dispatch, RefObject, SetStateAction } from 'react';
 import type { ActiveTaskState, ChatMessage, HistoryItem, ModelItem } from '@pi-code/shared/core/protocol';
 
-export interface UseChatActionsProps {
+interface UseChatActionsProps {
   readonly activeTask: ActiveTaskState | null;
   readonly models: ModelItem[];
   readonly selectedModel: string;
@@ -19,7 +19,7 @@ export interface UseChatActionsProps {
   readonly textareaRef: RefObject<HTMLTextAreaElement | null>;
 }
 
-export interface UseChatActionsReturn {
+interface UseChatActionsReturn {
   readonly handleSendPrompt: (text: string, images: string[]) => void;
   readonly handleToolResponse: (msgId: string, status: 'running' | 'denied', actionType: 'approve_tool' | 'deny_tool') => void;
   readonly handleAnswerQuestion: (questionId: string, text: string) => void;

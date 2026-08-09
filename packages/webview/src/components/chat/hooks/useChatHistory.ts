@@ -5,12 +5,12 @@ import { vscode } from '@pi-code/webview/utilities/vscode';
 import type { Dispatch, SetStateAction } from 'react';
 import type { ExtensionToWebviewMessage, HistoryItem, HistoryScope } from '@pi-code/shared/core/protocol';
 
-export interface UseChatHistoryProps {
+interface UseChatHistoryProps {
   readonly view: 'chat' | 'history' | 'settings';
   readonly scope: HistoryScope;
 }
 
-export interface UseChatHistoryReturn {
+interface UseChatHistoryReturn {
   readonly pastTasks: HistoryItem[];
   readonly setPastTasks: Dispatch<SetStateAction<HistoryItem[]>>;
   readonly onMessage: (msg: ExtensionToWebviewMessage) => void;

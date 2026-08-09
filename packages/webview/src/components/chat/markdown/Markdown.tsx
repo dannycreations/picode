@@ -114,7 +114,7 @@ const MarkdownBlock = memo(({ markdown }: MarkdownProps) => {
   );
 });
 
-export interface MarkdownProps {
+interface MarkdownProps {
   readonly markdown?: string;
 }
 

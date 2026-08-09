@@ -17,7 +17,6 @@ import { HistoryView } from '@pi-code/webview/components/history/HistoryView';
 import { SettingsView } from '@pi-code/webview/components/setting/SettingsView';
 import { ConfirmDialog } from '@pi-code/webview/components/shared/ConfirmDialog';
 import { useAutoScroll } from '@pi-code/webview/hooks/useAutoScroll';
-import { exportTaskAsJson } from '@pi-code/webview/utilities/common';
 import { vscode } from '@pi-code/webview/utilities/vscode';
 
 import type { FC } from 'react';
@@ -25,7 +24,7 @@ import type { ExtensionToWebviewMessage, HistoryItem } from '@pi-code/shared/cor
 
 const ChatLogo: FC = () => {
   return (
-    <div className="flex items-center justify-center w-14 h-14 mx-auto my-2" data-testid="pi-code-logo">
+    <div className="flex items-center justify-center w-14 h-14 mx-auto my-2">
       <svg
         className="w-full h-full text-[var(--vscode-focusBorder,rgba(0,122,204,0.85))] dark:text-[var(--vscode-focusBorder,rgba(0,122,204,0.85))]"
         viewBox="0 0 24 24"
@@ -182,7 +181,16 @@ export const ChatView: FC = () => {
           onCompact={() => {
             vscode?.postMessage({ type: 'compact', id: activeTask.id, path: activeTask.path, title: activeTask.title });
           }}
-          onExport={() => exportTaskAsJson(activeTask)}
+          onExport={
+            activeTask.path
+              ? () =>
+                  vscode?.postMessage({
+                    type: 'export_session',
+                    path: activeTask.path ?? '',
+                    id: activeTask.id,
+                  })
+              : undefined
+          }
           onDelete={!isAgentRunning && activeTask.path ? () => setShowDeleteActiveConfirm(true) : undefined}
           onViewRaw={() => vscode?.postMessage({ type: 'view_raw_task', path: activeTask.path })}
         />

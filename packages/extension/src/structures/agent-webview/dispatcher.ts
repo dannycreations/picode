@@ -8,7 +8,7 @@ import { toErrorMessage } from '@pi-code/shared/utilities/common';
 import type { MessageHandlerContext } from '@pi-code/extension/structures/agent-webview/types';
 import type { ModelItem, WebviewToExtensionMessage } from '@pi-code/shared/core/protocol';
 
-export type CommandHandler<T extends WebviewToExtensionMessage['type']> = (
+type CommandHandler<T extends WebviewToExtensionMessage['type']> = (
   message: Extract<WebviewToExtensionMessage, { type: T }>,
   context: MessageHandlerContext,
 ) => Promise<void> | void;

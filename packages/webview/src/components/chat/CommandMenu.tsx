@@ -6,7 +6,7 @@ import { COMMAND_SOURCE_LABEL } from '@pi-code/webview/components/chat/helpers/c
 import type { FC } from 'react';
 import type { CommandItem } from '@pi-code/shared/core/protocol';
 
-export interface CommandMenuProps {
+interface CommandMenuProps {
   readonly commands: readonly CommandItem[];
   readonly selectedIndex: number;
   readonly onSelect: (command: CommandItem) => void;

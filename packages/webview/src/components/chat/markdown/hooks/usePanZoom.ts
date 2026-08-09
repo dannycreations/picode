@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 
 import type { MouseEvent, WheelEvent } from 'react';
 
-export interface UsePanZoomReturn {
+interface UsePanZoomReturn {
   readonly zoomLevel: number;
   readonly dragPosition: { x: number; y: number };
   readonly isDragging: boolean;

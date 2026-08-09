@@ -5,14 +5,14 @@ import { applyCommand, matchCommands, readCommandQuery } from '@pi-code/webview/
 import type { ChangeEvent, KeyboardEvent, RefObject } from 'react';
 import type { CommandItem } from '@pi-code/shared/core/protocol';
 
-export interface UseCommandProps {
+interface UseCommandProps {
   readonly commands: readonly CommandItem[];
   readonly value: string;
   readonly setValue: (value: string) => void;
   readonly textareaRef: RefObject<HTMLTextAreaElement | null>;
 }
 
-export interface UseCommandReturn {
+interface UseCommandReturn {
   readonly isOpen: boolean;
   readonly matches: CommandItem[];
   readonly selectedIndex: number;

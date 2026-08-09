@@ -1,5 +1,3 @@
-import type { ActiveTaskState } from '@pi-code/shared/core/protocol';
-
 export function formatTimeAgo(ts: number): string {
   const diffMs = Date.now() - ts;
 
@@ -31,12 +29,6 @@ export function downloadFile(filename: string, data: Blob | string): void {
   if (typeof data !== 'string') {
     URL.revokeObjectURL(url);
   }
-}
-
-export function exportTaskAsJson(task: ActiveTaskState): void {
-  const jsonString = JSON.stringify(task.messages, null, 2);
-  const blob = new Blob([jsonString], { type: 'application/json' });
-  downloadFile(`pi-code-task-${task.id || Date.now()}.json`, blob);
 }
 
 export function readFileAsDataUrl(file: File): Promise<string> {

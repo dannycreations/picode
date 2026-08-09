@@ -8,12 +8,12 @@ export const COMMAND_SOURCE_LABEL: Record<CommandItem['source'], string> = {
   builtin: 'builtin',
 };
 
-export interface CommandToken {
+interface CommandToken {
   readonly name: string;
   readonly end: number;
 }
 
-export interface CommandQuery {
+interface CommandQuery {
   readonly token: CommandToken;
   readonly query: string;
 }
@@ -75,7 +75,7 @@ export function matchCommands(commands: readonly CommandItem[], query: string): 
     .map((entry) => entry.command);
 }
 
-export interface CommandInsertion {
+interface CommandInsertion {
   readonly text: string;
   readonly caret: number;
 }
@@ -89,7 +89,7 @@ export function applyCommand(text: string, name: string): CommandInsertion {
   return { text: `${command}${body}`, caret: command.length + 1 };
 }
 
-export interface CommandSegments {
+interface CommandSegments {
   readonly command: string;
   readonly rest: string;
 }

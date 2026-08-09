@@ -7,7 +7,7 @@ import { getScrollIndex } from '@pi-code/shared/utilities/todo';
 import type { FC } from 'react';
 import type { TodoItem, TodoStatus } from '@pi-code/shared/utilities/todo';
 
-export interface TodoViewProps {
+interface TodoViewProps {
   readonly todos: TodoItem[];
 }
 

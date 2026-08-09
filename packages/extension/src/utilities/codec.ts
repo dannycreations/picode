@@ -10,7 +10,7 @@ const MIME_EXTENSION_OVERRIDES: Readonly<Record<string, string>> = {
   'image/x-icon': 'ico',
 };
 
-export interface DataUrlParts {
+interface DataUrlParts {
   readonly mimeType: string;
   readonly data: string;
 }

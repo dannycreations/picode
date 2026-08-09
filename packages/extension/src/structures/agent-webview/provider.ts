@@ -10,7 +10,7 @@ import type { CancellationToken, ExtensionContext, Webview, WebviewView, Webview
 import type { MessageHandlerContext } from '@pi-code/extension/structures/agent-webview/types';
 import type { ExtensionToWebviewMessage, WebviewToExtensionMessage } from '@pi-code/shared/core/protocol';
 
-export class ChatViewHtml {
+class ChatViewHtml {
   public static build(webview: Webview, extensionUri: Uri): string {
     const scriptUri = webview.asWebviewUri(Uri.joinPath(extensionUri, 'dist', 'webview.cjs'));
     const styleUri = webview.asWebviewUri(Uri.joinPath(extensionUri, 'dist', 'webview.css'));

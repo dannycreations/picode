@@ -3,7 +3,7 @@ import { useCallback, useRef, useState } from 'react';
 import type { Dispatch, RefObject, SetStateAction } from 'react';
 import type { ExtensionToWebviewMessage, HistoryScope } from '@pi-code/shared/core/protocol';
 
-export interface UseChatComposerReturn {
+interface UseChatComposerReturn {
   readonly view: 'chat' | 'history' | 'settings';
   readonly setView: Dispatch<SetStateAction<'chat' | 'history' | 'settings'>>;
   readonly scope: HistoryScope;
