@@ -4,7 +4,7 @@ import { BUILTIN_COMMANDS } from '@pi-code/shared/utilities/commands';
 import type { ResourceLoader } from '@earendil-works/pi-coding-agent';
 import type { CommandItem } from '@pi-code/shared/core/protocol';
 
-function collectCommands(loader: ResourceLoader): CommandItem[] {
+export function collectCommands(loader: ResourceLoader): CommandItem[] {
   const skills = loader.getSkills().skills.map<CommandItem>((skill) => ({
     name: `skill:${skill.name}`,
     source: 'skill',

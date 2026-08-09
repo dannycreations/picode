@@ -10,13 +10,12 @@ import type { CancellationToken, ExtensionContext, Webview, WebviewView, Webview
 import type { MessageHandlerContext } from '@pi-code/extension/structures/agent-webview/types';
 import type { ExtensionToWebviewMessage, WebviewToExtensionMessage } from '@pi-code/shared/core/protocol';
 
-class ChatViewHtml {
-  public static build(webview: Webview, extensionUri: Uri): string {
-    const scriptUri = webview.asWebviewUri(Uri.joinPath(extensionUri, 'dist', 'webview.cjs'));
-    const styleUri = webview.asWebviewUri(Uri.joinPath(extensionUri, 'dist', 'webview.css'));
-    const codiconsUri = webview.asWebviewUri(Uri.joinPath(extensionUri, 'dist', 'codicon.css'));
+function buildChatViewHtml(webview: Webview, extensionUri: Uri): string {
+  const scriptUri = webview.asWebviewUri(Uri.joinPath(extensionUri, 'dist', 'webview.cjs'));
+  const styleUri = webview.asWebviewUri(Uri.joinPath(extensionUri, 'dist', 'webview.css'));
+  const codiconsUri = webview.asWebviewUri(Uri.joinPath(extensionUri, 'dist', 'codicon.css'));
 
-    return `<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -41,7 +40,6 @@ class ChatViewHtml {
   <script src="${scriptUri}"></script>
 </body>
 </html>`;
-  }
 }
 
 export class ChatViewProvider implements WebviewViewProvider {
@@ -72,7 +70,7 @@ export class ChatViewProvider implements WebviewViewProvider {
       localResourceRoots: [this.context.extensionUri],
     };
 
-    webview.html = ChatViewHtml.build(webview, this.context.extensionUri);
+    webview.html = buildChatViewHtml(webview, this.context.extensionUri);
 
     this.agent.dispose();
     this.agent = new AgentRunner();

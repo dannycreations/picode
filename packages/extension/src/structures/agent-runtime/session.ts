@@ -13,46 +13,44 @@ import { DEFAULT_CONTEXT_LIMIT } from '@pi-code/shared/core/constants';
 
 import type { ToolName } from '@pi-code/shared/core/protocol';
 
-export class SessionFactory {
-  private static readonly CUSTOM_TOOLS = [
-    deleteFileTool,
-    editFileTool,
-    readFileTool,
-    writeFileTool,
-    executeCommandTool,
-    askQuestionTool,
-    attemptCompletionTool,
-    updateTodoTool,
-  ];
+const CUSTOM_TOOLS = [
+  deleteFileTool,
+  editFileTool,
+  readFileTool,
+  writeFileTool,
+  executeCommandTool,
+  askQuestionTool,
+  attemptCompletionTool,
+  updateTodoTool,
+] as const;
 
-  private static readonly DEFAULT_TOOLS: ToolName[] = SessionFactory.CUSTOM_TOOLS.map((tool) => tool.name as ToolName);
+const DEFAULT_TOOLS: ToolName[] = CUSTOM_TOOLS.map((tool) => tool.name as ToolName);
 
-  public static async create(cwd: string, sessionPath?: string): Promise<AgentSession> {
-    const sessionManagerOption = sessionPath ? SessionManager.open(sessionPath) : undefined;
-    const { settings, settingsManager, resourceLoader } = await createAgentResources(cwd);
+export async function createSession(cwd: string, sessionPath?: string): Promise<AgentSession> {
+  const sessionManagerOption = sessionPath ? SessionManager.open(sessionPath) : undefined;
+  const { settings, settingsManager, resourceLoader } = await createAgentResources(cwd);
 
-    const disabledTools: Set<ToolName> = new Set();
-    if (!settings.enableTodoTool) disabledTools.add('update_todo');
-    if (!settings.enableAskQuestionTool) disabledTools.add('ask_question');
+  const disabledTools: Set<ToolName> = new Set();
+  if (!settings.enableTodoTool) disabledTools.add('update_todo');
+  if (!settings.enableAskQuestionTool) disabledTools.add('ask_question');
 
-    const { session } = await createAgentSession({
-      cwd,
-      sessionManager: sessionManagerOption,
-      settingsManager,
-      resourceLoader,
-      tools: SessionFactory.DEFAULT_TOOLS.filter((tool) => !disabledTools.has(tool)),
-      customTools: SessionFactory.CUSTOM_TOOLS.filter((tool) => !disabledTools.has(tool.name as ToolName)),
-    });
+  const { session } = await createAgentSession({
+    cwd,
+    sessionManager: sessionManagerOption,
+    settingsManager,
+    resourceLoader,
+    tools: DEFAULT_TOOLS.filter((tool) => !disabledTools.has(tool)),
+    customTools: CUSTOM_TOOLS.filter((tool) => !disabledTools.has(tool.name as ToolName)),
+  });
 
-    const contextWindow = session.model?.contextWindow ?? DEFAULT_CONTEXT_LIMIT;
-    const reserveTokens = Math.round(((100 - settings.autoCompactContextPercent) / 100) * contextWindow);
-    session.settingsManager.applyOverrides({
-      compaction: {
-        enabled: settings.autoCompactContext,
-        reserveTokens,
-      },
-    });
+  const contextWindow = session.model?.contextWindow ?? DEFAULT_CONTEXT_LIMIT;
+  const reserveTokens = Math.round(((100 - settings.autoCompactContextPercent) / 100) * contextWindow);
+  session.settingsManager.applyOverrides({
+    compaction: {
+      enabled: settings.autoCompactContext,
+      reserveTokens,
+    },
+  });
 
-    return session;
-  }
+  return session;
 }

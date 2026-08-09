@@ -3,14 +3,14 @@ import { ModelRuntime, SessionManager } from '@earendil-works/pi-coding-agent';
 import { Uri, window, workspace } from 'vscode';
 
 import { SettingsService } from '@pi-code/extension/core/settings';
-import { listCommands } from '@pi-code/extension/structures/chat-command/command';
+import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
+import { collectCommands } from '@pi-code/extension/structures/chat-command/command';
 import { calculateSessionStats, convertSessionEntries } from '@pi-code/extension/structures/chat-session/session';
 import { DEFAULT_CONTEXT_LIMIT } from '@pi-code/shared/core/constants';
-import { logger } from '@pi-code/shared/core/logger';
 
 import type { SessionInfo } from '@earendil-works/pi-coding-agent';
 import type { SessionTreeEntry } from '@pi-code/extension/types/extension';
-import type { ChatMessage, CommandItem, ExtensionToWebviewMessage, HistoryItem, HistoryScope, StatsData } from '@pi-code/shared/core/protocol';
+import type { ChatMessage, ExtensionToWebviewMessage, HistoryItem, HistoryScope, StatsData } from '@pi-code/shared/core/protocol';
 
 type SessionInitData = Extract<ExtensionToWebviewMessage, { type: 'init_data' }>['payload'];
 
@@ -23,28 +23,19 @@ export class SessionService {
   }
 
   public async getInitData(cwd: string): Promise<SessionInitData> {
-    const settingsService = SettingsService.getInstance(cwd);
-    const [modelRuntime, sessions, settings, commands] = await Promise.all([
-      this.getModelRuntime(),
-      SessionManager.list(cwd),
-      settingsService.load(),
-      this.fetchCommands(cwd),
-    ]);
+    const [modelRuntime, sessions, resources] = await Promise.all([this.getModelRuntime(), SessionManager.list(cwd), createAgentResources(cwd)]);
     const models = modelRuntime.getModels().map((m) => ({ id: m.id, name: m.name, provider: m.provider }));
 
     const history = this.formatSessions(sessions);
-    const defaultModel = await settingsService.getDefaultModel();
+    const defaultModel = await SettingsService.getInstance(cwd).getDefaultModel();
 
-    return { models, history, default_model: defaultModel, settings, commands };
-  }
-
-  public async fetchCommands(cwd: string): Promise<CommandItem[]> {
-    try {
-      return await listCommands(cwd);
-    } catch (err) {
-      logger.error('Failed to list commands:', err);
-      return [];
-    }
+    return {
+      models,
+      history,
+      default_model: defaultModel,
+      settings: resources.settings,
+      commands: collectCommands(resources.resourceLoader),
+    };
   }
 
   public async loadSessionDetails(

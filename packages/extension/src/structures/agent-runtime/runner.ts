@@ -1,9 +1,9 @@
 import assert from 'node:assert';
 
 import { EventMapper } from '@pi-code/extension/structures/agent-runtime/event';
-import { PolicyEvaluator } from '@pi-code/extension/structures/agent-runtime/policy';
+import { evaluateToolApproval } from '@pi-code/extension/structures/agent-runtime/policy';
 import { QuestionBridge } from '@pi-code/extension/structures/agent-runtime/question';
-import { SessionFactory } from '@pi-code/extension/structures/agent-runtime/session';
+import { createSession } from '@pi-code/extension/structures/agent-runtime/session';
 import { WebviewMessenger } from '@pi-code/extension/structures/agent-runtime/webview';
 import { listCommands } from '@pi-code/extension/structures/chat-command/command';
 import { getEnvironmentDetails } from '@pi-code/extension/structures/chat-session/environment';
@@ -86,7 +86,6 @@ export class AgentRunner {
 
   private readonly messenger = new WebviewMessenger();
   private readonly event = new EventMapper();
-  private readonly policy = new PolicyEvaluator();
   private readonly question = QuestionBridge.getInstance();
 
   public async startTask(
@@ -96,17 +95,8 @@ export class AgentRunner {
     images?: string[],
     path?: string,
   ): Promise<void> {
-    this.prepareRun(webview);
-    const cwd = getWorkspaceCwd();
-
     try {
-      const session = await this.getOrCreateSession(path, cwd);
-
-      // Apply and persist the model chosen in the footer before prompting.
-      await this.applySelectedModel(session, selectedModel);
-
-      const isNewSession = session.agent.state.messages.length === 0;
-      const envDetails = await getEnvironmentDetails(session, cwd, isNewSession);
+      const { session, envDetails } = await this.prepareSession(webview, path, selectedModel);
       session.sessionManager.appendCustomMessageEntry('environment_details', envDetails, false);
 
       const attachments = parseImageAttachments(images);
@@ -122,17 +112,8 @@ export class AgentRunner {
   }
 
   public async continueTask(path: string, webview: Webview, selectedModel?: Pick<ModelItem, 'id' | 'provider'>): Promise<void> {
-    this.prepareRun(webview);
-    const cwd = getWorkspaceCwd();
-
     try {
-      const session = await this.getOrCreateSession(path, cwd);
-
-      // Apply and persist the model chosen in the footer before continuing.
-      await this.applySelectedModel(session, selectedModel);
-
-      const isNewSession = session.agent.state.messages.length === 0;
-      const envDetails = await getEnvironmentDetails(session, cwd, isNewSession);
+      const { session, envDetails } = await this.prepareSession(webview, path, selectedModel);
 
       void session
         .sendCustomMessage({ customType: 'environment_details', content: envDetails, display: false }, { triggerTurn: true })
@@ -229,6 +210,24 @@ export class AgentRunner {
     this.event.resetTurnState();
   }
 
+  private async prepareSession(
+    webview: Webview,
+    path: string | undefined,
+    selectedModel: Pick<ModelItem, 'id' | 'provider'> | undefined,
+  ): Promise<{ session: AgentSession; envDetails: string }> {
+    this.prepareRun(webview);
+    const cwd = getWorkspaceCwd();
+
+    const session = await this.getOrCreateSession(path, cwd);
+
+    // Apply and persist the model chosen in the footer before prompting.
+    await this.applySelectedModel(session, selectedModel);
+
+    const isNewSession = session.agent.state.messages.length === 0;
+    const envDetails = await getEnvironmentDetails(session, cwd, isNewSession);
+    return { session, envDetails };
+  }
+
   private async getOrCreateSession(path: string | undefined, cwd: string): Promise<AgentSession> {
     if (this.session && (!path || this.session.sessionFile === path)) {
       return this.session;
@@ -236,7 +235,7 @@ export class AgentRunner {
 
     this.cleanupSession();
 
-    const session = await SessionFactory.create(cwd, path);
+    const session = await createSession(cwd, path);
     this.session = session;
 
     this.setupBeforeToolCallHook(session, cwd);
@@ -261,7 +260,7 @@ export class AgentRunner {
   private setupBeforeToolCallHook(session: AgentSession, cwd: string): void {
     session.agent.beforeToolCall = async ({ toolCall, args }) => {
       const toolName = toolCall.name as ToolName;
-      const decision = await this.policy.evaluate(cwd, toolName, args);
+      const decision = await evaluateToolApproval(cwd, toolName, args);
 
       if (decision.action === 'approve') {
         return { block: false };
