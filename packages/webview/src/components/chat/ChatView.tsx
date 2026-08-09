@@ -177,7 +177,6 @@ export const ChatView: FC = () => {
           {...activeTask}
           onClose={handleCloseTask}
           onCompact={() => {
-            if (!activeTask) return;
             vscode?.postMessage({ type: 'compact', id: activeTask.id, path: activeTask.path, title: activeTask.title });
           }}
           onExport={() => exportTaskAsJson(activeTask)}

@@ -1,13 +1,13 @@
 import { useCallback, useRef, useState } from 'react';
 
 import type { Dispatch, RefObject, SetStateAction } from 'react';
-import type { ExtensionToWebviewMessage } from '@pi-code/shared/core/protocol';
+import type { ExtensionToWebviewMessage, HistoryScope } from '@pi-code/shared/core/protocol';
 
 export interface UseChatComposerReturn {
   readonly view: 'chat' | 'history' | 'settings';
   readonly setView: Dispatch<SetStateAction<'chat' | 'history' | 'settings'>>;
-  readonly scope: 'current' | 'all';
-  readonly setScope: Dispatch<SetStateAction<'current' | 'all'>>;
+  readonly scope: HistoryScope;
+  readonly setScope: Dispatch<SetStateAction<HistoryScope>>;
   readonly inputValue: string;
   readonly setInputValue: Dispatch<SetStateAction<string>>;
   readonly textareaRef: RefObject<HTMLTextAreaElement | null>;
@@ -16,7 +16,7 @@ export interface UseChatComposerReturn {
 
 export const useChatComposer = (): UseChatComposerReturn => {
   const [view, setView] = useState<'chat' | 'history' | 'settings'>('chat');
-  const [scope, setScope] = useState<'current' | 'all'>('current');
+  const [scope, setScope] = useState<HistoryScope>('current');
   const [inputValue, setInputValue] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 

@@ -129,10 +129,6 @@ export const useShikiHighlighter = (source: string, language: string, enabled: b
               node.properties['class'] = `hljs language-${language}`;
               return node;
             },
-            line(node) {
-              node.properties['class'] = node.properties['class'] || '';
-              return node;
-            },
           },
         ] as ShikiTransformer[],
       });

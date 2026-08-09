@@ -15,41 +15,17 @@ import type { ToolName } from '@pi-code/shared/core/protocol';
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 
-async function readLinesUpTo(filePath: string, maxLines: number, signal?: AbortSignal): Promise<string[]> {
-  const stream = createReadStream(filePath, { encoding: 'utf8', signal });
-  const rl = createInterface({
-    input: stream,
-    crlfDelay: Infinity,
-  });
-
-  const lines: string[] = [];
-  try {
-    for await (const line of rl) {
-      if (signal?.aborted) break;
-      lines.push(line);
-      if (lines.length >= maxLines) {
-        break;
-      }
-    }
-  } finally {
-    rl.close();
-    stream.destroy();
-  }
-
-  return lines;
-}
-
-async function readAllFormattedLines(filePath: string, signal?: AbortSignal): Promise<string[]> {
-  const stream = createReadStream(filePath, { encoding: 'utf8', signal });
+async function readLines(filePath: string, maxLines?: number): Promise<string[]> {
+  const stream = createReadStream(filePath, { encoding: 'utf8' });
   const rl = createInterface({ input: stream, crlfDelay: Infinity });
 
   const lines: string[] = [];
-  let lineNum = 0;
   try {
     for await (const line of rl) {
-      if (signal?.aborted) break;
-      lineNum++;
-      lines.push(`${lineNum}|${line}`);
+      lines.push(line);
+      if (maxLines !== undefined && lines.length >= maxLines) {
+        break;
+      }
     }
   } finally {
     rl.close();
@@ -161,7 +137,7 @@ export const readFileTool = defineTool({
             const maxRequestedLine = Math.max(...fileObj.line_ranges.map((range) => Math.max(1, range[1])));
 
             // Stream file up to the highest requested line number and stop early
-            const lines = await readLinesUpTo(resolvedPath, maxRequestedLine, _signal);
+            const lines = await readLines(resolvedPath, maxRequestedLine);
 
             header = `File: ${fileObj.path} (Ranges: ${JSON.stringify(fileObj.line_ranges)})`;
             const parts: string[] = [];
@@ -181,9 +157,9 @@ export const readFileTool = defineTool({
             }
             body = parts.join('\n');
           } else {
-            const numberedLines = await readAllFormattedLines(resolvedPath, _signal);
+            const lines = await readLines(resolvedPath);
             header = `File: ${fileObj.path}`;
-            body = numberedLines.join('\n');
+            body = lines.map((line, index) => `${index + 1}|${line}`).join('\n');
           }
 
           fileResults[index] = {

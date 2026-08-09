@@ -23,7 +23,3 @@ export function getScrollIndex(todos: readonly TodoItem[]): number {
   if (inProgressIdx !== -1) return inProgressIdx;
   return todos.findIndex((todo) => todo.status !== 'completed');
 }
-
-export function getMostImportantTodo(todos: readonly TodoItem[]): TodoItem | undefined {
-  return todos[getScrollIndex(todos)];
-}

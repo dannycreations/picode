@@ -2,7 +2,7 @@ import { cn } from 'cnfast';
 import { ArrowRight, Check, ListChecks, SquareDashed } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { getMostImportantTodo, getScrollIndex } from '@pi-code/shared/utilities/todo';
+import { getScrollIndex } from '@pi-code/shared/utilities/todo';
 
 import type { FC } from 'react';
 import type { TodoItem, TodoStatus } from '@pi-code/shared/utilities/todo';
@@ -28,7 +28,7 @@ export const TodoView: FC<TodoViewProps> = ({ todos }) => {
   const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
 
   const scrollIndex = useMemo(() => getScrollIndex(todos), [todos]);
-  const mostImportantTodo = useMemo(() => getMostImportantTodo(todos), [todos]);
+  const mostImportantTodo = scrollIndex === -1 ? undefined : todos[scrollIndex];
 
   useEffect(() => {
     if (isCollapsed || !ulRef.current || scrollIndex === -1) return;

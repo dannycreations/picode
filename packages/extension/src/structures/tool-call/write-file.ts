@@ -25,10 +25,8 @@ export const writeFileTool = defineTool({
       const finalContent = stripCodeFence(params.content);
 
       let oldContent = '';
-      let fileExists = false;
       try {
         oldContent = await readFile(resolvedPath, 'utf8');
-        fileExists = true;
       } catch {}
 
       await mkdir(dirname(resolvedPath), { recursive: true });
@@ -40,7 +38,6 @@ export const writeFileTool = defineTool({
         newContent: finalContent,
         successMessage: `Successfully wrote content to ${params.path}`,
         hint: `The write succeeded; read "${params.path}" if you need to verify the remaining changes.`,
-        extraDetails: { fileExists },
       });
     } catch (err) {
       return {

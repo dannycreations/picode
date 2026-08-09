@@ -72,28 +72,22 @@ export const Button: FC<ButtonProps> = ({ variant = 'secondary', children, class
   );
 };
 
-export const ModalPortal: FC<{ children: ReactNode }> = ({ children }) => {
-  if (typeof document === 'undefined') return null;
-  return createPortal(children, document.body);
-};
-
 export const Modal: FC<ModalProps> = ({ isOpen, children, ariaLabelledBy, ariaDescribedBy }) => {
   if (!isOpen) return null;
 
-  return (
-    <ModalPortal>
-      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 select-none">
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby={ariaLabelledBy}
-          aria-describedby={ariaDescribedBy}
-          className="bg-[var(--vscode-editor-background)] border border-[var(--vscode-panel-border)] rounded-md w-full max-w-md overflow-hidden flex flex-col shadow-xl"
-        >
-          {children}
-        </div>
+  return createPortal(
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 select-none">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={ariaLabelledBy}
+        aria-describedby={ariaDescribedBy}
+        className="bg-[var(--vscode-editor-background)] border border-[var(--vscode-panel-border)] rounded-md w-full max-w-md overflow-hidden flex flex-col shadow-xl"
+      >
+        {children}
       </div>
-    </ModalPortal>
+    </div>,
+    document.body,
   );
 };
 

@@ -57,9 +57,11 @@ export interface StatsData {
   readonly contextLimit: number;
 }
 
+export type HistoryScope = 'current' | 'all';
+
 export type WebviewToExtensionMessage =
   | { type: 'init' }
-  | { type: 'get_history'; scope: 'current' | 'all' }
+  | { type: 'get_history'; scope: HistoryScope }
   | { type: 'load_session'; id: string; path: string; title: string }
   | { type: 'delete_sessions'; paths: string[] }
   | { type: 'start_new_task'; text: string; model_id: string; model_provider?: string; images?: string[] }

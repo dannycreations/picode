@@ -294,7 +294,6 @@ export class AgentRunner {
 
   private handleSessionEvent(event: AgentSessionEvent, session: AgentSession): void {
     if (this.isAttemptCompletionAborted && event.type === 'message_end' && event.message.role === 'assistant') {
-      (event as { type: string }).type = 'ignored';
       const messages = session.agent.state.messages;
       if (messages && messages[messages.length - 1] === event.message) {
         messages.pop();

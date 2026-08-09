@@ -9,8 +9,7 @@ import { useHistoryFilter } from '@pi-code/webview/components/history/hooks/useH
 import { ConfirmDialog } from '@pi-code/webview/components/shared/ConfirmDialog';
 
 import type { FC } from 'react';
-import type { HistoryItem } from '@pi-code/shared/core/protocol';
-import type { HistoryScope } from '@pi-code/webview/components/history/hooks/useHistoryFilter';
+import type { HistoryItem, HistoryScope } from '@pi-code/shared/core/protocol';
 
 interface HistoryViewProps {
   readonly history: HistoryItem[];

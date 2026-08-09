@@ -15,10 +15,6 @@ import { vscode } from '@pi-code/webview/utilities/vscode';
 import type { FC, MouseEvent, ReactNode } from 'react';
 import type { Components } from 'react-markdown';
 
-interface MarkdownBlockProps {
-  readonly markdown?: string;
-}
-
 interface MarkdownCodeNode {
   readonly type: 'code';
   lang?: string | null;
@@ -79,7 +75,7 @@ const MarkdownPre: FC<{ children?: ReactNode }> = ({ children }) => {
   );
 };
 
-const MarkdownBlock = memo(({ markdown }: MarkdownBlockProps) => {
+const MarkdownBlock = memo(({ markdown }: MarkdownProps) => {
   const components = useMemo<Components>(
     () => ({
       table: ({ children, ...props }) => (
@@ -89,11 +85,6 @@ const MarkdownBlock = memo(({ markdown }: MarkdownBlockProps) => {
       ),
       a: MarkdownLink,
       pre: MarkdownPre,
-      code: ({ children, className, ...props }) => (
-        <code className={className} {...props}>
-          {children}
-        </code>
-      ),
     }),
     [],
   );
@@ -129,11 +120,11 @@ export interface MarkdownProps {
 
 export const Markdown = memo(({ markdown }: MarkdownProps) => {
   const [isHovering, setIsHovering] = useState(false);
-  const { showCopy, copy } = useCopyToClipboard(2000);
+  const { showCopy, copy } = useCopyToClipboard();
 
   const deferredMarkdown = useDeferredValue(markdown ?? '');
 
-  if (!markdown || markdown.length === 0) return null;
+  if (!markdown) return null;
 
   return (
     <div onMouseEnter={() => setIsHovering(true)} onMouseLeave={() => setIsHovering(false)} className="relative w-full">

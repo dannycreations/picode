@@ -166,16 +166,14 @@ export function resolveCommandAction(
     const subCmd = subCommands[i];
     const cmdWithoutRedirection = subCmd.replace(/\d*>&\d*/g, '').trim();
 
-    const decisionWithRedirection = getSingleCommandDecision(subCmd, approveEnabled, allowedPatterns, deniedPatterns);
+    const decisionWithRedirection = getSingleCommandDecision(subCmd, allowedPatterns, deniedPatterns);
 
     if (decisionWithRedirection === 'deny') {
       return 'deny';
     }
 
     const decisionWithoutRedirection =
-      cmdWithoutRedirection === subCmd
-        ? decisionWithRedirection
-        : getSingleCommandDecision(cmdWithoutRedirection, approveEnabled, allowedPatterns, deniedPatterns);
+      cmdWithoutRedirection === subCmd ? decisionWithRedirection : getSingleCommandDecision(cmdWithoutRedirection, allowedPatterns, deniedPatterns);
 
     if (decisionWithoutRedirection === 'deny') {
       return 'deny';
@@ -298,16 +296,7 @@ function matchesCommandPattern(pattern: string, command: string): boolean {
   return false;
 }
 
-export function getSingleCommandDecision(
-  command: string,
-  approveEnabled: boolean,
-  allowedPatterns: readonly string[],
-  deniedPatterns: readonly string[],
-): DecisionAction {
-  if (!approveEnabled) {
-    return 'confirm';
-  }
-
+export function getSingleCommandDecision(command: string, allowedPatterns: readonly string[], deniedPatterns: readonly string[]): DecisionAction {
   const trimmedCmd = command.trim();
   if (!trimmedCmd) {
     return 'approve';

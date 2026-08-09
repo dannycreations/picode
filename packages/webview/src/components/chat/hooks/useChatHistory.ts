@@ -3,9 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { vscode } from '@pi-code/webview/utilities/vscode';
 
 import type { Dispatch, SetStateAction } from 'react';
-import type { ExtensionToWebviewMessage, HistoryItem } from '@pi-code/shared/core/protocol';
-
-export type HistoryScope = 'current' | 'all';
+import type { ExtensionToWebviewMessage, HistoryItem, HistoryScope } from '@pi-code/shared/core/protocol';
 
 export interface UseChatHistoryProps {
   readonly view: 'chat' | 'history' | 'settings';

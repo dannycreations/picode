@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import type { Dispatch, SetStateAction } from 'react';
-import type { HistoryItem } from '@pi-code/shared/core/protocol';
+import type { HistoryItem, HistoryScope } from '@pi-code/shared/core/protocol';
 
 export type SortOption = 'newest' | 'oldest' | 'alphabetical';
-export type HistoryScope = 'current' | 'all';
 
 export interface UseHistoryFilterReturn {
   readonly searchQuery: string;

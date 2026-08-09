@@ -1,8 +1,6 @@
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
-import { toErrorMessage } from '@pi-code/shared/utilities/common';
-
 import type { ToolName } from '@pi-code/shared/core/protocol';
 
 export const attemptCompletionTool = defineTool({
@@ -13,17 +11,9 @@ export const attemptCompletionTool = defineTool({
     result: Type.String({ description: 'The final result of the task, explaining what was done.' }),
   }),
   async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
-    try {
-      return {
-        content: [{ type: 'text', text: 'attempt_completion success.' }],
-        details: { result: params.result },
-      };
-    } catch (err) {
-      return {
-        content: [{ type: 'text', text: `Error completing task: ${toErrorMessage(err)}` }],
-        details: {},
-        isError: true,
-      };
-    }
+    return {
+      content: [{ type: 'text', text: 'attempt_completion success.' }],
+      details: { result: params.result },
+    };
   },
 });

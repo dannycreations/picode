@@ -10,7 +10,7 @@ import { logger } from '@pi-code/shared/core/logger';
 
 import type { SessionInfo } from '@earendil-works/pi-coding-agent';
 import type { SessionTreeEntry } from '@pi-code/extension/types/extension';
-import type { ChatMessage, CommandItem, ExtensionToWebviewMessage, HistoryItem, StatsData } from '@pi-code/shared/core/protocol';
+import type { ChatMessage, CommandItem, ExtensionToWebviewMessage, HistoryItem, HistoryScope, StatsData } from '@pi-code/shared/core/protocol';
 
 export type SessionInitData = Extract<ExtensionToWebviewMessage, { type: 'init_data' }>['payload'];
 
@@ -80,7 +80,7 @@ export class SessionService {
     return { messages: chatMessages, stats };
   }
 
-  public async fetchHistory(cwd: string, scope: 'all' | 'current'): Promise<HistoryItem[]> {
+  public async fetchHistory(cwd: string, scope: HistoryScope): Promise<HistoryItem[]> {
     const sessions = scope === 'all' ? await SessionManager.listAll() : await SessionManager.list(cwd);
     return this.formatSessions(sessions);
   }
