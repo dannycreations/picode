@@ -38,14 +38,7 @@ export const HistoryPreview: FC<HistoryPreviewProps> = ({ history, onSelectTask,
 
       <div className="flex flex-col gap-2">
         {history.slice(0, 5).map((item) => (
-          <HistoryCard
-            key={item.id}
-            item={item}
-            lineClamp={2}
-            testId={`task-item-${item.id}`}
-            onClick={() => onSelectTask(item)}
-            onDelete={handleDeleteSingle}
-          />
+          <HistoryCard key={item.id} item={item} lineClamp={2} onClick={() => onSelectTask(item)} onDelete={handleDeleteSingle} />
         ))}
       </div>
 

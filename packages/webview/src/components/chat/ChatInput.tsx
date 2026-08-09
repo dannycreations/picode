@@ -177,8 +177,7 @@ export const ChatInput: FC<ChatInputProps> = ({ inputValue, setInputValue, onSen
         </div>
 
         <div className="flex justify-between items-center px-2.5 pb-2 pt-1 z-20 pointer-events-auto">
-          <div />
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 ml-auto">
             <input type="file" ref={fileInputRef} onChange={handleAttachImage} accept="image/*" className="hidden" />
             <button
               onClick={() => fileInputRef.current?.click()}

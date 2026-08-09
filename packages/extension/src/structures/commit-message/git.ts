@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 import { isBinaryFileSync } from '@pi-code/extension/utilities/binary';
 import { toErrorMessage } from '@pi-code/shared/utilities/common';
 
-export interface GitChange {
+interface GitChange {
   readonly relativePath: string;
   readonly absolutePath: string;
   readonly isStaged: boolean;

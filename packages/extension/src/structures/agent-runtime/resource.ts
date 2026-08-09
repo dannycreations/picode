@@ -13,7 +13,6 @@ interface SkillsResult {
 
 interface AgentResources {
   readonly settings: AppSettings;
-  readonly agentDir: string;
   readonly settingsManager: SettingsManager;
   readonly resourceLoader: DefaultResourceLoader;
 }
@@ -73,7 +72,7 @@ export async function createAgentResources(cwd: string): Promise<AgentResources>
   });
   await resourceLoader.reload();
 
-  const entry: CachedResources = { settings, agentDir, settingsManager, resourceLoader, config };
+  const entry: CachedResources = { settings, settingsManager, resourceLoader, config };
   resourceCache.set(cwd, entry);
   return entry;
 }

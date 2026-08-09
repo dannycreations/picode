@@ -16,7 +16,6 @@ interface HistoryCardProps {
   readonly onDelete: (path: string) => void;
   readonly onViewRaw?: (path: string) => void;
   readonly onExport?: (item: HistoryItem) => void;
-  readonly testId?: string;
   readonly lineClamp?: number;
 }
 
@@ -29,12 +28,10 @@ export const HistoryCard: FC<HistoryCardProps> = ({
   onDelete,
   onViewRaw,
   onExport,
-  testId,
   lineClamp = 3,
 }) => {
   return (
     <div
-      data-testid={testId}
       onClick={onClick}
       className={cn(
         'group flex items-start gap-3 p-3 bg-[var(--vscode-editor-background)] rounded border transition-colors cursor-pointer relative',

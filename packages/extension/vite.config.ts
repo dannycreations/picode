@@ -52,6 +52,9 @@ export default defineConfig(({ command }) => {
       watch: false,
       testTimeout: 10_000,
       passWithNoTests: true,
+      alias: {
+        vscode: resolve(srcDir, 'test/vscode-stub.ts'),
+      },
     },
   };
 });

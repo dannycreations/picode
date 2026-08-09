@@ -2,8 +2,9 @@ import { DEFAULT_CONTEXT_LIMIT } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
 
 import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent';
+import type { AgentToWebviewMessage } from '@pi-code/extension/structures/agent-runtime/webview';
 import type { AssistantMessageWithUsage } from '@pi-code/extension/types/extension';
-import type { ExtensionToWebviewMessage, StatsData, ToolName } from '@pi-code/shared/core/protocol';
+import type { StatsData, ToolName } from '@pi-code/shared/core/protocol';
 import type { TodoItem } from '@pi-code/shared/utilities/todo';
 
 export class EventMapper {
@@ -14,7 +15,7 @@ export class EventMapper {
     this.apiRequestId = null;
   }
 
-  public mapEvent(event: AgentSessionEvent, session: AgentSession, isAborted: boolean): ExtensionToWebviewMessage | null {
+  public mapEvent(event: AgentSessionEvent, session: AgentSession, isAborted: boolean): AgentToWebviewMessage | null {
     if (isAborted) {
       return event.type === 'agent_settled' ? { type: 'agent_settled' } : null;
     }
@@ -56,7 +57,7 @@ export class EventMapper {
         }
         return {
           type: 'message_start',
-          payload: { role: event.message.role, timestamp: event.message.timestamp },
+          payload: { timestamp: event.message.timestamp },
         };
 
       case 'message_update': {
@@ -77,7 +78,6 @@ export class EventMapper {
         return {
           type: 'message_end',
           payload: {
-            role: event.message.role,
             cost: (event.message as AssistantMessageWithUsage).usage?.cost?.total,
             stats: this.createStats(session) ?? undefined,
           },

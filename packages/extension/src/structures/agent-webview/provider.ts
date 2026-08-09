@@ -56,6 +56,9 @@ export class ChatViewProvider implements WebviewViewProvider {
 
   public constructor(private readonly context: ExtensionContext) {}
 
+  // Global command → webview channel (show_settings, set_chat_input) used by
+  // extension commands that run independently of any agent. Per-agent streaming
+  // events travel through the AgentRunner's WebviewMessenger instead.
   public static postActiveWebviewMessage(message: ExtensionToWebviewMessage): Thenable<boolean> | undefined {
     return this.activeWebview?.postMessage(message);
   }

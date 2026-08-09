@@ -106,8 +106,8 @@ const ModalHeader: FC<{ children: ReactNode; onClose?: () => void }> = ({ childr
   </div>
 );
 
-const ModalBody: FC<{ children: ReactNode; className?: string }> = ({ children, className = '' }) => (
-  <div className={cn('p-4 flex flex-col gap-3 text-xs leading-relaxed text-[var(--vscode-foreground)]', className)}>{children}</div>
+const ModalBody: FC<{ children: ReactNode }> = ({ children }) => (
+  <div className="p-4 flex flex-col gap-3 text-xs leading-relaxed text-[var(--vscode-foreground)]">{children}</div>
 );
 
 const ModalFooter: FC<{ children: ReactNode }> = ({ children }) => (

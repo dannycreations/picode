@@ -18,17 +18,13 @@ export function formatTimeAgo(ts: number): string {
   return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
 }
 
-export function downloadFile(filename: string, data: Blob | string): void {
-  const url = typeof data === 'string' ? data : URL.createObjectURL(data);
+export function downloadFile(filename: string, dataUrl: string): void {
   const link = document.createElement('a');
-  link.href = url;
+  link.href = dataUrl;
   link.download = filename;
   document.body.appendChild(link);
   link.click();
   link.remove();
-  if (typeof data !== 'string') {
-    URL.revokeObjectURL(url);
-  }
 }
 
 export function readFileAsDataUrl(file: File): Promise<string> {
