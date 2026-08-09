@@ -97,8 +97,7 @@ export function createDefaultDispatcher(): ChatMessageDispatcher {
       await ctx.workspaceService.openBase64Image(msg.dataUrl);
     })
     .register('get_history', async (msg, ctx) => {
-      const scope = msg.scope || 'current';
-      const history = await ctx.sessionService.fetchHistory(ctx.cwd, scope);
+      const history = await ctx.sessionService.fetchHistory(ctx.cwd, msg.scope);
       ctx.postMessage({ type: 'history_data', payload: { history } });
     })
     .register('delete_sessions', async (msg, ctx) => {

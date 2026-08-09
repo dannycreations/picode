@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { vscode } from '@pi-code/webview/utilities/vscode';
 
@@ -21,35 +21,19 @@ export interface UseChatHistoryReturn {
 export const useChatHistory = ({ view, scope }: UseChatHistoryProps): UseChatHistoryReturn => {
   const [pastTasks, setPastTasks] = useState<HistoryItem[]>([]);
 
-  const loadedHistoryScopesRef = useRef<Set<HistoryScope>>(new Set());
-  const requestedHistoryScopeRef = useRef<HistoryScope | null>(null);
-  const historyDirtyRef = useRef(true);
-
   useEffect(() => {
     if (view !== 'history') return;
-    if (loadedHistoryScopesRef.current.has(scope) && !historyDirtyRef.current) return;
-
-    requestedHistoryScopeRef.current = scope;
     vscode?.postMessage({ type: 'get_history', scope });
   }, [view, scope]);
 
   const onMessage = useCallback((msg: ExtensionToWebviewMessage): void => {
     switch (msg.type) {
-      case 'init_data': {
-        const { history } = msg.payload;
-        setPastTasks(history);
-        loadedHistoryScopesRef.current.add('current');
-        historyDirtyRef.current = false;
+      case 'init_data':
+        setPastTasks(msg.payload.history);
         break;
-      }
 
       case 'history_data':
         setPastTasks(msg.payload.history);
-        if (requestedHistoryScopeRef.current) {
-          loadedHistoryScopesRef.current.add(requestedHistoryScopeRef.current);
-          requestedHistoryScopeRef.current = null;
-        }
-        historyDirtyRef.current = false;
         break;
     }
   }, []);

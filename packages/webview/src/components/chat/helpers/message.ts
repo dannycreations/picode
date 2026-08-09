@@ -7,7 +7,7 @@ function hasContent(value: string | undefined): boolean {
 
 export function isRenderableMessage(message: ChatMessage): boolean {
   // Tool calls surfaced by dedicated UI instead of a message row.
-  if (message.toolName !== undefined && message.toolName === 'update_todo') {
+  if (message.toolName === 'update_todo') {
     return false;
   }
 

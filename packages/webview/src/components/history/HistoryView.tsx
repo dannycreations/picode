@@ -8,7 +8,7 @@ import { HistorySelection } from '@pi-code/webview/components/history/HistorySel
 import { useHistoryFilter } from '@pi-code/webview/components/history/hooks/useHistoryFilter';
 import { ConfirmDialog } from '@pi-code/webview/components/shared/ConfirmDialog';
 
-import type { FC, MouseEvent } from 'react';
+import type { FC } from 'react';
 import type { HistoryItem } from '@pi-code/shared/core/protocol';
 import type { HistoryScope } from '@pi-code/webview/components/history/hooks/useHistoryFilter';
 
@@ -49,8 +49,7 @@ export const HistoryView: FC<HistoryViewProps> = ({ history, onSelectTask, onDon
     }
   }, [paginatedItems, selectedPaths]);
 
-  const handleDeleteSingle = useCallback((e: MouseEvent, path: string) => {
-    e.stopPropagation();
+  const handleDeleteSingle = useCallback((path: string) => {
     setDeleteConfirmPaths([path]);
   }, []);
 

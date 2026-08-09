@@ -1,11 +1,10 @@
-import { cn } from 'cnfast';
-import { Check, ChevronDown, ChevronRight, CloudDownload, CloudUpload, Coins, Copy, Download, FileJson, FoldVertical, Trash2, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, CloudDownload, CloudUpload, Coins, FoldVertical, X } from 'lucide-react';
 import { useState } from 'react';
 
 import { TodoView } from '@pi-code/webview/components/chat/TodoView';
-import { useCopyToClipboard } from '@pi-code/webview/hooks/useCopyToClipboard';
+import { TaskActions } from '@pi-code/webview/components/shared/TaskActions';
 
-import type { ComponentType, FC, MouseEvent } from 'react';
+import type { FC, MouseEvent } from 'react';
 import type { ChatMessage, StatsData } from '@pi-code/shared/core/protocol';
 
 export interface ChatHeaderProps extends StatsData {
@@ -17,27 +16,6 @@ export interface ChatHeaderProps extends StatsData {
   readonly onDelete?: () => void;
   readonly onViewRaw?: () => void;
 }
-
-interface IconButtonProps {
-  readonly icon: ComponentType<{ size?: number; className?: string }>;
-  readonly title: string;
-  readonly onClick: (e: MouseEvent) => void;
-  readonly disabled?: boolean;
-}
-
-const IconButton: FC<IconButtonProps> = ({ icon: Icon, title, onClick, disabled }) => (
-  <button
-    onClick={onClick}
-    disabled={disabled}
-    title={title}
-    className={cn(
-      'relative inline-flex items-center justify-center bg-transparent border-none p-1.5 rounded-md text-vscode-foreground opacity-80 transition-all duration-150 active:bg-vscode-list-hoverBackground/20',
-      !disabled ? 'cursor-pointer hover:opacity-100 hover:bg-vscode-list-hoverBackground' : 'cursor-not-allowed opacity-30',
-    )}
-  >
-    <Icon size={14} />
-  </button>
-);
 
 const ContextProgressBar: FC<{ readonly percentage: number }> = ({ percentage }) => (
   <div className="flex-grow h-1.5 bg-vscode-editor-background rounded-full overflow-hidden border border-vscode-editorGroup-border/40">
@@ -62,7 +40,6 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
   onViewRaw,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const { showCopy, copy } = useCopyToClipboard();
 
   const contextPercentage = Math.min(100, Math.round((contextTokens / contextLimit) * 100));
 
@@ -198,46 +175,15 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
                         <span className="text-vscode-editorWarning-foreground font-bold">${(totalCost || 0).toFixed(4)}</span>
                         <span className="text-xs text-vscode-descriptionForeground/60 font-normal">USD</span>
                       </div>
-                      <div className="flex flex-row items-center gap-1 select-none -my-1">
-                        {onExport && (
-                          <IconButton
-                            icon={Download}
-                            title="Export task messages"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onExport();
-                            }}
-                          />
-                        )}
-                        <IconButton
-                          icon={showCopy ? Check : Copy}
-                          title={showCopy ? 'Copied prompt!' : 'Copy prompt'}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            copy(title);
-                          }}
-                        />
-                        {onDelete && (
-                          <IconButton
-                            icon={Trash2}
-                            title="Delete task"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onDelete();
-                            }}
-                          />
-                        )}
-                        {onViewRaw && (
-                          <IconButton
-                            icon={FileJson}
-                            title="View raw task"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onViewRaw();
-                            }}
-                          />
-                        )}
-                      </div>
+                      <TaskActions
+                        iconSize={14}
+                        buttonClassName="relative inline-flex items-center justify-center bg-transparent border-none p-1.5 rounded-md text-vscode-foreground opacity-80 transition-all duration-150 active:bg-vscode-list-hoverBackground/20 cursor-pointer hover:opacity-100 hover:bg-vscode-list-hoverBackground"
+                        wrapperClassName="select-none -my-1"
+                        copyText={title}
+                        onExport={onExport}
+                        onDelete={onDelete}
+                        onViewRaw={onViewRaw}
+                      />
                     </div>
                   </td>
                 </tr>

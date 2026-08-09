@@ -35,7 +35,7 @@ export function readCommandQuery(text: string, caret: number): CommandQuery | nu
   return { token, query: text.slice(1, caret) };
 }
 
-export function findCommand(commands: readonly CommandItem[], name: string): CommandItem | undefined {
+function findCommand(commands: readonly CommandItem[], name: string): CommandItem | undefined {
   return commands.find((command) => command.name === name);
 }
 

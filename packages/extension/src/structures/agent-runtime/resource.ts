@@ -47,7 +47,6 @@ export async function createAgentResources(cwd: string): Promise<AgentResources>
     cached.config.projectTrusted === config.projectTrusted;
 
   if (isConfigMatches) {
-    await cached.resourceLoader.reload();
     return { ...cached, settings };
   }
 

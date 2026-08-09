@@ -85,14 +85,8 @@ export class SessionService {
     return this.formatSessions(sessions);
   }
 
-  public async deleteSessions(paths: string[]): Promise<string[]> {
-    const results = await Promise.allSettled(paths.map((p) => unlink(p)));
-    return paths.filter((_path, index) => {
-      const result = results[index];
-      // A missing file is already gone, so treat ENOENT as deleted.
-      if (result.status === 'fulfilled') return true;
-      return (result.reason as { code?: string } | undefined)?.code === 'ENOENT';
-    });
+  public async deleteSessions(paths: string[]): Promise<void> {
+    await Promise.allSettled(paths.map((p) => unlink(p)));
   }
 
   public async exportSession(sessionPath: string, defaultId?: string): Promise<boolean> {

@@ -48,14 +48,16 @@ describe('createAgentResources cache', () => {
     expect(second.resourceLoader).toBe(first.resourceLoader);
   });
 
-  it('reloads the cached loader on each cache hit', async () => {
+  it('reuses the cached loader without reloading on a cache hit', async () => {
     mocks.settingsLoad.mockResolvedValue({ ...BASE_SETTINGS });
 
     const first = await createAgentResources('/project-b');
     const second = await createAgentResources('/project-b');
 
     expect(second.resourceLoader).toBe(first.resourceLoader);
-    expect((second.resourceLoader as unknown as { reloadCalls: number }).reloadCalls).toBe(2);
+    // The loader is reloaded only on the cache-miss (first) call; the shared
+    // instance is refreshed elsewhere (e.g. session.reload) when needed.
+    expect((second.resourceLoader as unknown as { reloadCalls: number }).reloadCalls).toBe(1);
   });
 
   it('recreates the loader when a loader-relevant setting flips', async () => {

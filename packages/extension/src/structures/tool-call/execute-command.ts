@@ -93,11 +93,14 @@ export const executeCommandTool = defineTool({
       let onAbort: (() => void) | null = null;
       let killTimer: ReturnType<typeof setTimeout> | null = null;
 
-      const cleanup = () => {
+      const detachSignal = () => {
         if (signal && onAbort) {
           signal.removeEventListener('abort', onAbort);
           onAbort = null;
         }
+      };
+
+      const clearKillTimer = () => {
         if (killTimer) {
           clearTimeout(killTimer);
           killTimer = null;
@@ -107,7 +110,8 @@ export const executeCommandTool = defineTool({
       const finish = (exitCode: number | null, signalCode: string | null) => {
         if (finished) return;
         finished = true;
-        cleanup();
+        detachSignal();
+        clearKillTimer();
 
         // Flush remaining bytes from stream decoders
         appendOutput(stdoutDecoder.end());
@@ -169,11 +173,8 @@ export const executeCommandTool = defineTool({
         } else {
           onAbort = () => {
             killProcess('SIGTERM');
-            // Escalate to SIGKILL if process hangs on SIGTERM
-            killTimer = setTimeout(() => {
-              killProcess('SIGKILL');
-            }, 2000);
-            finish(null, 'SIGABRT');
+            // Escalate to SIGKILL if the process ignores SIGTERM.
+            killTimer = setTimeout(() => killProcess('SIGKILL'), 2000);
           };
           signal.addEventListener('abort', onAbort, { once: true });
         }

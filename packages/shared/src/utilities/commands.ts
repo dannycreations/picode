@@ -1,4 +1,4 @@
-const BUILTIN_COMMAND_PATTERN = /^\/(\S+)\s*$/;
+const BUILTIN_COMMAND_PATTERN = /^\/(\S+)$/;
 
 export const BUILTIN_COMMANDS = [
   { name: 'reload', description: 'Reload skills, context files, and configuration without restarting.' },

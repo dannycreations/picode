@@ -51,7 +51,7 @@ export class EventMapper {
       }
 
       case 'message_start':
-        if (event.message.role !== 'user' && event.message.role !== 'assistant') {
+        if (event.message.role !== 'assistant') {
           return null;
         }
         return {
@@ -71,14 +71,14 @@ export class EventMapper {
       }
 
       case 'message_end':
-        if (event.message.role !== 'user' && event.message.role !== 'assistant') {
+        if (event.message.role !== 'assistant') {
           return null;
         }
         return {
           type: 'message_end',
           payload: {
             role: event.message.role,
-            cost: event.message.role === 'assistant' ? (event.message as AssistantMessageWithUsage).usage?.cost?.total : undefined,
+            cost: (event.message as AssistantMessageWithUsage).usage?.cost?.total,
             stats: this.createStats(session) ?? undefined,
           },
         };

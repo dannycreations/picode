@@ -22,7 +22,7 @@ const MERMAID_THEME = {
   fillType2: '#454545',
 };
 
-export function initializeMermaid(): void {
+function initializeMermaid(): void {
   mermaid.initialize({
     startOnLoad: false,
     securityLevel: 'loose',

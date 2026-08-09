@@ -26,8 +26,6 @@ export function getToolDiffMeta(toolName?: string): { label: string; icon: strin
       return { label: 'Command Output', icon: 'terminal' };
     case 'read_file':
       return { label: 'File Contents', icon: 'file' };
-    case 'ask_question':
-      return { label: 'User Response', icon: 'comment' };
     case 'delete_file':
       return { label: 'Execution Output', icon: 'trash' };
     default:

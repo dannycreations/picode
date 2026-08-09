@@ -1,11 +1,10 @@
 import { cn } from 'cnfast';
-import { Calendar, Check, Copy, Download, FileJson, Trash2 } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 
-import { HistoryButton } from '@pi-code/webview/components/history/HistoryButton';
-import { useCopyToClipboard } from '@pi-code/webview/hooks/useCopyToClipboard';
+import { TaskActions } from '@pi-code/webview/components/shared/TaskActions';
 import { formatTimeAgo } from '@pi-code/webview/utilities/common';
 
-import type { FC, MouseEvent } from 'react';
+import type { FC } from 'react';
 import type { HistoryItem } from '@pi-code/shared/core/protocol';
 
 interface HistoryCardProps {
@@ -14,7 +13,7 @@ interface HistoryCardProps {
   readonly isSelectionMode?: boolean;
   readonly onClick: () => void;
   readonly onToggleSelect?: (path: string) => void;
-  readonly onDelete: (e: MouseEvent, path: string) => void;
+  readonly onDelete: (path: string) => void;
   readonly onViewRaw?: (path: string) => void;
   readonly onExport?: (item: HistoryItem) => void;
   readonly testId?: string;
@@ -33,8 +32,6 @@ export const HistoryCard: FC<HistoryCardProps> = ({
   testId,
   lineClamp = 3,
 }) => {
-  const { showCopy, copy } = useCopyToClipboard();
-
   return (
     <div
       data-testid={testId}
@@ -69,37 +66,15 @@ export const HistoryCard: FC<HistoryCardProps> = ({
           </div>
 
           {!isSelectionMode && (
-            <div className="flex flex-row items-center gap-1" onClick={(e) => e.stopPropagation()}>
-              {onExport && (
-                <HistoryButton
-                  icon={Download}
-                  title="Export task messages"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onExport(item);
-                  }}
-                />
-              )}
-              <HistoryButton
-                icon={showCopy ? Check : Copy}
-                title={showCopy ? 'Copied prompt!' : 'Copy prompt'}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  void copy(item.task);
-                }}
-              />
-              <HistoryButton icon={Trash2} title="Delete task" danger onClick={(e) => onDelete(e, item.path)} />
-              {onViewRaw && (
-                <HistoryButton
-                  icon={FileJson}
-                  title="View raw task"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onViewRaw(item.path);
-                  }}
-                />
-              )}
-            </div>
+            <TaskActions
+              iconSize={12}
+              buttonClassName="p-1 rounded bg-transparent border-none cursor-pointer flex items-center transition-colors hover:bg-[var(--vscode-list-hoverBackground)] text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)]"
+              deleteButtonClassName="p-1 rounded bg-transparent border-none cursor-pointer flex items-center transition-colors hover:bg-[var(--vscode-list-hoverBackground)] text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-errorForeground)]"
+              copyText={item.task}
+              onExport={onExport ? () => onExport(item) : undefined}
+              onDelete={() => onDelete(item.path)}
+              onViewRaw={onViewRaw ? () => onViewRaw(item.path) : undefined}
+            />
           )}
         </div>
       </div>

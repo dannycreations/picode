@@ -21,7 +21,7 @@ export const ChatAction: FC<ChatActionProps> = ({
   onContinueTask,
 }) => {
   const isToolApprovalPending = activeTask?.messages.some((msg) => msg.toolStatus === 'approval');
-  const showActionButtons = activeTask && (showScrollToBottom || isAgentRunning || (!isAgentRunning && !isToolApprovalPending));
+  const showActionButtons = activeTask && (showScrollToBottom || isAgentRunning || !isToolApprovalPending);
 
   if (!showActionButtons) return null;
 

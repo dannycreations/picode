@@ -3,7 +3,7 @@ import { useCallback, useState } from 'react';
 import { HistoryCard } from '@pi-code/webview/components/history/HistoryCard';
 import { ConfirmDialog } from '@pi-code/webview/components/shared/ConfirmDialog';
 
-import type { FC, MouseEvent } from 'react';
+import type { FC } from 'react';
 import type { HistoryItem } from '@pi-code/shared/core/protocol';
 
 interface HistoryPreviewProps {
@@ -16,8 +16,7 @@ interface HistoryPreviewProps {
 export const HistoryPreview: FC<HistoryPreviewProps> = ({ history, onSelectTask, onViewAllHistory, onDeleteTask }) => {
   const [deleteConfirmPath, setDeleteConfirmPath] = useState<string | null>(null);
 
-  const handleDeleteSingle = useCallback((e: MouseEvent, path: string) => {
-    e.stopPropagation();
+  const handleDeleteSingle = useCallback((path: string) => {
     setDeleteConfirmPath(path);
   }, []);
 
