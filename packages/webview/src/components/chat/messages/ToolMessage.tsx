@@ -96,7 +96,7 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
               </button>
               {isDiffExpanded && (
                 <div className="border-t border-vscode-editorGroup-border/30 p-2">
-                  <CodeBlock source={message.diff} language={getToolLanguage(message.toolName, message.text)} />
+                  <CodeBlock source={message.diff} language={getToolLanguage(message.toolName)} />
                 </div>
               )}
             </div>

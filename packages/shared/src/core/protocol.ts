@@ -96,10 +96,10 @@ export type ExtensionToWebviewMessage =
   | { type: 'settings_data'; payload: { settings: AppSettings } }
   | { type: 'session_loaded'; payload: ActiveTaskState }
   | { type: 'agent_start'; payload: { path?: string; stats?: StatsData } }
-  | { type: 'message_start'; payload: { role: string; timestamp?: number } }
+  | { type: 'message_start'; payload: { role: 'assistant'; timestamp?: number } }
   | { type: 'text_delta'; payload: { delta: string } }
   | { type: 'thinking_delta'; payload: { delta: string } }
-  | { type: 'message_end'; payload?: { role: string; cost?: number; stats?: StatsData } }
+  | { type: 'message_end'; payload: { role: 'assistant'; cost?: number; stats?: StatsData } }
   | { type: 'api_request_start'; payload: { id: string; timestamp: number } }
   | { type: 'api_request_end'; payload: { id: string; cost?: number; error?: string; stats?: StatsData } }
   | { type: 'tool_approval_request'; payload: { id: string; tool_name: ToolName; arguments: string } }

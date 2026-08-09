@@ -6,13 +6,9 @@ export function formatTime(ts: number): string {
   });
 }
 
-export function getToolLanguage(toolName?: string, toolText?: string): string {
+export function getToolLanguage(toolName?: string): string {
   if (toolName === 'execute_command') {
     return 'shell';
-  }
-  if (toolName === 'read_file' && toolText) {
-    const match = toolText.match(/(?:\.([^./\\]+))$/);
-    return match ? match[1] : 'text';
   }
   if (toolName === 'write_file' || toolName === 'edit_file') {
     return 'diff';

@@ -23,7 +23,10 @@ export class ChatMessageDispatcher {
 
   public async dispatch(message: WebviewToExtensionMessage, context: MessageHandlerContext): Promise<void> {
     const handler = this.handlers.get(message.type);
-    if (!handler) return;
+    if (!handler) {
+      logger.warn(`No handler registered for webview message type "${message.type}".`);
+      return;
+    }
 
     try {
       await handler(message, context);

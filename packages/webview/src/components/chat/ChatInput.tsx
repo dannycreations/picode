@@ -17,9 +17,9 @@ export interface ChatInputProps {
   readonly setInputValue: (val: string) => void;
   readonly onSend: (text: string, images: string[]) => void;
   readonly sendingDisabled: boolean;
-  readonly placeholderText?: string;
-  readonly textareaRef?: RefObject<HTMLTextAreaElement | null>;
-  readonly commands?: readonly CommandItem[];
+  readonly placeholderText: string;
+  readonly textareaRef: RefObject<HTMLTextAreaElement | null>;
+  readonly commands: readonly CommandItem[];
 }
 
 const AttachedImagesPreview: FC<{
@@ -45,24 +45,13 @@ const AttachedImagesPreview: FC<{
   );
 };
 
-export const ChatInput: FC<ChatInputProps> = ({
-  inputValue,
-  setInputValue,
-  onSend,
-  sendingDisabled,
-  placeholderText = 'Ask a question or type a command...',
-  textareaRef,
-  commands = [],
-}) => {
+export const ChatInput: FC<ChatInputProps> = ({ inputValue, setInputValue, onSend, sendingDisabled, placeholderText, textareaRef, commands }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const fallbackTextareaRef = useRef<HTMLTextAreaElement>(null);
   const matchRef = useRef<HTMLDivElement>(null);
 
-  const resolvedTextareaRef = textareaRef ?? fallbackTextareaRef;
-
-  const command = useChatCommand({ commands, value: inputValue, setValue: setInputValue, textareaRef: resolvedTextareaRef });
+  const command = useChatCommand({ commands, value: inputValue, setValue: setInputValue, textareaRef });
   const match = useMemo(() => splitCommand(inputValue, commands), [inputValue, commands]);
 
   const handleSend = () => {
@@ -160,7 +149,7 @@ export const ChatInput: FC<ChatInputProps> = ({
           </div>
 
           <TextareaAutosize
-            ref={resolvedTextareaRef}
+            ref={textareaRef}
             value={inputValue}
             onChange={handleChange}
             onFocus={() => {

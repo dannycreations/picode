@@ -19,6 +19,8 @@ const CODE_BLOCK_BG_COLOR = 'var(--vscode-editor-background, var(--vscode-sideBa
 const ICON_BUTTON_CLASS =
   'w-6 h-6 flex items-center justify-center border-none text-[var(--vscode-editor-foreground)] bg-transparent hover:bg-[var(--vscode-toolbar-hoverBackground)] cursor-pointer rounded';
 
+const COLLAPSED_HEIGHT = 500;
+
 interface CodeToolbarProps {
   readonly currentLanguage: string;
   readonly onLanguageChange: (lang: ExtendedLanguage) => void;
@@ -31,7 +33,7 @@ interface CodeToolbarProps {
   readonly onCopy: (e: MouseEvent) => void;
 }
 
-export const CodeToolbar: FC<CodeToolbarProps> = ({
+const CodeToolbar: FC<CodeToolbarProps> = ({
   currentLanguage,
   onLanguageChange,
   showCollapseButton,
@@ -85,9 +87,6 @@ export const CodeToolbar: FC<CodeToolbarProps> = ({
 export interface CodeBlockProps {
   readonly source?: string;
   readonly language: string;
-  readonly initialWordWrap?: boolean;
-  readonly collapsedHeight?: number;
-  readonly initialWindowShade?: boolean;
 }
 
 interface PlainCodeProps {
@@ -101,7 +100,7 @@ const PlainCode: FC<PlainCodeProps> = ({ source, language }) => (
   </pre>
 );
 
-export const useShikiHighlighter = (source: string, language: string, enabled: boolean): ReactNode => {
+const useShikiHighlighter = (source: string, language: string, enabled: boolean): ReactNode => {
   const [highlightedCode, setHighlightedCode] = useState<ReactNode>(null);
 
   useEffect(() => {
@@ -150,83 +149,81 @@ export const useShikiHighlighter = (source: string, language: string, enabled: b
   return highlightedCode;
 };
 
-export const CodeBlock = memo(
-  ({ source = '', language, initialWordWrap = true, initialWindowShade = true, collapsedHeight = 500 }: CodeBlockProps) => {
-    const [wordWrap, setWordWrap] = useState(initialWordWrap);
-    const [windowShade, setWindowShade] = useState(initialWindowShade);
-    const [currentLanguage, setCurrentLanguage] = useState(() => normalizeLanguage(language));
-    const [showCollapseButton, setShowCollapseButton] = useState(true);
-    const [isHovered, setIsHovered] = useState(false);
+export const CodeBlock = memo(({ source = '', language }: CodeBlockProps) => {
+  const [wordWrap, setWordWrap] = useState(true);
+  const [windowShade, setWindowShade] = useState(true);
+  const [currentLanguage, setCurrentLanguage] = useState(() => normalizeLanguage(language));
+  const [showCollapseButton, setShowCollapseButton] = useState(true);
+  const [isHovered, setIsHovered] = useState(false);
 
-    const userChangedLanguageRef = useRef(false);
-    const { ref: codeBlockRef, hasBeenVisible } = useInViewport<HTMLDivElement>();
-    const { showCopy, copy } = useCopyToClipboard();
+  const userChangedLanguageRef = useRef(false);
+  const { ref: codeBlockRef, hasBeenVisible } = useInViewport<HTMLDivElement>();
+  const { showCopy, copy } = useCopyToClipboard();
 
-    useEffect(() => {
-      const normalizedLang = normalizeLanguage(language);
-      if (normalizedLang !== currentLanguage && !userChangedLanguageRef.current) {
-        setCurrentLanguage(normalizedLang);
-      }
-    }, [language, currentLanguage]);
+  useEffect(() => {
+    const normalizedLang = normalizeLanguage(language);
+    if (normalizedLang !== currentLanguage && !userChangedLanguageRef.current) {
+      setCurrentLanguage(normalizedLang);
+    }
+  }, [language, currentLanguage]);
 
-    const highlightedCode = useShikiHighlighter(source, currentLanguage, hasBeenVisible);
+  const highlightedCode = useShikiHighlighter(source, currentLanguage, hasBeenVisible);
 
-    useEffect(() => {
-      if (codeBlockRef.current) {
-        setShowCollapseButton(codeBlockRef.current.scrollHeight >= collapsedHeight);
-      }
-    }, [highlightedCode, collapsedHeight]);
+  useEffect(() => {
+    if (codeBlockRef.current) {
+      setShowCollapseButton(codeBlockRef.current.scrollHeight >= COLLAPSED_HEIGHT);
+    }
+  }, [highlightedCode]);
 
-    const handleCopy = useCallback(
-      (e: MouseEvent) => {
-        e.stopPropagation();
-        if (source) copy(source, e);
-      },
-      [source, copy],
-    );
+  const handleCopy = useCallback(
+    (e: MouseEvent) => {
+      e.stopPropagation();
+      if (source) copy(source, e);
+    },
+    [source, copy],
+  );
 
-    if (source.length === 0) return null;
+  if (source.length === 0) return null;
 
-    return (
+  return (
+    <div
+      ref={codeBlockRef}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className="relative overflow-hidden my-2 border border-[var(--vscode-editorGroup-border)] rounded-md"
+      style={{ backgroundColor: CODE_BLOCK_BG_COLOR }}
+    >
       <div
-        ref={codeBlockRef}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-        className="relative overflow-hidden my-2 border border-[var(--vscode-editorGroup-border)] rounded-md"
-        style={{ backgroundColor: CODE_BLOCK_BG_COLOR }}
+        className="p-3 overflow-y-auto leading-relaxed select-text"
+        style={{
+          backgroundColor: 'transparent',
+          maxHeight: windowShade ? `${COLLAPSED_HEIGHT}px` : 'none',
+          whiteSpace: wordWrap ? 'pre-wrap' : 'pre',
+          wordBreak: 'normal',
+          overflowWrap: wordWrap ? 'break-word' : 'normal',
+          fontSize: 'var(--vscode-editor-font-size, var(--vscode-font-size, 12px))',
+          fontFamily: 'var(--vscode-editor-font-family, monospace)',
+        }}
       >
-        <div
-          className="p-3 overflow-y-auto leading-relaxed select-text"
-          style={{
-            backgroundColor: 'transparent',
-            maxHeight: windowShade ? `${collapsedHeight}px` : 'none',
-            whiteSpace: wordWrap ? 'pre-wrap' : 'pre',
-            wordBreak: 'normal',
-            overflowWrap: wordWrap ? 'break-word' : 'normal',
-            fontSize: 'var(--vscode-editor-font-size, var(--vscode-font-size, 12px))',
-            fontFamily: 'var(--vscode-editor-font-family, monospace)',
-          }}
-        >
-          {highlightedCode ?? <PlainCode source={source} language={currentLanguage} />}
-        </div>
-
-        {isHovered && (
-          <CodeToolbar
-            currentLanguage={currentLanguage}
-            onLanguageChange={(newLang) => {
-              userChangedLanguageRef.current = true;
-              setCurrentLanguage(newLang);
-            }}
-            showCollapseButton={showCollapseButton}
-            windowShade={windowShade}
-            onToggleWindowShade={() => setWindowShade(!windowShade)}
-            wordWrap={wordWrap}
-            onToggleWordWrap={() => setWordWrap(!wordWrap)}
-            showCopy={showCopy}
-            onCopy={handleCopy}
-          />
-        )}
+        {highlightedCode ?? <PlainCode source={source} language={currentLanguage} />}
       </div>
-    );
-  },
-);
+
+      {isHovered && (
+        <CodeToolbar
+          currentLanguage={currentLanguage}
+          onLanguageChange={(newLang) => {
+            userChangedLanguageRef.current = true;
+            setCurrentLanguage(newLang);
+          }}
+          showCollapseButton={showCollapseButton}
+          windowShade={windowShade}
+          onToggleWindowShade={() => setWindowShade(!windowShade)}
+          wordWrap={wordWrap}
+          onToggleWordWrap={() => setWordWrap(!wordWrap)}
+          showCopy={showCopy}
+          onCopy={handleCopy}
+        />
+      )}
+    </div>
+  );
+});

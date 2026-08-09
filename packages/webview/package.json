@@ -13,7 +13,7 @@
     "@pi-code/shared": "workspace:*",
     "cnfast": "^0.1.0",
     "hast-util-to-jsx-runtime": "^2.3.6",
-    "katex": "^0.18.1",
+    "katex": "^0.18.2",
     "lucide-react": "^1.30.0",
     "mermaid-compact": "^0.0.1",
     "react": "^19.2.8",

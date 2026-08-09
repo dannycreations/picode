@@ -71,13 +71,19 @@ export class ChatViewProvider implements WebviewViewProvider {
 
     webview.html = ChatViewHtml.build(webview, this.context.extensionUri);
 
+    this.agent.dispose();
+    this.agent = new AgentRunner();
+
     const cwd = getWorkspaceCwd();
+    const self = this;
 
     const context: MessageHandlerContext = {
       cwd,
       webview,
-      agent: this.agent,
-      recreateAgent: () => (this.agent = new AgentRunner()),
+      get agent() {
+        return self.agent;
+      },
+      recreateAgent: () => (self.agent = new AgentRunner()),
       postMessage: (msg) => webview.postMessage(msg),
       sessionService: this.sessionService,
       workspaceService: this.workspaceService,

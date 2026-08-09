@@ -23,7 +23,7 @@ import { vscode } from '@pi-code/webview/utilities/vscode';
 import type { FC } from 'react';
 import type { ExtensionToWebviewMessage, HistoryItem } from '@pi-code/shared/core/protocol';
 
-export const ChatLogo: FC = () => {
+const ChatLogo: FC = () => {
   return (
     <div className="flex items-center justify-center w-14 h-14 mx-auto my-2" data-testid="pi-code-logo">
       <svg
@@ -150,7 +150,10 @@ export const ChatView: FC = () => {
         <HistoryView
           history={pastTasks}
           onSelectTask={(item: HistoryItem) => vscode?.postMessage({ type: 'load_session', path: item.path, id: item.id, title: item.task })}
-          onDone={() => setView('chat')}
+          onDone={() => {
+            setScope('current');
+            setView('chat');
+          }}
           onDeleteTasks={(paths) => {
             setPastTasks((prev) => prev.filter((item) => !paths.includes(item.path)));
             vscode?.postMessage({ type: 'delete_sessions', paths });

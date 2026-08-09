@@ -56,7 +56,7 @@ const useModalKeyboard = ({ isOpen, onEscape, onEnter }: UseModalKeyboardProps) 
   }, [isOpen, onEscape, onEnter]);
 };
 
-export const Button: FC<ButtonProps> = ({ variant = 'secondary', children, className = '', disabled, ...props }) => {
+const Button: FC<ButtonProps> = ({ variant = 'secondary', children, className = '', disabled, ...props }) => {
   const baseStyles =
     'px-3 py-1.5 text-xs font-semibold rounded cursor-pointer transition-colors border flex items-center justify-center gap-2 select-none disabled:opacity-50 disabled:cursor-not-allowed';
 
@@ -72,7 +72,7 @@ export const Button: FC<ButtonProps> = ({ variant = 'secondary', children, class
   );
 };
 
-export const Modal: FC<ModalProps> = ({ isOpen, children, ariaLabelledBy, ariaDescribedBy }) => {
+const Modal: FC<ModalProps> = ({ isOpen, children, ariaLabelledBy, ariaDescribedBy }) => {
   if (!isOpen) return null;
 
   return createPortal(
@@ -91,7 +91,7 @@ export const Modal: FC<ModalProps> = ({ isOpen, children, ariaLabelledBy, ariaDe
   );
 };
 
-export const ModalHeader: FC<{ children: ReactNode; onClose?: () => void }> = ({ children, onClose }) => (
+const ModalHeader: FC<{ children: ReactNode; onClose?: () => void }> = ({ children, onClose }) => (
   <div className="px-4 py-3 bg-[var(--vscode-sideBarSectionHeader-background)] border-b border-[var(--vscode-panel-border)]/50 flex justify-between items-center">
     {children}
     {onClose && (
@@ -106,11 +106,11 @@ export const ModalHeader: FC<{ children: ReactNode; onClose?: () => void }> = ({
   </div>
 );
 
-export const ModalBody: FC<{ children: ReactNode; className?: string }> = ({ children, className = '' }) => (
+const ModalBody: FC<{ children: ReactNode; className?: string }> = ({ children, className = '' }) => (
   <div className={cn('p-4 flex flex-col gap-3 text-xs leading-relaxed text-[var(--vscode-foreground)]', className)}>{children}</div>
 );
 
-export const ModalFooter: FC<{ children: ReactNode }> = ({ children }) => (
+const ModalFooter: FC<{ children: ReactNode }> = ({ children }) => (
   <div className="px-4 py-3 bg-[var(--vscode-sideBarSectionHeader-background)]/50 border-t border-[var(--vscode-panel-border)]/50 flex justify-end gap-2">
     {children}
   </div>

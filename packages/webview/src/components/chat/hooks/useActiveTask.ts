@@ -90,19 +90,13 @@ export const useActiveTask = (): UseActiveTaskReturn => {
         break;
 
       case 'message_start': {
-        const { role, timestamp } = msg.payload;
+        const { timestamp } = msg.payload;
         setIsAgentRunning(true);
         setActiveTask((prev) => {
           if (!prev) return null;
-          const isUser = role === 'user';
-
-          if (isUser && prev.messages.some((m) => m.sender === 'user' && m.ts >= (timestamp || Date.now()) - 2000)) {
-            return prev;
-          }
-
           const newMsg: ChatMessage = {
-            id: `${role}-${timestamp || Date.now()}`,
-            sender: isUser ? 'user' : 'assistant',
+            id: `assistant-${timestamp || Date.now()}`,
+            sender: 'assistant',
             text: '',
             ts: timestamp || Date.now(),
           };
@@ -162,8 +156,7 @@ export const useActiveTask = (): UseActiveTaskReturn => {
       }
 
       case 'message_end': {
-        const { role, cost, stats } = msg.payload || {};
-        if (role !== 'assistant') break;
+        const { cost, stats } = msg.payload;
 
         setActiveTask((prev) => {
           if (!prev) return null;

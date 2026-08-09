@@ -101,7 +101,6 @@ export const ChatFooter: FC<ChatFooterProps> = ({ currentModel, onChangeModel, m
           />
         )}
       </div>
-      <div className="flex flex-row justify-end items-center gap-1.5" />
     </div>
   );
 };
