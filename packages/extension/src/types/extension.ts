@@ -17,7 +17,6 @@ export interface EnvironmentMessage {
   readonly role: string;
   readonly toolName?: string;
   readonly details?: unknown;
-  readonly content?: unknown;
 }
 
 export interface SessionMessageContent {
@@ -36,7 +35,6 @@ export interface SessionMessageUsage {
   readonly output?: number;
   readonly cacheRead?: number;
   readonly cacheWrite?: number;
-  readonly totalTokens?: number;
   readonly cost?: {
     readonly total?: number;
   };

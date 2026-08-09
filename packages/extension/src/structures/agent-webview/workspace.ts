@@ -1,7 +1,7 @@
 import { writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
-import { Range, Uri, window, workspace } from 'vscode';
+import { commands, Range, Uri, window, workspace } from 'vscode';
 
 import { extensionForMimeType, parseBase64DataUrl } from '@pi-code/extension/utilities/codec';
 
@@ -31,7 +31,6 @@ export class WorkspaceService {
 
     await writeFile(tempFilePath, Buffer.from(parts.data, 'base64'));
 
-    const { commands } = await import('vscode');
     await commands.executeCommand('vscode.open', Uri.file(tempFilePath));
   }
 }

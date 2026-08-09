@@ -70,6 +70,38 @@ export function matchesGlob(pattern: string, filePath: string): boolean {
   return regex ? regex.test(normalizedFile) : false;
 }
 
+function resolveAllowDeny(
+  allowedPatterns: readonly string[],
+  deniedPatterns: readonly string[],
+  isMatch: (pattern: string) => boolean,
+): DecisionAction {
+  let maxAllowedLen = -1;
+  let maxDeniedLen = -1;
+  let hasAllowedMatch = false;
+  let hasDeniedMatch = false;
+
+  for (const pat of allowedPatterns) {
+    if (isMatch(pat)) {
+      hasAllowedMatch = true;
+      if (pat.length > maxAllowedLen) maxAllowedLen = pat.length;
+    }
+  }
+
+  for (const pat of deniedPatterns) {
+    if (isMatch(pat)) {
+      hasDeniedMatch = true;
+      if (pat.length > maxDeniedLen) maxDeniedLen = pat.length;
+    }
+  }
+
+  if (hasAllowedMatch && hasDeniedMatch) {
+    return maxDeniedLen >= maxAllowedLen ? 'deny' : 'approve';
+  }
+  if (hasDeniedMatch) return 'deny';
+  if (hasAllowedMatch) return 'approve';
+  return 'confirm';
+}
+
 export function resolvePathAction(
   cwd: string | undefined,
   filePath: string,
@@ -86,42 +118,9 @@ export function resolvePathAction(
   }
 
   const normalizedPath = filePath.replace(/\\/g, '/');
-
-  let maxAllowedLen = -1;
-  let maxDeniedLen = -1;
-  let hasAllowedMatch = false;
-  let hasDeniedMatch = false;
-
-  for (let i = 0; i < allowedPatterns.length; i++) {
-    const pat = allowedPatterns[i];
-    if (pat === '*' || matchesGlob(pat, normalizedPath)) {
-      hasAllowedMatch = true;
-      if (pat.length > maxAllowedLen) {
-        maxAllowedLen = pat.length;
-      }
-    }
-  }
-
-  for (let i = 0; i < deniedPatterns.length; i++) {
-    const pat = deniedPatterns[i];
-    if (pat === '*' || matchesGlob(pat, normalizedPath)) {
-      hasDeniedMatch = true;
-      if (pat.length > maxDeniedLen) {
-        maxDeniedLen = pat.length;
-      }
-    }
-  }
-
-  if (hasAllowedMatch && hasDeniedMatch) {
-    return maxDeniedLen >= maxAllowedLen ? 'deny' : 'approve';
-  }
-
-  if (hasDeniedMatch) {
-    return 'deny';
-  }
-
-  if (hasAllowedMatch) {
-    return 'approve';
+  const action = resolveAllowDeny(allowedPatterns, deniedPatterns, (pat) => pat === '*' || matchesGlob(pat, normalizedPath));
+  if (action !== 'confirm') {
+    return action;
   }
 
   if (cwd) {
@@ -314,41 +313,9 @@ export function getSingleCommandDecision(
     return 'approve';
   }
 
-  let maxAllowedLen = -1;
-  let maxDeniedLen = -1;
-  let hasAllowedMatch = false;
-  let hasDeniedMatch = false;
-
-  for (let i = 0; i < allowedPatterns.length; i++) {
-    const pat = allowedPatterns[i];
-    if (matchesCommandPattern(pat, trimmedCmd)) {
-      hasAllowedMatch = true;
-      if (pat.length > maxAllowedLen) {
-        maxAllowedLen = pat.length;
-      }
-    }
-  }
-
-  for (let i = 0; i < deniedPatterns.length; i++) {
-    const pat = deniedPatterns[i];
-    if (matchesCommandPattern(pat, trimmedCmd)) {
-      hasDeniedMatch = true;
-      if (pat.length > maxDeniedLen) {
-        maxDeniedLen = pat.length;
-      }
-    }
-  }
-
-  if (hasAllowedMatch && hasDeniedMatch) {
-    return maxDeniedLen >= maxAllowedLen ? 'deny' : 'approve';
-  }
-
-  if (hasDeniedMatch) {
-    return 'deny';
-  }
-
-  if (hasAllowedMatch) {
-    return 'approve';
+  const action = resolveAllowDeny(allowedPatterns, deniedPatterns, (pat) => matchesCommandPattern(pat, trimmedCmd));
+  if (action !== 'confirm') {
+    return action;
   }
 
   if (allowedPatterns.length === 0) {

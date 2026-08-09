@@ -2,6 +2,7 @@ import { SettingsService } from '@pi-code/extension/core/settings';
 import { resolveCommandAction, resolvePathAction, resolveReadPath } from '@pi-code/extension/structures/agent-runtime/policy-action';
 import { logger } from '@pi-code/shared/core/logger';
 
+import type { DecisionAction } from '@pi-code/extension/structures/agent-runtime/policy-action';
 import type { ToolApprovalDecision } from '@pi-code/extension/structures/agent-runtime/runner';
 import type { ToolName } from '@pi-code/shared/core/protocol';
 import type { AppSettings } from '@pi-code/shared/core/settings';
@@ -54,65 +55,35 @@ export class PolicyEvaluator {
   private evaluateReadFile(cwd: string, settings: AppSettings, args: unknown): ToolApprovalDecision {
     const toolArgs = (args ?? {}) as ReadFileToolArgs;
     const files = toolArgs.files ?? [];
-
     const resolutions = files.map((f) => resolveReadPath(cwd, f.path ?? '', settings));
-
-    if (resolutions.includes('deny')) {
-      return {
-        action: 'deny',
-        reason: 'Access to read one or more specified paths is explicitly denied by settings.',
-      };
-    }
-    if (resolutions.every((r) => r === 'approve')) {
-      return { action: 'approve' };
-    }
-    return { action: 'confirm' };
+    const action: DecisionAction = resolutions.includes('deny') ? 'deny' : resolutions.every((r) => r === 'approve') ? 'approve' : 'confirm';
+    return this.toDecision(action, 'Access to read one or more specified paths is explicitly denied by settings.');
   }
 
   private evaluateWriteFile(cwd: string, settings: AppSettings, toolName: 'write_file' | 'edit_file', args: unknown): ToolApprovalDecision {
     const toolArgs = (args ?? {}) as WriteFileToolArgs;
     const filePath = toolName === 'write_file' ? (toolArgs.path ?? '') : (toolArgs.file_path ?? '');
     const resolution = resolvePathAction(cwd, filePath, settings.autoApproveWrite, settings.allowedWritePaths, settings.deniedWritePaths);
-
-    if (resolution === 'deny') {
-      return {
-        action: 'deny',
-        reason: 'Access to write/edit this file path is explicitly denied by settings.',
-      };
-    }
-    if (resolution === 'approve') {
-      return { action: 'approve' };
-    }
-    return { action: 'confirm' };
+    return this.toDecision(resolution, 'Access to write/edit this file path is explicitly denied by settings.');
   }
 
   private evaluateDeleteFile(cwd: string, settings: AppSettings, args: unknown): ToolApprovalDecision {
     const toolArgs = (args ?? {}) as DeleteFileToolArgs;
     const filePath = toolArgs.path ?? '';
     const resolution = resolvePathAction(cwd, filePath, settings.autoApproveDelete, settings.allowedDeletePaths, settings.deniedDeletePaths);
-
-    if (resolution === 'deny') {
-      return {
-        action: 'deny',
-        reason: 'Access to delete this file path is explicitly denied by settings.',
-      };
-    }
-    if (resolution === 'approve') {
-      return { action: 'approve' };
-    }
-    return { action: 'confirm' };
+    return this.toDecision(resolution, 'Access to delete this file path is explicitly denied by settings.');
   }
 
   private evaluateExecuteCommand(settings: AppSettings, args: unknown): ToolApprovalDecision {
     const toolArgs = (args ?? {}) as ExecuteCommandToolArgs;
     const command = toolArgs.command ?? '';
     const resolution = resolveCommandAction(command, settings.autoApproveExecute, settings.allowedExecuteCommands, settings.deniedExecuteCommands);
+    return this.toDecision(resolution, 'Execution of this command is explicitly denied by settings.');
+  }
 
+  private toDecision(resolution: DecisionAction, denyReason: string): ToolApprovalDecision {
     if (resolution === 'deny') {
-      return {
-        action: 'deny',
-        reason: 'Execution of this command is explicitly denied by settings.',
-      };
+      return { action: 'deny', reason: denyReason };
     }
     if (resolution === 'approve') {
       return { action: 'approve' };

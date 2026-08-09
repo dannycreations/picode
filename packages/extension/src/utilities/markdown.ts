@@ -104,14 +104,34 @@ function getLineOffsets(str: string): LineOffset[] {
   return lines;
 }
 
+function extractBodyBounds(raw: string, lines: LineOffset[], startIdx: number, fence: FenceInfo): { bodyStart: number; bodyEnd: number } {
+  for (let endIdx = lines.length - 1; endIdx > startIdx; endIdx--) {
+    const closingLine = lines[endIdx];
+    if (isClosingFence(raw, closingLine.start, closingLine.end, fence.char, fence.length)) {
+      const bodyStart = lines[startIdx + 1] ? lines[startIdx + 1].start : closingLine.start;
+      let bodyEnd = closingLine.start;
+      if (bodyEnd > bodyStart && raw.charCodeAt(bodyEnd - 1) === 10 /* \n */) {
+        bodyEnd--;
+        if (bodyEnd > bodyStart && raw.charCodeAt(bodyEnd - 1) === 13 /* \r */) {
+          bodyEnd--;
+        }
+      }
+      return { bodyStart, bodyEnd };
+    }
+  }
+
+  // Unterminated block (streaming output): keep everything after the opener line
+  const bodyStart = lines[startIdx + 1] ? lines[startIdx + 1].start : raw.length;
+  return { bodyStart, bodyEnd: raw.length };
+}
+
 function findFencedBlockBounds(raw: string, requireStartAtBeginning: boolean): { bodyStart: number; bodyEnd: number } | null {
   const lines = getLineOffsets(raw);
   if (lines.length === 0) return null;
 
-  let startIdx = 0;
-
   if (requireStartAtBeginning) {
     // Find first non-empty line
+    let startIdx = 0;
     while (startIdx < lines.length) {
       const { start, end } = lines[startIdx];
       if (start < end) {
@@ -136,52 +156,19 @@ function findFencedBlockBounds(raw: string, requireStartAtBeginning: boolean): {
     if (!fence) return null;
 
     // Scan backwards from the bottom line so nested code fences remain intact
-    for (let endIdx = lines.length - 1; endIdx > startIdx; endIdx--) {
-      const closingLine = lines[endIdx];
-      if (isClosingFence(raw, closingLine.start, closingLine.end, fence.char, fence.length)) {
-        const bodyStart = lines[startIdx + 1] ? lines[startIdx + 1].start : closingLine.start;
-        let bodyEnd = closingLine.start;
-        if (bodyEnd > bodyStart && raw.charCodeAt(bodyEnd - 1) === 10 /* \n */) {
-          bodyEnd--;
-          if (bodyEnd > bodyStart && raw.charCodeAt(bodyEnd - 1) === 13 /* \r */) {
-            bodyEnd--;
-          }
-        }
-        return { bodyStart, bodyEnd };
-      }
-    }
-
-    // Unterminated block (streaming output): keep everything after the opener line
-    const bodyStart = lines[startIdx + 1] ? lines[startIdx + 1].start : raw.length;
-    return { bodyStart, bodyEnd: raw.length };
-  } else {
-    // For extractCodeFenceMessage: search for the first fenced block anywhere in text
-    for (let start = 0; start < lines.length; start++) {
-      const line = lines[start];
-      const fence = parseOpeningFence(raw, line.start, line.end);
-      if (!fence) continue;
-
-      for (let endIdx = lines.length - 1; endIdx > start; endIdx--) {
-        const closingLine = lines[endIdx];
-        if (isClosingFence(raw, closingLine.start, closingLine.end, fence.char, fence.length)) {
-          const bodyStart = lines[start + 1] ? lines[start + 1].start : closingLine.start;
-          let bodyEnd = closingLine.start;
-          if (bodyEnd > bodyStart && raw.charCodeAt(bodyEnd - 1) === 10) {
-            bodyEnd--;
-            if (bodyEnd > bodyStart && raw.charCodeAt(bodyEnd - 1) === 13) {
-              bodyEnd--;
-            }
-          }
-          return { bodyStart, bodyEnd };
-        }
-      }
-
-      const bodyStart = lines[start + 1] ? lines[start + 1].start : raw.length;
-      return { bodyStart, bodyEnd: raw.length };
-    }
-
-    return null;
+    return extractBodyBounds(raw, lines, startIdx, fence);
   }
+
+  // For extractCodeFenceMessage: search for the first fenced block anywhere in text
+  for (let start = 0; start < lines.length; start++) {
+    const line = lines[start];
+    const fence = parseOpeningFence(raw, line.start, line.end);
+    if (!fence) continue;
+
+    return extractBodyBounds(raw, lines, start, fence);
+  }
+
+  return null;
 }
 
 export function stripCodeFence(raw: string): string {

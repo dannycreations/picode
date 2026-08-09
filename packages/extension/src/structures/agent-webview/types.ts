@@ -8,7 +8,7 @@ export type MessageHandlerContext = {
   readonly cwd: string;
   readonly webview: Webview;
   readonly agent: AgentRunner;
-  readonly recreateAgent: () => AgentRunner;
+  readonly recreateAgent: () => void;
   readonly postMessage: (msg: ExtensionToWebviewMessage) => void;
   readonly sessionService: SessionService;
   readonly workspaceService: WorkspaceService;
