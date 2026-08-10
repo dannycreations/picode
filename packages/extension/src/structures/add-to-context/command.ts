@@ -1,7 +1,8 @@
-import { commands, window, workspace } from 'vscode';
+import { commands, window } from 'vscode';
 
 import { getEffectiveSelection } from '@pi-code/extension/structures/add-to-context/helpers';
 import { ChatViewProvider } from '@pi-code/extension/structures/agent-webview/provider';
+import { toRelativePath } from '@pi-code/extension/utilities/vscode';
 
 import type { Disposable } from 'vscode';
 
@@ -20,7 +21,7 @@ export function registerAddToContextCommand(): Disposable {
 
     // `asRelativePath` handles multi-root workspaces and falls back to the
     // absolute path when the document lives outside the workspace.
-    const filePath = workspace.asRelativePath(document.uri, false);
+    const filePath = toRelativePath(document.uri);
     const startLine = effectiveContext.startLine + 1;
     const endLine = effectiveContext.endLine + 1;
 

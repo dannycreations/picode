@@ -3,11 +3,6 @@ import type { CommandItem } from '@pi-code/shared/core/protocol';
 const TOKEN_PATTERN = /^\/(\S*)/;
 const WORD_BOUNDARY_PATTERN = /[:\-_./]/;
 
-export const COMMAND_SOURCE_LABEL: Record<CommandItem['source'], string> = {
-  skill: 'skill',
-  builtin: 'builtin',
-};
-
 interface CommandToken {
   readonly name: string;
   readonly end: number;

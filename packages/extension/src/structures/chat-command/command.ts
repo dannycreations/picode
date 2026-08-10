@@ -5,6 +5,12 @@ import type { ResourceLoader } from '@earendil-works/pi-coding-agent';
 import type { CommandItem } from '@pi-code/shared/core/protocol';
 
 export function collectCommands(loader: ResourceLoader): CommandItem[] {
+  const builtins = BUILTIN_COMMANDS.map<CommandItem>((command) => ({
+    name: command.name,
+    source: 'builtin',
+    description: command.description,
+  }));
+
   const skills = loader.getSkills().skills.map<CommandItem>((skill) => ({
     name: `skill:${skill.name}`,
     source: 'skill',
@@ -12,16 +18,16 @@ export function collectCommands(loader: ResourceLoader): CommandItem[] {
     detail: skill.filePath,
   }));
 
-  const builtins = BUILTIN_COMMANDS.map<CommandItem>((command) => ({
-    name: command.name,
-    source: 'builtin',
-    description: command.description,
+  const prompts = loader.getPrompts().prompts.map<CommandItem>((prompt) => ({
+    name: prompt.name,
+    source: 'prompt',
+    description: prompt.description,
   }));
 
-  return [...skills, ...builtins].sort((a, b) => a.name.localeCompare(b.name));
+  return [...builtins, ...skills, ...prompts].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export async function listCommands(cwd: string): Promise<CommandItem[]> {
-  const { resourceLoader } = await createAgentResources(cwd);
-  return collectCommands(resourceLoader);
+  const { services } = await createAgentResources(cwd);
+  return collectCommands(services.resourceLoader);
 }

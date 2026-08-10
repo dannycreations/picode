@@ -1,10 +1,9 @@
-import { join } from 'node:path';
-import { createAgentSessionServices, getAgentDir, ModelRuntime, SettingsManager } from '@earendil-works/pi-coding-agent';
+import { createAgentSessionServices } from '@earendil-works/pi-coding-agent';
 
 import { SettingsService } from '@pi-code/extension/core/settings';
 import { isProjectTrusted } from '@pi-code/extension/utilities/vscode';
 
-import type { AgentSessionServices, ResourceDiagnostic, ResourceLoader, Skill } from '@earendil-works/pi-coding-agent';
+import type { AgentSessionServices, ModelRuntime, ResourceDiagnostic, Skill } from '@earendil-works/pi-coding-agent';
 import type { AppSettings } from '@pi-code/shared/core/settings';
 
 interface SkillsResult {
@@ -14,8 +13,7 @@ interface SkillsResult {
 
 interface AgentResources {
   readonly settings: AppSettings;
-  readonly settingsManager: SettingsManager;
-  readonly resourceLoader: ResourceLoader;
+  readonly services: AgentSessionServices;
 }
 
 interface LoaderConfig {
@@ -24,31 +22,24 @@ interface LoaderConfig {
   readonly projectTrusted: boolean;
 }
 
-interface CachedResources extends AgentResources {
+interface CachedResources {
+  readonly services: AgentSessionServices;
   readonly config: LoaderConfig;
 }
 
 const resourceCache = new Map<string, CachedResources>();
 
-let modelRuntimePromise: Promise<ModelRuntime> | undefined;
-
 export function invalidateAgentResources(): void {
   resourceCache.clear();
 }
 
-export function lazyModelRuntime(): Promise<ModelRuntime> {
-  modelRuntimePromise ??= ModelRuntime.create({
-    authPath: join(getAgentDir(), 'auth.json'),
-    modelsPath: join(getAgentDir(), 'models.json'),
-  });
-  return modelRuntimePromise;
-}
+let sharedModelRuntime: ModelRuntime | undefined;
 
 export async function createAgentResources(cwd: string): Promise<AgentResources> {
   const settingsService = SettingsService.getInstance(cwd);
   const settings = await settingsService.load();
   const projectTrusted = isProjectTrusted(cwd);
-  const config = {
+  const config: LoaderConfig = {
     noContextFiles: !settings.enableAgentRules,
     disableSkillInvocation: !settings.enableSkillDiscovery,
     projectTrusted,
@@ -62,15 +53,15 @@ export async function createAgentResources(cwd: string): Promise<AgentResources>
     cached.config.projectTrusted === config.projectTrusted;
 
   if (isConfigMatch) {
-    return { settings, settingsManager: cached.settingsManager, resourceLoader: cached.resourceLoader };
+    return { settings, services: cached.services };
   }
 
   const settingsManager = settingsService.getSettingsManager();
   settingsManager.setProjectTrusted(projectTrusted);
 
-  const services: AgentSessionServices = await createAgentSessionServices({
+  const services = await createAgentSessionServices({
     cwd,
-    modelRuntime: await lazyModelRuntime(),
+    modelRuntime: sharedModelRuntime,
     settingsManager,
     resourceLoaderOptions: {
       noContextFiles: config.noContextFiles,
@@ -96,12 +87,11 @@ export async function createAgentResources(cwd: string): Promise<AgentResources>
     }
   }
 
-  const entry: CachedResources = {
-    settings,
-    settingsManager: services.settingsManager,
-    resourceLoader: services.resourceLoader,
-    config,
-  };
-  resourceCache.set(cwd, entry);
-  return entry;
+  sharedModelRuntime ??= services.modelRuntime;
+  resourceCache.set(cwd, { services, config });
+  return { settings, services };
+}
+
+export async function getModelRuntime(cwd: string): Promise<ModelRuntime> {
+  return (await createAgentResources(cwd)).services.modelRuntime;
 }

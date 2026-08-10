@@ -1,8 +1,6 @@
 import { cn } from 'cnfast';
 import { useEffect, useMemo, useRef } from 'react';
 
-import { COMMAND_SOURCE_LABEL } from '@pi-code/webview/components/chat/helpers/command';
-
 import type { FC } from 'react';
 import type { CommandItem } from '@pi-code/shared/core/protocol';
 
@@ -46,9 +44,7 @@ export const CommandMenu: FC<CommandMenuProps> = ({ commands, selectedIndex, onS
             <div className="flex items-baseline justify-between gap-2">
               <span className="truncate font-semibold text-xs">/{command.name}</span>
               {showSource && (
-                <span className="shrink-0 text-[0.7rem] uppercase tracking-wide text-vscode-descriptionForeground">
-                  {COMMAND_SOURCE_LABEL[command.source]}
-                </span>
+                <span className="shrink-0 text-[0.7rem] uppercase tracking-wide text-vscode-descriptionForeground">{command.source}</span>
               )}
             </div>
             {command.description && (

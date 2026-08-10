@@ -2,20 +2,26 @@ import { SessionManager } from '@earendil-works/pi-coding-agent';
 import { Uri, window, workspace } from 'vscode';
 
 import { SettingsService } from '@pi-code/extension/core/settings';
-import { createAgentResources, lazyModelRuntime } from '@pi-code/extension/structures/agent-runtime/resource';
+import { createAgentResources, getModelRuntime } from '@pi-code/extension/structures/agent-runtime/resource';
 import { collectCommands } from '@pi-code/extension/structures/chat-command/command';
 import { calculateSessionStats, convertSessionEntries } from '@pi-code/extension/structures/chat-session/session';
 import { DEFAULT_CONTEXT_LIMIT } from '@pi-code/shared/core/constants';
 
-import type { SessionInfo } from '@earendil-works/pi-coding-agent';
-import type { ChatMessage, ExtensionToWebviewMessage, HistoryItem, HistoryScope, StatsData } from '@pi-code/shared/core/protocol';
+import type { ModelRuntime, SessionInfo } from '@earendil-works/pi-coding-agent';
+import type { ChatMessage, ExtensionToWebviewMessage, HistoryItem, HistoryScope, ModelItem, StatsData } from '@pi-code/shared/core/protocol';
 
 type SessionInitData = Extract<ExtensionToWebviewMessage, { type: 'init_data' }>['payload'];
 
+async function listSelectableModels(modelRuntime: ModelRuntime): Promise<ModelItem[]> {
+  const available = await modelRuntime.getAvailable();
+  const models = available.length > 0 ? available : modelRuntime.getModels();
+  return models.map((model) => ({ id: model.id, name: model.name, provider: model.provider }));
+}
+
 export class SessionService {
   public async getInitData(cwd: string): Promise<SessionInitData> {
-    const [modelRuntime, sessions, resources] = await Promise.all([lazyModelRuntime(), SessionManager.list(cwd), createAgentResources(cwd)]);
-    const models = modelRuntime.getModels().map((m) => ({ id: m.id, name: m.name, provider: m.provider }));
+    const [sessions, resources] = await Promise.all([SessionManager.list(cwd), createAgentResources(cwd)]);
+    const models = await listSelectableModels(resources.services.modelRuntime);
 
     const history = this.formatSessions(sessions);
     const defaultModel = await SettingsService.getInstance(cwd).getDefaultModel();
@@ -25,7 +31,7 @@ export class SessionService {
       history,
       default_model: defaultModel,
       settings: resources.settings,
-      commands: collectCommands(resources.resourceLoader),
+      commands: collectCommands(resources.services.resourceLoader),
     };
   }
 
@@ -40,8 +46,7 @@ export class SessionService {
     const entries = sessionManager.getEntries();
     const chatMessages = convertSessionEntries(entries);
 
-    const modelRuntime = await lazyModelRuntime();
-    const models = modelRuntime.getModels();
+    const modelRuntime = await getModelRuntime(cwd);
 
     const sessionContextModel = sessionManager.buildSessionContext().model;
     const fallbackModelId = await SettingsService.getInstance(cwd).getDefaultModel();
@@ -51,15 +56,13 @@ export class SessionService {
     const sessionModelId = sessionContextModel?.modelId ?? fallbackModelId;
     const sessionProvider = sessionContextModel?.provider;
 
-    let contextLimit: number = DEFAULT_CONTEXT_LIMIT;
-    if (sessionModelId) {
-      const matchedModel = models.find((m) => m.id === sessionModelId && (!sessionProvider || m.provider === sessionProvider));
-      if (matchedModel?.contextWindow) {
-        contextLimit = matchedModel.contextWindow;
-      }
-    }
+    const model = sessionModelId
+      ? sessionProvider
+        ? modelRuntime.getModel(sessionProvider, sessionModelId)
+        : modelRuntime.getModels().find((candidate) => candidate.id === sessionModelId)
+      : undefined;
 
-    const stats = calculateSessionStats(entries, contextLimit);
+    const stats = calculateSessionStats(entries, model?.contextWindow ?? DEFAULT_CONTEXT_LIMIT);
     return { messages: chatMessages, stats };
   }
 

@@ -7,26 +7,14 @@ const mocks = vi.hoisted(() => ({
   isProjectTrusted: vi.fn(() => false),
 }));
 
-vi.mock('@earendil-works/pi-coding-agent', () => {
-  class FakeResourceLoader {
-    public reloadCalls = 0;
-    public async reload(): Promise<void> {
-      this.reloadCalls += 1;
-    }
-  }
-  return {
-    DefaultResourceLoader: FakeResourceLoader,
-    SettingsManager: { create: () => ({}) },
-    ModelRuntime: { create: () => ({}) },
-    createAgentSessionServices: async () => ({
-      modelRuntime: {},
-      settingsManager: {},
-      resourceLoader: new FakeResourceLoader(),
-      diagnostics: [],
-    }),
-    getAgentDir: () => '/agent-dir',
-  };
-});
+vi.mock('@earendil-works/pi-coding-agent', () => ({
+  createAgentSessionServices: async () => ({
+    modelRuntime: {},
+    settingsManager: {},
+    resourceLoader: { __loader: Math.random() },
+    diagnostics: [],
+  }),
+}));
 
 vi.mock('@pi-code/extension/core/settings', () => ({
   SettingsService: {
@@ -49,31 +37,31 @@ afterEach(() => {
 });
 
 describe('createAgentResources cache', () => {
-  it('returns the cached loader when the loader-relevant config is unchanged', async () => {
+  it('returns the cached services when the loader-relevant config is unchanged', async () => {
     mocks.settingsLoad.mockResolvedValue({ ...BASE_SETTINGS });
 
     const first = await createAgentResources('/project-a');
     const second = await createAgentResources('/project-a');
 
-    expect(second.resourceLoader).toBe(first.resourceLoader);
+    expect(second.services.resourceLoader).toBe(first.services.resourceLoader);
   });
 
-  it('reuses the cached loader without reloading on a cache hit', async () => {
+  it('reuses the cached services without recreating on a cache hit', async () => {
     mocks.settingsLoad.mockResolvedValue({ ...BASE_SETTINGS });
 
     const first = await createAgentResources('/project-b');
     const second = await createAgentResources('/project-b');
 
-    expect(second.resourceLoader).toBe(first.resourceLoader);
+    expect(second.services).toBe(first.services);
   });
 
-  it('recreates the loader when a loader-relevant setting flips', async () => {
+  it('recreates the services when a loader-relevant setting flips', async () => {
     mocks.settingsLoad.mockResolvedValue({ ...BASE_SETTINGS });
     const first = await createAgentResources('/project-c');
 
     mocks.settingsLoad.mockResolvedValue({ ...BASE_SETTINGS, enableSkillDiscovery: false });
     const second = await createAgentResources('/project-c');
 
-    expect(second.resourceLoader).not.toBe(first.resourceLoader);
+    expect(second.services.resourceLoader).not.toBe(first.services.resourceLoader);
   });
 });

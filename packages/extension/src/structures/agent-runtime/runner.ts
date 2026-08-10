@@ -47,7 +47,10 @@ export class AgentRunner {
   ): Promise<void> {
     try {
       const { session, envDetails } = await this.prepareSession(webview, path, selectedModel);
-      session.sessionManager.appendCustomMessageEntry('environment_details', envDetails, false);
+
+      // `nextTurn` makes pi attach the details to the upcoming user message, so
+      // they reach the model and get persisted with the turn that used them.
+      await session.sendCustomMessage({ customType: 'environment_details', content: envDetails, display: false }, { deliverAs: 'nextTurn' });
 
       const attachments = parseImageAttachments(images);
 

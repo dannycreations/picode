@@ -1,6 +1,6 @@
-import { AgentSession, createAgentSessionFromServices, getAgentDir, SessionManager } from '@earendil-works/pi-coding-agent';
+import { AgentSession, createAgentSessionFromServices, SessionManager } from '@earendil-works/pi-coding-agent';
 
-import { createAgentResources, lazyModelRuntime } from '@pi-code/extension/structures/agent-runtime/resource';
+import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { askQuestionTool } from '@pi-code/extension/structures/tool-call/ask-question';
 import { attemptCompletionTool } from '@pi-code/extension/structures/tool-call/attempt-completion';
 import { deleteFileTool } from '@pi-code/extension/structures/tool-call/delete-file';
@@ -11,7 +11,6 @@ import { updateTodoTool } from '@pi-code/extension/structures/tool-call/update-t
 import { writeFileTool } from '@pi-code/extension/structures/tool-call/write-file';
 import { DEFAULT_CONTEXT_LIMIT } from '@pi-code/shared/core/constants';
 
-import type { AgentSessionServices } from '@earendil-works/pi-coding-agent';
 import type { ToolName } from '@pi-code/shared/core/protocol';
 
 const CUSTOM_TOOLS = [
@@ -29,15 +28,7 @@ const DEFAULT_TOOLS: ToolName[] = CUSTOM_TOOLS.map((tool) => tool.name as ToolNa
 
 export async function createSession(cwd: string, sessionPath?: string): Promise<AgentSession> {
   const sessionManager = sessionPath ? SessionManager.open(sessionPath) : SessionManager.create(cwd);
-  const { settings, settingsManager, resourceLoader } = await createAgentResources(cwd);
-  const services: AgentSessionServices = {
-    cwd,
-    agentDir: getAgentDir(),
-    modelRuntime: await lazyModelRuntime(),
-    settingsManager,
-    resourceLoader,
-    diagnostics: [],
-  };
+  const { settings, services } = await createAgentResources(cwd);
 
   const disabledTools: Set<ToolName> = new Set();
   if (!settings.enableTodoTool) disabledTools.add('update_todo');

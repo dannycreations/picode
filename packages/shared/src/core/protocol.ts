@@ -42,7 +42,7 @@ export interface ModelItem {
 
 export interface CommandItem {
   readonly name: 'reload' | 'compact' | (string & {});
-  readonly source: 'builtin' | 'skill';
+  readonly source: 'builtin' | 'skill' | 'prompt';
   readonly description?: string;
   readonly detail?: string;
 }

@@ -1,4 +1,4 @@
-import { registerSessionResourceCleanup } from '@earendil-works/pi-ai';
+import { cleanupSessionResources, registerSessionResourceCleanup } from '@earendil-works/pi-ai';
 import { commands, window, workspace } from 'vscode';
 
 import { registerAddToContextCommand } from '@pi-code/extension/structures/add-to-context/command';
@@ -38,4 +38,6 @@ export function activate(context: ExtensionContext): void {
   );
 }
 
-export function deactivate(): void {}
+export function deactivate(): void {
+  cleanupSessionResources();
+}
