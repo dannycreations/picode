@@ -1,52 +1,54 @@
-type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error';
+type LogLevelName = 'trace' | 'debug' | 'info' | 'warn' | 'error';
 
-const levelRank: Record<LogLevel, number> = {
-  trace: 0,
-  debug: 1,
-  info: 2,
-  warn: 3,
-  error: 4,
-} as const;
+interface LoggerSink {
+  trace(message: string, ...args: unknown[]): void;
+  debug(message: string, ...args: unknown[]): void;
+  info(message: string, ...args: unknown[]): void;
+  warn(message: string, ...args: unknown[]): void;
+  error(message: string | Error, ...args: unknown[]): void;
+}
 
-const consoleMethod: Record<LogLevel, 'trace' | 'debug' | 'info' | 'warn' | 'error'> = {
-  trace: 'trace',
-  debug: 'debug',
-  info: 'info',
-  warn: 'warn',
-  error: 'error',
-} as const;
+const consoleSink: LoggerSink = {
+  trace: (message, ...args) => console.trace(message, ...args),
+  debug: (message, ...args) => console.debug(message, ...args),
+  info: (message, ...args) => console.info(message, ...args),
+  warn: (message, ...args) => console.warn(message, ...args),
+  error: (message, ...args) => console.error(message, ...args),
+};
 
-let minimumLevel: LogLevel = 'info';
+let sink: LoggerSink = consoleSink;
 
-function log(level: LogLevel, args: unknown[]): void {
-  if (levelRank[level] < levelRank[minimumLevel]) {
+function forward(level: LogLevelName, args: unknown[]): void {
+  const [head, ...rest] = args;
+  if (level === 'error') {
+    sink.error(head instanceof Error || typeof head === 'string' ? head : String(head), ...rest);
     return;
   }
-  console[consoleMethod[level]](...args);
+  sink[level](typeof head === 'string' ? head : String(head), ...rest);
 }
 
 export const logger = {
-  setLevel(level: LogLevel): void {
-    minimumLevel = level;
+  setSink(next: LoggerSink | null): void {
+    sink = next ?? consoleSink;
   },
 
   trace(...args: unknown[]): void {
-    log('trace', args);
+    forward('trace', args);
   },
 
   debug(...args: unknown[]): void {
-    log('debug', args);
+    forward('debug', args);
   },
 
   info(...args: unknown[]): void {
-    log('info', args);
+    forward('info', args);
   },
 
   warn(...args: unknown[]): void {
-    log('warn', args);
+    forward('warn', args);
   },
 
   error(...args: unknown[]): void {
-    log('error', args);
+    forward('error', args);
   },
 } as const;

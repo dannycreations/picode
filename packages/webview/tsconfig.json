@@ -2,7 +2,7 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
-    "types": ["node", "react"],
+    "types": ["react", "vscode-webview"],
     "jsx": "react-jsx",
     "paths": {
       "@pi-code/webview/*": ["./src/*"]

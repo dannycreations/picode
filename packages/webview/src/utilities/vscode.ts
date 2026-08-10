@@ -1,14 +1,8 @@
+import type { WebviewApi as InternalWebviewApi } from 'vscode-webview';
 import type { WebviewToExtensionMessage } from '@pi-code/shared/core/protocol';
 
-interface WebviewApi {
-  readonly postMessage: (message: WebviewToExtensionMessage) => void;
+export interface WebviewApi extends Omit<InternalWebviewApi<unknown>, 'postMessage'> {
+  postMessage(message: WebviewToExtensionMessage): void;
 }
 
-declare const acquireVsCodeApi: () => WebviewApi;
-
-export const vscode = (() => {
-  if (typeof acquireVsCodeApi !== 'undefined') {
-    return acquireVsCodeApi();
-  }
-  return null;
-})();
+export const vscode: WebviewApi | null = typeof acquireVsCodeApi === 'function' ? acquireVsCodeApi() : null;

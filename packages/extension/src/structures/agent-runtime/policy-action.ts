@@ -1,13 +1,11 @@
 import { isAbsolute, join, relative, resolve } from 'node:path';
 import { CONFIG_DIR_NAME, getAgentDir } from '@earendil-works/pi-coding-agent';
+import { minimatch } from 'minimatch';
 import { parse } from 'shell-quote';
 
 import type { AppSettings } from '@pi-code/shared/core/settings';
 
 export type DecisionAction = 'approve' | 'deny' | 'confirm';
-
-const GLOB_CACHE_LIMIT = 500;
-const globCache = new Map<string, RegExp>();
 
 const DANGEROUS_PATTERNS: readonly RegExp[] = [
   /\$\{([^}]*@[PQEAak][^}]*)\}/, // Parameter expansion flags
@@ -20,54 +18,10 @@ const DANGEROUS_PATTERNS: readonly RegExp[] = [
   /\0/, // Null bytes
 ];
 
-function getGlobRegex(pattern: string): RegExp | null {
-  let regex = globCache.get(pattern);
-  if (regex) return regex;
-
-  const p = pattern.replace(/\\/g, '/');
-  let regStr = '';
-
-  for (let i = 0; i < p.length; i++) {
-    const c = p[i];
-    if (c === '*') {
-      if (p[i + 1] === '*') {
-        regStr += '.*';
-        i++;
-        if (p[i + 1] === '/') {
-          i++;
-        }
-      } else {
-        regStr += '[^/]*';
-      }
-    } else if (c === '?') {
-      regStr += '[^/]';
-    } else if (['.', '+', '^', '$', '{', '}', '(', ')', '|', '[', ']', '\\'].includes(c)) {
-      regStr += '\\' + c;
-    } else {
-      regStr += c;
-    }
-  }
-
-  try {
-    regex = new RegExp(`^${regStr}$`, 'i');
-    if (globCache.size >= GLOB_CACHE_LIMIT) {
-      const firstKey = globCache.keys().next().value;
-      if (firstKey !== undefined) {
-        globCache.delete(firstKey);
-      }
-    }
-    globCache.set(pattern, regex);
-    return regex;
-  } catch {
-    return null;
-  }
-}
-
 export function matchesGlob(pattern: string, filePath: string): boolean {
   if (!pattern || !filePath) return false;
   const normalizedFile = filePath.replace(/\\/g, '/');
-  const regex = getGlobRegex(pattern);
-  return regex ? regex.test(normalizedFile) : false;
+  return minimatch(normalizedFile, pattern, { nocase: true, dot: true });
 }
 
 function resolveAllowDeny(

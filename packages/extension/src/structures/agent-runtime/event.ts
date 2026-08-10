@@ -3,13 +3,11 @@ import { logger } from '@pi-code/shared/core/logger';
 
 import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent';
 import type { AgentToWebviewMessage } from '@pi-code/extension/structures/agent-runtime/webview';
-import type { AssistantMessageWithUsage } from '@pi-code/extension/types/extension';
 import type { StatsData, ToolName } from '@pi-code/shared/core/protocol';
 import type { TodoItem } from '@pi-code/shared/utilities/todo';
 
 export class EventMapper {
   private apiRequestId: string | null = null;
-  private turnCounter = 0;
 
   public resetTurnState(): void {
     this.apiRequestId = null;
@@ -38,7 +36,7 @@ export class EventMapper {
       case 'turn_end': {
         const id = this.apiRequestId || this.nextApiRequestId();
         this.apiRequestId = null;
-        const msg = event.message?.role === 'assistant' ? (event.message as AssistantMessageWithUsage) : undefined;
+        const msg = event.message?.role === 'assistant' ? event.message : undefined;
         const isError = msg?.stopReason === 'error';
         return {
           type: 'api_request_end',
@@ -78,7 +76,7 @@ export class EventMapper {
         return {
           type: 'message_end',
           payload: {
-            cost: (event.message as AssistantMessageWithUsage).usage?.cost?.total,
+            cost: event.message.usage?.cost?.total,
             stats: this.createStats(session) ?? undefined,
           },
         };
@@ -146,7 +144,6 @@ export class EventMapper {
   }
 
   private nextApiRequestId(): string {
-    this.turnCounter += 1;
-    return `api-req-${Date.now()}-${this.turnCounter}`;
+    return `api-req-${crypto.randomUUID()}`;
   }
 }

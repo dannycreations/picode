@@ -1,14 +1,12 @@
-import { access, readdir, readFile } from 'node:fs/promises';
-import { basename, join, relative } from 'node:path';
+import { basename, relative } from 'node:path';
 import { AgentSession } from '@earendil-works/pi-coding-agent';
-import ignore from 'ignore';
-import { TabInputText, window } from 'vscode';
+import { RelativePattern, TabInputText, Uri, window, workspace } from 'vscode';
 
 import { SettingsService } from '@pi-code/extension/core/settings';
-import { spawnGit } from '@pi-code/extension/structures/commit-message/git';
+import { getGitRepository, getIgnoredPaths } from '@pi-code/extension/utilities/git';
 
-import type { Ignore } from 'ignore';
-import type { EnvironmentMessage } from '@pi-code/extension/types/extension';
+import type { AgentMessage } from '@earendil-works/pi-agent-core';
+import type { Change, Repository } from '@pi-code/extension/types/git';
 import type { TodoItem } from '@pi-code/shared/utilities/todo';
 
 const STATUS_MAP: Record<TodoItem['status'], string> = {
@@ -16,6 +14,8 @@ const STATUS_MAP: Record<TodoItem['status'], string> = {
   in_progress: 'In Progress',
   completed: 'Completed',
 };
+
+const GITIGNORE_OVERSCAN = 2000;
 
 function formatReminderSection(todoList?: TodoItem[]): string {
   const lines: string[] = ['### Reminders\n'];
@@ -38,96 +38,24 @@ function formatReminderSection(todoList?: TodoItem[]): string {
   return lines.join('\n');
 }
 
-interface IgnoreLink {
-  readonly basePath: string;
-  readonly ignoreInstance: Ignore;
-}
+async function listFiles(cwd: string, limit = 200, excludeIgnoredFiles = true): Promise<{ paths: string[]; hitLimit: boolean }> {
+  const maxResults = excludeIgnoredFiles ? limit + GITIGNORE_OVERSCAN : limit + 1;
+  const found = await workspace.findFiles(new RelativePattern(cwd, '**/*'), undefined, maxResults);
 
-async function loadGitignore(dir: string): Promise<Ignore | null> {
-  const gitignorePath = join(dir, '.gitignore');
-  try {
-    await access(gitignorePath);
-    const content = await readFile(gitignorePath, 'utf8');
-    return ignore().add(content);
-  } catch {
-    return null;
-  }
-}
-
-async function listFiles(cwd: string, limit = 200): Promise<{ paths: string[]; hitLimit: boolean }> {
-  const resultPaths: string[] = [];
-  let hitLimit = false;
-
-  const rootIgnore = await loadGitignore(cwd);
-  const initialChain: IgnoreLink[] = rootIgnore ? [{ basePath: cwd, ignoreInstance: rootIgnore }] : [];
-
-  async function walk(dir: string, chain: IgnoreLink[]) {
-    if (resultPaths.length >= limit) {
-      hitLimit = true;
-      return;
-    }
-
-    let entries;
-    try {
-      entries = await readdir(dir, { withFileTypes: true });
-    } catch {
-      return;
-    }
-
-    let currentChain = chain;
-    if (dir !== cwd) {
-      const localIgnore = await loadGitignore(dir);
-      if (localIgnore) {
-        currentChain = [...chain, { basePath: dir, ignoreInstance: localIgnore }];
-      }
-    }
-
-    // Sort to put directories first, then files
-    entries.sort((a, b) => {
-      if (a.isDirectory() && !b.isDirectory()) return -1;
-      if (!a.isDirectory() && b.isDirectory()) return 1;
-      return a.name.localeCompare(b.name);
-    });
-
-    for (const entry of entries) {
-      if (resultPaths.length >= limit) {
-        hitLimit = true;
-        return;
-      }
-
-      if (entry.name.startsWith('.')) {
-        continue;
-      }
-
-      const fullPath = join(dir, entry.name);
-      const relPath = relative(cwd, fullPath).replace(/\\/g, '/');
-
-      // Check against current .gitignore chain
-      let isIgnored = false;
-      for (const link of currentChain) {
-        const pathRelativeToLink = relative(link.basePath, fullPath).replace(/\\/g, '/');
-        const checkPath = entry.isDirectory() ? pathRelativeToLink + '/' : pathRelativeToLink;
-        if (link.ignoreInstance.ignores(checkPath)) {
-          isIgnored = true;
-          break;
-        }
-      }
-
-      if (isIgnored) {
-        continue;
-      }
-
-      if (entry.isDirectory()) {
-        resultPaths.push(relPath + '/');
-        await walk(fullPath, currentChain);
-      } else {
-        resultPaths.push(relPath);
-      }
+  let uris = found;
+  if (excludeIgnoredFiles) {
+    const repo = await getGitRepository(Uri.file(cwd));
+    if (repo) {
+      const ignored = await getIgnoredPaths(
+        repo,
+        found.map((uri) => uri.fsPath),
+      );
+      uris = found.filter((uri) => !ignored.has(uri.fsPath));
     }
   }
 
-  await walk(cwd, initialChain);
-  return { paths: resultPaths, hitLimit };
+  const paths = uris.map((uri) => relative(cwd, uri.fsPath).replace(/\\/g, '/'));
+  return { paths: paths.slice(0, limit), hitLimit: uris.length > limit };
 }
 
 interface FileTreeNode {
@@ -181,15 +109,29 @@ export function renderFileTree(root: FileTreeNode, rootLabel: string): string {
   return lines.join('\n');
 }
 
-function getLatestTodoList(messages: readonly EnvironmentMessage[]): TodoItem[] | undefined {
+function getLatestTodoList(messages: readonly AgentMessage[]): TodoItem[] | undefined {
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i];
     if (msg.role === 'toolResult' && msg.toolName === 'update_todo') {
-      const details = msg.details as { todos?: TodoItem[] } | null | undefined;
+      const details: { todos?: TodoItem[] } | undefined = msg.details;
       if (details?.todos) return details.todos;
     }
   }
   return undefined;
+}
+
+async function getGitStatusLines(cwd: string): Promise<string[]> {
+  const repo: Repository | null = await getGitRepository(Uri.file(cwd));
+  if (!repo) return [];
+
+  const describe = (change: Change, label: string): string => `${label} ${relative(repo.rootUri.fsPath, change.uri.fsPath).replace(/\\/g, '/')}`;
+
+  return [
+    ...repo.state.indexChanges.map((c) => describe(c, 'staged   ')),
+    ...repo.state.mergeChanges.map((c) => describe(c, 'conflict ')),
+    ...repo.state.workingTreeChanges.map((c) => describe(c, 'modified ')),
+    ...repo.state.untrackedChanges.map((c) => describe(c, 'untracked')),
+  ];
 }
 
 export async function getEnvironmentDetails(session: AgentSession, cwd: string, includeFileDetails = false): Promise<string> {
@@ -244,15 +186,12 @@ export async function getEnvironmentDetails(session: AgentSession, cwd: string, 
   const maxGitStatusFiles = settings.maxGitStatusFiles;
   if (maxGitStatusFiles > 0) {
     try {
-      const gitStatus = spawnGit(['status', '--porcelain'], cwd).trim();
-      if (gitStatus) {
-        const lines = gitStatus.split(/\r?\n/);
+      const lines = await getGitStatusLines(cwd);
+      if (lines.length > 0) {
         details += '\n\n### Git Status\n\n```\n';
+        details += lines.slice(0, maxGitStatusFiles).join('\n');
         if (lines.length > maxGitStatusFiles) {
-          details += lines.slice(0, maxGitStatusFiles).join('\n');
           details += `\n... and ${lines.length - maxGitStatusFiles} more files`;
-        } else {
-          details += gitStatus;
         }
         details += '\n```';
       }
@@ -268,7 +207,7 @@ export async function getEnvironmentDetails(session: AgentSession, cwd: string, 
       if (isDesktop) {
         details += 'Desktop files not shown automatically. Use `execute_command` to explore if needed.';
       } else {
-        const { paths, hitLimit } = await listFiles(cwd, maxWorkspaceFiles);
+        const { paths, hitLimit } = await listFiles(cwd, maxWorkspaceFiles, settings.excludeIgnoredFiles);
         details += renderFileTree(buildFileTree(paths), basename(cwd));
         if (hitLimit) {
           details += '\n\n*(File list truncated. Use `execute_command` to list files in specific subdirectories if you need to explore further.)*';

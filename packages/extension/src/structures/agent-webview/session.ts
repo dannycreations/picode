@@ -1,29 +1,20 @@
-import { unlink } from 'node:fs/promises';
-import { ModelRuntime, SessionManager } from '@earendil-works/pi-coding-agent';
+import { SessionManager } from '@earendil-works/pi-coding-agent';
 import { Uri, window, workspace } from 'vscode';
 
 import { SettingsService } from '@pi-code/extension/core/settings';
-import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
+import { createAgentResources, lazyModelRuntime } from '@pi-code/extension/structures/agent-runtime/resource';
 import { collectCommands } from '@pi-code/extension/structures/chat-command/command';
 import { calculateSessionStats, convertSessionEntries } from '@pi-code/extension/structures/chat-session/session';
 import { DEFAULT_CONTEXT_LIMIT } from '@pi-code/shared/core/constants';
 
 import type { SessionInfo } from '@earendil-works/pi-coding-agent';
-import type { SessionTreeEntry } from '@pi-code/extension/types/extension';
 import type { ChatMessage, ExtensionToWebviewMessage, HistoryItem, HistoryScope, StatsData } from '@pi-code/shared/core/protocol';
 
 type SessionInitData = Extract<ExtensionToWebviewMessage, { type: 'init_data' }>['payload'];
 
 export class SessionService {
-  private modelRuntimePromise: Promise<ModelRuntime> | null = null;
-
-  private getModelRuntime(): Promise<ModelRuntime> {
-    this.modelRuntimePromise ??= ModelRuntime.create();
-    return this.modelRuntimePromise;
-  }
-
   public async getInitData(cwd: string): Promise<SessionInitData> {
-    const [modelRuntime, sessions, resources] = await Promise.all([this.getModelRuntime(), SessionManager.list(cwd), createAgentResources(cwd)]);
+    const [modelRuntime, sessions, resources] = await Promise.all([lazyModelRuntime(), SessionManager.list(cwd), createAgentResources(cwd)]);
     const models = modelRuntime.getModels().map((m) => ({ id: m.id, name: m.name, provider: m.provider }));
 
     const history = this.formatSessions(sessions);
@@ -47,17 +38,13 @@ export class SessionService {
   }> {
     const sessionManager = SessionManager.open(sessionPath);
     const entries = sessionManager.getEntries();
-    const chatMessages = convertSessionEntries(entries as SessionTreeEntry[]);
+    const chatMessages = convertSessionEntries(entries);
 
-    const modelRuntime = await this.getModelRuntime();
+    const modelRuntime = await lazyModelRuntime();
     const models = modelRuntime.getModels();
 
-    let sessionModelId = await SettingsService.getInstance(cwd).getDefaultModel();
-    for (const entry of entries) {
-      if (entry.type === 'model_change') {
-        sessionModelId = entry.modelId || sessionModelId;
-      }
-    }
+    const sessionContextModel = sessionManager.buildSessionContext().model;
+    const sessionModelId = sessionContextModel?.modelId ?? (await SettingsService.getInstance(cwd).getDefaultModel());
 
     let contextLimit: number = DEFAULT_CONTEXT_LIMIT;
     if (sessionModelId) {
@@ -67,7 +54,7 @@ export class SessionService {
       }
     }
 
-    const stats = calculateSessionStats(entries as SessionTreeEntry[], contextLimit);
+    const stats = calculateSessionStats(entries, contextLimit);
     return { messages: chatMessages, stats };
   }
 
@@ -77,14 +64,12 @@ export class SessionService {
   }
 
   public async deleteSessions(paths: string[]): Promise<void> {
-    await Promise.allSettled(paths.map((p) => unlink(p)));
+    await Promise.allSettled(paths.map((p) => workspace.fs.delete(Uri.file(p), { useTrash: false })));
   }
 
   public async exportSession(sessionPath: string, defaultId?: string): Promise<boolean> {
     const sessionManager = SessionManager.open(sessionPath);
-    const entries = sessionManager.getEntries() as SessionTreeEntry[];
-    const chatMessages = convertSessionEntries(entries);
-    const jsonString = JSON.stringify(chatMessages, null, 2);
+    const chatMessages = convertSessionEntries(sessionManager.getEntries());
 
     const uri = await window.showSaveDialog({
       defaultUri: Uri.file(`pi-code-task-${defaultId || Date.now()}.json`),
@@ -92,7 +77,7 @@ export class SessionService {
     });
 
     if (uri) {
-      await workspace.fs.writeFile(uri, Buffer.from(jsonString, 'utf8'));
+      await workspace.fs.writeFile(uri, new TextEncoder().encode(JSON.stringify(chatMessages, null, 2)));
       return true;
     }
     return false;

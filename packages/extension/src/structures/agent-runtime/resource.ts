@@ -1,9 +1,10 @@
-import { DefaultResourceLoader, getAgentDir, SettingsManager } from '@earendil-works/pi-coding-agent';
+import { join } from 'node:path';
+import { createAgentSessionServices, getAgentDir, ModelRuntime, SettingsManager } from '@earendil-works/pi-coding-agent';
 
 import { SettingsService } from '@pi-code/extension/core/settings';
 import { isProjectTrusted } from '@pi-code/extension/utilities/vscode';
 
-import type { ResourceDiagnostic, Skill } from '@earendil-works/pi-coding-agent';
+import type { AgentSessionServices, ResourceDiagnostic, ResourceLoader, Skill } from '@earendil-works/pi-coding-agent';
 import type { AppSettings } from '@pi-code/shared/core/settings';
 
 interface SkillsResult {
@@ -14,12 +15,12 @@ interface SkillsResult {
 interface AgentResources {
   readonly settings: AppSettings;
   readonly settingsManager: SettingsManager;
-  readonly resourceLoader: DefaultResourceLoader;
+  readonly resourceLoader: ResourceLoader;
 }
 
 interface LoaderConfig {
   readonly noContextFiles: boolean;
-  readonly hideSkills: boolean;
+  readonly disableSkillInvocation: boolean;
   readonly projectTrusted: boolean;
 }
 
@@ -29,50 +30,74 @@ interface CachedResources extends AgentResources {
 
 const resourceCache = new Map<string, CachedResources>();
 
+let modelRuntimePromise: Promise<ModelRuntime> | undefined;
+
+export function lazyModelRuntime(): Promise<ModelRuntime> {
+  modelRuntimePromise ??= ModelRuntime.create({
+    authPath: join(getAgentDir(), 'auth.json'),
+    modelsPath: join(getAgentDir(), 'models.json'),
+  });
+  return modelRuntimePromise;
+}
+
 export async function createAgentResources(cwd: string): Promise<AgentResources> {
-  const settings = await SettingsService.getInstance(cwd).load();
+  const settingsService = SettingsService.getInstance(cwd);
+  const settings = await settingsService.load();
   const projectTrusted = isProjectTrusted(cwd);
   const config = {
     noContextFiles: !settings.enableAgentRules,
-    hideSkills: !settings.enableSkillDiscovery,
+    disableSkillInvocation: !settings.enableSkillDiscovery,
     projectTrusted,
   };
 
   const cached = resourceCache.get(cwd);
-  const isConfigMatches =
+  const isConfigMatch =
     cached &&
     cached.config.noContextFiles === config.noContextFiles &&
-    cached.config.hideSkills === config.hideSkills &&
+    cached.config.disableSkillInvocation === config.disableSkillInvocation &&
     cached.config.projectTrusted === config.projectTrusted;
 
-  if (isConfigMatches) {
-    return { ...cached, settings };
+  if (isConfigMatch) {
+    return { settings, settingsManager: cached.settingsManager, resourceLoader: cached.resourceLoader };
   }
 
-  const agentDir = getAgentDir();
-  const settingsManager = SettingsManager.create(cwd, agentDir, { projectTrusted });
-  const resourceLoader = new DefaultResourceLoader({
-    cwd,
-    agentDir,
-    settingsManager,
-    noContextFiles: config.noContextFiles,
-    skillsOverride: config.hideSkills
-      ? (base: SkillsResult) => ({
-          ...base,
-          skills: base.skills.map((skill) =>
-            skill.disableModelInvocation
-              ? skill
-              : {
-                  ...skill,
-                  disableModelInvocation: true,
-                },
-          ),
-        })
-      : undefined,
-  });
-  await resourceLoader.reload();
+  const settingsManager = settingsService.getSettingsManager();
+  settingsManager.setProjectTrusted(projectTrusted);
 
-  const entry: CachedResources = { settings, settingsManager, resourceLoader, config };
+  const services: AgentSessionServices = await createAgentSessionServices({
+    cwd,
+    modelRuntime: await lazyModelRuntime(),
+    settingsManager,
+    resourceLoaderOptions: {
+      noContextFiles: config.noContextFiles,
+      skillsOverride: config.disableSkillInvocation
+        ? (base: SkillsResult) => ({
+            ...base,
+            skills: base.skills.map((skill) =>
+              skill.disableModelInvocation
+                ? skill
+                : {
+                    ...skill,
+                    disableModelInvocation: true,
+                  },
+            ),
+          })
+        : undefined,
+    },
+  });
+
+  for (const diagnostic of services.diagnostics) {
+    if (diagnostic.type === 'error') {
+      throw new Error(diagnostic.message);
+    }
+  }
+
+  const entry: CachedResources = {
+    settings,
+    settingsManager: services.settingsManager,
+    resourceLoader: services.resourceLoader,
+    config,
+  };
   resourceCache.set(cwd, entry);
   return entry;
 }

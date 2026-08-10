@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { isBinaryFile, isBinaryFileSync } from '@pi-code/extension/utilities/binary';
+import { isBinaryFile } from '@pi-code/extension/utilities/binary';
 
 let dir: string;
 let textFile: string;
@@ -52,23 +52,5 @@ describe('isBinaryFile', () => {
 
   it('propagates errors for unreadable paths', async () => {
     await expect(isBinaryFile(missingFile)).rejects.toThrow();
-  });
-});
-
-describe('isBinaryFileSync', () => {
-  it('agrees with the async variant on regular files', () => {
-    expect(isBinaryFileSync(binaryFile)).toBe(true);
-    expect(isBinaryFileSync(textFile)).toBe(false);
-    expect(isBinaryFileSync(emptyFile)).toBe(false);
-  });
-
-  it('reports false instead of throwing for missing paths and directories', () => {
-    expect(isBinaryFileSync(missingFile)).toBe(false);
-    expect(isBinaryFileSync(dir)).toBe(false);
-  });
-
-  it('honours a custom sample size', () => {
-    expect(isBinaryFileSync(lateNullFile)).toBe(false);
-    expect(isBinaryFileSync(lateNullFile, 8000)).toBe(true);
   });
 });

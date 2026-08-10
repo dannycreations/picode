@@ -1,24 +1,44 @@
-import { Uri } from 'vscode';
+import { Disposable, Uri, workspace } from 'vscode';
 
+import { readAppSettings } from '@pi-code/extension/core/settings';
 import { AgentRunner } from '@pi-code/extension/structures/agent-runtime/runner';
 import { createDefaultDispatcher } from '@pi-code/extension/structures/agent-webview/dispatcher';
 import { SessionService } from '@pi-code/extension/structures/agent-webview/session';
 import { WorkspaceService } from '@pi-code/extension/structures/agent-webview/workspace';
 import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
+import manifest from '../../../package.json' with { type: 'json' };
 
 import type { CancellationToken, ExtensionContext, Webview, WebviewView, WebviewViewProvider, WebviewViewResolveContext } from 'vscode';
 import type { MessageHandlerContext } from '@pi-code/extension/structures/agent-webview/types';
 import type { ExtensionToWebviewMessage, WebviewToExtensionMessage } from '@pi-code/shared/core/protocol';
 
+function createNonce(): string {
+  return Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
 function buildChatViewHtml(webview: Webview, extensionUri: Uri): string {
   const scriptUri = webview.asWebviewUri(Uri.joinPath(extensionUri, 'dist', 'webview.cjs'));
   const styleUri = webview.asWebviewUri(Uri.joinPath(extensionUri, 'dist', 'webview.css'));
   const codiconsUri = webview.asWebviewUri(Uri.joinPath(extensionUri, 'dist', 'codicon.css'));
+  const nonce = createNonce();
+
+  // Content-Security-Policy per the VS Code webview guidelines: only our nonced
+  // bundle may execute, remote content is limited to `webview.cspSource`, and
+  // `default-src 'none'` leaves network access blocked. `wasm-unsafe-eval` is
+  // required by the Shiki highlighter, which instantiates an inlined WASM module.
+  const csp = [
+    `default-src 'none'`,
+    `img-src ${webview.cspSource} data: blob:`,
+    `font-src ${webview.cspSource} data:`,
+    `style-src ${webview.cspSource} 'unsafe-inline'`,
+    `script-src 'nonce-${nonce}' 'wasm-unsafe-eval'`,
+  ].join('; ');
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="${csp}">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link href="${styleUri}" rel="stylesheet">
   <link href="${codiconsUri}" rel="stylesheet" />
@@ -37,7 +57,7 @@ function buildChatViewHtml(webview: Webview, extensionUri: Uri): string {
 </head>
 <body>
   <div id="root"></div>
-  <script src="${scriptUri}"></script>
+  <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`;
 }
@@ -47,12 +67,14 @@ export class ChatViewProvider implements WebviewViewProvider {
   private static activeWebview: Webview | null = null;
 
   private readonly sessionService = new SessionService();
-  private readonly workspaceService = new WorkspaceService();
+  private readonly workspaceService: WorkspaceService;
   private readonly dispatcher = createDefaultDispatcher();
 
   private agent: AgentRunner = new AgentRunner();
 
-  public constructor(private readonly context: ExtensionContext) {}
+  public constructor(private readonly context: ExtensionContext) {
+    this.workspaceService = new WorkspaceService(context.globalStorageUri);
+  }
 
   // Global command → webview channel (show_settings, set_chat_input) used by
   // extension commands that run independently of any agent. Per-agent streaming
@@ -67,7 +89,7 @@ export class ChatViewProvider implements WebviewViewProvider {
 
     webview.options = {
       enableScripts: true,
-      localResourceRoots: [this.context.extensionUri],
+      localResourceRoots: [Uri.joinPath(this.context.extensionUri, 'dist')],
     };
 
     webview.html = buildChatViewHtml(webview, this.context.extensionUri);
@@ -78,7 +100,7 @@ export class ChatViewProvider implements WebviewViewProvider {
     const cwd = getWorkspaceCwd();
     const self = this;
 
-    const context: MessageHandlerContext = {
+    const handlerContext: MessageHandlerContext = {
       cwd,
       webview,
       get agent() {
@@ -90,12 +112,20 @@ export class ChatViewProvider implements WebviewViewProvider {
       workspaceService: this.workspaceService,
     };
 
-    const listener = webview.onDidReceiveMessage((message: WebviewToExtensionMessage) => {
-      void this.dispatcher.dispatch(message, context);
-    });
+    const subscriptions = Disposable.from(
+      webview.onDidReceiveMessage((message: WebviewToExtensionMessage) => {
+        void this.dispatcher.dispatch(message, handlerContext);
+      }),
+      // Mirror configuration edits made anywhere (settings UI, settings.json,
+      // profile sync) back into the chat view.
+      workspace.onDidChangeConfiguration((event) => {
+        if (!event.affectsConfiguration(manifest.name)) return;
+        void webview.postMessage({ type: 'settings_data', payload: { settings: readAppSettings() } });
+      }),
+    );
 
     webviewView.onDidDispose(() => {
-      listener.dispose();
+      subscriptions.dispose();
       if (ChatViewProvider.activeWebview === webview) {
         ChatViewProvider.activeWebview = null;
       }

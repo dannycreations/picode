@@ -36,6 +36,13 @@ export const ContextTab: FC<TabProps> = ({ draftSettings, handleFieldChange }) =
         onChange={(val) => handleFieldChange('maxOpenTabsContext', val)}
       />
 
+      <SettingCheckbox
+        label="Exclude ignored files"
+        description="Hide files and folders matched by .gitignore when listing workspace files. Reduces context noise from build output and dependencies."
+        checked={draftSettings.excludeIgnoredFiles}
+        onChange={(val) => handleFieldChange('excludeIgnoredFiles', val)}
+      />
+
       <SettingSlider
         label="Workspace files context limit"
         value={draftSettings.maxWorkspaceFiles}

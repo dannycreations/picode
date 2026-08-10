@@ -1,5 +1,3 @@
-import assert from 'node:assert';
-
 import { EventMapper } from '@pi-code/extension/structures/agent-runtime/event';
 import { evaluateToolApproval } from '@pi-code/extension/structures/agent-runtime/policy';
 import { QuestionBridge } from '@pi-code/extension/structures/agent-runtime/question';
@@ -11,24 +9,15 @@ import { parseBase64DataUrl } from '@pi-code/extension/utilities/codec';
 import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
 import { logger } from '@pi-code/shared/core/logger';
 
+import type { BeforeToolCallResult } from '@earendil-works/pi-agent-core';
+import type { ImageContent } from '@earendil-works/pi-ai';
 import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent';
 import type { Webview } from 'vscode';
 import type { ModelItem, ToolName } from '@pi-code/shared/core/protocol';
 
-interface BeforeToolCallResult {
-  readonly block?: boolean;
-  readonly reason?: string;
-}
-
 export type ToolApprovalDecision = { action: 'approve' } | { action: 'deny'; reason: string } | { action: 'confirm' };
 
-interface ImageAttachment {
-  readonly type: 'image';
-  readonly mimeType: string;
-  readonly data: string;
-}
-
-function parseImageAttachments(images?: string[]): ImageAttachment[] | undefined {
+function parseImageAttachments(images?: string[]): ImageContent[] | undefined {
   if (!images || images.length === 0) return undefined;
 
   return images
@@ -36,46 +25,7 @@ function parseImageAttachments(images?: string[]): ImageAttachment[] | undefined
       const parts = parseBase64DataUrl(img);
       return parts ? { type: 'image' as const, mimeType: parts.mimeType, data: parts.data } : null;
     })
-    .filter((item): item is ImageAttachment => item !== null);
-}
-
-function finalizeAttemptCompletion(session: AgentSession): void {
-  const messages = session.agent.state.messages;
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const msg = messages[i];
-    if (msg.role === 'assistant' && Array.isArray(msg.content)) {
-      if (msg.content.some((c) => c.type === 'toolCall' && c.name === 'attempt_completion')) {
-        msg.stopReason = 'stop';
-        msg.rawStopReason = 'end_turn';
-        break;
-      }
-    }
-  }
-
-  const entries = session.sessionManager.getEntries();
-  let entryUpdated = false;
-  for (const entry of entries) {
-    if (entry.type === 'message' && entry.message.role === 'assistant') {
-      const msg = entry.message;
-      if (Array.isArray(msg.content)) {
-        if (msg.content.some((c) => c.type === 'toolCall' && c.name === 'attempt_completion')) {
-          msg.stopReason = 'stop';
-          msg.rawStopReason = 'end_turn';
-          entryUpdated = true;
-          break;
-        }
-      }
-    }
-  }
-
-  if (entryUpdated) {
-    try {
-      assert(session.sessionManager['_rewriteFile'], 'SessionManager._rewriteFile not found');
-      session.sessionManager['_rewriteFile']();
-    } catch (err) {
-      logger.error('Failed to rewrite session file with stopReason update:', err);
-    }
-  }
+    .filter((item): item is ImageContent => item !== null);
 }
 
 export class AgentRunner {
@@ -304,10 +254,11 @@ export class AgentRunner {
       this.messenger.post(message);
     }
 
+    // `attempt_completion` ends the turn by contract, so stop the agent loop
+    // rather than letting it request another completion.
     if (event.type === 'tool_execution_end' && event.toolName === 'attempt_completion') {
       this.isAttemptCompletionAborted = true;
       this.abort();
-      finalizeAttemptCompletion(session);
     }
   }
 

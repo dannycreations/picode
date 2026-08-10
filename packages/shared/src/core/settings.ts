@@ -22,6 +22,7 @@ export interface AppSettings {
   readonly autoCompactContextPercent: number;
   readonly maxOpenTabsContext: number;
   readonly maxWorkspaceFiles: number;
+  readonly excludeIgnoredFiles: boolean;
   readonly maxGitStatusFiles: number;
   readonly maxConcurrentFileReads: number;
   readonly maxToolOutputLines: number;

@@ -12,6 +12,173 @@
     "vscode": ">=1.125.0"
   },
   "contributes": {
+    "configuration": {
+      "title": "Pi Code",
+      "properties": {
+        "pi-code.enableTodoTool": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Expose the `update_todo` tool and inject the reminder checklist into environment details."
+        },
+        "pi-code.enableAskQuestionTool": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Expose the `ask_question` tool so the agent can request clarification mid-task."
+        },
+        "pi-code.enableAgentRules": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Load project context files (`AGENTS.md` and friends) into the system prompt."
+        },
+        "pi-code.enableSkillDiscovery": {
+          "type": "boolean",
+          "default": true,
+          "description": "Allow the model to invoke discovered skills on its own."
+        },
+        "pi-code.autoApproveRead": {
+          "type": "boolean",
+          "default": false,
+          "description": "Approve file reads without prompting."
+        },
+        "pi-code.autoApproveSkillReads": {
+          "type": "boolean",
+          "default": false,
+          "description": "Approve reads inside skill directories without prompting. Requires Auto Approve Read."
+        },
+        "pi-code.autoApproveWrite": {
+          "type": "boolean",
+          "default": false,
+          "description": "Approve file writes and edits without prompting."
+        },
+        "pi-code.autoApproveDelete": {
+          "type": "boolean",
+          "default": false,
+          "description": "Approve file deletions without prompting."
+        },
+        "pi-code.autoApproveExecute": {
+          "type": "boolean",
+          "default": false,
+          "description": "Approve shell command execution without prompting."
+        },
+        "pi-code.allowedReadPaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Glob patterns that are always readable when auto approval is on."
+        },
+        "pi-code.deniedReadPaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Glob patterns that can never be read."
+        },
+        "pi-code.allowedWritePaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Glob patterns that are always writable when auto approval is on."
+        },
+        "pi-code.deniedWritePaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Glob patterns that can never be written."
+        },
+        "pi-code.allowedDeletePaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Glob patterns that are always deletable when auto approval is on."
+        },
+        "pi-code.deniedDeletePaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Glob patterns that can never be deleted."
+        },
+        "pi-code.allowedExecuteCommands": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Command prefixes or globs that are always executable when auto approval is on."
+        },
+        "pi-code.deniedExecuteCommands": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Command prefixes or globs that can never be executed."
+        },
+        "pi-code.autoCompactContext": {
+          "type": "boolean",
+          "default": true,
+          "description": "Summarize the conversation automatically as it approaches the context limit."
+        },
+        "pi-code.autoCompactContextPercent": {
+          "type": "number",
+          "default": 80,
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Percentage of the context window to fill before auto compaction runs."
+        },
+        "pi-code.maxOpenTabsContext": {
+          "type": "number",
+          "default": 20,
+          "minimum": 0,
+          "description": "Maximum number of open editor tabs listed in environment details."
+        },
+        "pi-code.maxWorkspaceFiles": {
+          "type": "number",
+          "default": 100,
+          "minimum": 0,
+          "description": "Maximum number of workspace files listed in environment details."
+        },
+        "pi-code.excludeIgnoredFiles": {
+          "type": "boolean",
+          "default": true,
+          "description": "Hide files and folders matched by .gitignore when listing workspace files in environment details."
+        },
+        "pi-code.maxGitStatusFiles": {
+          "type": "number",
+          "default": 20,
+          "minimum": 0,
+          "description": "Maximum number of changed files listed in environment details."
+        },
+        "pi-code.maxConcurrentFileReads": {
+          "type": "number",
+          "default": 10,
+          "minimum": 1,
+          "description": "Maximum number of files the read tool loads in parallel."
+        },
+        "pi-code.maxToolOutputLines": {
+          "type": "number",
+          "default": 2000,
+          "minimum": 1,
+          "description": "Maximum number of lines kept from a single tool result."
+        },
+        "pi-code.maxToolOutputSizeKb": {
+          "type": "number",
+          "default": 50,
+          "minimum": 1,
+          "description": "Maximum size in kilobytes kept from a single tool result."
+        }
+      }
+    },
     "viewsContainers": {
       "activitybar": [
         {
@@ -84,11 +251,11 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@earendil-works/pi-agent-core": "^0.84.1",
     "@earendil-works/pi-ai": "^0.84.1",
     "@earendil-works/pi-coding-agent": "^0.84.1",
     "@pi-code/shared": "workspace:*",
-    "es-toolkit": "^1.50.0",
-    "ignore": "^7.0.6",
+    "minimatch": "^10.0.1",
     "shell-quote": "^1.10.0",
     "typebox": "^1.3.11"
   },

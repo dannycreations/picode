@@ -89,8 +89,7 @@ const HANDLER_MAP: HandlerMap = {
     await ctx.sessionService.deleteSessions(msg.paths);
   },
   update_settings: async (msg, ctx) => {
-    const settings = await SettingsService.getInstance(ctx.cwd).updateSettings(msg.settings);
-    ctx.postMessage({ type: 'settings_data', payload: { settings } });
+    await SettingsService.getInstance(ctx.cwd).updateSettings(msg.settings);
   },
 };
 

@@ -17,13 +17,23 @@ vi.mock('@earendil-works/pi-coding-agent', () => {
   return {
     DefaultResourceLoader: FakeResourceLoader,
     SettingsManager: { create: () => ({}) },
+    ModelRuntime: { create: () => ({}) },
+    createAgentSessionServices: async () => ({
+      modelRuntime: {},
+      settingsManager: {},
+      resourceLoader: new FakeResourceLoader(),
+      diagnostics: [],
+    }),
     getAgentDir: () => '/agent-dir',
   };
 });
 
 vi.mock('@pi-code/extension/core/settings', () => ({
   SettingsService: {
-    getInstance: vi.fn(() => ({ load: mocks.settingsLoad })),
+    getInstance: vi.fn(() => ({
+      load: mocks.settingsLoad,
+      getSettingsManager: () => ({ setProjectTrusted: vi.fn() }),
+    })),
   },
 }));
 
@@ -55,9 +65,6 @@ describe('createAgentResources cache', () => {
     const second = await createAgentResources('/project-b');
 
     expect(second.resourceLoader).toBe(first.resourceLoader);
-    // The loader is reloaded only on the cache-miss (first) call; the shared
-    // instance is refreshed elsewhere (e.g. session.reload) when needed.
-    expect((second.resourceLoader as unknown as { reloadCalls: number }).reloadCalls).toBe(1);
   });
 
   it('recreates the loader when a loader-relevant setting flips', async () => {

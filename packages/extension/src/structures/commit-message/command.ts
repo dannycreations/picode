@@ -1,38 +1,17 @@
-import { join } from 'node:path';
-import { getAgentDir, ModelRuntime, SettingsManager } from '@earendil-works/pi-coding-agent';
-import { commands, extensions, ProgressLocation, window, workspace } from 'vscode';
+import { commands, ProgressLocation, window, workspace } from 'vscode';
 
 import { COMMIT_MESSAGE_PROMPT } from '@pi-code/extension/core/prompt';
+import { SettingsService } from '@pi-code/extension/core/settings';
+import { lazyModelRuntime } from '@pi-code/extension/structures/agent-runtime/resource';
 import { buildGitContext, getGitChanges, getGitDiffContext, getRepoContext } from '@pi-code/extension/structures/commit-message/git';
+import { getGitRepository } from '@pi-code/extension/utilities/git';
 import { extractCodeFenceMessage } from '@pi-code/extension/utilities/markdown';
-import { isProjectTrusted } from '@pi-code/extension/utilities/vscode';
 import { logger } from '@pi-code/shared/core/logger';
 
 import type { Disposable, Uri } from 'vscode';
-import type { GitExtension, GitRepository, LlmResponseContent, ScmRequest } from '@pi-code/extension/types/extension';
 
-async function getGitRepository(uri?: Uri): Promise<GitRepository | null> {
-  const gitExtension = extensions.getExtension<GitExtension>('vscode.git');
-  if (!gitExtension) {
-    return null;
-  }
-  if (!gitExtension.isActive) {
-    await gitExtension.activate();
-  }
-  const gitApi = gitExtension.exports?.getAPI(1);
-  if (!gitApi) {
-    return null;
-  }
-
-  if (uri) {
-    for (const repo of gitApi.repositories) {
-      if (repo.rootUri.fsPath === uri.fsPath || uri.fsPath.startsWith(repo.rootUri.fsPath)) {
-        return repo;
-      }
-    }
-  }
-
-  return gitApi.repositories[0] || null;
+interface ScmRequest {
+  readonly rootUri?: Uri;
 }
 
 const lastUserInstructions = new Map<string, string>();
@@ -67,7 +46,7 @@ export function registerCommitMessageCommand(): Disposable {
       const cwd = repo.rootUri.fsPath;
 
       logger.info(`Scanning git changes in directory: ${cwd}`);
-      const { changes, useStaged } = getGitChanges(cwd);
+      const { changes, useStaged } = await getGitChanges(repo, cwd);
       logger.info(`Found ${changes.length} change file(s). Staged changes used: ${useStaged}`);
       if (changes.length === 0) {
         logger.info('No changes to process. Exiting.');
@@ -100,10 +79,10 @@ export function registerCommitMessageCommand(): Disposable {
         },
         async () => {
           logger.info('Generating diff and repo context...');
-          const diff = getGitDiffContext(cwd, changes, useStaged);
+          const diff = await getGitDiffContext(repo, changes, useStaged);
           logger.info(`Generated diff context (character length: ${diff.length})`);
 
-          const { branch, recentCommits } = getRepoContext(cwd);
+          const { branch, recentCommits } = await getRepoContext(repo);
           logger.info(`Current Branch: ${branch}`);
           logger.info(`Recent Commits count: ${recentCommits.split('\n').filter(Boolean).length}`);
 
@@ -123,22 +102,11 @@ export function registerCommitMessageCommand(): Disposable {
 
           logger.info(`Fully assembled prompt (character length: ${prompt.length})`);
 
-          const agentDir = getAgentDir();
-          const authPath = join(agentDir, 'auth.json');
-          const modelsPath = join(agentDir, 'models.json');
-          logger.info(`Configuration paths - Agent directory: ${agentDir}`);
-          logger.info(`Configuration paths - Credentials file: ${authPath}`);
-          logger.info(`Configuration paths - Models definition: ${modelsPath}`);
-
           logger.info('Initializing ModelRuntime...');
-          const runtime = await ModelRuntime.create({
-            authPath,
-            modelsPath,
-          });
+          const runtime = await lazyModelRuntime();
 
           logger.info('Loading SettingsManager...');
-          const isTrusted = isProjectTrusted(cwd);
-          const settingsManager = SettingsManager.create(cwd, agentDir, { projectTrusted: isTrusted });
+          const settingsManager = SettingsService.getInstance(cwd).getSettingsManager();
           const defaultProviderId = settingsManager.getDefaultProvider();
           const defaultModelId = settingsManager.getDefaultModel();
           logger.info(`Settings values - Default Provider: ${defaultProviderId}, Default Model: ${defaultModelId}`);
@@ -174,7 +142,7 @@ export function registerCommitMessageCommand(): Disposable {
           const response = await runtime.completeSimple(model, llmContext);
           logger.info('Completion response received successfully.');
 
-          const rawMessage = (response.content as readonly LlmResponseContent[])
+          const rawMessage = response.content
             .filter((c) => c.type === 'text')
             .map((c) => c.text)
             .join('')

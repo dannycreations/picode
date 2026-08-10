@@ -13,25 +13,23 @@ import type { ExtensionContext } from 'vscode';
 export function activate(context: ExtensionContext): void {
   // initializeFetchInterceptor();
   registerSessionResourceCleanup(() => {});
+
+  const output = window.createOutputChannel('Pi Code', { log: true });
+  logger.setSink(output);
+  context.subscriptions.push(output, { dispose: () => logger.setSink(null) });
+
   logger.info('Extension activated.');
 
-  const chatViewProvider = new ChatViewProvider(context);
   context.subscriptions.push(
-    window.registerWebviewViewProvider(ChatViewProvider.viewType, chatViewProvider, {
+    window.registerWebviewViewProvider(ChatViewProvider.viewType, new ChatViewProvider(context), {
       webviewOptions: { retainContextWhenHidden: true },
     }),
+    registerCommitMessageCommand(),
+    registerAddToContextCommand(),
+    commands.registerCommand('pi-code.settingsButtonClicked', () => {
+      void ChatViewProvider.postActiveWebviewMessage({ type: 'show_settings' });
+    }),
   );
-
-  const commitMessageDisposable = registerCommitMessageCommand();
-  context.subscriptions.push(commitMessageDisposable);
-
-  const addToContextDisposable = registerAddToContextCommand();
-  context.subscriptions.push(addToContextDisposable);
-
-  const settingsButtonClickedDisposable = commands.registerCommand('pi-code.settingsButtonClicked', () => {
-    void ChatViewProvider.postActiveWebviewMessage({ type: 'show_settings' });
-  });
-  context.subscriptions.push(settingsButtonClickedDisposable);
 }
 
 export function deactivate(): void {}

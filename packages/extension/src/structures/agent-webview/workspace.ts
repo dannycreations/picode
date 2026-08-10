@@ -1,16 +1,17 @@
-import { writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { resolve } from 'node:path';
-import { commands, Range, Uri, window, workspace } from 'vscode';
+import { commands, Position, Range, Selection, Uri, window, workspace } from 'vscode';
 
 import { extensionForMimeType, parseBase64DataUrl } from '@pi-code/extension/utilities/codec';
 
 export class WorkspaceService {
+  public constructor(private readonly storageUri: Uri) {}
+
   public async openFile(cwd: string, relativePath: string, line?: number): Promise<void> {
-    const filePath = resolve(cwd, relativePath);
-    const doc = await workspace.openTextDocument(Uri.file(filePath));
-    const selection = line ? new Range(line - 1, 0, line - 1, 0) : undefined;
-    await window.showTextDocument(doc, { selection });
+    const uri = Uri.joinPath(Uri.file(cwd), relativePath);
+    const doc = await workspace.openTextDocument(uri);
+    const target = line ? doc.validateRange(new Range(new Position(line - 1, 0), new Position(line - 1, 0))) : undefined;
+    await window.showTextDocument(doc, {
+      selection: target && new Selection(target.start, target.end),
+    });
   }
 
   public async openRawTask(sessionFilePath?: string): Promise<void> {
@@ -26,11 +27,10 @@ export class WorkspaceService {
     const parts = parseBase64DataUrl(dataUrl);
     if (!parts) return;
 
-    const ext = extensionForMimeType(parts.mimeType);
-    const tempFilePath = resolve(tmpdir(), `pi-code-img-${Date.now()}.${ext}`);
+    const target = Uri.joinPath(this.storageUri, 'images', `pi-code-img-${Date.now()}.${extensionForMimeType(parts.mimeType)}`);
 
-    await writeFile(tempFilePath, Buffer.from(parts.data, 'base64'));
-
-    await commands.executeCommand('vscode.open', Uri.file(tempFilePath));
+    await workspace.fs.createDirectory(Uri.joinPath(this.storageUri, 'images'));
+    await workspace.fs.writeFile(target, Buffer.from(parts.data, 'base64'));
+    await commands.executeCommand('vscode.open', target);
   }
 }

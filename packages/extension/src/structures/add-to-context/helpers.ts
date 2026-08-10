@@ -1,50 +1,31 @@
-import { logger } from '@pi-code/shared/core/logger';
+import { Range } from 'vscode';
 
-export function getEffectiveSelection(
-  document: {
-    readonly lineCount: number;
-    lineAt(line: number): { readonly text: string; readonly lineNumber: number };
-    getText(range?: {
-      readonly start: { readonly line: number; readonly character: number };
-      readonly end: { readonly line: number; readonly character: number };
-    }): string;
-  },
-  selection: {
-    readonly start: { readonly line: number; readonly character: number };
-    readonly end: { readonly line: number; readonly character: number };
-  },
-): { readonly startLine: number; readonly endLine: number; readonly text: string } | null {
-  try {
-    const selectedText = document.getText(selection);
-    if (selectedText) {
-      return {
-        startLine: selection.start.line,
-        endLine: selection.end.line,
-        text: selectedText,
-      };
-    }
+import type { Selection, TextDocument } from 'vscode';
 
-    const currentLine = document.lineAt(selection.start.line);
-    if (!currentLine.text.trim()) {
-      return null;
-    }
+export interface EffectiveSelection {
+  readonly startLine: number;
+  readonly endLine: number;
+  readonly text: string;
+}
 
-    const startLineIndex = Math.max(0, currentLine.lineNumber - 1);
-    const endLineIndex = Math.min(document.lineCount - 1, currentLine.lineNumber + 1);
-
-    const endLineLength = document.lineAt(endLineIndex).text.length;
-    const range = {
-      start: { line: startLineIndex, character: 0 },
-      end: { line: endLineIndex, character: endLineLength },
-    };
-
+export function getEffectiveSelection(document: TextDocument, selection: Selection): EffectiveSelection | null {
+  if (!selection.isEmpty) {
     return {
-      startLine: startLineIndex,
-      endLine: endLineIndex,
-      text: document.getText(range),
+      startLine: selection.start.line,
+      endLine: selection.end.line,
+      text: document.getText(selection),
     };
-  } catch (error) {
-    logger.error('Error getting effective selection:', error);
+  }
+
+  const cursorLine = document.lineAt(selection.start.line);
+  if (cursorLine.isEmptyOrWhitespace) {
     return null;
   }
+
+  const range = document.validateRange(new Range(cursorLine.lineNumber - 1, 0, cursorLine.lineNumber + 1, Number.MAX_SAFE_INTEGER));
+  return {
+    startLine: range.start.line,
+    endLine: range.end.line,
+    text: document.getText(range),
+  };
 }

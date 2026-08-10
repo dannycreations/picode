@@ -1,25 +1,9 @@
-import { relative } from 'node:path';
 import { commands, window, workspace } from 'vscode';
 
 import { getEffectiveSelection } from '@pi-code/extension/structures/add-to-context/helpers';
 import { ChatViewProvider } from '@pi-code/extension/structures/agent-webview/provider';
-import { logger } from '@pi-code/shared/core/logger';
 
-import type { Disposable, TextDocument } from 'vscode';
-
-function getRelativeFilePath(document: TextDocument): string {
-  try {
-    const workspaceFolder = workspace.getWorkspaceFolder(document.uri);
-    if (!workspaceFolder) {
-      return document.uri.fsPath;
-    }
-    const relativePath = relative(workspaceFolder.uri.fsPath, document.uri.fsPath);
-    return !relativePath || relativePath.startsWith('..') ? document.uri.fsPath : relativePath;
-  } catch (error) {
-    logger.error('Error getting file path:', error);
-    return document.uri.fsPath;
-  }
-}
+import type { Disposable } from 'vscode';
 
 export function registerAddToContextCommand(): Disposable {
   return commands.registerCommand('pi-code.addToContext', async () => {
@@ -34,16 +18,17 @@ export function registerAddToContextCommand(): Disposable {
       return;
     }
 
-    const filePath = getRelativeFilePath(document);
+    // `asRelativePath` handles multi-root workspaces and falls back to the
+    // absolute path when the document lives outside the workspace.
+    const filePath = workspace.asRelativePath(document.uri, false);
     const startLine = effectiveContext.startLine + 1;
     const endLine = effectiveContext.endLine + 1;
-    const selectedText = effectiveContext.text;
 
     // Focus the chat view first
     await commands.executeCommand('pi-code.chatView.focus');
 
     // Send the message to the webview
-    const prompt = `${filePath}:${startLine}-${endLine}\n\`\`\`\n${selectedText}\n\`\`\`\n\n`;
+    const prompt = `${filePath}:${startLine}-${endLine}\n\`\`\`\n${effectiveContext.text}\n\`\`\`\n\n`;
     ChatViewProvider.postActiveWebviewMessage({
       type: 'set_chat_input',
       payload: { text: prompt },
