@@ -1,7 +1,8 @@
 import { formatThrownValue } from '@earendil-works/pi-ai';
 import { window } from 'vscode';
 
-import { SettingsService } from '@pi-code/extension/core/settings';
+import { updateAppSettings } from '@pi-code/extension/core/settings';
+import { PolicyBridge } from '@pi-code/extension/structures/agent-runtime/policy';
 import { runCompact } from '@pi-code/extension/structures/chat-command/builtin';
 import { logger } from '@pi-code/shared/core/logger';
 
@@ -41,8 +42,8 @@ const HANDLER_MAP: HandlerMap = {
   continue_task: (msg, ctx) => {
     void ctx.agent.continueTask(msg.path || '', ctx.webview, toModelSelection(msg));
   },
-  approve_tool: (msg, ctx) => ctx.agent.approveTool(msg.approval_id),
-  deny_tool: (msg, ctx) => ctx.agent.denyTool(msg.approval_id),
+  approve_tool: (msg, _ctx) => PolicyBridge.getInstance().approve(msg.approval_id),
+  deny_tool: (msg, _ctx) => PolicyBridge.getInstance().deny(msg.approval_id),
   question_response: (msg, ctx) => ctx.agent.answerQuestion(msg.question_id, msg.text),
   cancel_task: (_, ctx) => ctx.agent.abort(),
   reload: (_, ctx) => {
@@ -91,8 +92,8 @@ const HANDLER_MAP: HandlerMap = {
   delete_sessions: async (msg, ctx) => {
     await ctx.sessionService.deleteSessions(msg.paths);
   },
-  update_settings: async (msg, ctx) => {
-    await SettingsService.getInstance(ctx.cwd).updateSettings(msg.settings);
+  update_settings: async (msg) => {
+    await updateAppSettings(msg.settings);
   },
 };
 

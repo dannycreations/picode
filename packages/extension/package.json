@@ -4,6 +4,7 @@
   "description": "Manage Pi Agent inside Visual Studio Code",
   "displayName": "Pi Code",
   "publisher": "dannycreations",
+  "author": "dannycreations",
   "license": "GPL",
   "type": "module",
   "main": "./dist/index.cjs",

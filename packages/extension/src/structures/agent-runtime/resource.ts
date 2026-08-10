@@ -1,6 +1,7 @@
 import { createAgentSessionServices } from '@earendil-works/pi-coding-agent';
 
-import { SettingsService } from '@pi-code/extension/core/settings';
+import { getSettingsManager, readAppSettings } from '@pi-code/extension/core/settings';
+import { createToolPolicyExtension } from '@pi-code/extension/structures/agent-runtime/policy';
 import { isProjectTrusted } from '@pi-code/extension/utilities/vscode';
 
 import type { AgentSessionServices, ModelRuntime, ResourceDiagnostic, Skill } from '@earendil-works/pi-coding-agent';
@@ -23,8 +24,8 @@ interface LoaderConfig {
 }
 
 interface CachedResources {
-  readonly services: AgentSessionServices;
-  readonly config: LoaderConfig;
+  readonly key: string;
+  readonly services: Promise<AgentSessionServices>;
 }
 
 const resourceCache = new Map<string, CachedResources>();
@@ -35,29 +36,9 @@ export function invalidateAgentResources(): void {
 
 let sharedModelRuntime: ModelRuntime | undefined;
 
-export async function createAgentResources(cwd: string): Promise<AgentResources> {
-  const settingsService = SettingsService.getInstance(cwd);
-  const settings = await settingsService.load();
-  const projectTrusted = isProjectTrusted(cwd);
-  const config: LoaderConfig = {
-    noContextFiles: !settings.enableAgentRules,
-    disableSkillInvocation: !settings.enableSkillDiscovery,
-    projectTrusted,
-  };
-
-  const cached = resourceCache.get(cwd);
-  const isConfigMatch =
-    cached &&
-    cached.config.noContextFiles === config.noContextFiles &&
-    cached.config.disableSkillInvocation === config.disableSkillInvocation &&
-    cached.config.projectTrusted === config.projectTrusted;
-
-  if (isConfigMatch) {
-    return { settings, services: cached.services };
-  }
-
-  const settingsManager = settingsService.getSettingsManager();
-  settingsManager.setProjectTrusted(projectTrusted);
+async function createServices(cwd: string, config: LoaderConfig): Promise<AgentSessionServices> {
+  const settingsManager = getSettingsManager(cwd);
+  settingsManager.setProjectTrusted(config.projectTrusted);
 
   const services = await createAgentSessionServices({
     cwd,
@@ -65,6 +46,7 @@ export async function createAgentResources(cwd: string): Promise<AgentResources>
     settingsManager,
     resourceLoaderOptions: {
       noContextFiles: config.noContextFiles,
+      extensionFactories: [createToolPolicyExtension()],
       skillsOverride: config.disableSkillInvocation
         ? (base: SkillsResult) => ({
             ...base,
@@ -88,8 +70,29 @@ export async function createAgentResources(cwd: string): Promise<AgentResources>
   }
 
   sharedModelRuntime ??= services.modelRuntime;
-  resourceCache.set(cwd, { services, config });
-  return { settings, services };
+  return services;
+}
+
+export async function createAgentResources(cwd: string): Promise<AgentResources> {
+  const settings = readAppSettings();
+  const config: LoaderConfig = {
+    noContextFiles: !settings.enableAgentRules,
+    disableSkillInvocation: !settings.enableSkillDiscovery,
+    projectTrusted: isProjectTrusted(cwd),
+  };
+
+  const key = [config.noContextFiles, config.disableSkillInvocation, config.projectTrusted].join('|');
+  let cached = resourceCache.get(cwd);
+  if (!cached || cached.key !== key) {
+    cached = { key, services: createServices(cwd, config) };
+    resourceCache.set(cwd, cached);
+    // A rejected creation must not poison the cache for later attempts.
+    cached.services.catch(() => {
+      if (resourceCache.get(cwd) === cached) resourceCache.delete(cwd);
+    });
+  }
+
+  return { settings, services: await cached.services };
 }
 
 export async function getModelRuntime(cwd: string): Promise<ModelRuntime> {

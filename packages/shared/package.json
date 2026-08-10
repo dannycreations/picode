@@ -1,6 +1,7 @@
 {
   "name": "@pi-code/shared",
   "version": "0.0.1",
+  "author": "dannycreations",
   "license": "GPL",
   "type": "module",
   "exports": {

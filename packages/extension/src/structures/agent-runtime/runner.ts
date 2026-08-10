@@ -1,5 +1,4 @@
 import { EventMapper } from '@pi-code/extension/structures/agent-runtime/event';
-import { evaluateToolApproval } from '@pi-code/extension/structures/agent-runtime/policy';
 import { QuestionBridge } from '@pi-code/extension/structures/agent-runtime/question';
 import { createSession } from '@pi-code/extension/structures/agent-runtime/session';
 import { WebviewMessenger } from '@pi-code/extension/structures/agent-runtime/webview';
@@ -9,13 +8,11 @@ import { parseBase64DataUrl } from '@pi-code/extension/utilities/codec';
 import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
 import { logger } from '@pi-code/shared/core/logger';
 
-import type { BeforeToolCallResult } from '@earendil-works/pi-agent-core';
+import type { AfterToolCallResult } from '@earendil-works/pi-agent-core';
 import type { ImageContent } from '@earendil-works/pi-ai';
 import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent';
 import type { Webview } from 'vscode';
-import type { ModelItem, ToolName } from '@pi-code/shared/core/protocol';
-
-export type ToolApprovalDecision = { action: 'approve' } | { action: 'deny'; reason: string } | { action: 'confirm' };
+import type { ModelItem } from '@pi-code/shared/core/protocol';
 
 function parseImageAttachments(images?: string[]): ImageContent[] | undefined {
   if (!images || images.length === 0) return undefined;
@@ -30,8 +27,6 @@ function parseImageAttachments(images?: string[]): ImageContent[] | undefined {
 
 export class AgentRunner {
   private session: AgentSession | null = null;
-  private pendingApprovals = new Map<string, (res: BeforeToolCallResult) => void>();
-  private isAttemptCompletionAborted = false;
   private unsubscribeSessionEvents: (() => void) | null = null;
 
   private readonly messenger = new WebviewMessenger();
@@ -55,9 +50,7 @@ export class AgentRunner {
       const attachments = parseImageAttachments(images);
 
       void session.prompt(promptText, { images: attachments }).catch((err) => {
-        if (!this.isAttemptCompletionAborted) {
-          this.messenger.postError(err);
-        }
+        this.messenger.postError(err);
       });
     } catch (err) {
       this.messenger.postError(err);
@@ -71,28 +64,10 @@ export class AgentRunner {
       void session
         .sendCustomMessage({ customType: 'environment_details', content: envDetails, display: false }, { triggerTurn: true })
         .catch((err) => {
-          if (!this.isAttemptCompletionAborted) {
-            this.messenger.postError(err);
-          }
+          this.messenger.postError(err);
         });
     } catch (err) {
       this.messenger.postError(err);
-    }
-  }
-
-  public approveTool(approvalId: string): void {
-    const resolve = this.pendingApprovals.get(approvalId);
-    if (resolve) {
-      resolve({ block: false });
-      this.pendingApprovals.delete(approvalId);
-    }
-  }
-
-  public denyTool(approvalId: string): void {
-    const resolve = this.pendingApprovals.get(approvalId);
-    if (resolve) {
-      resolve({ block: true, reason: 'Action denied by user.' });
-      this.pendingApprovals.delete(approvalId);
     }
   }
 
@@ -147,7 +122,6 @@ export class AgentRunner {
   public dispose(): void {
     this.messenger.dispose();
     this.cleanupSession();
-    this.pendingApprovals.clear();
     this.question.cancelAll();
   }
 
@@ -157,9 +131,7 @@ export class AgentRunner {
 
   private prepareRun(webview: Webview): void {
     this.messenger.attach(webview);
-    this.pendingApprovals.clear();
     this.question.cancelAll();
-    this.isAttemptCompletionAborted = false;
     this.event.resetTurnState();
   }
 
@@ -191,7 +163,7 @@ export class AgentRunner {
     const session = await createSession(cwd, path);
     this.session = session;
 
-    this.setupBeforeToolCallHook(session, cwd);
+    this.setupTerminationHook(session);
     this.subscribeToSessionEvents(session);
 
     return session;
@@ -210,31 +182,16 @@ export class AgentRunner {
     }
   }
 
-  private setupBeforeToolCallHook(session: AgentSession, cwd: string): void {
-    session.agent.beforeToolCall = async ({ toolCall, args }) => {
-      const toolName = toolCall.name as ToolName;
-      const decision = await evaluateToolApproval(cwd, toolName, args);
-
-      if (decision.action === 'approve') {
-        return { block: false };
+  private setupTerminationHook(session: AgentSession): void {
+    const baseAfterToolCall = session.agent.afterToolCall;
+    session.agent.afterToolCall = async (props): Promise<AfterToolCallResult> => {
+      const baseResult = (await baseAfterToolCall?.(props)) ?? {};
+      if (props.toolCall.name === 'attempt_completion') {
+        // The completion tool ends the turn by contract, so tell Pi to stop
+        // the agent loop rather than letting it request another completion.
+        return { ...baseResult, terminate: true };
       }
-      if (decision.action === 'deny') {
-        return { block: true, reason: decision.reason };
-      }
-
-      const approvalId = `${toolCall.id || Date.now()}`;
-      this.messenger.post({
-        type: 'tool_approval_request',
-        payload: {
-          id: approvalId,
-          tool_name: toolName,
-          arguments: JSON.stringify(args),
-        },
-      });
-
-      return new Promise<BeforeToolCallResult>((resolve) => {
-        this.pendingApprovals.set(approvalId, resolve);
-      });
+      return baseResult;
     };
   }
 
@@ -245,23 +202,9 @@ export class AgentRunner {
   }
 
   private handleSessionEvent(event: AgentSessionEvent, session: AgentSession): void {
-    if (this.isAttemptCompletionAborted && event.type === 'message_end' && event.message.role === 'assistant') {
-      const messages = session.agent.state.messages;
-      if (messages && messages[messages.length - 1] === event.message) {
-        messages.pop();
-      }
-    }
-
-    const message = this.event.mapEvent(event, session, this.isAttemptCompletionAborted);
+    const message = this.event.mapEvent(event, session);
     if (message) {
       this.messenger.post(message);
-    }
-
-    // `attempt_completion` ends the turn by contract, so stop the agent loop
-    // rather than letting it request another completion.
-    if (event.type === 'tool_execution_end' && event.toolName === 'attempt_completion') {
-      this.isAttemptCompletionAborted = true;
-      this.abort();
     }
   }
 

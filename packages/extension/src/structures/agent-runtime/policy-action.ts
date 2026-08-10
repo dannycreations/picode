@@ -5,7 +5,7 @@ import { parse } from 'shell-quote';
 
 import type { AppSettings } from '@pi-code/shared/core/settings';
 
-export type DecisionAction = 'approve' | 'deny' | 'confirm';
+export type ApprovalDecision = { action: 'approve' } | { action: 'deny'; reason: string } | { action: 'confirm' };
 
 const DANGEROUS_PATTERNS: readonly RegExp[] = [
   /\$\{([^}]*@[PQEAak][^}]*)\}/, // Parameter expansion flags
@@ -28,7 +28,7 @@ function resolveAllowDeny(
   allowedPatterns: readonly string[],
   deniedPatterns: readonly string[],
   isMatch: (pattern: string) => boolean,
-): DecisionAction {
+): ApprovalDecision['action'] {
   let maxAllowedLen = -1;
   let maxDeniedLen = -1;
   let hasAllowedMatch = false;
@@ -62,7 +62,7 @@ export function resolvePathAction(
   approveEnabled: boolean,
   allowedPatterns: readonly string[],
   deniedPatterns: readonly string[],
-): DecisionAction {
+): ApprovalDecision['action'] {
   if (!approveEnabled) {
     return 'confirm';
   }
@@ -100,7 +100,7 @@ export function resolveCommandAction(
   approveEnabled: boolean,
   allowedPatterns: readonly string[],
   deniedPatterns: readonly string[],
-): DecisionAction {
+): ApprovalDecision['action'] {
   if (!approveEnabled) {
     return 'confirm';
   }
@@ -250,7 +250,11 @@ function matchesCommandPattern(pattern: string, command: string): boolean {
   return false;
 }
 
-function getSingleCommandDecision(command: string, allowedPatterns: readonly string[], deniedPatterns: readonly string[]): DecisionAction {
+function getSingleCommandDecision(
+  command: string,
+  allowedPatterns: readonly string[],
+  deniedPatterns: readonly string[],
+): ApprovalDecision['action'] {
   const trimmedCmd = command.trim();
   if (!trimmedCmd) {
     return 'approve';
@@ -278,7 +282,7 @@ function isInsideDirectory(target: string, dir: string): boolean {
   return normalizedTarget === normalizedDir || normalizedTarget.startsWith(`${normalizedDir}/`);
 }
 
-export function resolveReadPath(cwd: string, filePath: string, settings: AppSettings): DecisionAction {
+export function resolveReadPath(cwd: string, filePath: string, settings: AppSettings): ApprovalDecision['action'] {
   const normalizedPath = filePath.replace(/\\/g, '/');
   const isDenied = settings.deniedReadPaths.some((pat) => pat === '*' || matchesGlob(pat, normalizedPath));
   if (isDenied) return 'deny';

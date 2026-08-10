@@ -20,14 +20,16 @@ export function activate(context: ExtensionContext): void {
 
   logger.info('Extension activated.');
 
+  const chatViewProvider = new ChatViewProvider(context);
+
   context.subscriptions.push(
-    window.registerWebviewViewProvider(ChatViewProvider.viewType, new ChatViewProvider(context), {
+    window.registerWebviewViewProvider(ChatViewProvider.viewType, chatViewProvider, {
       webviewOptions: { retainContextWhenHidden: true },
     }),
     registerCommitMessageCommand(),
-    registerAddToContextCommand(),
+    registerAddToContextCommand(chatViewProvider),
     commands.registerCommand('pi-code.settingsButtonClicked', () => {
-      void ChatViewProvider.postActiveWebviewMessage({ type: 'show_settings' });
+      chatViewProvider.postMessage({ type: 'show_settings' });
     }),
     // Trust gates which project resources Pi is allowed to load, so the cached
     // resource loaders must be rebuilt once the user grants trust.

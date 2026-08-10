@@ -1,7 +1,7 @@
 import { SessionManager } from '@earendil-works/pi-coding-agent';
 import { Uri, window, workspace } from 'vscode';
 
-import { SettingsService } from '@pi-code/extension/core/settings';
+import { getDefaultModel } from '@pi-code/extension/core/settings';
 import { createAgentResources, getModelRuntime } from '@pi-code/extension/structures/agent-runtime/resource';
 import { collectCommands } from '@pi-code/extension/structures/chat-command/command';
 import { calculateSessionStats, convertSessionEntries } from '@pi-code/extension/structures/chat-session/session';
@@ -24,7 +24,7 @@ export class SessionService {
     const models = await listSelectableModels(resources.services.modelRuntime);
 
     const history = this.formatSessions(sessions);
-    const defaultModel = await SettingsService.getInstance(cwd).getDefaultModel();
+    const defaultModel = await getDefaultModel(cwd);
 
     return {
       models,
@@ -43,13 +43,13 @@ export class SessionService {
     stats: StatsData;
   }> {
     const sessionManager = SessionManager.open(sessionPath);
-    const entries = sessionManager.getEntries();
+    const entries = sessionManager.buildContextEntries();
     const chatMessages = convertSessionEntries(entries);
 
     const modelRuntime = await getModelRuntime(cwd);
 
     const sessionContextModel = sessionManager.buildSessionContext().model;
-    const fallbackModelId = await SettingsService.getInstance(cwd).getDefaultModel();
+    const fallbackModelId = await getDefaultModel(cwd);
 
     // Prefer the provider/model the session actually ran with; the saved id alone
     // is ambiguous when two providers share a model id.
@@ -77,7 +77,7 @@ export class SessionService {
 
   public async exportSession(sessionPath: string, defaultId?: string): Promise<boolean> {
     const sessionManager = SessionManager.open(sessionPath);
-    const chatMessages = convertSessionEntries(sessionManager.getEntries());
+    const chatMessages = convertSessionEntries(sessionManager.buildContextEntries());
 
     const uri = await window.showSaveDialog({
       defaultUri: Uri.file(`pi-code-task-${defaultId || Date.now()}.json`),

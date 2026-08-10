@@ -1,6 +1,7 @@
 import { Disposable, Uri, workspace } from 'vscode';
 
 import { readAppSettings } from '@pi-code/extension/core/settings';
+import { PolicyBridge } from '@pi-code/extension/structures/agent-runtime/policy';
 import { AgentRunner } from '@pi-code/extension/structures/agent-runtime/runner';
 import { createDefaultDispatcher } from '@pi-code/extension/structures/agent-webview/dispatcher';
 import { SessionService } from '@pi-code/extension/structures/agent-webview/session';
@@ -60,13 +61,13 @@ function buildChatViewHtml(webview: Webview, extensionUri: Uri): string {
 
 export class ChatViewProvider implements WebviewViewProvider {
   public static readonly viewType = 'pi-code.chatView';
-  private static activeWebview: Webview | null = null;
 
   private readonly sessionService = new SessionService();
   private readonly workspaceService: WorkspaceService;
   private readonly dispatcher = createDefaultDispatcher();
 
   private agent: AgentRunner = new AgentRunner();
+  private activeWebview: Webview | null = null;
 
   public constructor(private readonly context: ExtensionContext) {
     this.workspaceService = new WorkspaceService(context.globalStorageUri);
@@ -75,13 +76,13 @@ export class ChatViewProvider implements WebviewViewProvider {
   // Global command → webview channel (show_settings, set_chat_input) used by
   // extension commands that run independently of any agent. Per-agent streaming
   // events travel through the AgentRunner's WebviewMessenger instead.
-  public static postActiveWebviewMessage(message: ExtensionToWebviewMessage): Thenable<boolean> | undefined {
-    return this.activeWebview?.postMessage(message);
+  public postMessage(message: ExtensionToWebviewMessage): void {
+    void this.activeWebview?.postMessage(message);
   }
 
   public resolveWebviewView(webviewView: WebviewView, _context: WebviewViewResolveContext, _token: CancellationToken): void {
     const webview = webviewView.webview;
-    ChatViewProvider.activeWebview = webview;
+    this.activeWebview = webview;
 
     webview.options = {
       enableScripts: true,
@@ -95,6 +96,17 @@ export class ChatViewProvider implements WebviewViewProvider {
 
     const cwd = getWorkspaceCwd();
     const self = this;
+
+    const disposeApprovalPresenter = PolicyBridge.getInstance().setPresenter((request) => {
+      void webview.postMessage({
+        type: 'tool_approval_request',
+        payload: {
+          id: request.id,
+          tool_name: request.toolName,
+          arguments: JSON.stringify(request.args),
+        },
+      });
+    });
 
     const handlerContext: MessageHandlerContext = {
       cwd,
@@ -112,6 +124,7 @@ export class ChatViewProvider implements WebviewViewProvider {
       webview.onDidReceiveMessage((message: WebviewToExtensionMessage) => {
         void this.dispatcher.dispatch(message, handlerContext);
       }),
+      Disposable.from({ dispose: disposeApprovalPresenter }),
       // Mirror configuration edits made anywhere (settings UI, settings.json,
       // profile sync) back into the chat view.
       workspace.onDidChangeConfiguration((event) => {
@@ -122,8 +135,8 @@ export class ChatViewProvider implements WebviewViewProvider {
 
     webviewView.onDidDispose(() => {
       subscriptions.dispose();
-      if (ChatViewProvider.activeWebview === webview) {
-        ChatViewProvider.activeWebview = null;
+      if (this.activeWebview === webview) {
+        this.activeWebview = null;
       }
       this.agent.dispose();
     });

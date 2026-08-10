@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 
 const mocks = vi.hoisted(() => ({
-  settingsLoad: vi.fn(),
+  readAppSettings: vi.fn(),
   isProjectTrusted: vi.fn(() => false),
 }));
 
@@ -17,12 +17,8 @@ vi.mock('@earendil-works/pi-coding-agent', () => ({
 }));
 
 vi.mock('@pi-code/extension/core/settings', () => ({
-  SettingsService: {
-    getInstance: vi.fn(() => ({
-      load: mocks.settingsLoad,
-      getSettingsManager: () => ({ setProjectTrusted: vi.fn() }),
-    })),
-  },
+  readAppSettings: mocks.readAppSettings,
+  getSettingsManager: () => ({ setProjectTrusted: vi.fn() }),
 }));
 
 vi.mock('@pi-code/extension/utilities/vscode', () => ({
@@ -32,13 +28,13 @@ vi.mock('@pi-code/extension/utilities/vscode', () => ({
 const BASE_SETTINGS = { enableAgentRules: true, enableSkillDiscovery: true };
 
 afterEach(() => {
-  mocks.settingsLoad.mockReset();
+  mocks.readAppSettings.mockReset();
   mocks.isProjectTrusted.mockReturnValue(false);
 });
 
 describe('createAgentResources cache', () => {
   it('returns the cached services when the loader-relevant config is unchanged', async () => {
-    mocks.settingsLoad.mockResolvedValue({ ...BASE_SETTINGS });
+    mocks.readAppSettings.mockReturnValue({ ...BASE_SETTINGS });
 
     const first = await createAgentResources('/project-a');
     const second = await createAgentResources('/project-a');
@@ -47,7 +43,7 @@ describe('createAgentResources cache', () => {
   });
 
   it('reuses the cached services without recreating on a cache hit', async () => {
-    mocks.settingsLoad.mockResolvedValue({ ...BASE_SETTINGS });
+    mocks.readAppSettings.mockReturnValue({ ...BASE_SETTINGS });
 
     const first = await createAgentResources('/project-b');
     const second = await createAgentResources('/project-b');
@@ -56,11 +52,21 @@ describe('createAgentResources cache', () => {
   });
 
   it('recreates the services when a loader-relevant setting flips', async () => {
-    mocks.settingsLoad.mockResolvedValue({ ...BASE_SETTINGS });
+    mocks.readAppSettings.mockReturnValue({ ...BASE_SETTINGS });
     const first = await createAgentResources('/project-c');
 
-    mocks.settingsLoad.mockResolvedValue({ ...BASE_SETTINGS, enableSkillDiscovery: false });
+    mocks.readAppSettings.mockReturnValue({ ...BASE_SETTINGS, enableSkillDiscovery: false });
     const second = await createAgentResources('/project-c');
+
+    expect(second.services.resourceLoader).not.toBe(first.services.resourceLoader);
+  });
+
+  it('recreates the services when workspace trust changes', async () => {
+    mocks.readAppSettings.mockReturnValue({ ...BASE_SETTINGS });
+    const first = await createAgentResources('/project-d');
+
+    mocks.isProjectTrusted.mockReturnValue(true);
+    const second = await createAgentResources('/project-d');
 
     expect(second.services.resourceLoader).not.toBe(first.services.resourceLoader);
   });

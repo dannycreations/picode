@@ -53,7 +53,7 @@ export default defineConfig(({ command }) => {
       testTimeout: 10_000,
       passWithNoTests: true,
       alias: {
-        vscode: resolve(srcDir, 'test/vscode-stub.ts'),
+        vscode: 'data:text/javascript,export const window={};',
       },
     },
   };

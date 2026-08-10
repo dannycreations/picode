@@ -2,7 +2,7 @@ import { basename } from 'node:path';
 import { AgentSession } from '@earendil-works/pi-coding-agent';
 import { RelativePattern, TabInputText, Uri, window, workspace } from 'vscode';
 
-import { SettingsService } from '@pi-code/extension/core/settings';
+import { readAppSettings } from '@pi-code/extension/core/settings';
 import { getGitRepository, getIgnoredPaths } from '@pi-code/extension/utilities/git';
 import { toRelativePath, toWorkspaceRelativePath } from '@pi-code/extension/utilities/vscode';
 
@@ -137,8 +137,7 @@ async function getGitStatusLines(cwd: string): Promise<string[]> {
 
 export async function getEnvironmentDetails(session: AgentSession, cwd: string, includeFileDetails = false): Promise<string> {
   let details = '';
-  const settingsService = SettingsService.getInstance(cwd);
-  const settings = await settingsService.load();
+  const settings = readAppSettings();
 
   // VS Code Visible Files
   const visibleFilePaths = window.visibleTextEditors

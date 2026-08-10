@@ -1,5 +1,7 @@
 {
   "name": "pi-code-workspace",
+  "version": "0.0.0",
+  "author": "dannycreations",
   "license": "GPL",
   "type": "module",
   "private": true,

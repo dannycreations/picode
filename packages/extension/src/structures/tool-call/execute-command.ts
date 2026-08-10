@@ -4,7 +4,7 @@ import { StringDecoder } from 'node:string_decoder';
 import { defineTool, formatSize } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
-import { resolveOutputLimits, truncateOutput } from '@pi-code/extension/utilities/truncate';
+import { getOutputLimits, truncateOutput } from '@pi-code/extension/utilities/truncate';
 
 import type { CustomToolResult } from '@pi-code/extension/types/extension';
 import type { ToolName } from '@pi-code/shared/core/protocol';
@@ -53,7 +53,7 @@ export const executeCommandTool = defineTool({
     cwd: Type.Optional(Type.Union([Type.String(), Type.Null()], { description: 'Optional working directory for the command' })),
   }),
   async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-    const limits = await resolveOutputLimits(ctx.cwd);
+    const limits = getOutputLimits();
     const retainedBytes = limits.maxBytes * 2;
 
     return new Promise<CustomToolResult<{ exitCode: number | null; signalCode: string | null; output: string }>>((res) => {

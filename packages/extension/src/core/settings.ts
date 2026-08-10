@@ -31,45 +31,26 @@ export async function writeAppSettings(partial: Partial<AppSettings>): Promise<v
   }
 }
 
-export class SettingsService {
-  private static readonly instances = new Map<string, SettingsService>();
+export async function updateAppSettings(partial: Partial<AppSettings>): Promise<AppSettings> {
+  await writeAppSettings(partial);
+  return readAppSettings();
+}
 
-  private manager: SettingsManager | null = null;
+// SettingsManager is the only settings state that is genuinely workspace bound,
+// so it is memoized per cwd. Editor settings are read straight from VS Code.
+const settingsManagers = new Map<string, SettingsManager>();
 
-  public static getInstance(cwd: string): SettingsService {
-    let instance = this.instances.get(cwd);
-    if (!instance) {
-      instance = new SettingsService(cwd);
-      this.instances.set(cwd, instance);
-    }
-    return instance;
+export function getSettingsManager(cwd: string): SettingsManager {
+  let manager = settingsManagers.get(cwd);
+  if (!manager) {
+    manager = SettingsManager.create(cwd, getAgentDir(), { projectTrusted: isProjectTrusted(cwd) });
+    settingsManagers.set(cwd, manager);
   }
+  return manager;
+}
 
-  private constructor(private readonly cwd: string) {}
-
-  public getSettingsManager(): SettingsManager {
-    this.manager ??= SettingsManager.create(this.cwd, getAgentDir(), {
-      projectTrusted: isProjectTrusted(this.cwd),
-    });
-    return this.manager;
-  }
-
-  public setProjectTrusted(trusted: boolean): void {
-    this.getSettingsManager().setProjectTrusted(trusted);
-  }
-
-  public async load(): Promise<AppSettings> {
-    return readAppSettings();
-  }
-
-  public async getDefaultModel(): Promise<string | undefined> {
-    const manager = this.getSettingsManager();
-    await manager.reload();
-    return manager.getDefaultModel();
-  }
-
-  public async updateSettings(partial: Partial<AppSettings>): Promise<AppSettings> {
-    await writeAppSettings(partial);
-    return readAppSettings();
-  }
+export async function getDefaultModel(cwd: string): Promise<string | undefined> {
+  const manager = getSettingsManager(cwd);
+  await manager.reload();
+  return manager.getDefaultModel();
 }

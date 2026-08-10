@@ -1,8 +1,8 @@
-import { formatThrownValue } from '@earendil-works/pi-ai';
+import { contentText, formatThrownValue } from '@earendil-works/pi-ai';
 import { commands, ProgressLocation, window, workspace } from 'vscode';
 
 import { COMMIT_MESSAGE_PROMPT } from '@pi-code/extension/core/prompt';
-import { SettingsService } from '@pi-code/extension/core/settings';
+import { getSettingsManager } from '@pi-code/extension/core/settings';
 import { getModelRuntime } from '@pi-code/extension/structures/agent-runtime/resource';
 import { buildGitContext, getGitChanges, getGitDiffContext, getRepoContext } from '@pi-code/extension/structures/commit-message/git';
 import { getGitRepository } from '@pi-code/extension/utilities/git';
@@ -106,7 +106,7 @@ export function registerCommitMessageCommand(): Disposable {
           logger.info('Initializing ModelRuntime...');
           const runtime = await getModelRuntime(cwd);
 
-          const settingsManager = SettingsService.getInstance(cwd).getSettingsManager();
+          const settingsManager = getSettingsManager(cwd);
           const defaultProviderId = settingsManager.getDefaultProvider();
           const defaultModelId = settingsManager.getDefaultModel();
 
@@ -131,11 +131,7 @@ export function registerCommitMessageCommand(): Disposable {
           const response = await runtime.completeSimple(model, llmContext);
           logger.info('Completion response received successfully.');
 
-          const rawMessage = response.content
-            .filter((c) => c.type === 'text')
-            .map((c) => c.text)
-            .join('')
-            .trim();
+          const rawMessage = contentText(response.content).trim();
           logger.info(`Raw LLM response: ${rawMessage}`);
 
           const cleanMessage = extractCodeFenceMessage(rawMessage);

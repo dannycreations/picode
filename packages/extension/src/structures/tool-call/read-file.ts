@@ -6,8 +6,8 @@ import { formatThrownValue } from '@earendil-works/pi-ai';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
-import { SettingsService } from '@pi-code/extension/core/settings';
-import { isBinaryFile } from '@pi-code/extension/utilities/binary';
+import { readAppSettings } from '@pi-code/extension/core/settings';
+import { isBinaryFile } from '@pi-code/extension/utilities/codec';
 import { DEFAULT_OUTPUT_LIMITS, shareOutputLimits, toOutputLimits, truncateOutput } from '@pi-code/extension/utilities/truncate';
 
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
@@ -85,8 +85,7 @@ export const readFileTool = defineTool({
       let maxConcurrent = 5;
       let limits = DEFAULT_OUTPUT_LIMITS;
       try {
-        const settingsService = SettingsService.getInstance(ctx.cwd);
-        const settings = await settingsService.load();
+        const settings = readAppSettings();
         if (typeof settings?.maxConcurrentFileReads === 'number' && settings.maxConcurrentFileReads > 0) {
           maxConcurrent = settings.maxConcurrentFileReads;
         }

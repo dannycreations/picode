@@ -1,3 +1,5 @@
+import { Uri, workspace } from 'vscode';
+
 const BASE64_DATA_URL_PATTERN = /^data:([^;,]+)((?:;[^;,]+)*);base64,(.+)$/;
 
 const DEFAULT_MIME_TYPE = 'image/png';
@@ -37,4 +39,10 @@ export function extensionForMimeType(mimeType: string): string {
   // Strip structured-syntax suffixes (`+xml`) and vendor trees (`vnd.foo`).
   const cleaned = subtype.split('+')[0].split('.').pop() ?? '';
   return /^[a-z0-9]+$/.test(cleaned) ? cleaned : DEFAULT_EXTENSION;
+}
+
+export async function isBinaryFile(filePath: string, sampleBytes: number = 4096): Promise<boolean> {
+  const data = await workspace.fs.readFile(Uri.file(filePath));
+  const sampleLength = Math.min(sampleBytes, data.byteLength);
+  return data.subarray(0, sampleLength).includes(0);
 }

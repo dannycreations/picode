@@ -1,18 +1,13 @@
-import { commands, window } from 'vscode';
+import { commands } from 'vscode';
 
 import { getEffectiveSelection } from '@pi-code/extension/structures/add-to-context/helpers';
 import { ChatViewProvider } from '@pi-code/extension/structures/agent-webview/provider';
 import { toRelativePath } from '@pi-code/extension/utilities/vscode';
 
-import type { Disposable } from 'vscode';
+import type { Disposable, TextEditor } from 'vscode';
 
-export function registerAddToContextCommand(): Disposable {
-  return commands.registerCommand('pi-code.addToContext', async () => {
-    const editor = window.activeTextEditor;
-    if (!editor) {
-      return;
-    }
-
+export function registerAddToContextCommand(chatViewProvider: ChatViewProvider): Disposable {
+  return commands.registerTextEditorCommand('pi-code.addToContext', async (editor: TextEditor) => {
     const document = editor.document;
     const effectiveContext = getEffectiveSelection(document, editor.selection);
     if (!effectiveContext) {
@@ -30,9 +25,6 @@ export function registerAddToContextCommand(): Disposable {
 
     // Send the message to the webview
     const prompt = `${filePath}:${startLine}-${endLine}\n\`\`\`\n${effectiveContext.text}\n\`\`\`\n\n`;
-    ChatViewProvider.postActiveWebviewMessage({
-      type: 'set_chat_input',
-      payload: { text: prompt },
-    });
+    chatViewProvider.postMessage({ type: 'set_chat_input', payload: { text: prompt } });
   });
 }

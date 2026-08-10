@@ -1,7 +1,6 @@
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, formatSize, generateDiffString, truncateHead, truncateTail } from '@earendil-works/pi-coding-agent';
 
-import { SettingsService } from '@pi-code/extension/core/settings';
-import { logger } from '@pi-code/shared/core/logger';
+import { readAppSettings } from '@pi-code/extension/core/settings';
 
 import type { TruncationResult } from '@earendil-works/pi-coding-agent';
 import type { AppSettings } from '@pi-code/shared/core/settings';
@@ -40,13 +39,8 @@ export function toOutputLimits(settings: AppSettings): OutputLimits {
   };
 }
 
-export async function resolveOutputLimits(cwd: string): Promise<OutputLimits> {
-  try {
-    return toOutputLimits(await SettingsService.getInstance(cwd).load());
-  } catch (err) {
-    logger.warn('Failed to load tool output limits, using defaults:', err);
-    return DEFAULT_OUTPUT_LIMITS;
-  }
+export function getOutputLimits(): OutputLimits {
+  return toOutputLimits(readAppSettings());
 }
 
 export function shareOutputLimits(limits: OutputLimits, count: number): OutputLimits {
@@ -107,9 +101,8 @@ interface FileChangeResultOptions {
 
 export async function buildFileChangeResult(opts: FileChangeResultOptions) {
   const diffResult = generateDiffString(opts.oldContent, opts.newContent);
-  const limits = await resolveOutputLimits(opts.cwd);
   const { text } = truncateOutput(diffResult.diff || opts.successMessage, {
-    limits,
+    limits: getOutputLimits(),
     keep: 'head',
     hint: opts.hint,
   });

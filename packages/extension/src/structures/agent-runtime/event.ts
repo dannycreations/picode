@@ -15,11 +15,7 @@ export class EventMapper {
     this.apiRequestId = null;
   }
 
-  public mapEvent(event: AgentSessionEvent, session: AgentSession, isAborted: boolean): AgentToWebviewMessage | null {
-    if (isAborted) {
-      return event.type === 'agent_settled' ? { type: 'agent_settled' } : null;
-    }
-
+  public mapEvent(event: AgentSessionEvent, session: AgentSession): AgentToWebviewMessage | null {
     switch (event.type) {
       case 'agent_start':
         return {
