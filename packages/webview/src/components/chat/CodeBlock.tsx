@@ -7,6 +7,7 @@ import { bundledLanguages } from 'shiki';
 
 import { logger } from '@pi-code/shared/core/logger';
 import { getHighlighter, normalizeLanguage } from '@pi-code/webview/components/chat/helpers/highlighter';
+import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { useCopyToClipboard } from '@pi-code/webview/hooks/useCopyToClipboard';
 import { useInViewport } from '@pi-code/webview/hooks/useInViewport';
 
@@ -48,39 +49,47 @@ const CodeToolbar: FC<CodeToolbarProps> = ({
     className="absolute top-2 right-2 flex items-center bg-[var(--vscode-editor-background)]/85 backdrop-blur-sm border border-[var(--vscode-editorGroup-border)] rounded p-0.5 z-10 gap-0.5 select-none"
     style={{ pointerEvents: 'all' }}
   >
-    <select
-      value={currentLanguage}
-      className="text-xs text-[var(--vscode-foreground)] bg-transparent border-none cursor-pointer p-1 font-mono outline-none hover:bg-[var(--vscode-toolbar-hoverBackground)] rounded"
-      style={{ width: `calc(${currentLanguage?.length || 0}ch + 20px)` }}
-      onChange={(e) => onLanguageChange(normalizeLanguage(e.target.value))}
-    >
-      <option value={currentLanguage}>{currentLanguage}</option>
-      {Object.keys(bundledLanguages)
-        .sort()
-        .map((lang) => {
-          const normalized = normalizeLanguage(lang);
-          if (normalized === currentLanguage) return null;
-          return (
-            <option key={lang} value={normalized} className="bg-[var(--vscode-editor-background)] text-[var(--vscode-foreground)]">
-              {normalized}
-            </option>
-          );
-        })}
-    </select>
+    <Tooltip content="Change syntax highlighting" side="bottom">
+      <select
+        value={currentLanguage}
+        className="text-xs text-[var(--vscode-foreground)] bg-transparent border-none cursor-pointer p-1 font-mono outline-none hover:bg-[var(--vscode-toolbar-hoverBackground)] rounded"
+        style={{ width: `calc(${currentLanguage?.length || 0}ch + 20px)` }}
+        onChange={(e) => onLanguageChange(normalizeLanguage(e.target.value))}
+      >
+        <option value={currentLanguage}>{currentLanguage}</option>
+        {Object.keys(bundledLanguages)
+          .sort()
+          .map((lang) => {
+            const normalized = normalizeLanguage(lang);
+            if (normalized === currentLanguage) return null;
+            return (
+              <option key={lang} value={normalized} className="bg-[var(--vscode-editor-background)] text-[var(--vscode-foreground)]">
+                {normalized}
+              </option>
+            );
+          })}
+      </select>
+    </Tooltip>
 
     {showCollapseButton && (
-      <button className={ICON_BUTTON_CLASS} onClick={onToggleWindowShade} title={windowShade ? 'Expand' : 'Collapse'}>
-        {windowShade ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
-      </button>
+      <Tooltip content={windowShade ? 'Expand' : 'Collapse'} side="bottom">
+        <button className={ICON_BUTTON_CLASS} onClick={onToggleWindowShade}>
+          {windowShade ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+        </button>
+      </Tooltip>
     )}
 
-    <button className={ICON_BUTTON_CLASS} onClick={onToggleWordWrap} title={wordWrap ? 'Disable wrap' : 'Enable wrap'}>
-      {wordWrap ? <AlignJustify size={14} /> : <WrapText size={14} />}
-    </button>
+    <Tooltip content={wordWrap ? 'Disable wrap' : 'Enable wrap'} side="bottom">
+      <button className={ICON_BUTTON_CLASS} onClick={onToggleWordWrap}>
+        {wordWrap ? <AlignJustify size={14} /> : <WrapText size={14} />}
+      </button>
+    </Tooltip>
 
-    <button className={ICON_BUTTON_CLASS} onClick={onCopy} title="Copy code">
-      {showCopy ? <Check size={14} /> : <Copy size={14} />}
-    </button>
+    <Tooltip content={showCopy ? 'Copied code!' : 'Copy code'} side="bottom">
+      <button className={ICON_BUTTON_CLASS} onClick={onCopy}>
+        {showCopy ? <Check size={14} /> : <Copy size={14} />}
+      </button>
+    </Tooltip>
   </div>
 );
 

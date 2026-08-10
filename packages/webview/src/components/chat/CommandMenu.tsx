@@ -1,6 +1,8 @@
 import { cn } from 'cnfast';
 import { useEffect, useMemo, useRef } from 'react';
 
+import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
+
 import type { FC } from 'react';
 import type { CommandItem } from '@pi-code/shared/core/protocol';
 
@@ -48,12 +50,11 @@ export const CommandMenu: FC<CommandMenuProps> = ({ commands, selectedIndex, onS
               )}
             </div>
             {command.description && (
-              <span
-                className={cn('line-clamp-2 text-xs', index === selectedIndex ? 'opacity-80' : 'text-vscode-descriptionForeground')}
-                title={command.detail}
-              >
-                {command.description}
-              </span>
+              <Tooltip content={command.detail} side="right">
+                <span className={cn('line-clamp-2 text-xs', index === selectedIndex ? 'opacity-80' : 'text-vscode-descriptionForeground')}>
+                  {command.description}
+                </span>
+              </Tooltip>
             )}
           </div>
         ))}

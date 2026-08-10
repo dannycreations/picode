@@ -7,6 +7,7 @@ import { logger } from '@pi-code/shared/core/logger';
 import { CommandMenu } from '@pi-code/webview/components/chat/CommandMenu';
 import { splitCommand } from '@pi-code/webview/components/chat/helpers/command';
 import { useChatCommand } from '@pi-code/webview/components/chat/hooks/useChatCommand';
+import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { readFileAsDataUrl } from '@pi-code/webview/utilities/common';
 
 import type { ChangeEvent, ClipboardEvent, FC, KeyboardEvent, RefObject } from 'react';
@@ -33,12 +34,14 @@ const AttachedImagesPreview: FC<{
       {images.map((img, idx) => (
         <div key={idx} className="relative w-10 h-10 rounded border border-[var(--vscode-panel-border)] overflow-hidden group">
           <img src={img} alt="attachment" className="w-full h-full object-cover" />
-          <button
-            onClick={() => onRemove(idx)}
-            className="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-black/70 hover:bg-black text-white text-xs rounded-full flex items-center justify-center border-none cursor-pointer"
-          >
-            ×
-          </button>
+          <Tooltip content="Remove attachment">
+            <button
+              onClick={() => onRemove(idx)}
+              className="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-black/70 hover:bg-black text-white text-xs rounded-full flex items-center justify-center border-none cursor-pointer"
+            >
+              ×
+            </button>
+          </Tooltip>
         </div>
       ))}
     </div>
@@ -179,26 +182,29 @@ export const ChatInput: FC<ChatInputProps> = ({ inputValue, setInputValue, onSen
         <div className="flex justify-between items-center px-2.5 pb-2 pt-1 z-20 pointer-events-auto">
           <div className="flex items-center gap-1.5 ml-auto">
             <input type="file" ref={fileInputRef} onChange={handleAttachImage} accept="image/*" className="hidden" />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              title="Add Image Attachment"
-              className="p-1.5 rounded hover:bg-[var(--vscode-list-hoverBackground)] text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] bg-transparent border-none cursor-pointer transition-colors"
-            >
-              <ImageIcon size={14} />
-            </button>
+            <Tooltip content="Add image attachment">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="p-1.5 rounded hover:bg-[var(--vscode-list-hoverBackground)] text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] bg-transparent border-none cursor-pointer transition-colors"
+              >
+                <ImageIcon size={14} />
+              </button>
+            </Tooltip>
 
-            <button
-              onClick={handleSend}
-              disabled={!isSendButtonActive}
-              className={cn(
-                'p-1.5 rounded border-none cursor-pointer transition-colors',
-                isSendButtonActive
-                  ? 'bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] hover:bg-[var(--vscode-button-hoverBackground)]'
-                  : 'bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] opacity-40 cursor-not-allowed',
-              )}
-            >
-              <Send size={13} fill="currentColor" />
-            </button>
+            <Tooltip content="Send message (Enter)">
+              <button
+                onClick={handleSend}
+                disabled={!isSendButtonActive}
+                className={cn(
+                  'p-1.5 rounded border-none cursor-pointer transition-colors',
+                  isSendButtonActive
+                    ? 'bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] hover:bg-[var(--vscode-button-hoverBackground)]'
+                    : 'bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] opacity-40 cursor-not-allowed',
+                )}
+              >
+                <Send size={13} fill="currentColor" />
+              </button>
+            </Tooltip>
           </div>
         </div>
       </div>

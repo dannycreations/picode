@@ -7,6 +7,7 @@ import { SettingControl } from '@pi-code/webview/components/setting/fields/Setti
 import { useResponsive } from '@pi-code/webview/components/setting/hooks/useResponsive';
 import { useSetting } from '@pi-code/webview/components/setting/hooks/useSetting';
 import { ConfirmDialog } from '@pi-code/webview/components/shared/ConfirmDialog';
+import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 
 import type { FC } from 'react';
 import type { AppSettings } from '@pi-code/shared/core/settings';
@@ -39,14 +40,15 @@ export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
       {/* Header */}
       <div className="flex justify-between items-center gap-2 px-5 py-2.5 border-b border-vscode-panel-border bg-vscode-sideBar-background shrink-0">
         <div className="flex items-center gap-2 grow">
-          <button
-            type="button"
-            onClick={() => checkUnsavedChanges(onDone)}
-            className="p-1.5 -ml-2 hover:bg-vscode-list-hoverBackground rounded text-vscode-foreground bg-transparent border-none cursor-pointer flex items-center justify-center transition-colors duration-150"
-            title="Discard unsaved changes and go back to tasks view"
-          >
-            <ArrowLeft size={16} />
-          </button>
+          <Tooltip content="Discard unsaved changes and go back to tasks view" side="bottom">
+            <button
+              type="button"
+              onClick={() => checkUnsavedChanges(onDone)}
+              className="p-1.5 -ml-2 hover:bg-vscode-list-hoverBackground rounded text-vscode-foreground bg-transparent border-none cursor-pointer flex items-center justify-center transition-colors duration-150"
+            >
+              <ArrowLeft size={16} />
+            </button>
+          </Tooltip>
           <h3 className="text-vscode-foreground m-0 flex-shrink-0 text-sm font-semibold">Settings</h3>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -79,22 +81,22 @@ export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
             const TabIcon = tab.icon;
             const isActive = tab.id === activeTabId;
             return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTabId(tab.id)}
-                title={isCollapsed ? tab.label : undefined}
-                className={cn(
-                  'whitespace-nowrap overflow-hidden min-w-0 h-12 py-3 box-border flex items-center border-l-2 text-xs w-full border-y-0 border-r-0 transition-colors duration-150',
-                  isCollapsed ? 'justify-center px-0' : 'px-4 gap-2 text-left',
-                  isActive
-                    ? 'border-vscode-focusBorder bg-vscode-list-activeSelectionBackground text-vscode-foreground font-medium cursor-default'
-                    : 'border-transparent text-vscode-descriptionForeground hover:bg-vscode-list-hoverBackground hover:text-vscode-foreground cursor-pointer bg-transparent',
-                )}
-              >
-                <TabIcon className={cn('w-4 h-4 shrink-0', isActive ? 'text-vscode-foreground' : 'text-vscode-descriptionForeground')} />
-                {!isCollapsed && <span className="tab-label">{tab.label}</span>}
-              </button>
+              <Tooltip key={tab.id} content={tab.label} side="right" disabled={!isCollapsed}>
+                <button
+                  type="button"
+                  onClick={() => setActiveTabId(tab.id)}
+                  className={cn(
+                    'whitespace-nowrap overflow-hidden min-w-0 h-12 py-3 box-border flex items-center border-l-2 text-xs w-full border-y-0 border-r-0 transition-colors duration-150',
+                    isCollapsed ? 'justify-center px-0' : 'px-4 gap-2 text-left',
+                    isActive
+                      ? 'border-vscode-focusBorder bg-vscode-list-activeSelectionBackground text-vscode-foreground font-medium cursor-default'
+                      : 'border-transparent text-vscode-descriptionForeground hover:bg-vscode-list-hoverBackground hover:text-vscode-foreground cursor-pointer bg-transparent',
+                  )}
+                >
+                  <TabIcon className={cn('w-4 h-4 shrink-0', isActive ? 'text-vscode-foreground' : 'text-vscode-descriptionForeground')} />
+                  {!isCollapsed && <span className="tab-label">{tab.label}</span>}
+                </button>
+              </Tooltip>
             );
           })}
         </div>

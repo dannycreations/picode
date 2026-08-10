@@ -33,6 +33,9 @@
   --color-vscode-badge-background: var(--vscode-badge-background);
   --color-vscode-notifications-foreground: var(--vscode-notifications-foreground);
   --color-vscode-notifications-background: var(--vscode-notifications-background);
+  --color-vscode-editorHoverWidget-foreground: var(--vscode-editorHoverWidget-foreground, var(--vscode-foreground));
+  --color-vscode-editorHoverWidget-background: var(--vscode-editorHoverWidget-background, var(--vscode-editorWidget-background));
+  --color-vscode-editorHoverWidget-border: var(--vscode-editorHoverWidget-border, var(--vscode-widget-border, var(--vscode-panel-border)));
   --color-vscode-textLink-foreground: var(--vscode-textLink-foreground);
   --color-vscode-textLink-activeForeground: var(--vscode-textLink-activeForeground);
   --color-vscode-sideBarSectionHeader-background: var(--vscode-sideBarSectionHeader-background);
@@ -90,6 +93,19 @@
 
 .animate-fade-in {
   animation: fade-in 0.2s ease-out forwards;
+}
+
+@keyframes tooltip-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.animate-tooltip-in {
+  animation: tooltip-in 0.12s ease-out forwards;
 }
 
 /* Custom scrollbar to match VSCode style */

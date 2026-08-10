@@ -4,6 +4,7 @@ import { ClipboardCopy, CornerDownRight, MessageCircleQuestionMark, ShieldAlert 
 import { parseQuestionAnswer, parseQuestionData } from '@pi-code/webview/components/chat/helpers/question';
 import { Markdown } from '@pi-code/webview/components/chat/markdown/Markdown';
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
+import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 
 import type { FC, MouseEvent } from 'react';
 import type { ChatMessage } from '@pi-code/shared/core/protocol';
@@ -58,16 +59,17 @@ export const QuestionMessage: FC<QuestionMessageProps> = ({ message, onAnswerQue
                 >
                   {suggestion}
                 </button>
-                <button
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onCopyToInput(suggestion);
-                  }}
-                  title="Edit before answering (Shift+Click)"
-                  className="absolute top-1.5 right-1.5 p-1 rounded bg-vscode-input-background text-vscode-descriptionForeground hover:text-vscode-foreground border-none cursor-pointer opacity-0 group-hover/suggestion:opacity-100 transition-opacity"
-                >
-                  <ClipboardCopy size={12} />
-                </button>
+                <Tooltip content="Edit before answering (Shift+Click)" side="left">
+                  <button
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onCopyToInput(suggestion);
+                    }}
+                    className="absolute top-1.5 right-1.5 p-1 rounded bg-vscode-input-background text-vscode-descriptionForeground hover:text-vscode-foreground border-none cursor-pointer opacity-0 group-hover/suggestion:opacity-100 transition-opacity"
+                  >
+                    <ClipboardCopy size={12} />
+                  </button>
+                </Tooltip>
               </div>
             ))}
           </div>

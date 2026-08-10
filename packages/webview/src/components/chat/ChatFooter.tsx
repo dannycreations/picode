@@ -2,6 +2,7 @@ import { cn } from 'cnfast';
 import { Check, ChevronDown } from 'lucide-react';
 import { useRef, useState } from 'react';
 
+import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { useClickOutside } from '@pi-code/webview/hooks/useClickOutside';
 
 import type { FC } from 'react';
@@ -81,14 +82,16 @@ export const ChatFooter: FC<ChatFooterProps> = ({ currentModel, onChangeModel, m
   return (
     <div className="flex flex-row w-auto items-center justify-between h-[30px] mx-3.5 mt-1 mb-2 gap-1 shrink-0 select-none">
       <div className="flex flex-row justify-start gap-1 grow relative" ref={dropdownRef}>
-        <button
-          onClick={() => setShowModelMenu(!showModelMenu)}
-          className="px-2 py-0.5 text-xs text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] bg-transparent hover:bg-[var(--vscode-list-hoverBackground)] border border-[var(--vscode-panel-border)]/50 rounded flex items-center gap-1 cursor-pointer truncate max-w-[180px]"
-        >
-          <span className="codicon codicon-robot scale-75" />
-          <span className="truncate">{selectedModelObj.name}</span>
-          <ChevronDown size={10} />
-        </button>
+        <Tooltip content={`Model: ${selectedModelObj.id}`}>
+          <button
+            onClick={() => setShowModelMenu(!showModelMenu)}
+            className="px-2 py-0.5 text-xs text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] bg-transparent hover:bg-[var(--vscode-list-hoverBackground)] border border-[var(--vscode-panel-border)]/50 rounded flex items-center gap-1 cursor-pointer truncate max-w-[180px]"
+          >
+            <span className="codicon codicon-robot scale-75" />
+            <span className="truncate">{selectedModelObj.name}</span>
+            <ChevronDown size={10} />
+          </button>
+        </Tooltip>
 
         {showModelMenu && (
           <ModelDropdownMenu

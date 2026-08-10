@@ -7,6 +7,7 @@ import { HistoryPagination } from '@pi-code/webview/components/history/HistoryPa
 import { HistorySelection } from '@pi-code/webview/components/history/HistorySelection';
 import { useHistoryFilter } from '@pi-code/webview/components/history/hooks/useHistoryFilter';
 import { ConfirmDialog } from '@pi-code/webview/components/shared/ConfirmDialog';
+import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 
 import type { FC } from 'react';
 import type { HistoryItem, HistoryScope } from '@pi-code/shared/core/protocol';
@@ -70,12 +71,14 @@ export const HistoryView: FC<HistoryViewProps> = ({ history, onSelectTask, onDon
     <div className="flex-1 flex flex-col overflow-hidden w-full h-full">
       {/* Header */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--vscode-panel-border)]/40 shrink-0">
-        <button
-          onClick={onDone}
-          className="p-1 hover:bg-[var(--vscode-list-hoverBackground)] rounded cursor-pointer text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] transition-colors border-none bg-transparent"
-        >
-          <ArrowLeft size={16} />
-        </button>
+        <Tooltip content="Back to chat" side="bottom">
+          <button
+            onClick={onDone}
+            className="p-1 hover:bg-[var(--vscode-list-hoverBackground)] rounded cursor-pointer text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] transition-colors border-none bg-transparent"
+          >
+            <ArrowLeft size={16} />
+          </button>
+        </Tooltip>
         <span className="font-semibold text-sm text-[var(--vscode-foreground)]">Task History</span>
         <span className="ml-auto text-xs text-[var(--vscode-descriptionForeground)] font-mono">
           {filteredHistory.length} task{filteredHistory.length !== 1 ? 's' : ''}

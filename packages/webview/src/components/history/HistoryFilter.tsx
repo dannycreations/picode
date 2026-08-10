@@ -1,6 +1,8 @@
 import { cn } from 'cnfast';
 import { Check, Search, X } from 'lucide-react';
 
+import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
+
 import type { FC } from 'react';
 import type { HistoryScope } from '@pi-code/shared/core/protocol';
 import type { SortOption } from '@pi-code/webview/components/history/hooks/useHistoryFilter';
@@ -38,12 +40,14 @@ export const HistoryFilter: FC<HistoryFilterProps> = ({
         className="w-full pl-8 pr-8 py-1.5 text-xs bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-[var(--vscode-focusBorder)] rounded outline-none hover:ring-1 hover:ring-[var(--vscode-focusBorder)] focus:ring-1 focus:ring-[var(--vscode-focusBorder)]"
       />
       {searchQuery && (
-        <button
-          onClick={() => onSearchChange('')}
-          className="absolute right-2 p-0.5 text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] border-none bg-transparent cursor-pointer"
-        >
-          <X size={12} />
-        </button>
+        <Tooltip content="Clear search" side="bottom">
+          <button
+            onClick={() => onSearchChange('')}
+            className="absolute right-2 p-0.5 text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] border-none bg-transparent cursor-pointer"
+          >
+            <X size={12} />
+          </button>
+        </Tooltip>
       )}
     </div>
 
@@ -77,18 +81,19 @@ export const HistoryFilter: FC<HistoryFilterProps> = ({
           <option value="alphabetical">Sort: A-Z</option>
         </select>
 
-        <button
-          onClick={onToggleSelectionMode}
-          className={cn(
-            'p-1.5 rounded transition-colors cursor-pointer border border-[var(--vscode-panel-border)]/40',
-            isSelectionMode
-              ? 'bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)]'
-              : 'bg-transparent text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)]',
-          )}
-          title="Select tasks"
-        >
-          <Check size={12} />
-        </button>
+        <Tooltip content={isSelectionMode ? 'Exit selection mode' : 'Select tasks'} side="left">
+          <button
+            onClick={onToggleSelectionMode}
+            className={cn(
+              'p-1.5 rounded transition-colors cursor-pointer border border-[var(--vscode-panel-border)]/40',
+              isSelectionMode
+                ? 'bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)]'
+                : 'bg-transparent text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)]',
+            )}
+          >
+            <Check size={12} />
+          </button>
+        </Tooltip>
       </div>
     </div>
   </div>

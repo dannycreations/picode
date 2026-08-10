@@ -1,6 +1,7 @@
 import { cn } from 'cnfast';
 
 import { usePanZoom } from '@pi-code/webview/components/chat/markdown/hooks/usePanZoom';
+import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 
 import type { FC, MouseEvent } from 'react';
 
@@ -14,6 +15,9 @@ interface MermaidModalProps {
   readonly onCopy: (e: MouseEvent) => Promise<void>;
   readonly onSave: (e: MouseEvent) => Promise<void>;
 }
+
+const CONTROL_BUTTON_CLASS =
+  'w-7 h-7 flex items-center justify-center border-none text-[var(--vscode-editor-foreground)] bg-transparent hover:bg-[var(--vscode-toolbar-hoverBackground)] cursor-pointer rounded';
 
 export const MermaidModal: FC<MermaidModalProps> = ({ code, svgContent, modalViewMode, showCopy, setModalViewMode, onClose, onCopy, onSave }) => {
   const { zoomLevel, dragPosition, isDragging, adjustZoom, handleWheel, startDrag, onDrag, stopDrag } = usePanZoom();
@@ -50,13 +54,14 @@ export const MermaidModal: FC<MermaidModalProps> = ({ code, svgContent, modalVie
               <span className="codicon codicon-code text-sm" /> Source Code
             </button>
           </div>
-          <button
-            className="w-8 h-8 flex items-center justify-center border-none text-[var(--vscode-editor-foreground)] bg-transparent hover:bg-[var(--vscode-toolbar-hoverBackground)] cursor-pointer rounded"
-            onClick={onClose}
-            title="Close"
-          >
-            <span className="codicon codicon-close text-sm" />
-          </button>
+          <Tooltip content="Close" side="bottom">
+            <button
+              className="w-8 h-8 flex items-center justify-center border-none text-[var(--vscode-editor-foreground)] bg-transparent hover:bg-[var(--vscode-toolbar-hoverBackground)] cursor-pointer rounded"
+              onClick={onClose}
+            >
+              <span className="codicon codicon-close text-sm" />
+            </button>
+          </Tooltip>
         </div>
 
         {/* Modal Content */}
@@ -97,43 +102,33 @@ export const MermaidModal: FC<MermaidModalProps> = ({ code, svgContent, modalVie
         <div className="absolute bottom-0 right-0 left-0 p-3 flex items-center justify-end gap-2 bg-[var(--vscode-editor-background)] border-t border-[var(--vscode-editorGroup-border)] rounded-b">
           {modalViewMode === 'diagram' ? (
             <>
-              <button
-                className="w-7 h-7 flex items-center justify-center border-none text-[var(--vscode-editor-foreground)] bg-transparent hover:bg-[var(--vscode-toolbar-hoverBackground)] cursor-pointer rounded"
-                onClick={() => adjustZoom(-0.2)}
-                title="Zoom Out"
-              >
-                <span className="codicon codicon-zoom-out" />
-              </button>
-              <button
-                className="w-7 h-7 flex items-center justify-center border-none text-[var(--vscode-editor-foreground)] bg-transparent hover:bg-[var(--vscode-toolbar-hoverBackground)] cursor-pointer rounded"
-                onClick={() => adjustZoom(0.2)}
-                title="Zoom In"
-              >
-                <span className="codicon codicon-zoom-in" />
-              </button>
-              <button
-                className="w-7 h-7 flex items-center justify-center border-none text-[var(--vscode-editor-foreground)] bg-transparent hover:bg-[var(--vscode-toolbar-hoverBackground)] cursor-pointer rounded"
-                onClick={onCopy}
-                title="Copy Source"
-              >
-                <span className={cn('codicon', `codicon-${showCopy ? 'check' : 'copy'}`)} />
-              </button>
-              <button
-                className="w-7 h-7 flex items-center justify-center border-none text-[var(--vscode-editor-foreground)] bg-transparent hover:bg-[var(--vscode-toolbar-hoverBackground)] cursor-pointer rounded"
-                onClick={onSave}
-                title="Save PNG"
-              >
-                <span className="codicon codicon-save" />
-              </button>
+              <Tooltip content="Zoom out">
+                <button className={CONTROL_BUTTON_CLASS} onClick={() => adjustZoom(-0.2)}>
+                  <span className="codicon codicon-zoom-out" />
+                </button>
+              </Tooltip>
+              <Tooltip content="Zoom in">
+                <button className={CONTROL_BUTTON_CLASS} onClick={() => adjustZoom(0.2)}>
+                  <span className="codicon codicon-zoom-in" />
+                </button>
+              </Tooltip>
+              <Tooltip content={showCopy ? 'Copied source!' : 'Copy source'}>
+                <button className={CONTROL_BUTTON_CLASS} onClick={onCopy}>
+                  <span className={cn('codicon', `codicon-${showCopy ? 'check' : 'copy'}`)} />
+                </button>
+              </Tooltip>
+              <Tooltip content="Save as PNG">
+                <button className={CONTROL_BUTTON_CLASS} onClick={onSave}>
+                  <span className="codicon codicon-save" />
+                </button>
+              </Tooltip>
             </>
           ) : (
-            <button
-              className="w-7 h-7 flex items-center justify-center border-none text-[var(--vscode-editor-foreground)] bg-transparent hover:bg-[var(--vscode-toolbar-hoverBackground)] cursor-pointer rounded"
-              onClick={onCopy}
-              title="Copy Source"
-            >
-              <span className={cn('codicon', `codicon-${showCopy ? 'check' : 'copy'}`)} />
-            </button>
+            <Tooltip content={showCopy ? 'Copied source!' : 'Copy source'}>
+              <button className={CONTROL_BUTTON_CLASS} onClick={onCopy}>
+                <span className={cn('codicon', `codicon-${showCopy ? 'check' : 'copy'}`)} />
+              </button>
+            </Tooltip>
           )}
         </div>
       </div>

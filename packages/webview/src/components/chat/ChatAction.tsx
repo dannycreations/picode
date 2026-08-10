@@ -1,3 +1,5 @@
+import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
+
 import type { FC } from 'react';
 import type { ActiveTaskState } from '@pi-code/shared/core/protocol';
 
@@ -28,13 +30,14 @@ export const ChatAction: FC<ChatActionProps> = ({
   return (
     <div className="flex gap-2 px-3.5 pt-2 shrink-0">
       {showScrollToBottom ? (
-        <button
-          onClick={onScrollToBottom}
-          title="Scroll to bottom of chat"
-          className="w-full py-1.5 text-xs font-semibold rounded bg-vscode-button-background text-vscode-button-foreground hover:bg-vscode-button-hoverBackground border-none cursor-pointer flex items-center justify-center gap-1.5"
-        >
-          <span className="codicon codicon-chevron-down mr-1" />
-        </button>
+        <Tooltip content="Scroll to bottom of chat">
+          <button
+            onClick={onScrollToBottom}
+            className="w-full py-1.5 text-xs font-semibold rounded bg-vscode-button-background text-vscode-button-foreground hover:bg-vscode-button-hoverBackground border-none cursor-pointer flex items-center justify-center gap-1.5"
+          >
+            <span className="codicon codicon-chevron-down mr-1" />
+          </button>
+        </Tooltip>
       ) : isAgentRunning ? (
         <button
           onClick={onCancelTask}

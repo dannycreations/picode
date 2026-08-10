@@ -16,6 +16,7 @@ import { HistoryPreview } from '@pi-code/webview/components/history/HistoryPrevi
 import { HistoryView } from '@pi-code/webview/components/history/HistoryView';
 import { SettingsView } from '@pi-code/webview/components/setting/SettingsView';
 import { ConfirmDialog } from '@pi-code/webview/components/shared/ConfirmDialog';
+import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { useAutoScroll } from '@pi-code/webview/hooks/useAutoScroll';
 import { vscode } from '@pi-code/webview/utilities/vscode';
 
@@ -196,13 +197,15 @@ export const ChatView: FC = () => {
         />
       ) : (
         <div className="flex items-center justify-between w-full mx-auto px-3.5 pt-3 shrink-0 select-none">
-          <button
-            onClick={() => setHistoryExpanded(!historyExpanded)}
-            className="flex items-center cursor-pointer bg-transparent border-none text-xs font-semibold text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)]"
-          >
-            <span className={cn('codicon', historyExpanded ? 'codicon-eye' : 'codicon-eye-closed', 'scale-90 mr-1.5')} />
-            <span className="text-xs">Recent Tasks</span>
-          </button>
+          <Tooltip content={historyExpanded ? 'Hide recent tasks' : 'Show recent tasks'} side="bottom">
+            <button
+              onClick={() => setHistoryExpanded(!historyExpanded)}
+              className="flex items-center cursor-pointer bg-transparent border-none text-xs font-semibold text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)]"
+            >
+              <span className={cn('codicon', historyExpanded ? 'codicon-eye' : 'codicon-eye-closed', 'scale-90 mr-1.5')} />
+              <span className="text-xs">Recent Tasks</span>
+            </button>
+          </Tooltip>
         </div>
       )}
 

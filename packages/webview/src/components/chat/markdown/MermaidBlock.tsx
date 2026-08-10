@@ -7,6 +7,7 @@ import { svgToPng } from '@pi-code/webview/components/chat/markdown/helpers/merm
 import { useMermaidRender } from '@pi-code/webview/components/chat/markdown/hooks/useMermaidRender';
 import { MermaidModal } from '@pi-code/webview/components/chat/markdown/MermaidModal';
 import { MermaidToolbar } from '@pi-code/webview/components/chat/markdown/MermaidToolbar';
+import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { useCopyToClipboard } from '@pi-code/webview/hooks/useCopyToClipboard';
 import { useInViewport } from '@pi-code/webview/hooks/useInViewport';
 import { vscode } from '@pi-code/webview/utilities/vscode';
@@ -63,20 +64,22 @@ export const MermaidBlock: FC<MermaidBlockProps> = ({ code: originalCode }) => {
               <span className="font-bold text-xs text-[var(--vscode-editor-foreground)]">Mermaid render error</span>
             </div>
             <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-              <button
-                className="p-1 h-6 w-6 flex items-center justify-center bg-transparent border-none text-[var(--vscode-editor-foreground)] cursor-pointer hover:bg-[var(--vscode-toolbar-hoverBackground)] rounded"
-                onClick={handleSyntaxFix}
-                title="Auto-fix common syntax issues"
-              >
-                <span className="codicon codicon-wand" />
-              </button>
-              <button
-                className="p-1 h-6 w-6 flex items-center justify-center bg-transparent border-none text-[var(--vscode-editor-foreground)] cursor-pointer hover:bg-[var(--vscode-toolbar-hoverBackground)] rounded"
-                onClick={handleCopy}
-                title="Copy diagram code"
-              >
-                <span className={cn('codicon', `codicon-${showCopy ? 'check' : 'copy'}`)} />
-              </button>
+              <Tooltip content="Auto-fix common syntax issues">
+                <button
+                  className="p-1 h-6 w-6 flex items-center justify-center bg-transparent border-none text-[var(--vscode-editor-foreground)] cursor-pointer hover:bg-[var(--vscode-toolbar-hoverBackground)] rounded"
+                  onClick={handleSyntaxFix}
+                >
+                  <span className="codicon codicon-wand" />
+                </button>
+              </Tooltip>
+              <Tooltip content={showCopy ? 'Copied diagram code!' : 'Copy diagram code'}>
+                <button
+                  className="p-1 h-6 w-6 flex items-center justify-center bg-transparent border-none text-[var(--vscode-editor-foreground)] cursor-pointer hover:bg-[var(--vscode-toolbar-hoverBackground)] rounded"
+                  onClick={handleCopy}
+                >
+                  <span className={cn('codicon', `codicon-${showCopy ? 'check' : 'copy'}`)} />
+                </button>
+              </Tooltip>
               <span className={cn('codicon', `codicon-chevron-${isErrorExpanded ? 'up' : 'down'}`, 'text-xs')} />
             </div>
           </div>

@@ -3,6 +3,7 @@ import { useState } from 'react';
 
 import { TodoView } from '@pi-code/webview/components/chat/TodoView';
 import { TaskActions } from '@pi-code/webview/components/shared/TaskActions';
+import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 
 import type { FC, MouseEvent } from 'react';
 import type { ChatMessage, StatsData } from '@pi-code/shared/core/protocol';
@@ -64,19 +65,22 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
             </div>
             <div className="flex items-center gap-1.5 ml-1.5 grow min-w-0">
               <span className="font-bold text-xs uppercase tracking-wider text-vscode-descriptionForeground shrink-0">Task:</span>
-              <span className="whitespace-nowrap overflow-hidden text-ellipsis text-sm font-medium text-vscode-foreground grow min-w-0">
-                {title.trim()}
-              </span>
+              <Tooltip content={title.trim()} side="bottom">
+                <span className="whitespace-nowrap overflow-hidden text-ellipsis text-sm font-medium text-vscode-foreground grow min-w-0">
+                  {title.trim()}
+                </span>
+              </Tooltip>
             </div>
           </div>
           <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-            <button
-              onClick={onClose}
-              title="Close task"
-              className="shrink-0 w-5 h-5 flex items-center justify-center rounded hover:bg-vscode-list-hoverBackground text-vscode-descriptionForeground hover:text-vscode-foreground bg-transparent border-none cursor-pointer"
-            >
-              <X size={14} />
-            </button>
+            <Tooltip content="Close task" side="bottom">
+              <button
+                onClick={onClose}
+                className="shrink-0 w-5 h-5 flex items-center justify-center rounded hover:bg-vscode-list-hoverBackground text-vscode-descriptionForeground hover:text-vscode-foreground bg-transparent border-none cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            </Tooltip>
           </div>
         </div>
 
@@ -89,13 +93,14 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {totalCost > 0 && <span className="text-xs font-mono text-vscode-foreground/80">${totalCost.toFixed(4)}</span>}
-              <button
-                onClick={onCompact}
-                title="Compact context"
-                className="p-1 rounded text-vscode-descriptionForeground hover:text-vscode-foreground bg-transparent hover:bg-vscode-list-hoverBackground border-none cursor-pointer flex items-center"
-              >
-                <FoldVertical size={14} />
-              </button>
+              <Tooltip content="Compact context">
+                <button
+                  onClick={onCompact}
+                  className="p-1 rounded text-vscode-descriptionForeground hover:text-vscode-foreground bg-transparent hover:bg-vscode-list-hoverBackground border-none cursor-pointer flex items-center"
+                >
+                  <FoldVertical size={14} />
+                </button>
+              </Tooltip>
             </div>
           </div>
         )}
@@ -114,13 +119,14 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
                         {contextTokens.toLocaleString()} / {contextLimit.toLocaleString()} ({contextPercentage}%)
                       </span>
                       <ContextProgressBar percentage={contextPercentage} />
-                      <button
-                        onClick={onCompact}
-                        title="Compact context"
-                        className="p-1 rounded text-vscode-descriptionForeground hover:text-vscode-foreground bg-transparent hover:bg-vscode-list-hoverBackground border-none cursor-pointer flex items-center"
-                      >
-                        <FoldVertical size={14} />
-                      </button>
+                      <Tooltip content="Compact context">
+                        <button
+                          onClick={onCompact}
+                          className="p-1 rounded text-vscode-descriptionForeground hover:text-vscode-foreground bg-transparent hover:bg-vscode-list-hoverBackground border-none cursor-pointer flex items-center"
+                        >
+                          <FoldVertical size={14} />
+                        </button>
+                      </Tooltip>
                     </div>
                   </td>
                 </tr>

@@ -1,6 +1,8 @@
 import { Plus, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 
+import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
+
 import type { FC } from 'react';
 
 interface SettingListProps {
@@ -56,13 +58,15 @@ export const SettingList: FC<SettingListProps> = ({ label, description, placehol
           placeholder={placeholder}
           className="h-7 px-2 text-xs rounded border border-vscode-focusBorder bg-vscode-settings-textInputBackground text-vscode-settings-textInputForeground outline-none hover:ring-1 hover:ring-vscode-focusBorder focus:ring-1 focus:ring-vscode-focusBorder grow"
         />
-        <button
-          type="button"
-          onClick={handleAdd}
-          className="h-7 px-2.5 text-xs font-semibold rounded cursor-pointer bg-vscode-button-secondaryBackground text-vscode-button-secondaryForeground hover:bg-vscode-button-secondaryHoverBackground border border-vscode-editorGroup-border/50 flex items-center justify-center shrink-0"
-        >
-          <Plus size={14} />
-        </button>
+        <Tooltip content="Add entry" side="left">
+          <button
+            type="button"
+            onClick={handleAdd}
+            className="h-7 px-2.5 text-xs font-semibold rounded cursor-pointer bg-vscode-button-secondaryBackground text-vscode-button-secondaryForeground hover:bg-vscode-button-secondaryHoverBackground border border-vscode-editorGroup-border/50 flex items-center justify-center shrink-0"
+          >
+            <Plus size={14} />
+          </button>
+        </Tooltip>
       </div>
       {inputs.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mt-1">
@@ -71,28 +75,31 @@ export const SettingList: FC<SettingListProps> = ({ label, description, placehol
               key={`${input}-${idx}`}
               className="flex items-center gap-1.5 pl-2 pr-1.5 py-0.5 text-xs rounded bg-vscode-badge-background text-vscode-badge-foreground border border-vscode-editorGroup-border/30"
             >
-              <span
-                role="button"
-                tabIndex={0}
-                className="font-mono truncate max-w-[200px] cursor-pointer hover:underline outline-none"
-                title={`Click to edit: ${input}`}
-                onClick={() => handleEdit(idx, input)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    handleEdit(idx, input);
-                  }
-                }}
-              >
-                {input}
-              </span>
-              <button
-                type="button"
-                onClick={() => handleRemove(idx)}
-                className="p-0.5 hover:bg-vscode-list-hoverBackground rounded text-vscode-badge-foreground bg-transparent border-none cursor-pointer flex items-center justify-center"
-              >
-                <X size={12} />
-              </button>
+              <Tooltip content={`Click to edit: ${input}`}>
+                <span
+                  role="button"
+                  tabIndex={0}
+                  className="font-mono truncate max-w-[200px] cursor-pointer hover:underline outline-none"
+                  onClick={() => handleEdit(idx, input)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleEdit(idx, input);
+                    }
+                  }}
+                >
+                  {input}
+                </span>
+              </Tooltip>
+              <Tooltip content="Remove entry">
+                <button
+                  type="button"
+                  onClick={() => handleRemove(idx)}
+                  className="p-0.5 hover:bg-vscode-list-hoverBackground rounded text-vscode-badge-foreground bg-transparent border-none cursor-pointer flex items-center justify-center"
+                >
+                  <X size={12} />
+                </button>
+              </Tooltip>
             </div>
           ))}
         </div>

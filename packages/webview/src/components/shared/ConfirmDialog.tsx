@@ -3,6 +3,8 @@ import { X } from 'lucide-react';
 import React, { useEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
 
+import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
+
 import type { FC, ReactNode } from 'react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -95,13 +97,14 @@ const ModalHeader: FC<{ children: ReactNode; onClose?: () => void }> = ({ childr
   <div className="px-4 py-3 bg-[var(--vscode-sideBarSectionHeader-background)] border-b border-[var(--vscode-panel-border)]/50 flex justify-between items-center">
     {children}
     {onClose && (
-      <button
-        onClick={onClose}
-        title="Close dialog"
-        className="shrink-0 w-5 h-5 flex items-center justify-center rounded hover:bg-vscode-list-hoverBackground text-vscode-descriptionForeground hover:text-vscode-foreground bg-transparent border-none cursor-pointer"
-      >
-        <X size={14} />
-      </button>
+      <Tooltip content="Close dialog" side="left">
+        <button
+          onClick={onClose}
+          className="shrink-0 w-5 h-5 flex items-center justify-center rounded hover:bg-vscode-list-hoverBackground text-vscode-descriptionForeground hover:text-vscode-foreground bg-transparent border-none cursor-pointer"
+        >
+          <X size={14} />
+        </button>
+      </Tooltip>
     )}
   </div>
 );

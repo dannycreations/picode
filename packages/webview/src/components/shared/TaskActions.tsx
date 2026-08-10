@@ -1,6 +1,7 @@
 import { cn } from 'cnfast';
 import { Check, Copy, Download, FileJson, Trash2 } from 'lucide-react';
 
+import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { useCopyToClipboard } from '@pi-code/webview/hooks/useCopyToClipboard';
 
 import type { FC, MouseEvent } from 'react';
@@ -33,46 +34,51 @@ export const TaskActions: FC<TaskActionsProps> = ({
   return (
     <div className={cn('flex flex-row items-center gap-1', wrapperClassName)} onClick={stop}>
       {onExport && (
-        <button
-          type="button"
-          title="Export task messages"
-          className={buttonClassName}
-          onClick={(e) => {
-            stop(e);
-            onExport();
-          }}
-        >
-          <Download size={iconSize} />
-        </button>
+        <Tooltip content="Export task messages">
+          <button
+            type="button"
+            className={buttonClassName}
+            onClick={(e) => {
+              stop(e);
+              onExport();
+            }}
+          >
+            <Download size={iconSize} />
+          </button>
+        </Tooltip>
       )}
-      <button type="button" title={showCopy ? 'Copied prompt!' : 'Copy prompt'} className={buttonClassName} onClick={(e) => void copy(copyText, e)}>
-        {showCopy ? <Check size={iconSize} /> : <Copy size={iconSize} />}
-      </button>
-      {onDelete && (
-        <button
-          type="button"
-          title="Delete task"
-          className={deleteButtonClassName ?? buttonClassName}
-          onClick={(e) => {
-            stop(e);
-            onDelete();
-          }}
-        >
-          <Trash2 size={iconSize} />
+      <Tooltip content={showCopy ? 'Copied prompt!' : 'Copy prompt'}>
+        <button type="button" className={buttonClassName} onClick={(e) => void copy(copyText, e)}>
+          {showCopy ? <Check size={iconSize} /> : <Copy size={iconSize} />}
         </button>
+      </Tooltip>
+      {onDelete && (
+        <Tooltip content="Delete task">
+          <button
+            type="button"
+            className={deleteButtonClassName ?? buttonClassName}
+            onClick={(e) => {
+              stop(e);
+              onDelete();
+            }}
+          >
+            <Trash2 size={iconSize} />
+          </button>
+        </Tooltip>
       )}
       {onViewRaw && (
-        <button
-          type="button"
-          title="View raw task"
-          className={buttonClassName}
-          onClick={(e) => {
-            stop(e);
-            onViewRaw();
-          }}
-        >
-          <FileJson size={iconSize} />
-        </button>
+        <Tooltip content="View raw task">
+          <button
+            type="button"
+            className={buttonClassName}
+            onClick={(e) => {
+              stop(e);
+              onViewRaw();
+            }}
+          >
+            <FileJson size={iconSize} />
+          </button>
+        </Tooltip>
       )}
     </div>
   );

@@ -1,5 +1,7 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
+import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
+
 import type { FC } from 'react';
 
 interface HistoryPaginationProps {
@@ -8,30 +10,29 @@ interface HistoryPaginationProps {
   readonly onPageChange: (page: number) => void;
 }
 
+const PAGE_BUTTON_CLASS =
+  'p-1 hover:bg-[var(--vscode-list-hoverBackground)] disabled:opacity-40 disabled:pointer-events-none rounded cursor-pointer text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] border-none bg-transparent transition-colors';
+
 export const HistoryPagination: FC<HistoryPaginationProps> = ({ currentPage, totalPages, onPageChange }) => {
   if (totalPages <= 1) return null;
 
   return (
     <div className="px-4 pt-2 pb-3.5 border-t border-[var(--vscode-panel-border)]/40 bg-[var(--vscode-editor-background)]/20 flex items-center justify-between shrink-0 select-none">
-      <button
-        disabled={currentPage === 1}
-        onClick={() => onPageChange(currentPage - 1)}
-        className="p-1 hover:bg-[var(--vscode-list-hoverBackground)] disabled:opacity-40 disabled:pointer-events-none rounded cursor-pointer text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] border-none bg-transparent transition-colors"
-      >
-        <ChevronLeft size={16} />
-      </button>
+      <Tooltip content="Previous page">
+        <button disabled={currentPage === 1} onClick={() => onPageChange(currentPage - 1)} className={PAGE_BUTTON_CLASS}>
+          <ChevronLeft size={16} />
+        </button>
+      </Tooltip>
 
       <span className="text-xs text-[var(--vscode-descriptionForeground)]">
         Page {currentPage} of {totalPages}
       </span>
 
-      <button
-        disabled={currentPage === totalPages}
-        onClick={() => onPageChange(currentPage + 1)}
-        className="p-1 hover:bg-[var(--vscode-list-hoverBackground)] disabled:opacity-40 disabled:pointer-events-none rounded cursor-pointer text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] border-none bg-transparent transition-colors"
-      >
-        <ChevronRight size={16} />
-      </button>
+      <Tooltip content="Next page">
+        <button disabled={currentPage === totalPages} onClick={() => onPageChange(currentPage + 1)} className={PAGE_BUTTON_CLASS}>
+          <ChevronRight size={16} />
+        </button>
+      </Tooltip>
     </div>
   );
 };
