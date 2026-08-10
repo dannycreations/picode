@@ -1,44 +1,15 @@
 import { cn } from 'cnfast';
-import { ArrowLeft, Database, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 
+import { getRootFieldKeys, SETTINGS_TABS } from '@pi-code/webview/components/setting/core/fields';
+import { SettingControl } from '@pi-code/webview/components/setting/fields/SettingControl';
 import { useResponsive } from '@pi-code/webview/components/setting/hooks/useResponsive';
 import { useSetting } from '@pi-code/webview/components/setting/hooks/useSetting';
-import { AbilityTab } from '@pi-code/webview/components/setting/tabs/AbilityTab';
-import { ApprovalTab } from '@pi-code/webview/components/setting/tabs/ApprovalTab';
-import { ContextTab } from '@pi-code/webview/components/setting/tabs/ContextTab';
 import { ConfirmDialog } from '@pi-code/webview/components/shared/ConfirmDialog';
 
 import type { FC } from 'react';
 import type { AppSettings } from '@pi-code/shared/core/settings';
-import type { SettingsTab } from '@pi-code/webview/components/setting/shared/types';
-
-const SETTINGS_TABS: SettingsTab[] = [
-  {
-    id: 'ability',
-    label: 'Ability',
-    icon: Sparkles,
-    title: 'Ability',
-    description: 'Choose which optional abilities the agent can use while working on your tasks.',
-    component: AbilityTab,
-  },
-  {
-    id: 'approval',
-    label: 'Approval',
-    icon: ShieldCheck,
-    title: 'Approval',
-    description: 'Configure auto-approval settings for agent actions to balance speed and safety.',
-    component: ApprovalTab,
-  },
-  {
-    id: 'context',
-    label: 'Context',
-    icon: Database,
-    title: 'Context',
-    description: 'Control what information is included in the context window, affecting token usage and response quality.',
-    component: ContextTab,
-  },
-];
 
 interface SettingsViewProps {
   readonly settings: AppSettings;
@@ -62,7 +33,6 @@ export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
   };
 
   const activeTab = SETTINGS_TABS.find((tab) => tab.id === activeTabId) || SETTINGS_TABS[0];
-  const ActiveTabComponent = activeTab.component;
 
   return (
     <div ref={containerRef} className="flex flex-col h-full bg-vscode-sideBar-background text-vscode-foreground select-none overflow-hidden">
@@ -136,7 +106,12 @@ export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
             <p className="text-vscode-descriptionForeground text-xs mt-2 mb-0">{activeTab.description}</p>
           </div>
 
-          <ActiveTabComponent draftSettings={draftSettings} handleFieldChange={handleFieldChange} />
+          {/* Controls are generated from the shared settings schema */}
+          <div className="flex flex-col gap-6 px-5 py-2">
+            {getRootFieldKeys(activeTab.id).map((key) => (
+              <SettingControl key={key} settingKey={key} draftSettings={draftSettings} onChange={handleFieldChange} />
+            ))}
+          </div>
         </div>
       </div>
 

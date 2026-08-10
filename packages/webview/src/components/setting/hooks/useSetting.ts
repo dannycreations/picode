@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 
+import { SETTING_KEYS } from '@pi-code/shared/core/settings';
 import { vscode } from '@pi-code/webview/utilities/vscode';
 
-import type { AppSettings } from '@pi-code/shared/core/settings';
+import type { AppSettings, SettingKey } from '@pi-code/shared/core/settings';
 
 export function areSettingsValuesEqual(a: unknown, b: unknown): boolean {
   if (Array.isArray(a) && Array.isArray(b)) {
@@ -15,7 +16,7 @@ export function areSettingsValuesEqual(a: unknown, b: unknown): boolean {
 interface UseSettingReturn {
   readonly draftSettings: AppSettings;
   readonly isChangeDetected: boolean;
-  readonly handleFieldChange: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void;
+  readonly handleFieldChange: <K extends SettingKey>(key: K, value: AppSettings[K]) => void;
   readonly handleSave: () => void;
   readonly resetDraft: () => void;
 }
@@ -27,27 +28,23 @@ export const useSetting = (settings: AppSettings): UseSettingReturn => {
     setDraftSettings(settings);
   }, [settings]);
 
-  const isChangeDetected = (() => {
-    const keys = Object.keys(draftSettings) as Array<keyof AppSettings>;
-    return keys.some((key) => !areSettingsValuesEqual(draftSettings[key], settings[key]));
-  })();
+  const isChangeDetected = SETTING_KEYS.some((key) => !areSettingsValuesEqual(draftSettings[key], settings[key]));
 
-  const handleFieldChange = <K extends keyof AppSettings>(key: K, value: AppSettings[K]): void => {
+  const handleFieldChange = <K extends SettingKey>(key: K, value: AppSettings[K]): void => {
     setDraftSettings({ ...draftSettings, [key]: value });
   };
 
   const handleSave = (): void => {
-    const updates: Partial<AppSettings> = {};
-    const keys = Object.keys(draftSettings) as Array<keyof AppSettings>;
-    for (const key of keys) {
+    const updates: Record<string, unknown> = {};
+    for (const key of SETTING_KEYS) {
       if (!areSettingsValuesEqual(draftSettings[key], settings[key])) {
-        (updates as Record<string, unknown>)[key] = draftSettings[key];
+        updates[key] = draftSettings[key];
       }
     }
 
     if (Object.keys(updates).length === 0) return;
 
-    vscode?.postMessage({ type: 'update_settings', settings: updates });
+    vscode?.postMessage({ type: 'update_settings', settings: updates as Partial<AppSettings> });
   };
 
   const resetDraft = (): void => {

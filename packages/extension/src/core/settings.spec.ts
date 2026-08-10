@@ -1,27 +1,40 @@
+import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES } from '@earendil-works/pi-coding-agent';
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULT_SETTINGS, SETTING_KEYS } from '@pi-code/extension/core/settings';
+import { DEFAULT_SETTINGS, SETTING_KEYS, SETTINGS_SCHEMA } from '@pi-code/shared/core/settings';
 import manifest from '../../package.json' with { type: 'json' };
-
-const contributed = manifest.contributes.configuration.properties as Record<string, { type: string; default: unknown }>;
+import { buildManifestSettings, diffManifestSettings } from '../../scripts/settings.ts';
 
 describe('contributed configuration', () => {
-  it('declares exactly the AppSettings keys', () => {
-    const declared = Object.keys(contributed).map((key) => key.slice(manifest.name.length + 1));
-    expect(declared.sort()).toEqual([...SETTING_KEYS].sort());
+  it('matches the shared settings schema', () => {
+    // Regenerate with "pnpm --filter pi-code run check:settings" when this fails.
+    expect(diffManifestSettings(manifest)).toEqual([]);
   });
 
-  it('mirrors the in-code defaults', () => {
+  it('declares exactly the schema keys', () => {
+    const declared = Object.keys(manifest.contributes.configuration.properties).map((key) => key.slice(manifest.name.length + 1));
+    expect(declared).toEqual([...SETTING_KEYS]);
+  });
+
+  it('restricts every trust sensitive setting in untrusted workspaces', () => {
+    const { restricted } = buildManifestSettings(manifest.name);
+    expect(manifest.capabilities.untrustedWorkspaces.restrictedConfigurations).toEqual([...restricted]);
+    expect(restricted.length).toBeGreaterThan(0);
+  });
+});
+
+describe('schema defaults', () => {
+  it('keeps every default inside its own bounds', () => {
     for (const key of SETTING_KEYS) {
-      expect(contributed[`${manifest.name}.${key}`].default, key).toEqual(DEFAULT_SETTINGS[key]);
+      const spec = SETTINGS_SCHEMA[key];
+      if (spec.type !== 'number') continue;
+      expect(spec.default, key).toBeGreaterThanOrEqual(spec.minimum);
+      expect(spec.default, key).toBeLessThanOrEqual(spec.maximum);
     }
   });
 
-  it('declares a JSON type matching each default', () => {
-    for (const key of SETTING_KEYS) {
-      const fallback = DEFAULT_SETTINGS[key];
-      const expected = Array.isArray(fallback) ? 'array' : typeof fallback;
-      expect(contributed[`${manifest.name}.${key}`].type, key).toBe(expected);
-    }
+  it('mirrors the agent tool output limits', () => {
+    expect(DEFAULT_SETTINGS.maxToolOutputLines).toBe(DEFAULT_MAX_LINES);
+    expect(DEFAULT_SETTINGS.maxToolOutputSizeKb).toBe(DEFAULT_MAX_BYTES / 1024);
   });
 });

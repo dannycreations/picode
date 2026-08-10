@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULT_SETTINGS } from '@pi-code/extension/core/settings';
 import {
   containsDangerousSubstitution,
   matchesGlob,
@@ -9,6 +8,7 @@ import {
   resolvePathAction,
   resolveReadPath,
 } from '@pi-code/extension/structures/agent-runtime/policy-action';
+import { DEFAULT_SETTINGS } from '@pi-code/shared/core/settings';
 
 describe('resolveReadPath', () => {
   it('should auto-approve skill reads only when both autoApproveSkillReads and its parent autoApproveRead are enabled', () => {
