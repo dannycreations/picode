@@ -12,15 +12,11 @@ import type { CancellationToken, ExtensionContext, Webview, WebviewView, Webview
 import type { MessageHandlerContext } from '@pi-code/extension/structures/agent-webview/types';
 import type { ExtensionToWebviewMessage, WebviewToExtensionMessage } from '@pi-code/shared/core/protocol';
 
-function createNonce(): string {
-  return Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, '0')).join('');
-}
-
 function buildChatViewHtml(webview: Webview, extensionUri: Uri): string {
   const scriptUri = webview.asWebviewUri(Uri.joinPath(extensionUri, 'dist', 'webview.cjs'));
   const styleUri = webview.asWebviewUri(Uri.joinPath(extensionUri, 'dist', 'webview.css'));
   const codiconsUri = webview.asWebviewUri(Uri.joinPath(extensionUri, 'dist', 'codicon.css'));
-  const nonce = createNonce();
+  const nonce = crypto.randomUUID();
 
   // Content-Security-Policy per the VS Code webview guidelines: only our nonced
   // bundle may execute, remote content is limited to `webview.cspSource`, and

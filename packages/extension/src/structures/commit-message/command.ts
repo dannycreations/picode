@@ -1,3 +1,4 @@
+import { formatThrownValue } from '@earendil-works/pi-ai';
 import { commands, ProgressLocation, window, workspace } from 'vscode';
 
 import { COMMIT_MESSAGE_PROMPT } from '@pi-code/extension/core/prompt';
@@ -105,28 +106,16 @@ export function registerCommitMessageCommand(): Disposable {
           logger.info('Initializing ModelRuntime...');
           const runtime = await lazyModelRuntime();
 
-          logger.info('Loading SettingsManager...');
           const settingsManager = SettingsService.getInstance(cwd).getSettingsManager();
           const defaultProviderId = settingsManager.getDefaultProvider();
           const defaultModelId = settingsManager.getDefaultModel();
-          logger.info(`Settings values - Default Provider: ${defaultProviderId}, Default Model: ${defaultModelId}`);
 
-          let model;
-          if (defaultProviderId && defaultModelId) {
-            model = runtime.getModel(defaultProviderId, defaultModelId);
-          }
-          if (!model) {
-            logger.info('Default model not found. Fetching first available model from runtime...');
-            const available = runtime.getAvailableSnapshot();
-            logger.info(`Available models: ${available.map((m) => `${m.provider}/${m.id}`).join(', ')}`);
-            model = available[0];
-          }
+          const model =
+            (defaultProviderId && defaultModelId && runtime.getModel(defaultProviderId, defaultModelId)) || runtime.getAvailableSnapshot()[0];
 
           if (!model) {
-            logger.error('ERROR: No model configured or available.');
             throw new Error('No model configured or available. Please configure your model settings in pi-agent.');
           }
-          logger.info(`Selected model for completion: ${model.provider}/${model.id}`);
 
           const llmContext = {
             messages: [
@@ -162,9 +151,9 @@ export function registerCommitMessageCommand(): Disposable {
         },
       );
     } catch (error) {
-      const errMessage = error instanceof Error ? error.stack || error.message : String(error);
-      logger.error(`ERROR: ${errMessage}`);
-      window.showErrorMessage(`Failed to generate commit message: ${error instanceof Error ? error.message : String(error)}`);
+      const message = `Failed to generate commit message: ${formatThrownValue(error)}`;
+      logger.error(message, error);
+      window.showErrorMessage(message);
     }
   });
 }

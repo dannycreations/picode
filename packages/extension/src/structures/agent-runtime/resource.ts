@@ -32,6 +32,10 @@ const resourceCache = new Map<string, CachedResources>();
 
 let modelRuntimePromise: Promise<ModelRuntime> | undefined;
 
+export function invalidateAgentResources(): void {
+  resourceCache.clear();
+}
+
 export function lazyModelRuntime(): Promise<ModelRuntime> {
   modelRuntimePromise ??= ModelRuntime.create({
     authPath: join(getAgentDir(), 'auth.json'),

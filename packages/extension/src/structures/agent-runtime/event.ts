@@ -1,3 +1,5 @@
+import { uuidv7 } from '@earendil-works/pi-ai';
+
 import { DEFAULT_CONTEXT_LIMIT } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
 
@@ -144,6 +146,6 @@ export class EventMapper {
   }
 
   private nextApiRequestId(): string {
-    return `api-req-${crypto.randomUUID()}`;
+    return `api-req-${uuidv7()}`;
   }
 }

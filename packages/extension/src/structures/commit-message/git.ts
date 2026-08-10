@@ -1,9 +1,9 @@
 import { relative } from 'node:path';
+import { formatThrownValue } from '@earendil-works/pi-ai';
 import { Uri, workspace } from 'vscode';
 
 import { isBinaryFile } from '@pi-code/extension/utilities/binary';
 import { GIT_STATUS } from '@pi-code/extension/utilities/git';
-import { toErrorMessage } from '@pi-code/shared/utilities/common';
 
 import type { Change, Repository } from '@pi-code/extension/types/git';
 
@@ -64,14 +64,14 @@ export async function getGitDiffContext(repo: Repository, changes: ResolvedGitCh
   try {
     diffContext += await repo.diff(useStaged);
   } catch (err) {
-    diffContext += `Error generating diff for changed files: ${toErrorMessage(err)}\n`;
+    diffContext += `Error generating diff for changed files: ${formatThrownValue(err)}\n`;
   }
 
   for (const file of changes.filter((c) => c.isUntracked)) {
     try {
       diffContext += await buildUntrackedPatch(file);
     } catch (err) {
-      diffContext += `\nError reading untracked file ${file.relativePath}: ${toErrorMessage(err)}\n`;
+      diffContext += `\nError reading untracked file ${file.relativePath}: ${formatThrownValue(err)}\n`;
     }
   }
 

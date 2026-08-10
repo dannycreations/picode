@@ -44,11 +44,16 @@ export class SessionService {
     const models = modelRuntime.getModels();
 
     const sessionContextModel = sessionManager.buildSessionContext().model;
-    const sessionModelId = sessionContextModel?.modelId ?? (await SettingsService.getInstance(cwd).getDefaultModel());
+    const fallbackModelId = await SettingsService.getInstance(cwd).getDefaultModel();
+
+    // Prefer the provider/model the session actually ran with; the saved id alone
+    // is ambiguous when two providers share a model id.
+    const sessionModelId = sessionContextModel?.modelId ?? fallbackModelId;
+    const sessionProvider = sessionContextModel?.provider;
 
     let contextLimit: number = DEFAULT_CONTEXT_LIMIT;
     if (sessionModelId) {
-      const matchedModel = models.find((m) => m.id === sessionModelId);
+      const matchedModel = models.find((m) => m.id === sessionModelId && (!sessionProvider || m.provider === sessionProvider));
       if (matchedModel?.contextWindow) {
         contextLimit = matchedModel.contextWindow;
       }
@@ -64,7 +69,7 @@ export class SessionService {
   }
 
   public async deleteSessions(paths: string[]): Promise<void> {
-    await Promise.allSettled(paths.map((p) => workspace.fs.delete(Uri.file(p), { useTrash: false })));
+    await Promise.allSettled(paths.map((p) => workspace.fs.delete(Uri.file(p), { useTrash: true })));
   }
 
   public async exportSession(sessionPath: string, defaultId?: string): Promise<boolean> {

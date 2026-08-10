@@ -1,3 +1,4 @@
+import { contentText } from '@earendil-works/pi-ai';
 import { calculateContextTokens, getLastAssistantUsage, parseSkillBlock } from '@earendil-works/pi-coding-agent';
 
 import { toBase64DataUrl } from '@pi-code/extension/utilities/codec';
@@ -21,13 +22,6 @@ function toContentParts(content: string | readonly MessageContentPart[]): readon
     return [{ type: 'text', text: content }];
   }
   return content;
-}
-
-function joinText(parts: readonly MessageContentPart[]): string {
-  return parts
-    .filter((part) => part.type === 'text')
-    .map((part) => part.text)
-    .join('\n');
 }
 
 function joinThinking(parts: readonly MessageContentPart[]): string {
@@ -87,7 +81,7 @@ export function convertSessionEntries(entries: readonly SessionEntry[]): ChatMes
       result.push({
         id: entry.id,
         sender: 'user',
-        text: collapseSkillBlock(joinText(parts).trim()),
+        text: collapseSkillBlock(contentText(msg.content).trim()),
         images: images.length > 0 ? images : undefined,
         ts: timestamp,
       });
@@ -109,7 +103,7 @@ export function convertSessionEntries(entries: readonly SessionEntry[]): ChatMes
       result.push({
         id: entry.id,
         sender: 'assistant',
-        text: joinText(parts),
+        text: contentText(msg.content),
         reasoning: joinThinking(parts),
         cost,
         ts: timestamp,
@@ -140,15 +134,15 @@ export function convertSessionEntries(entries: readonly SessionEntry[]): ChatMes
       const existingIndex = result.findIndex((r) => r.sender === 'tool' && r.id === msg.toolCallId);
       if (existingIndex !== -1) {
         const existingToolMsg = result[existingIndex];
-        const contentText = joinText(toContentParts(msg.content));
+        const resultText = contentText(msg.content);
         const details: ToolResultDetails | undefined = msg.details;
 
         result[existingIndex] = {
           ...existingToolMsg,
           toolStatus: msg.isError ? 'denied' : 'completed',
-          diff: details?.diff || contentText,
+          diff: details?.diff || resultText,
           todos: details?.todos,
-          errorMessage: msg.isError ? contentText : existingToolMsg.errorMessage,
+          errorMessage: msg.isError ? resultText : existingToolMsg.errorMessage,
         };
       }
     } else if (msg.role === 'bashExecution') {

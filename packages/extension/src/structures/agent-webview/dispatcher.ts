@@ -1,9 +1,9 @@
+import { formatThrownValue } from '@earendil-works/pi-ai';
 import { window } from 'vscode';
 
 import { SettingsService } from '@pi-code/extension/core/settings';
 import { runCompact } from '@pi-code/extension/structures/chat-command/builtin';
 import { logger } from '@pi-code/shared/core/logger';
-import { toErrorMessage } from '@pi-code/shared/utilities/common';
 
 import type { MessageHandlerContext } from '@pi-code/extension/structures/agent-webview/types';
 import type { ModelItem, WebviewToExtensionMessage } from '@pi-code/shared/core/protocol';
@@ -100,7 +100,7 @@ export function createDefaultDispatcher(): ChatMessageDispatcher {
       try {
         await handler(message, context);
       } catch (err) {
-        const errorMessage = toErrorMessage(err);
+        const errorMessage = formatThrownValue(err);
         logger.error(`Error handling message "${message.type}":`, err);
         window.showErrorMessage(`Action failed (${message.type}): ${errorMessage}`);
       }

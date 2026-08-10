@@ -6,10 +6,13 @@ let mockIsTrusted = false;
 
 vi.mock('vscode', () => {
   return {
+    Uri: { file: (path: string) => ({ fsPath: path }) },
     workspace: {
       get isTrusted() {
         return mockIsTrusted;
       },
+      asRelativePath: (target: { fsPath: string }) => target.fsPath,
+      getWorkspaceFolder: () => undefined,
     },
   };
 });

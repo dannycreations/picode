@@ -1,11 +1,11 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
+import { formatThrownValue } from '@earendil-works/pi-ai';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
 import { stripCodeFence } from '@pi-code/extension/utilities/markdown';
 import { buildFileChangeResult } from '@pi-code/extension/utilities/truncate';
-import { toErrorMessage } from '@pi-code/shared/utilities/common';
 
 import type { ToolName } from '@pi-code/shared/core/protocol';
 
@@ -41,7 +41,7 @@ export const writeFileTool = defineTool({
       });
     } catch (err) {
       return {
-        content: [{ type: 'text', text: `Error writing to file: ${toErrorMessage(err)}` }],
+        content: [{ type: 'text', text: `Error writing to file: ${formatThrownValue(err)}` }],
         details: {},
         isError: true,
       };

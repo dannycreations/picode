@@ -1,8 +1,8 @@
+import { formatThrownValue } from '@earendil-works/pi-ai';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
 import { QuestionBridge } from '@pi-code/extension/structures/agent-runtime/question';
-import { toErrorMessage } from '@pi-code/shared/utilities/common';
 
 import type { ToolName } from '@pi-code/shared/core/protocol';
 
@@ -45,7 +45,7 @@ export const askQuestionTool = defineTool({
       };
     } catch (err) {
       return {
-        content: [{ type: 'text', text: `Error asking question: ${toErrorMessage(err)}` }],
+        content: [{ type: 'text', text: `Error asking question: ${formatThrownValue(err)}` }],
         details: {},
         isError: true,
       };

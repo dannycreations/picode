@@ -1,21 +1,27 @@
-export function formatTimeAgo(ts: number): string {
-  const diffMs = Date.now() - ts;
+const TIME_AGO = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
 
-  const diffMinutes = Math.floor(diffMs / (1000 * 60));
-  if (diffMinutes < 1) {
+export function formatTimeAgo(ts: number): string {
+  const diffSeconds = Math.round((ts - Date.now()) / 1000);
+
+  if (Math.abs(diffSeconds) < 60) {
     return 'Just now';
   }
-  if (diffMinutes < 60) {
-    return `${diffMinutes} minute${diffMinutes > 1 ? 's' : ''} ago`;
+
+  const divisions: Array<[number, Intl.RelativeTimeFormatUnit]> = [
+    [60, 'minute'],
+    [60 * 60, 'hour'],
+    [60 * 60 * 24, 'day'],
+  ];
+
+  let value = diffSeconds;
+  let unit: Intl.RelativeTimeFormatUnit = 'second';
+  for (const [step, nextUnit] of divisions) {
+    if (Math.abs(value) < step) break;
+    value = Math.round(value / step);
+    unit = nextUnit;
   }
 
-  const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) {
-    return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-  }
-
-  const diffDays = Math.floor(diffHours / 24);
-  return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+  return TIME_AGO.format(value, unit);
 }
 
 export function downloadFile(filename: string, dataUrl: string): void {

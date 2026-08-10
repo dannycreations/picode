@@ -1,4 +1,4 @@
-import { toErrorMessage } from '@pi-code/shared/utilities/common';
+import { formatThrownValue } from '@earendil-works/pi-ai';
 
 import type { Webview } from 'vscode';
 import type { ExtensionToWebviewMessage } from '@pi-code/shared/core/protocol';
@@ -43,9 +43,7 @@ export class WebviewMessenger {
   public postError(err: unknown): void {
     this.post({
       type: 'agent_error',
-      payload: {
-        message: toErrorMessage(err),
-      },
+      payload: { message: formatThrownValue(err) },
     });
   }
 

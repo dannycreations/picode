@@ -1,10 +1,10 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
+import { formatThrownValue } from '@earendil-works/pi-ai';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
 import { buildFileChangeResult } from '@pi-code/extension/utilities/truncate';
-import { toErrorMessage } from '@pi-code/shared/utilities/common';
 
 import type { ToolName } from '@pi-code/shared/core/protocol';
 
@@ -148,7 +148,7 @@ export const editFileTool = defineTool({
           fileExists = false;
         } else {
           return {
-            content: [{ type: 'text', text: `Error reading file ${file_path}: ${toErrorMessage(err)}` }],
+            content: [{ type: 'text', text: `Error reading file ${file_path}: ${formatThrownValue(err)}` }],
             details: {},
             isError: true,
           };
@@ -241,7 +241,7 @@ export const editFileTool = defineTool({
       });
     } catch (err) {
       return {
-        content: [{ type: 'text', text: `Error editing file: ${toErrorMessage(err)}` }],
+        content: [{ type: 'text', text: `Error editing file: ${formatThrownValue(err)}` }],
         details: {},
         isError: true,
       };

@@ -2,13 +2,13 @@ import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { createInterface } from 'node:readline';
+import { formatThrownValue } from '@earendil-works/pi-ai';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
 import { SettingsService } from '@pi-code/extension/core/settings';
 import { isBinaryFile } from '@pi-code/extension/utilities/binary';
 import { DEFAULT_OUTPUT_LIMITS, shareOutputLimits, toOutputLimits, truncateOutput } from '@pi-code/extension/utilities/truncate';
-import { toErrorMessage } from '@pi-code/shared/utilities/common';
 
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
 import type { ToolName } from '@pi-code/shared/core/protocol';
@@ -168,7 +168,7 @@ export const readFileTool = defineTool({
           };
         } catch (err) {
           fileResults[index] = {
-            result: `Error reading file ${fileObj.path}: ${toErrorMessage(err)}`,
+            result: `Error reading file ${fileObj.path}: ${formatThrownValue(err)}`,
             hasError: true,
           };
         }
@@ -212,7 +212,7 @@ export const readFileTool = defineTool({
       };
     } catch (err) {
       return {
-        content: [{ type: 'text', text: `Error: ${toErrorMessage(err)}` }],
+        content: [{ type: 'text', text: `Error: ${formatThrownValue(err)}` }],
         details: {},
         isError: true,
       };

@@ -1,9 +1,10 @@
-import { basename, relative } from 'node:path';
+import { basename } from 'node:path';
 import { AgentSession } from '@earendil-works/pi-coding-agent';
 import { RelativePattern, TabInputText, Uri, window, workspace } from 'vscode';
 
 import { SettingsService } from '@pi-code/extension/core/settings';
 import { getGitRepository, getIgnoredPaths } from '@pi-code/extension/utilities/git';
+import { toRelativePath, toWorkspaceRelativePath } from '@pi-code/extension/utilities/vscode';
 
 import type { AgentMessage } from '@earendil-works/pi-agent-core';
 import type { Change, Repository } from '@pi-code/extension/types/git';
@@ -54,7 +55,7 @@ async function listFiles(cwd: string, limit = 200, excludeIgnoredFiles = true): 
     }
   }
 
-  const paths = uris.map((uri) => relative(cwd, uri.fsPath).replace(/\\/g, '/'));
+  const paths = uris.map((uri) => toRelativePath(uri));
   return { paths: paths.slice(0, limit), hitLimit: uris.length > limit };
 }
 
@@ -124,7 +125,7 @@ async function getGitStatusLines(cwd: string): Promise<string[]> {
   const repo: Repository | null = await getGitRepository(Uri.file(cwd));
   if (!repo) return [];
 
-  const describe = (change: Change, label: string): string => `${label} ${relative(repo.rootUri.fsPath, change.uri.fsPath).replace(/\\/g, '/')}`;
+  const describe = (change: Change, label: string): string => `${label} ${toRelativePath(change.uri)}`;
 
   return [
     ...repo.state.indexChanges.map((c) => describe(c, 'staged   ')),
@@ -141,12 +142,12 @@ export async function getEnvironmentDetails(session: AgentSession, cwd: string, 
 
   // VS Code Visible Files
   const visibleFilePaths = window.visibleTextEditors
-    ?.map((editor) => editor.document?.uri?.fsPath)
-    .filter(Boolean)
-    .map((absolutePath) => relative(cwd, absolutePath).replace(/\\/g, '/'))
-    .filter((p) => p && !p.startsWith('..'));
+    .map((editor) => editor.document?.uri)
+    .filter((uri) => uri !== undefined)
+    .map((uri) => toWorkspaceRelativePath(uri))
+    .filter((path) => path !== undefined);
 
-  if (visibleFilePaths && visibleFilePaths.length > 0) {
+  if (visibleFilePaths.length > 0) {
     details += '\n\n### VS Code Visible Files\n\n';
     details += visibleFilePaths.map((p) => `- ${p}`).join('\n');
   }
@@ -156,12 +157,10 @@ export async function getEnvironmentDetails(session: AgentSession, cwd: string, 
   let openTabPaths = window.tabGroups.all
     .flatMap((group) => group.tabs)
     .filter((tab) => tab.input instanceof TabInputText)
-    .map((tab) => (tab.input as TabInputText).uri.fsPath)
-    .filter(Boolean)
-    .map((absolutePath) => relative(cwd, absolutePath).replace(/\\/g, '/'))
-    .filter((p) => p && !p.startsWith('..'));
+    .map((tab) => toWorkspaceRelativePath((tab.input as TabInputText).uri))
+    .filter((path) => path !== undefined);
 
-  if (maxOpenTabsContext > 0 && openTabPaths && openTabPaths.length > 0) {
+  if (maxOpenTabsContext > 0 && openTabPaths.length > 0) {
     const totalOpenTabs = openTabPaths.length;
     if (openTabPaths.length > maxOpenTabsContext) {
       openTabPaths = openTabPaths.slice(0, maxOpenTabsContext);

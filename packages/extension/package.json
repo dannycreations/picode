@@ -11,6 +11,27 @@
     "node": ">=24.13.3",
     "vscode": ">=1.125.0"
   },
+  "capabilities": {
+    "virtualWorkspaces": {
+      "supported": false,
+      "description": "Pi Code runs shell commands and reads project files from disk."
+    },
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "Project-local agent resources and command execution stay disabled until the workspace is trusted.",
+      "restrictedConfigurations": [
+        "pi-code.autoApproveRead",
+        "pi-code.autoApproveSkillReads",
+        "pi-code.autoApproveWrite",
+        "pi-code.autoApproveDelete",
+        "pi-code.autoApproveExecute",
+        "pi-code.allowedReadPaths",
+        "pi-code.allowedWritePaths",
+        "pi-code.allowedDeletePaths",
+        "pi-code.allowedExecuteCommands"
+      ]
+    }
+  },
   "contributes": {
     "configuration": {
       "title": "Pi Code",

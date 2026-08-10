@@ -1,9 +1,8 @@
 import { access, rm, stat, unlink } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { formatThrownValue } from '@earendil-works/pi-ai';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
-
-import { toErrorMessage } from '@pi-code/shared/utilities/common';
 
 import type { ToolName } from '@pi-code/shared/core/protocol';
 
@@ -44,7 +43,7 @@ export const deleteFileTool = defineTool({
       }
     } catch (err) {
       return {
-        content: [{ type: 'text', text: `Error deleting file: ${toErrorMessage(err)}` }],
+        content: [{ type: 'text', text: `Error deleting file: ${formatThrownValue(err)}` }],
         details: {},
         isError: true,
       };

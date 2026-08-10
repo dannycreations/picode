@@ -4,6 +4,7 @@ import { ConfigurationTarget, workspace } from 'vscode';
 import { isProjectTrusted } from '@pi-code/extension/utilities/vscode';
 import manifest from '../../package.json' with { type: 'json' };
 
+import type { WorkspaceConfiguration } from 'vscode';
 import type { AppSettings } from '@pi-code/shared/core/settings';
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -59,11 +60,18 @@ export function readAppSettings(): AppSettings {
   return settings as unknown as AppSettings;
 }
 
+function resolveConfigurationTarget(config: WorkspaceConfiguration, key: string): ConfigurationTarget {
+  const inspected = config.inspect(key);
+  if (inspected?.workspaceFolderValue !== undefined) return ConfigurationTarget.WorkspaceFolder;
+  if (inspected?.workspaceValue !== undefined) return ConfigurationTarget.Workspace;
+  return ConfigurationTarget.Global;
+}
+
 export async function writeAppSettings(partial: Partial<AppSettings>): Promise<void> {
   const config = workspace.getConfiguration(manifest.name);
   for (const [key, value] of Object.entries(partial)) {
     if (!SETTING_KEYS.includes(key as keyof AppSettings)) continue;
-    await config.update(key, value, ConfigurationTarget.Global);
+    await config.update(key, value, resolveConfigurationTarget(config, key));
   }
 }
 
