@@ -9,7 +9,7 @@ import { MermaidModal } from '@pi-code/webview/components/chat/markdown/MermaidM
 import { MermaidToolbar } from '@pi-code/webview/components/chat/markdown/MermaidToolbar';
 import { useCopyToClipboard } from '@pi-code/webview/hooks/useCopyToClipboard';
 import { useInViewport } from '@pi-code/webview/hooks/useInViewport';
-import { downloadFile } from '@pi-code/webview/utilities/common';
+import { vscode } from '@pi-code/webview/utilities/vscode';
 
 import type { FC, MouseEvent } from 'react';
 
@@ -38,8 +38,8 @@ export const MermaidBlock: FC<MermaidBlockProps> = ({ code: originalCode }) => {
     if (!svgEl) return;
 
     try {
-      const pngDataUrl = await svgToPng(svgEl);
-      downloadFile('mermaid-diagram.png', pngDataUrl);
+      const dataUrl = await svgToPng(svgEl);
+      vscode?.postMessage({ type: 'save_image', dataUrl, filename: 'mermaid-diagram.png' });
     } catch (err) {
       logger.error('Error saving image:', err);
     }

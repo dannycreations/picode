@@ -47,7 +47,7 @@ export function registerCommitMessageCommand(): Disposable {
       const cwd = repo.rootUri.fsPath;
 
       logger.info(`Scanning git changes in directory: ${cwd}`);
-      const { changes, useStaged } = await getGitChanges(repo, cwd);
+      const { changes, useStaged } = await getGitChanges(repo);
       logger.info(`Found ${changes.length} change file(s). Staged changes used: ${useStaged}`);
       if (changes.length === 0) {
         logger.info('No changes to process. Exiting.');

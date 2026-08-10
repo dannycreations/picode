@@ -13,12 +13,7 @@ export const SettingCheckbox: FC<SettingCheckboxProps> = ({ label, checked, onCh
   <div className="flex flex-col gap-2 pt-4 border-t border-vscode-editorGroup-border/10">
     <div className="flex flex-col gap-1">
       <label className="flex items-start gap-2 cursor-pointer select-none">
-        <input
-          type="checkbox"
-          checked={checked}
-          onChange={(e) => onChange(e.target.checked)}
-          className="rounded border border-vscode-settings-checkboxBorder accent-vscode-button-background bg-vscode-settings-checkboxBackground cursor-pointer w-4 h-4 shrink-0 mt-0.5"
-        />
+        <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="cursor-pointer w-4 h-4 shrink-0 mt-0.5" />
         <div className="flex items-center gap-1.5 font-semibold text-sm text-vscode-foreground">
           {icon}
           <span>{label}</span>

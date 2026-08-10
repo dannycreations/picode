@@ -24,21 +24,14 @@ const TodoIcon: FC<{ status: TodoStatus }> = ({ status }) => {
 
 export const TodoView: FC<TodoViewProps> = ({ todos }) => {
   const [isCollapsed, setIsCollapsed] = useState(true);
-  const ulRef = useRef<HTMLUListElement>(null);
   const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
 
   const scrollIndex = useMemo(() => getScrollIndex(todos), [todos]);
   const mostImportantTodo = scrollIndex === -1 ? undefined : todos[scrollIndex];
 
   useEffect(() => {
-    if (isCollapsed || !ulRef.current || scrollIndex === -1) return;
-    const target = itemRefs.current[scrollIndex];
-    if (target) {
-      const ul = ulRef.current;
-      const targetTop = target.offsetTop - ul.offsetTop;
-      const scrollTo = targetTop - (ul.clientHeight / 2 - target.offsetHeight / 2);
-      ul.scrollTop = scrollTo;
-    }
+    if (isCollapsed || scrollIndex === -1) return;
+    itemRefs.current[scrollIndex]?.scrollIntoView({ block: 'center', behavior: 'smooth' });
   }, [todos, isCollapsed, scrollIndex]);
 
   if (!Array.isArray(todos) || todos.length === 0) return null;
@@ -72,7 +65,7 @@ export const TodoView: FC<TodoViewProps> = ({ todos }) => {
       </div>
 
       {!isCollapsed && (
-        <ul ref={ulRef} className="list-none max-h-[300px] overflow-y-auto mt-2 -mb-1 pb-0 px-3 cursor-default">
+        <ul className="list-none max-h-[300px] overflow-y-auto mt-2 -mb-1 pb-0 px-3 cursor-default">
           {todos.map((todo, idx) => (
             <li
               key={idx}

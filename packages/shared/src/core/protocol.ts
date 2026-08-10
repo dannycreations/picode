@@ -74,6 +74,7 @@ export type WebviewToExtensionMessage =
   | { type: 'export_session'; path: string; id: string }
   | { type: 'open_file'; text: string; values?: { line: number } }
   | { type: 'open_image'; dataUrl: string }
+  | { type: 'save_image'; dataUrl: string; filename: string }
   | { type: 'close_task' }
   | { type: 'cancel_task' }
   | { type: 'compact'; id: string; path?: string; title: string }

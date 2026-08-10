@@ -81,6 +81,9 @@ const HANDLER_MAP: HandlerMap = {
   open_image: async (msg, ctx) => {
     await ctx.workspaceService.openBase64Image(msg.dataUrl);
   },
+  save_image: async (msg, ctx) => {
+    await ctx.workspaceService.saveImage(msg.dataUrl, msg.filename);
+  },
   get_history: async (msg, ctx) => {
     const history = await ctx.sessionService.fetchHistory(ctx.cwd, msg.scope);
     ctx.postMessage({ type: 'history_data', payload: { history } });

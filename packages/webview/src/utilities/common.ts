@@ -1,4 +1,12 @@
 const TIME_AGO = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
+const TIME_DIVISIONS: Array<[Intl.RelativeTimeFormatUnit, number]> = [
+  ['year', 60 * 60 * 24 * 365],
+  ['month', 60 * 60 * 24 * 30],
+  ['week', 60 * 60 * 24 * 7],
+  ['day', 60 * 60 * 24],
+  ['hour', 60 * 60],
+  ['minute', 60],
+];
 
 export function formatTimeAgo(ts: number): string {
   const diffSeconds = Math.round((ts - Date.now()) / 1000);
@@ -7,30 +15,13 @@ export function formatTimeAgo(ts: number): string {
     return 'Just now';
   }
 
-  const divisions: Array<[number, Intl.RelativeTimeFormatUnit]> = [
-    [60, 'minute'],
-    [60 * 60, 'hour'],
-    [60 * 60 * 24, 'day'],
-  ];
-
-  let value = diffSeconds;
-  let unit: Intl.RelativeTimeFormatUnit = 'second';
-  for (const [step, nextUnit] of divisions) {
-    if (Math.abs(value) < step) break;
-    value = Math.round(value / step);
-    unit = nextUnit;
+  for (const [unit, secondsInUnit] of TIME_DIVISIONS) {
+    if (Math.abs(diffSeconds) >= secondsInUnit) {
+      return TIME_AGO.format(Math.round(diffSeconds / secondsInUnit), unit);
+    }
   }
 
-  return TIME_AGO.format(value, unit);
-}
-
-export function downloadFile(filename: string, dataUrl: string): void {
-  const link = document.createElement('a');
-  link.href = dataUrl;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
+  return TIME_AGO.format(diffSeconds, 'second');
 }
 
 export function readFileAsDataUrl(file: File): Promise<string> {

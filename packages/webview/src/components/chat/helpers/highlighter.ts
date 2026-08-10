@@ -1,52 +1,10 @@
-import { bundledLanguages, createHighlighter } from 'shiki';
+import { bundledLanguages, bundledLanguagesAlias, createHighlighter } from 'shiki';
 
 import { logger } from '@pi-code/shared/core/logger';
 
 import type { BundledLanguage, Highlighter } from 'shiki';
 
 export type ExtendedLanguage = BundledLanguage | 'txt';
-
-const LANGUAGE_ALIASES: Record<string, ExtendedLanguage> = {
-  text: 'txt',
-  plaintext: 'txt',
-  plain: 'txt',
-  sh: 'shell',
-  bash: 'shell',
-  zsh: 'shell',
-  shellscript: 'shell',
-  'shell-script': 'shell',
-  console: 'shell',
-  terminal: 'shell',
-  js: 'javascript',
-  node: 'javascript',
-  nodejs: 'javascript',
-  ts: 'typescript',
-  py: 'python',
-  python3: 'python',
-  py3: 'python',
-  rb: 'ruby',
-  md: 'markdown',
-  cpp: 'c++',
-  cc: 'c++',
-  cs: 'c#',
-  csharp: 'c#',
-  htm: 'html',
-  yml: 'yaml',
-  dockerfile: 'docker',
-  styles: 'css',
-  style: 'css',
-  jsonc: 'json',
-  json5: 'json',
-  xaml: 'xml',
-  xhtml: 'xml',
-  svg: 'xml',
-  mysql: 'sql',
-  postgresql: 'sql',
-  postgres: 'sql',
-  pgsql: 'sql',
-  plsql: 'sql',
-  oracle: 'sql',
-};
 
 const warnedLanguages = new Set<string>();
 
@@ -59,8 +17,9 @@ export function normalizeLanguage(language: string | undefined): ExtendedLanguag
     return normalizedInput as BundledLanguage;
   }
 
-  if (normalizedInput in LANGUAGE_ALIASES) {
-    return LANGUAGE_ALIASES[normalizedInput];
+  const aliased = bundledLanguagesAlias[normalizedInput];
+  if (typeof aliased === 'string' && aliased in bundledLanguages) {
+    return aliased as BundledLanguage;
   }
 
   if (language !== 'txt' && !warnedLanguages.has(language)) {

@@ -42,12 +42,7 @@ export const HistoryCard: FC<HistoryCardProps> = ({
     >
       {isSelectionMode && onToggleSelect && (
         <div className="pt-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-          <input
-            type="checkbox"
-            checked={isSelected}
-            onChange={() => onToggleSelect(item.path)}
-            className="cursor-pointer accent-[var(--vscode-focusBorder)]"
-          />
+          <input type="checkbox" checked={isSelected} onChange={() => onToggleSelect(item.path)} className="cursor-pointer" />
         </div>
       )}
 

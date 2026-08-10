@@ -4,7 +4,7 @@ import type { SessionService } from '@pi-code/extension/structures/agent-webview
 import type { WorkspaceService } from '@pi-code/extension/structures/agent-webview/workspace';
 import type { ExtensionToWebviewMessage } from '@pi-code/shared/core/protocol';
 
-export type MessageHandlerContext = {
+export interface MessageHandlerContext {
   readonly cwd: string;
   readonly webview: Webview;
   readonly agent: AgentRunner;
@@ -12,4 +12,4 @@ export type MessageHandlerContext = {
   readonly postMessage: (msg: ExtensionToWebviewMessage) => void;
   readonly sessionService: SessionService;
   readonly workspaceService: WorkspaceService;
-};
+}

@@ -285,7 +285,7 @@ export const useActiveTask = (): UseActiveTaskReturn => {
                 ...prev,
                 messages: appendErrorMessage(
                   settlePendingApiRequests(prev.messages, { error: msg.payload.message }),
-                  `err-${Date.now()}`,
+                  crypto.randomUUID(),
                   msg.payload.message,
                 ),
               }
@@ -305,7 +305,7 @@ export const useActiveTask = (): UseActiveTaskReturn => {
 
       case 'info':
         setActiveTask((prev) => {
-          const id = `info-${Date.now()}`;
+          const id = crypto.randomUUID();
           if (!prev) {
             return {
               id: 'task-active',

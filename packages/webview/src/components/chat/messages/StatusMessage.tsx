@@ -2,6 +2,7 @@ import { cn } from 'cnfast';
 import { AlertTriangle, Info, RefreshCw } from 'lucide-react';
 
 import { formatTime } from '@pi-code/webview/components/chat/messages/helpers/common';
+import { Spinner } from '@pi-code/webview/components/shared/Spinner';
 
 import type { FC } from 'react';
 import type { ChatMessage } from '@pi-code/shared/core/protocol';
@@ -19,7 +20,7 @@ export const ApiRequestMessage: FC<{ readonly message: ChatMessage }> = ({ messa
     >
       <div className="flex items-center gap-2 text-vscode-foreground whitespace-nowrap">
         {isRunning ? (
-          <div className="w-3.5 h-3.5 border-2 border-vscode-focusBorder border-t-transparent rounded-full animate-spin shrink-0" />
+          <Spinner className="text-vscode-focusBorder" />
         ) : isFailed ? (
           <AlertTriangle size={14} className="text-[var(--vscode-editorError-foreground)] shrink-0" />
         ) : (

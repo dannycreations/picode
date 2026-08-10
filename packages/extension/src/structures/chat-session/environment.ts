@@ -175,11 +175,12 @@ export async function getEnvironmentDetails(session: AgentSession, cwd: string, 
   // Current Time
   const now = new Date();
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const timeZoneOffset = -now.getTimezoneOffset() / 60;
-  const timeZoneOffsetHours = Math.floor(Math.abs(timeZoneOffset));
-  const timeZoneOffsetMinutes = Math.abs(Math.round((Math.abs(timeZoneOffset) - timeZoneOffsetHours) * 60));
-  const timeZoneOffsetStr = `${timeZoneOffset >= 0 ? '+' : '-'}${timeZoneOffsetHours}:${timeZoneOffsetMinutes.toString().padStart(2, '0')}`;
-  details += `\n\n### Current Time\n\n- **UTC**: ${now.toISOString()}\n- **User Time Zone**: ${timeZone} (UTC${timeZoneOffsetStr})`;
+  const timeZoneOffset =
+    new Intl.DateTimeFormat(undefined, { timeZoneName: 'longOffset' })
+      .formatToParts(now)
+      .find((part) => part.type === 'timeZoneName')
+      ?.value?.replace('GMT', 'UTC') ?? '';
+  details += `\n\n### Current Time\n\n- **UTC**: ${now.toISOString()}\n- **User Time Zone**: ${timeZone} (${timeZoneOffset})`;
 
   // Git Status
   const maxGitStatusFiles = settings.maxGitStatusFiles;
@@ -218,7 +219,7 @@ export async function getEnvironmentDetails(session: AgentSession, cwd: string, 
   // Reminder Section / Todo list
   let reminderSection = '';
   if (settings.enableTodoTool) {
-    const messages = session.agent?.state?.messages || [];
+    const messages = session.messages;
     const todoList = getLatestTodoList(messages);
     reminderSection = formatReminderSection(todoList);
   }

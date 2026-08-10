@@ -6,6 +6,7 @@ import { CodeBlock } from '@pi-code/webview/components/chat/CodeBlock';
 import { Markdown } from '@pi-code/webview/components/chat/markdown/Markdown';
 import { getToolDiffMeta, getToolLanguage, parseCompletionResult } from '@pi-code/webview/components/chat/messages/helpers/common';
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
+import { Spinner } from '@pi-code/webview/components/shared/Spinner';
 
 import type { FC } from 'react';
 import type { ChatMessage } from '@pi-code/shared/core/protocol';
@@ -26,13 +27,7 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
     return (
       <div className="group flex flex-col gap-1.5">
         <MessageHeader
-          icon={
-            isRunning ? (
-              <div className="w-3.5 h-3.5 border-2 border-vscode-focusBorder border-t-transparent rounded-full animate-spin shrink-0" />
-            ) : (
-              <ClipboardCheck size={14} className="text-emerald-500 shrink-0" />
-            )
-          }
+          icon={isRunning ? <Spinner className="text-vscode-focusBorder" /> : <ClipboardCheck size={14} className="text-emerald-500 shrink-0" />}
           title="Task Completed"
           titleClassName="text-emerald-500"
           timestamp={message.ts}
@@ -54,7 +49,7 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
       case 'denied':
         return <ShieldAlert size={14} className="text-red-500 shrink-0" />;
       case 'running':
-        return <div className="w-3.5 h-3.5 border-2 border-vscode-focusBorder border-t-transparent rounded-full animate-spin shrink-0" />;
+        return <Spinner className="text-vscode-focusBorder" />;
       default:
         return <PocketKnife size={14} className="text-vscode-focusBorder shrink-0" />;
     }

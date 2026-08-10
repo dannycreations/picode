@@ -1,9 +1,10 @@
-import { relative } from 'node:path';
 import { formatThrownValue } from '@earendil-works/pi-ai';
+import { generateUnifiedPatch } from '@earendil-works/pi-coding-agent';
 import { Uri, workspace } from 'vscode';
 
 import { isBinaryFile } from '@pi-code/extension/utilities/binary';
 import { GIT_STATUS } from '@pi-code/extension/utilities/git';
+import { toRelativePath } from '@pi-code/extension/utilities/vscode';
 
 import type { Change, Repository } from '@pi-code/extension/types/git';
 
@@ -15,34 +16,29 @@ interface ResolvedGitChange {
   readonly isDeleted: boolean;
 }
 
-function toRelativePath(absolutePath: string, cwd: string): string {
-  return relative(cwd, absolutePath).replace(/\\/g, '/');
-}
-
-function mapChange(change: Change, cwd: string, isStaged: boolean): ResolvedGitChange {
-  const absolutePath = change.uri.fsPath;
+function mapChange(change: Change, isStaged: boolean): ResolvedGitChange {
   return {
-    relativePath: toRelativePath(absolutePath, cwd),
-    absolutePath,
+    relativePath: toRelativePath(change.uri),
+    absolutePath: change.uri.fsPath,
     isStaged,
     isUntracked: change.status === GIT_STATUS.UNTRACKED,
     isDeleted: change.status === GIT_STATUS.INDEX_DELETED || change.status === GIT_STATUS.DELETED,
   };
 }
 
-export async function getGitChanges(repo: Repository, cwd: string): Promise<{ changes: ResolvedGitChange[]; useStaged: boolean }> {
+export async function getGitChanges(repo: Repository): Promise<{ changes: ResolvedGitChange[]; useStaged: boolean }> {
   // Refresh before reading so we don't act on stale async state.
   await repo.status();
 
-  const stagedChanges = repo.state.indexChanges.map((c) => mapChange(c, cwd, true));
+  const stagedChanges = repo.state.indexChanges.map((c) => mapChange(c, true));
 
   if (stagedChanges.length > 0) {
     return { changes: stagedChanges, useStaged: true };
   }
 
   const unstagedChanges = [
-    ...repo.state.workingTreeChanges.map((c) => mapChange(c, cwd, false)),
-    ...repo.state.untrackedChanges.map((c) => mapChange(c, cwd, false)),
+    ...repo.state.workingTreeChanges.map((c) => mapChange(c, false)),
+    ...repo.state.untrackedChanges.map((c) => mapChange(c, false)),
   ];
   return { changes: unstagedChanges, useStaged: false };
 }
@@ -53,9 +49,8 @@ async function buildUntrackedPatch(file: ResolvedGitChange): Promise<string> {
   }
 
   const bytes = await workspace.fs.readFile(Uri.file(file.absolutePath));
-  const lines = new TextDecoder().decode(bytes).split('\n');
-  const header = `\n--- /dev/null\n+++ b/${file.relativePath}\n@@ -0,0 +1,${lines.length} @@\n`;
-  return `${header}${lines.map((line) => `+${line}`).join('\n')}\n`;
+  const content = new TextDecoder().decode(bytes);
+  return `\n${generateUnifiedPatch(file.relativePath, '', content)}\n`;
 }
 
 export async function getGitDiffContext(repo: Repository, changes: ResolvedGitChange[], useStaged: boolean): Promise<string> {

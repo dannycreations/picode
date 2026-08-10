@@ -2,7 +2,7 @@ import mermaid from 'mermaid-compact';
 import { useCallback, useEffect, useState } from 'react';
 
 import { logger } from '@pi-code/shared/core/logger';
-import { applyDeterministicFixes } from '@pi-code/webview/components/chat/markdown/helpers/mermaid';
+import { applyDeterministicFixes, ensureMermaidInitialized } from '@pi-code/webview/components/chat/markdown/helpers/mermaid';
 
 interface UseMermaidRenderReturn {
   readonly code: string;
@@ -28,6 +28,7 @@ export const useMermaidRender = (originalCode: string, enabled: boolean): UseMer
     setIsLoading(true);
 
     const timer = setTimeout(() => {
+      ensureMermaidInitialized();
       const id = `mermaid-${Math.random().toString(36).substring(2)}`;
       mermaid
         .parse(code)

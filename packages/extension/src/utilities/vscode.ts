@@ -11,12 +11,12 @@ function toUri(target: Uri | string): Uri {
 }
 
 export function toRelativePath(target: Uri | string): string {
-  return workspace.asRelativePath(toUri(target), false);
+  return workspace.asRelativePath(toUri(target), false).replace(/\\/g, '/');
 }
 
 export function toWorkspaceRelativePath(target: Uri | string): string | undefined {
   const uri = toUri(target);
-  return workspace.getWorkspaceFolder(uri) ? workspace.asRelativePath(uri, false) : undefined;
+  return workspace.getWorkspaceFolder(uri) ? toRelativePath(uri) : undefined;
 }
 
 let trustStore: ProjectTrustStore | undefined;

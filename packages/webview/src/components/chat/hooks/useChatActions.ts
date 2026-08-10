@@ -85,7 +85,7 @@ export const useChatActions = (params: UseChatActionsProps): UseChatActionsRetur
 
       setIsAgentRunning(true);
       const userMsg: ChatMessage = {
-        id: 'u-' + Date.now(),
+        id: crypto.randomUUID(),
         sender: 'user',
         text,
         images: images.length > 0 ? images : undefined,

@@ -1,57 +1,70 @@
 import mermaid from 'mermaid-compact';
 
-const MERMAID_THEME = {
-  background: '#1e1e1e',
-  textColor: '#ffffff',
-  mainBkg: '#2d2d2d',
-  nodeBorder: '#888888',
-  lineColor: '#cccccc',
-  primaryColor: '#3c3c3c',
-  primaryTextColor: '#ffffff',
-  primaryBorderColor: '#888888',
-  secondaryColor: '#2d2d2d',
-  tertiaryColor: '#454545',
-  classText: '#ffffff',
-  labelColor: '#ffffff',
-  actorLineColor: '#cccccc',
-  actorBkg: '#2d2d2d',
-  actorBorder: '#888888',
-  actorTextColor: '#ffffff',
-  fillType0: '#2d2d2d',
-  fillType1: '#3c3c3c',
-  fillType2: '#454545',
-};
+function cssVar(name: string, fallback: string): string {
+  if (typeof document === 'undefined') return fallback;
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return value || fallback;
+}
+
+function buildThemeVariables() {
+  return {
+    background: cssVar('--vscode-editor-background', '#1e1e1e'),
+    textColor: cssVar('--vscode-foreground', '#ffffff'),
+    mainBkg: cssVar('--vscode-editorWidget-background', '#2d2d2d'),
+    nodeBorder: cssVar('--vscode-editorWidget-border', '#888888'),
+    lineColor: cssVar('--vscode-editor-foreground', '#cccccc'),
+    primaryColor: cssVar('--vscode-button-background', '#3c3c3c'),
+    primaryTextColor: cssVar('--vscode-button-foreground', '#ffffff'),
+    primaryBorderColor: cssVar('--vscode-editorWidget-border', '#888888'),
+    secondaryColor: cssVar('--vscode-editorWidget-background', '#2d2d2d'),
+    tertiaryColor: cssVar('--vscode-dropdown-background', '#454545'),
+    classText: cssVar('--vscode-foreground', '#ffffff'),
+    labelColor: cssVar('--vscode-foreground', '#ffffff'),
+    actorLineColor: cssVar('--vscode-editor-foreground', '#cccccc'),
+    actorBkg: cssVar('--vscode-editorWidget-background', '#2d2d2d'),
+    actorBorder: cssVar('--vscode-editorWidget-border', '#888888'),
+    actorTextColor: cssVar('--vscode-foreground', '#ffffff'),
+    fillType0: cssVar('--vscode-editorWidget-background', '#2d2d2d'),
+    fillType1: cssVar('--vscode-button-background', '#3c3c3c'),
+    fillType2: cssVar('--vscode-dropdown-background', '#454545'),
+  };
+}
+
+let initialized = false;
 
 function initializeMermaid(): void {
   mermaid.initialize({
     startOnLoad: false,
     securityLevel: 'loose',
-    theme: 'dark',
+    theme: 'base',
     suppressErrorRendering: true,
     themeVariables: {
-      ...MERMAID_THEME,
+      ...buildThemeVariables(),
       fontSize: 'var(--vscode-font-size, 13px)',
       fontFamily: "var(--vscode-font-family, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif)",
-      noteTextColor: '#ffffff',
-      noteBkgColor: '#454545',
-      noteBorderColor: '#888888',
+      noteTextColor: cssVar('--vscode-foreground', '#ffffff'),
+      noteBkgColor: cssVar('--vscode-dropdown-background', '#454545'),
+      noteBorderColor: cssVar('--vscode-editorWidget-border', '#888888'),
       critBorderColor: '#ff9580',
       critBkgColor: '#803d36',
-      taskTextColor: '#ffffff',
-      taskTextOutsideColor: '#ffffff',
-      taskTextLightColor: '#ffffff',
-      sectionBkgColor: '#2d2d2d',
-      sectionBkgColor2: '#3c3c3c',
-      altBackground: '#2d2d2d',
-      linkColor: '#6cb6ff',
-      compositeBackground: '#2d2d2d',
-      compositeBorder: '#888888',
-      titleColor: '#ffffff',
+      taskTextColor: cssVar('--vscode-foreground', '#ffffff'),
+      taskTextOutsideColor: cssVar('--vscode-foreground', '#ffffff'),
+      taskTextLightColor: cssVar('--vscode-foreground', '#ffffff'),
+      sectionBkgColor: cssVar('--vscode-editorWidget-background', '#2d2d2d'),
+      sectionBkgColor2: cssVar('--vscode-button-background', '#3c3c3c'),
+      altBackground: cssVar('--vscode-editorWidget-background', '#2d2d2d'),
+      linkColor: cssVar('--vscode-textLink-foreground', '#6cb6ff'),
+      compositeBackground: cssVar('--vscode-editorWidget-background', '#2d2d2d'),
+      compositeBorder: cssVar('--vscode-editorWidget-border', '#888888'),
+      titleColor: cssVar('--vscode-foreground', '#ffffff'),
     },
   });
+  initialized = true;
 }
 
-initializeMermaid();
+export function ensureMermaidInitialized(): void {
+  if (!initialized) initializeMermaid();
+}
 
 export function applyDeterministicFixes(code: string): string {
   return code
@@ -92,7 +105,7 @@ export async function svgToPng(svgEl: SVGElement): Promise<string> {
         return;
       }
 
-      ctx.fillStyle = '#1e1e1e';
+      ctx.fillStyle = cssVar('--vscode-editor-background', '#1e1e1e');
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
