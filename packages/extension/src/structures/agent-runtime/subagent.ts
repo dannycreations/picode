@@ -1,0 +1,255 @@
+import { contentText } from '@earendil-works/pi-ai';
+import { createAgentSessionFromServices, SessionManager } from '@earendil-works/pi-coding-agent';
+
+import { EXPLORE_SUBAGENT_PROMPT, REVIEW_SUBAGENT_PROMPT } from '@pi-code/extension/core/prompt';
+import { registerSubagentSession, unregisterSubagentSession } from '@pi-code/extension/structures/agent-runtime/policy';
+import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
+import { executeCommandTool } from '@pi-code/extension/structures/tool-call/execute-command';
+import { readFileTool } from '@pi-code/extension/structures/tool-call/read-file';
+import { logger } from '@pi-code/shared/core/logger';
+
+import type { Api, Model } from '@earendil-works/pi-ai';
+import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent';
+
+const SUBAGENT_TOOLS = {
+  read_file: readFileTool,
+  execute_command: executeCommandTool,
+} as const;
+
+type SubagentToolName = keyof typeof SUBAGENT_TOOLS;
+
+export interface SubagentDefinition {
+  readonly name: string;
+  readonly summary: string;
+  readonly tools: readonly SubagentToolName[];
+  readonly prompt: string;
+}
+
+export const SUBAGENTS: readonly SubagentDefinition[] = [
+  {
+    name: 'explore',
+    summary: 'Use it to locate where something lives, trace how a feature works, or answer "where/how" questions across many files.',
+    tools: ['read_file', 'execute_command'],
+    prompt: EXPLORE_SUBAGENT_PROMPT,
+  },
+  {
+    name: 'review',
+    summary: 'Use it to audit an area or a change for correctness, security, and maintainability defects once the code already exists.',
+    tools: ['read_file', 'execute_command'],
+    prompt: REVIEW_SUBAGENT_PROMPT,
+  },
+];
+
+export const SUBAGENT_NAMES = SUBAGENTS.map((agent) => agent.name) as [string, ...string[]];
+
+export function getSubagent(name: string): SubagentDefinition | undefined {
+  return SUBAGENTS.find((agent) => agent.name === name);
+}
+
+export function describeSubagents(): string {
+  return SUBAGENTS.map((agent) => `- ${agent.name}: ${agent.summary}`).join('\n');
+}
+
+export interface SubagentUsage {
+  readonly turns: number;
+  readonly tokensIn: number;
+  readonly tokensOut: number;
+  readonly cost: number;
+}
+
+export interface SubagentOutcome {
+  readonly agent: string;
+  readonly text: string;
+  readonly steps: string;
+  readonly usage: SubagentUsage;
+  readonly error?: string;
+}
+
+interface SubagentInput {
+  readonly agent: SubagentDefinition;
+  readonly task: string;
+  readonly cwd: string;
+  readonly model?: Model<Api>;
+  readonly signal?: AbortSignal;
+  readonly onProgress?: (steps: string) => void;
+}
+
+const MAX_CONCURRENT_SPAWNS = 3;
+const MAX_STEP_LINES = 60;
+const MAX_ARGUMENT_PREVIEW = 80;
+
+let activeSpawns = 0;
+const waiting: (() => void)[] = [];
+
+async function acquireSpawnSlot(): Promise<() => void> {
+  // A queue inherits the slot of whoever released it instead of taking a
+  // new one, so the count cannot drift above the cap while a waiter resumes.
+  if (activeSpawns >= MAX_CONCURRENT_SPAWNS) {
+    await new Promise<void>((resolve) => waiting.push(resolve));
+  } else {
+    activeSpawns++;
+  }
+
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+
+    const next = waiting.shift();
+    if (next) next();
+    else activeSpawns--;
+  };
+}
+
+function preview(value: string): string {
+  const text = value.replace(/\s+/g, ' ').trim();
+  return text.length > MAX_ARGUMENT_PREVIEW ? `${text.slice(0, MAX_ARGUMENT_PREVIEW)}…` : text;
+}
+
+export function formatSubagentStep(toolName: SubagentToolName, args: unknown): string {
+  const values = (args ?? {}) as { files?: ReadonlyArray<{ path?: string }>; command?: string };
+
+  if (toolName === 'read_file') {
+    const paths = (values.files ?? []).map((file) => file.path ?? '').filter((path) => path !== '');
+    return `read ${preview(paths.join(', ')) || '(no path)'}`;
+  }
+  if (toolName === 'execute_command') {
+    return `$ ${preview(values.command ?? '')}`;
+  }
+  return `${toolName} ${preview(JSON.stringify(args ?? {}))}`;
+}
+
+function lastAssistantText(session: AgentSession): { text: string; error?: string } {
+  for (let i = session.state.messages.length - 1; i >= 0; i--) {
+    const message = session.state.messages[i];
+    if (message.role !== 'assistant') continue;
+    return {
+      text: contentText(message.content).trim(),
+      error: message.stopReason === 'error' ? (message.errorMessage ?? 'The sub-agent request failed.') : undefined,
+    };
+  }
+  return { text: '' };
+}
+
+function collectUsage(session: AgentSession): SubagentUsage {
+  let turns = 0;
+  let tokensIn = 0;
+  let tokensOut = 0;
+  let cost = 0;
+
+  for (const message of session.state.messages) {
+    if (message.role !== 'assistant') continue;
+    turns++;
+    tokensIn += message.usage?.input ?? 0;
+    tokensOut += message.usage?.output ?? 0;
+    cost += message.usage?.cost?.total ?? 0;
+  }
+
+  return { turns, tokensIn, tokensOut, cost };
+}
+
+async function createChildSession(cwd: string, agent: SubagentDefinition): Promise<AgentSession> {
+  // Services are cached per workspace, so a child session reuses the parent's
+  // model runtime, credentials, and tool policy extension instead of rebuilding
+  // them. Only the transcript is separate, which is the point of delegation.
+  const { services } = await createAgentResources(cwd);
+
+  const { session } = await createAgentSessionFromServices({
+    services,
+    // In memory keeps sub-agent out of the session history: the parent
+    // transcript already records the delegation and its result.
+    sessionManager: SessionManager.inMemory(cwd),
+    tools: [...agent.tools],
+    customTools: agent.tools.map((tool) => SUBAGENT_TOOLS[tool]),
+  });
+
+  // Tag this child session so the shared tool policy can label any
+  // confirmation prompts it raises with the sub-agent name.
+  registerSubagentSession(session.sessionId, agent.name);
+
+  return session;
+}
+
+export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutcome> {
+  const release = await acquireSpawnSlot();
+  const collected: string[] = [];
+
+  const steps = (): string => collected.slice(-MAX_STEP_LINES).join('\n');
+
+  try {
+    if (input.signal?.aborted) {
+      return { agent: input.agent.name, text: '', steps: '', usage: emptyUsage(), error: 'Sub-agent was cancelled.' };
+    }
+
+    const session = await createChildSession(input.cwd, input.agent);
+    const onAbort = (): void => {
+      void session.abort().catch((err) => logger.error('Failed to abort sub-agent session:', err));
+    };
+
+    const unsubscribe = session.subscribe((event: AgentSessionEvent) => {
+      if (event.type !== 'tool_execution_start') return;
+      collected.push(formatSubagentStep(event.toolName as SubagentToolName, event.args));
+      input.onProgress?.(steps());
+    });
+
+    try {
+      if (input.model) {
+        // Inheriting the caller's model keeps delegation predictable; a failure
+        // here is not fatal because the child falls back to the default model.
+        await session.setModel(input.model).catch((err) => logger.warn('Could not apply the parent model to the sub-agent:', err));
+      }
+
+      input.signal?.addEventListener('abort', onAbort, { once: true });
+      // The brief is model authored, so prompt template expansion stays off to
+      // keep a stray leading slash from loading an unrelated template.
+      await session.prompt(`${input.agent.prompt}\n\n## Task\n\n${input.task.trim()}`, {
+        expandPromptTemplates: false,
+        source: 'extension',
+      });
+
+      const { text, error } = lastAssistantText(session);
+      const aborted = input.signal?.aborted === true;
+
+      return {
+        agent: input.agent.name,
+        text,
+        steps: steps(),
+        usage: collectUsage(session),
+        error: aborted ? 'Sub-agent was cancelled.' : error,
+      };
+    } finally {
+      input.signal?.removeEventListener('abort', onAbort);
+      unsubscribe();
+      unregisterSubagentSession(session.sessionId);
+      session.dispose();
+    }
+  } finally {
+    release();
+  }
+}
+
+function emptyUsage(): SubagentUsage {
+  return { turns: 0, tokensIn: 0, tokensOut: 0, cost: 0 };
+}
+
+// Sub-agent are in-memory, so their spend never reaches the persisted
+// session file. The parent's live header stats are the only place it can show
+// up, so each records here keyed by parent session and is folded into the
+// next `agent_settled` payload, then cleared.
+const childUsageBySession = new Map<string, SubagentUsage>();
+
+export function recordSubagentUsage(sessionId: string, usage: SubagentUsage): void {
+  const previous = childUsageBySession.get(sessionId) ?? emptyUsage();
+  childUsageBySession.set(sessionId, {
+    turns: previous.turns + usage.turns,
+    tokensIn: previous.tokensIn + usage.tokensIn,
+    tokensOut: previous.tokensOut + usage.tokensOut,
+    cost: previous.cost + usage.cost,
+  });
+}
+
+export function takeSubagentUsage(sessionId: string): SubagentUsage {
+  const usage = childUsageBySession.get(sessionId) ?? emptyUsage();
+  childUsageBySession.delete(sessionId);
+  return usage;
+}

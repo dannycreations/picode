@@ -9,7 +9,15 @@ export interface ActiveTaskState extends StatsData {
 }
 
 export type ToolName =
-  'attempt_completion' | 'ask_question' | 'write_file' | 'execute_command' | 'read_file' | 'update_todo' | 'edit_file' | 'delete_file';
+  | 'attempt_completion'
+  | 'ask_question'
+  | 'write_file'
+  | 'execute_command'
+  | 'read_file'
+  | 'update_todo'
+  | 'edit_file'
+  | 'delete_file'
+  | 'spawn_subagent';
 
 export interface ChatMessage {
   readonly id: string;
@@ -25,6 +33,7 @@ export interface ChatMessage {
   readonly todos?: TodoItem[];
   readonly errorMessage?: string;
   readonly images?: string[];
+  readonly subagent?: string;
 }
 
 export interface HistoryItem {
@@ -101,8 +110,9 @@ export type ExtensionToWebviewMessage =
   | { type: 'message_end'; payload: { cost?: number; stats?: StatsData } }
   | { type: 'api_request_start'; payload: { id: string; timestamp: number } }
   | { type: 'api_request_end'; payload: { id: string; cost?: number; error?: string; stats?: StatsData } }
-  | { type: 'tool_approval_request'; payload: { id: string; tool_name: ToolName; arguments: string } }
+  | { type: 'tool_approval_request'; payload: { id: string; tool_name: ToolName; arguments: string; subagent?: string } }
   | { type: 'tool_execution_start'; payload: { id: string; tool_name?: ToolName; arguments?: string } }
+  | { type: 'tool_execution_update'; payload: { id: string; result: string } }
   | { type: 'tool_execution_end'; payload: { id: string; result?: string; todos?: TodoItem[]; is_error?: boolean } }
   | { type: 'agent_error'; payload: { message: string } }
   | { type: 'agent_settled'; payload?: StatsData }

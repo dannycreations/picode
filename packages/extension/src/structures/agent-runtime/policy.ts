@@ -72,6 +72,17 @@ interface ApprovalRequest {
   readonly id: string;
   readonly toolName: ToolName;
   readonly args: unknown;
+  readonly subagent?: string;
+}
+
+const subagentBySession = new Map<string, string>();
+
+export function registerSubagentSession(sessionId: string, name: string): void {
+  subagentBySession.set(sessionId, name);
+}
+
+export function unregisterSubagentSession(sessionId: string): void {
+  subagentBySession.delete(sessionId);
 }
 
 type ApprovalPresenter = (request: ApprovalRequest) => void;
@@ -96,14 +107,14 @@ export class PolicyBridge {
     };
   }
 
-  public request(toolName: ToolName, toolCallId: string | undefined, args: unknown): Promise<boolean> {
+  public request(toolName: ToolName, toolCallId: string | undefined, args: unknown, subagent?: string): Promise<boolean> {
     const presenter = this.presenter;
     if (!presenter) return Promise.resolve(false);
 
     const id = toolCallId || uuidv7();
     return new Promise<boolean>((resolve) => {
       this.pending.set(id, resolve);
-      presenter({ id, toolName, args });
+      presenter({ id, toolName, args, subagent });
     });
   }
 
@@ -131,6 +142,11 @@ export class PolicyBridge {
 
 const ALLOW: ToolCallEventResult = { block: false };
 
+// Tools that reach the user or the model without touching the workspace. A
+// sub-agent run is included because every tool it uses is policed on its own,
+// so gating the delegation itself would only add a redundant prompt.
+const SELF_APPROVING_TOOLS: ReadonlySet<ToolName> = new Set<ToolName>(['attempt_completion', 'update_todo', 'ask_question', 'spawn_subagent']);
+
 export function createToolPolicyExtension(): InlineExtension {
   return {
     name: 'pi-code-tool-policy',
@@ -139,7 +155,7 @@ export function createToolPolicyExtension(): InlineExtension {
       pi.on('tool_call', async (event, ctx): Promise<ToolCallEventResult> => {
         const toolName = event.toolName as ToolName;
         let decision: ApprovalDecision = { action: 'confirm' };
-        if (toolName === 'attempt_completion' || toolName === 'update_todo' || toolName === 'ask_question') {
+        if (SELF_APPROVING_TOOLS.has(toolName)) {
           decision = { action: 'approve' };
         } else {
           const settings = readAppSettings();
@@ -168,7 +184,8 @@ export function createToolPolicyExtension(): InlineExtension {
           return { block: true, reason: decision.reason };
         }
 
-        const approved = await PolicyBridge.getInstance().request(toolName, event.toolCallId, event.input);
+        const subagent = subagentBySession.get(ctx.sessionManager.getSessionId());
+        const approved = await PolicyBridge.getInstance().request(toolName, event.toolCallId, event.input, subagent);
         return approved ? ALLOW : { block: true, reason: 'Action denied by user.' };
       });
     },

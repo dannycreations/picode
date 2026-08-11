@@ -7,6 +7,7 @@ import { deleteFileTool } from '@pi-code/extension/structures/tool-call/delete-f
 import { editFileTool } from '@pi-code/extension/structures/tool-call/edit-file';
 import { executeCommandTool } from '@pi-code/extension/structures/tool-call/execute-command';
 import { readFileTool } from '@pi-code/extension/structures/tool-call/read-file';
+import { spawnSubagentTool } from '@pi-code/extension/structures/tool-call/spawn-subagent';
 import { updateTodoTool } from '@pi-code/extension/structures/tool-call/update-todo';
 import { writeFileTool } from '@pi-code/extension/structures/tool-call/write-file';
 import { DEFAULT_CONTEXT_LIMIT } from '@pi-code/shared/core/constants';
@@ -22,6 +23,7 @@ const CUSTOM_TOOLS = [
   askQuestionTool,
   attemptCompletionTool,
   updateTodoTool,
+  spawnSubagentTool,
 ] as const;
 
 const DEFAULT_TOOLS: ToolName[] = CUSTOM_TOOLS.map((tool) => tool.name as ToolName);
@@ -33,6 +35,7 @@ export async function createSession(cwd: string, sessionPath?: string): Promise<
   const disabledTools: Set<ToolName> = new Set();
   if (!settings.enableTodoTool) disabledTools.add('update_todo');
   if (!settings.enableAskQuestionTool) disabledTools.add('ask_question');
+  if (!settings.enableSubagentTool) disabledTools.add('spawn_subagent');
 
   const { session } = await createAgentSessionFromServices({
     services,

@@ -1,5 +1,6 @@
 import { uuidv7 } from '@earendil-works/pi-ai';
 
+import { takeSubagentUsage } from '@pi-code/extension/structures/agent-runtime/subagent';
 import { DEFAULT_CONTEXT_LIMIT } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
 
@@ -7,6 +8,21 @@ import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-
 import type { AgentToWebviewMessage } from '@pi-code/extension/structures/agent-runtime/webview';
 import type { StatsData, ToolName } from '@pi-code/shared/core/protocol';
 import type { TodoItem } from '@pi-code/shared/utilities/todo';
+
+interface ToolResultPart {
+  readonly type: string;
+  readonly text?: string;
+}
+
+export function toolResultText(result: unknown): string {
+  if (typeof result === 'string') return result;
+
+  const content = (result as { content?: readonly ToolResultPart[] } | undefined)?.content;
+  const parts = Array.isArray(content) ? content.filter((part) => part.type === 'text' && typeof part.text === 'string') : [];
+  if (parts.length === 0) return JSON.stringify(result) ?? '';
+
+  return parts.map((part) => part.text).join('\n');
+}
 
 export class EventMapper {
   private apiRequestId: string | null = null;
@@ -89,13 +105,19 @@ export class EventMapper {
           },
         };
 
+      case 'tool_execution_update':
+        return {
+          type: 'tool_execution_update',
+          payload: { id: event.toolCallId, result: toolResultText(event.partialResult) },
+        };
+
       case 'tool_execution_end': {
         const toolResult = event.result as { details?: { todos?: TodoItem[] } } | undefined;
         return {
           type: 'tool_execution_end',
           payload: {
             id: event.toolCallId,
-            result: typeof event.result === 'string' ? event.result : JSON.stringify(event.result),
+            result: toolResultText(event.result),
             todos: toolResult?.details?.todos,
             is_error: event.isError,
           },
@@ -104,7 +126,21 @@ export class EventMapper {
 
       case 'agent_settled': {
         const stats = this.createStats(session);
-        return stats ? { type: 'agent_settled', payload: stats } : { type: 'agent_settled' };
+        if (!stats) return { type: 'agent_settled' };
+
+        // Sub-agent spend is in-memory only, so it never lands in the session
+        // file. Fold this turn's delegated usage into the header stats here,
+        // then clear it so the next turn accounts for its own runs.
+        const child = takeSubagentUsage(session.sessionId);
+        return {
+          type: 'agent_settled',
+          payload: {
+            ...stats,
+            tokensIn: stats.tokensIn + child.tokensIn,
+            tokensOut: stats.tokensOut + child.tokensOut,
+            totalCost: stats.totalCost + child.cost,
+          },
+        };
       }
 
       case 'compaction_start':

@@ -35,6 +35,12 @@ export const SETTINGS_SCHEMA = {
     default: true,
     description: 'Let the agent pause and ask you for details when a request is unclear (`ask_question`).',
   },
+  enableSubagentTool: {
+    type: 'boolean',
+    default: false,
+    description:
+      'Let the agent delegate read-only research to a sub-agent that works in its own context window and reports back a summary (`spawn_subagent`).',
+  },
   enableAgentRules: {
     type: 'boolean',
     default: true,

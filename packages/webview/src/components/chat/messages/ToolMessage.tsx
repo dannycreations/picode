@@ -102,7 +102,16 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
             <div className="p-3 bg-vscode-editorWarning-background/10 flex flex-col gap-2">
               <div className="text-xs font-semibold text-vscode-foreground flex items-center gap-1.5 select-none">
                 <span className="codicon codicon-question text-vscode-editorWarning-foreground" />
-                Tool request waiting for approval
+                {message.subagent ? (
+                  <>
+                    <span className="rounded bg-vscode-badge-background px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-vscode-badge-foreground">
+                      {message.subagent}
+                    </span>
+                    sub-agent request waiting for approval
+                  </>
+                ) : (
+                  'Tool request waiting for approval'
+                )}
               </div>
               <div className="flex items-center gap-2 select-none">
                 <button

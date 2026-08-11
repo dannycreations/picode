@@ -24,6 +24,8 @@ export function getToolDiffMeta(toolName?: string): { label: string; icon: strin
       return { label: 'File Contents', icon: 'file' };
     case 'delete_file':
       return { label: 'Execution Output', icon: 'trash' };
+    case 'spawn_subagent':
+      return { label: 'Sub-agent Report', icon: 'organization' };
     default:
       return { label: 'File Changes', icon: 'diff' };
   }

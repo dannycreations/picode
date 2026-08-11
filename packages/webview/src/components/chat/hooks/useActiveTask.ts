@@ -205,7 +205,16 @@ export const useActiveTask = (): UseActiveTaskReturn => {
             return {
               ...prev,
               messages: prev.messages.map((m) =>
-                m.id === id ? { ...m, toolStatus: 'approval', toolName: tool_name, toolArgs, text: tool_name } : m,
+                m.id === id
+                  ? {
+                      ...m,
+                      toolStatus: 'approval',
+                      toolName: tool_name,
+                      toolArgs,
+                      text: tool_name,
+                      subagent: msg.payload.subagent,
+                    }
+                  : m,
               ),
             };
           }
@@ -220,6 +229,7 @@ export const useActiveTask = (): UseActiveTaskReturn => {
                 toolName: tool_name,
                 toolArgs,
                 toolStatus: 'approval',
+                subagent: msg.payload.subagent,
                 ts: Date.now(),
               },
             ],
@@ -251,6 +261,18 @@ export const useActiveTask = (): UseActiveTaskReturn => {
                 ts: Date.now(),
               },
             ],
+          };
+        });
+        break;
+      }
+
+      case 'tool_execution_update': {
+        const { id, result } = msg.payload;
+        setActiveTask((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            messages: prev.messages.map((m) => (m.id === id ? { ...m, diff: result } : m)),
           };
         });
         break;

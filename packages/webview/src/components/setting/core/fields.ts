@@ -11,6 +11,7 @@ import {
   Sparkles,
   Terminal,
   Trash2,
+  UsersRound,
 } from 'lucide-react';
 
 import { SETTING_KEYS } from '@pi-code/shared/core/settings';
@@ -45,6 +46,7 @@ export const SETTINGS_TABS: readonly SettingsTab[] = [
 export const SETTING_FIELDS: SettingFieldRegistry = {
   enableTodoTool: { tab: 'ability', label: 'Task Planning', icon: ListChecks },
   enableAskQuestionTool: { tab: 'ability', label: 'Clarifying Questions', icon: MessageCircleQuestion },
+  enableSubagentTool: { tab: 'ability', label: 'Task Delegation', icon: UsersRound },
   enableAgentRules: { tab: 'ability', label: 'Project Rules', icon: FileText },
   enableSkillDiscovery: { tab: 'ability', label: 'Skill Discovery', icon: BookOpen },
 
