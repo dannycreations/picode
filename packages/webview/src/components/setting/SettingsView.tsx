@@ -1,8 +1,8 @@
 import { cn } from 'cnfast';
-import { ArrowLeft } from 'lucide-react';
-import { useState } from 'react';
+import { ArrowLeft, Search, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
-import { getRootFieldKeys, SETTINGS_TABS } from '@pi-code/webview/components/setting/core/fields';
+import { getRootFieldKeys, isFieldVisible, SETTINGS_TABS } from '@pi-code/webview/components/setting/core/fields';
 import { SettingControl } from '@pi-code/webview/components/setting/fields/SettingControl';
 import { useResponsive } from '@pi-code/webview/components/setting/hooks/useResponsive';
 import { useSetting } from '@pi-code/webview/components/setting/hooks/useSetting';
@@ -20,10 +20,24 @@ interface SettingsViewProps {
 export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
   const [activeTabId, setActiveTabId] = useState(SETTINGS_TABS[0].id);
   const [isDiscardDialogShow, setDiscardDialogShow] = useState(false);
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const { draftSettings, isChangeDetected, handleFieldChange, handleSave, resetDraft } = useSetting(settings);
 
   const { containerRef, isCollapsed } = useResponsive(550);
+
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      const activeTabHasMatch = getRootFieldKeys(activeTabId).some((key) => isFieldVisible(key, searchQuery));
+      if (!activeTabHasMatch) {
+        const firstTabWithMatch = SETTINGS_TABS.find((tab) => getRootFieldKeys(tab.id).some((key) => isFieldVisible(key, searchQuery)));
+        if (firstTabWithMatch) {
+          setActiveTabId(firstTabWithMatch.id);
+        }
+      }
+    }
+  }, [searchQuery, activeTabId]);
 
   const checkUnsavedChanges = (proceed: () => void) => {
     if (isChangeDetected) {
@@ -34,6 +48,7 @@ export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
   };
 
   const activeTab = SETTINGS_TABS.find((tab) => tab.id === activeTabId) || SETTINGS_TABS[0];
+  const visibleRootKeys = getRootFieldKeys(activeTab.id).filter((key) => isFieldVisible(key, searchQuery));
 
   return (
     <div ref={containerRef} className="flex flex-col h-full bg-vscode-sideBar-background text-vscode-foreground select-none overflow-hidden">
@@ -52,6 +67,53 @@ export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
           <h3 className="text-vscode-foreground m-0 flex-shrink-0 text-sm font-semibold">Settings</h3>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {isSearchExpanded ? (
+            <div className="flex items-center bg-vscode-settings-textInputBackground border border-vscode-focusBorder rounded h-7 px-2 w-44 transition-all duration-200 overflow-hidden">
+              <Search size={14} className="shrink-0 text-vscode-foreground" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search settings..."
+                className="bg-transparent border-none outline-none text-xs w-full text-vscode-settings-textInputForeground placeholder:text-vscode-input-placeholderForeground ml-1.5"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    if (searchQuery) {
+                      setSearchQuery('');
+                    } else {
+                      setIsSearchExpanded(false);
+                    }
+                  }
+                }}
+                onBlur={() => {
+                  if (!searchQuery) {
+                    setIsSearchExpanded(false);
+                  }
+                }}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="p-0.5 hover:bg-vscode-list-hoverBackground rounded text-vscode-foreground bg-transparent border-none cursor-pointer flex items-center justify-center shrink-0"
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+          ) : (
+            <Tooltip content="Search settings" side="bottom">
+              <button
+                type="button"
+                onClick={() => setIsSearchExpanded(true)}
+                className="h-7 w-7 p-0 hover:bg-vscode-list-hoverBackground rounded text-vscode-foreground bg-transparent border border-transparent cursor-pointer flex items-center justify-center transition-colors duration-150 shrink-0"
+              >
+                <Search size={16} />
+              </button>
+            </Tooltip>
+          )}
+
           <button
             type="button"
             disabled={!isChangeDetected}
@@ -80,6 +142,7 @@ export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
           {SETTINGS_TABS.map((tab) => {
             const TabIcon = tab.icon;
             const isActive = tab.id === activeTabId;
+            const hasMatch = !searchQuery.trim() || getRootFieldKeys(tab.id).some((key) => isFieldVisible(key, searchQuery));
             return (
               <Tooltip key={tab.id} content={tab.label} side="right" disabled={!isCollapsed}>
                 <button
@@ -91,6 +154,7 @@ export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
                     isActive
                       ? 'border-vscode-focusBorder bg-vscode-list-activeSelectionBackground text-vscode-foreground font-medium cursor-default'
                       : 'border-transparent text-vscode-descriptionForeground hover:bg-vscode-list-hoverBackground hover:text-vscode-foreground cursor-pointer bg-transparent',
+                    !hasMatch && 'opacity-40',
                   )}
                 >
                   <TabIcon className={cn('w-4 h-4 shrink-0', isActive ? 'text-vscode-foreground' : 'text-vscode-descriptionForeground')} />
@@ -110,9 +174,15 @@ export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
 
           {/* Controls are generated from the shared settings schema */}
           <div className="flex flex-col gap-6 px-5 py-2">
-            {getRootFieldKeys(activeTab.id).map((key) => (
-              <SettingControl key={key} settingKey={key} draftSettings={draftSettings} onChange={handleFieldChange} />
-            ))}
+            {visibleRootKeys.length > 0 ? (
+              visibleRootKeys.map((key) => (
+                <SettingControl key={key} settingKey={key} draftSettings={draftSettings} onChange={handleFieldChange} searchQuery={searchQuery} />
+              ))
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+                <p className="text-vscode-descriptionForeground text-xs">No settings found matching &quot;{searchQuery}&quot;</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

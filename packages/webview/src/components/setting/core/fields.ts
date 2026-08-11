@@ -14,7 +14,7 @@ import {
   UsersRound,
 } from 'lucide-react';
 
-import { SETTING_KEYS } from '@pi-code/shared/core/settings';
+import { getSettingSpec, SETTING_KEYS } from '@pi-code/shared/core/settings';
 
 import type { SettingKey } from '@pi-code/shared/core/settings';
 import type { SettingFieldRegistry, SettingsTab, SettingsTabId } from '@pi-code/webview/components/setting/core/types';
@@ -84,4 +84,27 @@ export function getRootFieldKeys(tab: SettingsTabId): readonly SettingKey[] {
 
 export function getChildFieldKeys(parent: SettingKey): readonly SettingKey[] {
   return SETTING_KEYS.filter((key) => SETTING_FIELDS[key].parent === parent);
+}
+
+export function matchesQuery(key: SettingKey, query: string): boolean {
+  const q = query.toLowerCase().trim();
+  if (!q) return true;
+
+  const field = SETTING_FIELDS[key];
+  const spec = getSettingSpec(key);
+
+  const label = field?.label || '';
+  const description = spec?.description || '';
+
+  return key.toLowerCase().includes(q) || label.toLowerCase().includes(q) || description.toLowerCase().includes(q);
+}
+
+export function isFieldVisible(key: SettingKey, query: string, parentMatched = false): boolean {
+  if (!query.trim()) return true;
+
+  const matched = parentMatched || matchesQuery(key, query);
+  if (matched) return true;
+
+  const childKeys = getChildFieldKeys(key);
+  return childKeys.some((childKey) => isFieldVisible(childKey, query, matched));
 }

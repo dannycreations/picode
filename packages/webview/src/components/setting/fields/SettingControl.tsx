@@ -1,5 +1,5 @@
 import { getSettingSpec } from '@pi-code/shared/core/settings';
-import { getChildFieldKeys, SETTING_FIELDS } from '@pi-code/webview/components/setting/core/fields';
+import { getChildFieldKeys, isFieldVisible, matchesQuery, SETTING_FIELDS } from '@pi-code/webview/components/setting/core/fields';
 import { SettingCheckbox } from '@pi-code/webview/components/setting/fields/SettingCheckbox';
 import { SettingList } from '@pi-code/webview/components/setting/fields/SettingList';
 import { SettingSlider } from '@pi-code/webview/components/setting/fields/SettingSlider';
@@ -12,9 +12,11 @@ interface SettingControlProps {
   readonly settingKey: SettingKey;
   readonly draftSettings: AppSettings;
   readonly onChange: SettingChangeHandler;
+  readonly searchQuery?: string;
+  readonly parentMatched?: boolean;
 }
 
-export const SettingControl: FC<SettingControlProps> = ({ settingKey, draftSettings, onChange }) => {
+export const SettingControl: FC<SettingControlProps> = ({ settingKey, draftSettings, onChange, searchQuery = '', parentMatched = false }) => {
   const spec = getSettingSpec(settingKey);
   const field = SETTING_FIELDS[settingKey];
   const value = draftSettings[settingKey];
@@ -24,9 +26,19 @@ export const SettingControl: FC<SettingControlProps> = ({ settingKey, draftSetti
 
   switch (spec.type) {
     case 'boolean': {
-      const childKeys = getChildFieldKeys(settingKey);
+      const currentMatched = parentMatched || (searchQuery.trim() ? matchesQuery(settingKey, searchQuery) : false);
+      const childKeys = getChildFieldKeys(settingKey).filter((childKey) => isFieldVisible(childKey, searchQuery, currentMatched));
       const children = childKeys.length
-        ? childKeys.map((childKey) => <SettingControl key={childKey} settingKey={childKey} draftSettings={draftSettings} onChange={onChange} />)
+        ? childKeys.map((childKey) => (
+            <SettingControl
+              key={childKey}
+              settingKey={childKey}
+              draftSettings={draftSettings}
+              onChange={onChange}
+              searchQuery={searchQuery}
+              parentMatched={currentMatched}
+            />
+          ))
         : undefined;
 
       return (
