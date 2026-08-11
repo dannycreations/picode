@@ -10,11 +10,11 @@ export const askQuestionTool = defineTool({
   name: 'ask_question' as ToolName,
   label: 'Ask Follow-up Question',
   description:
-    'Ask the user a question to gather additional information or clarification needed to complete the task. Always provide 2-4 specific, actionable suggested answers ordered from most to least likely.',
+    'Ask the user for clarification when you need input to finish the task. Provide 2-4 specific, actionable options in "follow_up", ordered from most to least likely.',
   parameters: Type.Object({
-    question: Type.String({ description: 'The question to ask the user' }),
-    follow_up: Type.Array(Type.Object({ text: Type.String({ description: 'A complete, self-contained suggested answer with no placeholders' }) }), {
-      description: 'Suggested answers presented as clickable options, ordered from most to least likely',
+    question: Type.String({ description: 'The question to ask the user.' }),
+    follow_up: Type.Array(Type.Object({ text: Type.String({ description: 'A complete, self-contained option with no placeholders.' }) }), {
+      description: '2-4 suggested answers shown as clickable options, ordered from most to least likely.',
     }),
   }),
   async execute(toolCallId, params, signal, _onUpdate, _ctx) {
@@ -23,7 +23,7 @@ export const askQuestionTool = defineTool({
       // arguments, so an empty question would surface as an empty card.
       if (!params.question.trim()) {
         return {
-          content: [{ type: 'text', text: 'Error: Missing required parameter "question".' }],
+          content: [{ type: 'text', text: 'Error: "question" is required and cannot be empty.' }],
           details: {},
           isError: true,
         };
@@ -33,7 +33,7 @@ export const askQuestionTool = defineTool({
 
       if (response === null || response.trim() === '') {
         return {
-          content: [{ type: 'text', text: 'Error: No response was provided by the user.' }],
+          content: [{ type: 'text', text: 'Error: the user provided no response.' }],
           details: {},
           isError: true,
         };

@@ -123,12 +123,13 @@ function countRegexMatches(content: string, regex: RegExp): number {
 export const editFileTool = defineTool({
   name: 'edit_file' as ToolName,
   label: 'Edit File',
-  description: 'Replace text in an existing file using literal replacement strategies, or create a new file.',
+  description:
+    'Replace "old_string" with "new_string" in an existing file, or create a new file when "old_string" is empty. Set "expected_replacements" to confirm the match count.',
   parameters: Type.Object({
-    file_path: Type.String({ description: 'The path to the file to modify or create, relative to the workspace.' }),
-    old_string: Type.String({ description: 'The exact literal text to replace. Use empty string to create a new file.' }),
-    new_string: Type.String({ description: 'The exact literal text to replace old_string with.' }),
-    expected_replacements: Type.Optional(Type.Integer({ description: 'Number of replacements expected. Defaults to 1.', minimum: 1 })),
+    file_path: Type.String({ description: 'Workspace-relative path of the file to modify or create.' }),
+    old_string: Type.String({ description: 'Exact literal text to replace. Leave empty to create a new file.' }),
+    new_string: Type.String({ description: 'Replacement text for "old_string".' }),
+    expected_replacements: Type.Optional(Type.Integer({ description: 'Expected number of replacements. Defaults to 1.', minimum: 1 })),
   }),
   async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
     try {
@@ -158,7 +159,7 @@ export const editFileTool = defineTool({
       if (fileExists) {
         if (old_string === '') {
           return {
-            content: [{ type: 'text', text: `Error: File already exists: ${file_path}. Use a non-empty old_string to modify it.` }],
+            content: [{ type: 'text', text: `Error: "file_path" already exists: ${file_path}. Use a non-empty "old_string" to modify it.` }],
             details: {},
             isError: true,
           };
@@ -166,7 +167,9 @@ export const editFileTool = defineTool({
       } else {
         if (old_string !== '') {
           return {
-            content: [{ type: 'text', text: `Error: File does not exist: ${file_path}. Set old_string to empty string to create a new file.` }],
+            content: [
+              { type: 'text', text: `Error: "file_path" does not exist: ${file_path}. Set "old_string" to empty string to create a new file.` },
+            ],
             details: {},
             isError: true,
           };
@@ -189,7 +192,7 @@ export const editFileTool = defineTool({
 
         if (oldLF === newLF) {
           return {
-            content: [{ type: 'text', text: 'Error: old_string and new_string are identical. No changes to apply.' }],
+            content: [{ type: 'text', text: 'Error: "old_string" and "new_string" are identical; nothing to change.' }],
             details: {},
             isError: true,
           };
@@ -215,10 +218,9 @@ export const editFileTool = defineTool({
               updatedLF = originalLF.replace(tokenRegex, () => newLF);
             } else {
               // Mismatch error details
-              let errorMsg = `Error: Occurrence count mismatch for old_string in ${file_path}.\n`;
-              errorMsg += `Expected: ${expected_replacements} replacement(s)\n`;
-              errorMsg += `Found: ${exactOccurrences} exact literal match(es), ${wsOccurrences} whitespace-tolerant match(es), ${tokenOccurrences} token-based match(es).\n\n`;
-              errorMsg += `Please verify that old_string matches the target content exactly (including whitespace and line endings).`;
+              let errorMsg = `Error: matched ${exactOccurrences} occurrence(s) of "old_string" in ${file_path}, but "expected_replacements" is ${expected_replacements}.\n`;
+              errorMsg += `Exact: ${exactOccurrences}, whitespace-tolerant: ${wsOccurrences}, token-based: ${tokenOccurrences}.\n\n`;
+              errorMsg += `Verify "old_string" matches the target exactly, including whitespace and line endings.`;
               return {
                 content: [{ type: 'text', text: errorMsg }],
                 details: {},
@@ -236,8 +238,8 @@ export const editFileTool = defineTool({
         cwd: ctx.cwd,
         oldContent: originalContent,
         newContent,
-        successMessage: `Successfully updated ${file_path}`,
-        hint: `The edit succeeded; read "${file_path}" if you need to verify the remaining changes.`,
+        successMessage: `Updated ${file_path}`,
+        hint: `Edit applied; read "${file_path}" to verify the remaining changes.`,
       });
     } catch (err) {
       return {

@@ -49,8 +49,8 @@ function truncateFileSection(header: string, body: string, path: string, limits:
     hint: (truncation) => {
       const next = nextLineAfter(truncation.content);
       return next === undefined
-        ? `Use line_ranges on "${path}" to read a narrower slice.`
-        : `Use line_ranges starting at line ${next} on "${path}" to continue.`;
+        ? `Use "line_ranges" on "${path}" to read a narrower slice.`
+        : `Use "line_ranges" starting at line ${next} on "${path}" to continue.`;
     },
   });
 
@@ -60,24 +60,25 @@ function truncateFileSection(header: string, body: string, path: string, limits:
 export const readFileTool = defineTool({
   name: 'read_file' as ToolName,
   label: 'Read File',
-  description: 'Read one or more files and return their contents with line numbers (format: lineNumber|lineContent) for diffing or discussion.',
+  description:
+    'Read one or more files and return contents prefixed with line numbers (lineNumber|lineContent). Use "line_ranges" to read a narrower slice.',
   parameters: Type.Object({
     files: Type.Array(
       Type.Object({
-        path: Type.String({ description: 'Path to the file to read, relative to the workspace' }),
+        path: Type.String({ description: 'Workspace-relative path of the file to read.' }),
         line_ranges: Type.Optional(
           Type.Array(
             Type.Tuple([
-              Type.Integer({ minimum: 1, description: '1-based start line' }),
-              Type.Integer({ minimum: 1, description: '1-based end line (inclusive)' }),
+              Type.Integer({ minimum: 1, description: '1-based start line.' }),
+              Type.Integer({ minimum: 1, description: '1-based end line, inclusive.' }),
             ]),
             {
-              description: 'Optional line ranges to read. Each range is a [start, end] tuple with 1-based inclusive line numbers.',
+              description: 'Optional ranges to read as [start, end] 1-based inclusive line numbers.',
             },
           ),
         ),
       }),
-      { description: 'List of files to read', minItems: 1 },
+      { description: 'Files to read, at least one.', minItems: 1 },
     ),
   }),
   async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
@@ -107,7 +108,7 @@ export const readFileTool = defineTool({
           const fileStat = await stat(resolvedPath);
           if (!fileStat.isFile()) {
             fileResults[index] = {
-              result: `Error: Path is not a regular file: ${fileObj.path}`,
+              result: `Error: "path" is not a regular file: ${fileObj.path}`,
               hasError: true,
             };
             return;
@@ -115,7 +116,7 @@ export const readFileTool = defineTool({
 
           if (fileStat.size > MAX_FILE_SIZE_BYTES) {
             fileResults[index] = {
-              result: `Error: File ${fileObj.path} size (${(fileStat.size / (1024 * 1024)).toFixed(2)} MB) exceeds maximum allowed limit of 10 MB.`,
+              result: `Error: ${fileObj.path} exceeds the 10 MB size limit (${(fileStat.size / (1024 * 1024)).toFixed(2)} MB).`,
               hasError: true,
             };
             return;
@@ -123,7 +124,7 @@ export const readFileTool = defineTool({
 
           if (await isBinaryFile(resolvedPath)) {
             fileResults[index] = {
-              result: `Error: File is binary and cannot be read as text: ${fileObj.path}`,
+              result: `Error: ${fileObj.path} is binary and cannot be read as text.`,
               hasError: true,
             };
             return;
@@ -146,7 +147,7 @@ export const readFileTool = defineTool({
               const end = Math.min(lines.length, range[1]);
 
               if (start > end) {
-                parts.push(`[Invalid range ${start}-${end}]`);
+                parts.push(`Invalid range: ${start}-${end}`);
                 continue;
               }
 
@@ -188,20 +189,20 @@ export const readFileTool = defineTool({
 
       if (_signal?.aborted) {
         return {
-          content: [{ type: 'text', text: 'Error: Read operation was aborted.' }],
+          content: [{ type: 'text', text: 'Error: read operation was aborted.' }],
           details: {},
           isError: true,
         };
       }
 
-      const results = fileResults.map((r) => r?.result ?? 'Error: File processing failed.');
+      const results = fileResults.map((r) => r?.result ?? 'Error file processing failed.');
       const allFailed = fileResults.length > 0 && fileResults.every((r) => r?.hasError);
 
       // Final cap: per-file headers and separators sit outside the shared budget.
       const { text } = truncateOutput(results.join('\n\n'), {
         limits,
         keep: 'head',
-        hint: 'Request fewer files per call to see the rest.',
+        hint: 'Read fewer files per call to see the rest.',
       });
 
       return {

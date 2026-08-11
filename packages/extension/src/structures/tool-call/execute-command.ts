@@ -11,6 +11,16 @@ import type { ToolName } from '@pi-code/shared/core/protocol';
 
 const ANSI_PATTERN = /\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b[=>c()#%*+]/g;
 
+const DEFAULT_TIMEOUT_MS = 120_000;
+const MAX_TIMEOUT_MS = 1_800_000;
+const KILL_GRACE_MS = 2_000;
+
+function resolveTimeout(requested: number | undefined): number {
+  const base = requested ?? DEFAULT_TIMEOUT_MS;
+  if (Number.isFinite(MAX_TIMEOUT_MS) && MAX_TIMEOUT_MS > 0) return Math.min(base, MAX_TIMEOUT_MS);
+  return base;
+}
+
 export function cleanCommandOutput(raw: string): string {
   if (!raw) return '';
 
@@ -47,16 +57,22 @@ export function cleanCommandOutput(raw: string): string {
 export const executeCommandTool = defineTool({
   name: 'execute_command' as ToolName,
   label: 'Execute Command',
-  description: 'Execute a CLI command on the system. Tailor the command to the operating system and run it relative to the workspace.',
+  description: 'Run a CLI command on the host relative to the workspace. Pass the command in "command"; optionally set "cwd" and "timeout".',
   parameters: Type.Object({
-    command: Type.String({ description: 'The CLI command to execute.' }),
-    cwd: Type.Optional(Type.Union([Type.String(), Type.Null()], { description: 'Optional working directory for the command' })),
+    command: Type.String({ description: 'The CLI command to run.' }),
+    cwd: Type.Optional(Type.Union([Type.String(), Type.Null()], { description: 'Optional working directory; defaults to the workspace.' })),
+    timeout: Type.Optional(
+      Type.Integer({
+        minimum: 1,
+        description: 'Optional timeout in milliseconds; defaults to 120000 ms (2 minutes).',
+      }),
+    ),
   }),
   async execute(_toolCallId, params, signal, _onUpdate, ctx) {
     const limits = getOutputLimits();
     const retainedBytes = limits.maxBytes * 2;
 
-    return new Promise<CustomToolResult<{ exitCode: number | null; signalCode: string | null; output: string }>>((res) => {
+    return new Promise<CustomToolResult<{ exitCode: number | null; signalCode: string | null; output: string; timedOut: boolean }>>((res) => {
       let resolvedCwd = ctx.cwd;
       if (typeof params.cwd === 'string' && params.cwd.trim() !== '') {
         resolvedCwd = isAbsolute(params.cwd) ? params.cwd : resolve(ctx.cwd, params.cwd);
@@ -90,8 +106,10 @@ export const executeCommandTool = defineTool({
       });
 
       let finished = false;
+      let timedOut = false;
       let onAbort: (() => void) | null = null;
-      let killTimer: ReturnType<typeof setTimeout> | null = null;
+      let escalationTimer: ReturnType<typeof setTimeout> | null = null;
+      let timeoutTimer: ReturnType<typeof setTimeout> | null = null;
 
       const detachSignal = () => {
         if (signal && onAbort) {
@@ -100,10 +118,14 @@ export const executeCommandTool = defineTool({
         }
       };
 
-      const clearKillTimer = () => {
-        if (killTimer) {
-          clearTimeout(killTimer);
-          killTimer = null;
+      const clearTimers = () => {
+        if (timeoutTimer) {
+          clearTimeout(timeoutTimer);
+          timeoutTimer = null;
+        }
+        if (escalationTimer) {
+          clearTimeout(escalationTimer);
+          escalationTimer = null;
         }
       };
 
@@ -111,7 +133,7 @@ export const executeCommandTool = defineTool({
         if (finished) return;
         finished = true;
         detachSignal();
-        clearKillTimer();
+        clearTimers();
 
         // Flush remaining bytes from stream decoders
         appendOutput(stdoutDecoder.end());
@@ -124,19 +146,23 @@ export const executeCommandTool = defineTool({
         // The rolling window may already have dropped the head of a very noisy run.
         const dropped = totalLength > retainedLength;
         const droppedNote = dropped ? ` The command produced ${formatSize(totalLength)} in total.` : '';
-        const retry = `Re-run filtered through a search or pager (for example findstr, grep, head, or tail) to inspect the rest.${droppedNote}`;
+        const retry = `Re-run with a search or pager (findstr, grep, head, tail) to inspect the rest.${droppedNote}`;
 
         const { text, truncation } = truncateOutput(cleanOutput, { limits, keep: 'tail', hint: retry });
 
         // Streaming already discarded the head even though what remains fits the budget.
         let modelText = text;
         if (dropped && !truncation.truncated) {
-          modelText = `${text}\n\n[Truncated: showing only the end of the output (${formatSize(limits.maxBytes)} output limit). ${retry}]`;
+          modelText = `${text}\n\nTruncated to the last ${formatSize(limits.maxBytes)} of output. ${retry}`;
+        }
+
+        if (timedOut) {
+          modelText = `${modelText}\n\nCommand timed out after ${effectiveTimeout} ms. If it is not waiting for input, rerun with a larger "timeout".`;
         }
 
         res({
-          content: [{ type: 'text', text: modelText || `[Command completed with no output. ${exitInfo}]` }],
-          details: { exitCode, signalCode, output: cleanOutput },
+          content: [{ type: 'text', text: modelText || `Command completed with no output. ${exitInfo}` }],
+          details: { exitCode, signalCode, output: cleanOutput, timedOut },
           isError: exitCode !== 0,
         });
       };
@@ -147,6 +173,11 @@ export const executeCommandTool = defineTool({
             cp.kill(sig);
           }
         } catch {}
+      };
+
+      const escalateKill = (graceMs: number = KILL_GRACE_MS) => {
+        killProcess('SIGTERM');
+        escalationTimer = setTimeout(() => killProcess('SIGKILL'), graceMs);
       };
 
       cp.stdout?.on('data', (chunk: Buffer) => {
@@ -166,16 +197,18 @@ export const executeCommandTool = defineTool({
         finish(code, sig);
       });
 
+      const effectiveTimeout = resolveTimeout(params.timeout);
+      timeoutTimer = setTimeout(() => {
+        timedOut = true;
+        escalateKill();
+      }, effectiveTimeout);
+
       if (signal) {
         if (signal.aborted) {
           killProcess('SIGKILL');
           finish(null, 'SIGABRT');
         } else {
-          onAbort = () => {
-            killProcess('SIGTERM');
-            // Escalate to SIGKILL if the process ignores SIGTERM.
-            killTimer = setTimeout(() => killProcess('SIGKILL'), 2000);
-          };
+          onAbort = () => escalateKill();
           signal.addEventListener('abort', onAbort, { once: true });
         }
       }

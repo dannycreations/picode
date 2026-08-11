@@ -9,14 +9,14 @@ import type { ToolName } from '@pi-code/shared/core/protocol';
 export const updateTodoTool = defineTool({
   name: 'update_todo' as ToolName,
   label: 'Update Todo List',
-  description: 'Update the checklist of tasks (TODO list) for tracking the current progress of the project.',
+  description: 'Update the project task checklist to track progress. Provide the full updated list in "todos".',
   parameters: Type.Object({
-    todos: Type.String({ description: 'The updated markdown checklist of TODO items.' }),
+    todos: Type.String({ description: 'Full updated markdown checklist of TODO items.' }),
   }),
   async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
     try {
       return {
-        content: [{ type: 'text', text: 'update_todo success.' }],
+        content: [{ type: 'text', text: 'Todo list updated.' }],
         details: { todos: parseTodoList(params.todos) },
       };
     } catch (err) {

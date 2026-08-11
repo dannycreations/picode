@@ -12,10 +12,11 @@ import type { ToolName } from '@pi-code/shared/core/protocol';
 export const writeFileTool = defineTool({
   name: 'write_file' as ToolName,
   label: 'Write File',
-  description: 'Write complete content to a file. Overwrites the file if it exists, or creates it and any parent directories if it does not.',
+  description:
+    'Write complete content to "path", overwriting it if it exists or creating it (and parent directories) otherwise. Always pass the full content in "content".',
   parameters: Type.Object({
-    path: Type.String({ description: 'The path of the file to write to (relative to the current workspace directory)' }),
-    content: Type.String({ description: 'The content to write to the file. ALWAYS provide the COMPLETE intended content, without truncation.' }),
+    path: Type.String({ description: 'Workspace-relative path of the file to write.' }),
+    content: Type.String({ description: 'Complete file content; never truncate.' }),
   }),
   async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
     try {
@@ -36,8 +37,8 @@ export const writeFileTool = defineTool({
         cwd: ctx.cwd,
         oldContent,
         newContent: finalContent,
-        successMessage: `Successfully wrote content to ${params.path}`,
-        hint: `The write succeeded; read "${params.path}" if you need to verify the remaining changes.`,
+        successMessage: `Wrote ${params.path}`,
+        hint: `Write applied; read "${params.path}" to verify the remaining changes.`,
       });
     } catch (err) {
       return {

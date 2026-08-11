@@ -9,9 +9,9 @@ import type { ToolName } from '@pi-code/shared/core/protocol';
 export const deleteFileTool = defineTool({
   name: 'delete_file' as ToolName,
   label: 'Delete File',
-  description: 'Delete a file or directory from the workspace. This action is irreversible.',
+  description: 'Delete a file or directory at "path" from the workspace. This action cannot be undone.',
   parameters: Type.Object({
-    path: Type.String({ description: 'Path to the file or directory to delete, relative to the workspace.' }),
+    path: Type.String({ description: 'Workspace-relative path to the file or directory to delete.' }),
   }),
   async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
     try {
@@ -21,7 +21,7 @@ export const deleteFileTool = defineTool({
         await access(resolvedPath);
       } catch {
         return {
-          content: [{ type: 'text', text: `Error: File or directory does not exist: ${params.path}` }],
+          content: [{ type: 'text', text: `Error: "path" does not exist: ${params.path}` }],
           details: {},
           isError: true,
         };
@@ -31,13 +31,13 @@ export const deleteFileTool = defineTool({
       if (stats.isDirectory()) {
         await rm(resolvedPath, { recursive: true, force: true });
         return {
-          content: [{ type: 'text', text: `Successfully deleted directory: ${params.path}` }],
+          content: [{ type: 'text', text: `Deleted directory: ${params.path}` }],
           details: {},
         };
       } else {
         await unlink(resolvedPath);
         return {
-          content: [{ type: 'text', text: `Successfully deleted file: ${params.path}` }],
+          content: [{ type: 'text', text: `Deleted file: ${params.path}` }],
           details: {},
         };
       }
