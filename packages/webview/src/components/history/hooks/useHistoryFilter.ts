@@ -17,7 +17,7 @@ interface UseHistoryFilterReturn {
   readonly paginatedItems: HistoryItem[];
 }
 
-export const useHistoryFilter = (history: HistoryItem[], itemsPerPage = 8, scope?: HistoryScope): UseHistoryFilterReturn => {
+export const useHistoryFilter = (history: HistoryItem[], itemsPerPage: number, scope?: HistoryScope): UseHistoryFilterReturn => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [currentPage, setCurrentPage] = useState(1);

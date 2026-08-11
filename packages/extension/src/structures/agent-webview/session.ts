@@ -2,7 +2,7 @@ import { SessionManager } from '@earendil-works/pi-coding-agent';
 import { Uri, window, workspace } from 'vscode';
 
 import { getDefaultModel } from '@pi-code/extension/core/settings';
-import { createAgentResources, getModelRuntime } from '@pi-code/extension/structures/agent-runtime/resource';
+import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { collectCommands } from '@pi-code/extension/structures/chat-command/command';
 import { calculateSessionStats, convertSessionEntries } from '@pi-code/extension/structures/chat-session/session';
 import { DEFAULT_CONTEXT_LIMIT } from '@pi-code/shared/core/constants';
@@ -46,7 +46,7 @@ export class SessionService {
     const entries = sessionManager.buildContextEntries();
     const chatMessages = convertSessionEntries(entries);
 
-    const modelRuntime = await getModelRuntime(cwd);
+    const modelRuntime = (await createAgentResources(cwd)).services.modelRuntime;
 
     const sessionContextModel = sessionManager.buildSessionContext().model;
     const fallbackModelId = await getDefaultModel(cwd);

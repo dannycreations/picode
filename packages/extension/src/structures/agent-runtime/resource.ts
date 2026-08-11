@@ -94,7 +94,3 @@ export async function createAgentResources(cwd: string): Promise<AgentResources>
 
   return { settings, services: await cached.services };
 }
-
-export async function getModelRuntime(cwd: string): Promise<ModelRuntime> {
-  return (await createAgentResources(cwd)).services.modelRuntime;
-}

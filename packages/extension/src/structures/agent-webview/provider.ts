@@ -1,9 +1,10 @@
+import { uuidv7 } from '@earendil-works/pi-ai';
 import { Disposable, Uri, workspace } from 'vscode';
 
 import { readAppSettings } from '@pi-code/extension/core/settings';
 import { PolicyBridge } from '@pi-code/extension/structures/agent-runtime/policy';
 import { AgentRunner } from '@pi-code/extension/structures/agent-runtime/runner';
-import { createDefaultDispatcher } from '@pi-code/extension/structures/agent-webview/dispatcher';
+import { dispatch } from '@pi-code/extension/structures/agent-webview/dispatcher';
 import { SessionService } from '@pi-code/extension/structures/agent-webview/session';
 import { WorkspaceService } from '@pi-code/extension/structures/agent-webview/workspace';
 import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
@@ -17,7 +18,7 @@ function buildChatViewHtml(webview: Webview, extensionUri: Uri): string {
   const scriptUri = webview.asWebviewUri(Uri.joinPath(extensionUri, 'dist', 'webview.cjs'));
   const styleUri = webview.asWebviewUri(Uri.joinPath(extensionUri, 'dist', 'webview.css'));
   const codiconsUri = webview.asWebviewUri(Uri.joinPath(extensionUri, 'dist', 'codicon.css'));
-  const nonce = crypto.randomUUID();
+  const nonce = uuidv7();
 
   // Content-Security-Policy per the VS Code webview guidelines: only our nonced
   // bundle may execute, remote content is limited to `webview.cspSource`, and
@@ -64,8 +65,6 @@ export class ChatViewProvider implements WebviewViewProvider {
 
   private readonly sessionService = new SessionService();
   private readonly workspaceService: WorkspaceService;
-  private readonly dispatcher = createDefaultDispatcher();
-
   private agent: AgentRunner = new AgentRunner();
   private activeWebview: Webview | null = null;
 
@@ -123,7 +122,7 @@ export class ChatViewProvider implements WebviewViewProvider {
 
     const subscriptions = Disposable.from(
       webview.onDidReceiveMessage((message: WebviewToExtensionMessage) => {
-        void this.dispatcher.dispatch(message, handlerContext);
+        void dispatch(message, handlerContext);
       }),
       Disposable.from({ dispose: disposeApprovalPresenter }),
       // Mirror configuration edits made anywhere (settings UI, settings.json,

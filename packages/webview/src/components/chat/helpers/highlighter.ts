@@ -32,67 +32,59 @@ export function normalizeLanguage(language: string | undefined): ExtendedLanguag
 
 const INITIAL_LANGUAGES: BundledLanguage[] = ['shell'];
 
-class ShikiHighlighterManager {
-  private instance: Highlighter | null = null;
-  private initPromise: Promise<Highlighter> | null = null;
-  private readonly loadedLanguages = new Set<ExtendedLanguage>(['txt']);
-  private readonly pendingLanguageLoads = new Map<ExtendedLanguage, Promise<void>>();
+let instance: Highlighter | null = null;
+let initPromise: Promise<Highlighter> | null = null;
+const loadedLanguages = new Set<ExtendedLanguage>(['txt']);
+const pendingLanguageLoads = new Map<ExtendedLanguage, Promise<void>>();
 
-  private async initialize(): Promise<Highlighter> {
-    if (this.instance) return this.instance;
+async function initialize(): Promise<Highlighter> {
+  if (instance) return instance;
 
-    if (!this.initPromise) {
-      this.initPromise = createHighlighter({
-        themes: ['github-light', 'github-dark'],
-        langs: INITIAL_LANGUAGES,
-      }).then((instance) => {
-        this.instance = instance;
-        INITIAL_LANGUAGES.forEach((lang) => this.loadedLanguages.add(lang));
-        return instance;
-      });
-    }
-
-    return this.initPromise;
+  if (!initPromise) {
+    initPromise = createHighlighter({
+      themes: ['github-light', 'github-dark'],
+      langs: INITIAL_LANGUAGES,
+    }).then((created) => {
+      instance = created;
+      INITIAL_LANGUAGES.forEach((lang) => loadedLanguages.add(lang));
+      return created;
+    });
   }
 
-  public async getHighlighter(language?: string): Promise<Highlighter> {
-    try {
-      const instance = await this.initialize();
-      const targetLang = normalizeLanguage(language);
-
-      if (this.loadedLanguages.has(targetLang)) {
-        return instance;
-      }
-
-      let loadPromise = this.pendingLanguageLoads.get(targetLang);
-
-      if (!loadPromise) {
-        loadPromise = (async () => {
-          try {
-            await instance.loadLanguage(targetLang as BundledLanguage);
-            this.loadedLanguages.add(targetLang);
-          } catch (error) {
-            logger.error(`Failed to load language '${targetLang}':`, error);
-            throw error;
-          } finally {
-            this.pendingLanguageLoads.delete(targetLang);
-          }
-        })();
-
-        this.pendingLanguageLoads.set(targetLang, loadPromise);
-      }
-
-      await loadPromise;
-      return instance;
-    } catch (error) {
-      logger.error('Error in getHighlighter:', error);
-      throw error;
-    }
-  }
+  return initPromise;
 }
 
-const shikiManager = new ShikiHighlighterManager();
-
 export async function getHighlighter(language?: string): Promise<Highlighter> {
-  return shikiManager.getHighlighter(language);
+  try {
+    const highlighter = await initialize();
+    const targetLang = normalizeLanguage(language);
+
+    if (loadedLanguages.has(targetLang)) {
+      return highlighter;
+    }
+
+    let loadPromise = pendingLanguageLoads.get(targetLang);
+
+    if (!loadPromise) {
+      loadPromise = (async () => {
+        try {
+          await highlighter.loadLanguage(targetLang as BundledLanguage);
+          loadedLanguages.add(targetLang);
+        } catch (error) {
+          logger.error(`Failed to load language '${targetLang}':`, error);
+          throw error;
+        } finally {
+          pendingLanguageLoads.delete(targetLang);
+        }
+      })();
+
+      pendingLanguageLoads.set(targetLang, loadPromise);
+    }
+
+    await loadPromise;
+    return highlighter;
+  } catch (error) {
+    logger.error('Error in getHighlighter:', error);
+    throw error;
+  }
 }

@@ -1,17 +1,18 @@
 import { cn } from 'cnfast';
 
-import type { CSSProperties, FC } from 'react';
+import type { FC } from 'react';
+
+const SPINNER_STYLE = { fontSize: 14, width: 14, height: 14 };
 
 interface SpinnerProps {
-  readonly size?: number;
   readonly className?: string;
 }
 
-export const Spinner: FC<SpinnerProps> = ({ size = 14, className }) => (
+export const Spinner: FC<SpinnerProps> = ({ className }) => (
   <span
     role="status"
     aria-label="Working"
     className={cn('codicon codicon-loading codicon-modifier-spin shrink-0', className)}
-    style={{ fontSize: size, width: size, height: size } as CSSProperties}
+    style={SPINNER_STYLE}
   />
 );

@@ -57,7 +57,7 @@ export interface ModelItem {
 }
 
 export interface CommandItem {
-  readonly name: 'reload' | 'compact' | (string & {});
+  readonly name: string;
   readonly source: 'builtin' | 'skill' | 'prompt';
   readonly description?: string;
   readonly detail?: string;
@@ -80,7 +80,6 @@ export type WebviewToExtensionMessage =
   | { type: 'get_history'; scope: HistoryScope }
   | { type: 'load_session'; id: string; path: string; title: string }
   | { type: 'delete_sessions'; paths: string[] }
-  | { type: 'start_new_task'; text: string; model_id: string; model_provider?: string; images?: string[] }
   | { type: 'send_message'; text: string; path?: string; model_id?: string; model_provider?: string; images?: string[] }
   | { type: 'continue_task'; path?: string; model_id?: string; model_provider?: string }
   | { type: 'approve_tool'; approval_id: string }

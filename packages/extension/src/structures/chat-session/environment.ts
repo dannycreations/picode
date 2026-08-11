@@ -1,5 +1,5 @@
 import { basename } from 'node:path';
-import { AgentSession } from '@earendil-works/pi-coding-agent';
+import { contentText } from '@earendil-works/pi-ai';
 import { RelativePattern, TabInputText, Uri, window, workspace } from 'vscode';
 
 import { readAppSettings } from '@pi-code/extension/core/settings';
@@ -41,15 +41,8 @@ export function formatTodoReminder(todoList?: TodoItem[]): string {
   return lines.join('\n').trim();
 }
 
-function messageText(msg: AgentMessage): string {
-  if (msg.role !== 'user') return '';
-  const content = msg.content;
-  if (typeof content === 'string') return content;
-  return content.map((part) => (part.type === 'text' ? part.text : '')).join('');
-}
-
 export function hasReminders(msg: AgentMessage): boolean {
-  return msg.role === 'user' && messageText(msg).trimStart().startsWith(TODO_REMINDER_SECTION);
+  return msg.role === 'user' && contentText(msg.content).trimStart().startsWith(TODO_REMINDER_SECTION);
 }
 
 export function withTodoProgress(messages: readonly AgentMessage[], todoList?: TodoItem[]): AgentMessage[] {
@@ -165,7 +158,7 @@ async function getGitStatusLines(cwd: string): Promise<string[]> {
   ];
 }
 
-export async function getEnvironmentDetails(_session: AgentSession, cwd: string, includeFileDetails = false): Promise<string> {
+export async function getEnvironmentDetails(cwd: string, includeFileDetails = false): Promise<string> {
   let details = '';
   const settings = readAppSettings();
 

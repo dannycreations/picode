@@ -5,17 +5,10 @@ import { createPortal } from 'react-dom';
 
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 
-import type { FC, ReactNode } from 'react';
+import type { FC } from 'react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   readonly variant?: 'secondary' | 'danger';
-}
-
-interface ModalProps {
-  readonly isOpen: boolean;
-  readonly children: ReactNode;
-  readonly ariaLabelledBy?: string;
-  readonly ariaDescribedBy?: string;
 }
 
 interface ConfirmDialogProps {
@@ -29,13 +22,7 @@ interface ConfirmDialogProps {
   readonly onCancel: () => void;
 }
 
-interface UseModalKeyboardProps {
-  readonly isOpen: boolean;
-  readonly onEscape?: () => void;
-  readonly onEnter?: () => void;
-}
-
-const useModalKeyboard = ({ isOpen, onEscape, onEnter }: UseModalKeyboardProps) => {
+const useModalKeyboard = ({ isOpen, onEscape, onEnter }: { isOpen: boolean; onEscape?: () => void; onEnter?: () => void }) => {
   useEffect(() => {
     if (!isOpen) return;
 
@@ -74,51 +61,6 @@ const Button: FC<ButtonProps> = ({ variant = 'secondary', children, className = 
   );
 };
 
-const Modal: FC<ModalProps> = ({ isOpen, children, ariaLabelledBy, ariaDescribedBy }) => {
-  if (!isOpen) return null;
-
-  return createPortal(
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 select-none">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={ariaLabelledBy}
-        aria-describedby={ariaDescribedBy}
-        className="bg-[var(--vscode-editor-background)] border border-[var(--vscode-panel-border)] rounded-md w-full max-w-md overflow-hidden flex flex-col shadow-xl"
-      >
-        {children}
-      </div>
-    </div>,
-    document.body,
-  );
-};
-
-const ModalHeader: FC<{ children: ReactNode; onClose?: () => void }> = ({ children, onClose }) => (
-  <div className="px-4 py-3 bg-[var(--vscode-sideBarSectionHeader-background)] border-b border-[var(--vscode-panel-border)]/50 flex justify-between items-center">
-    {children}
-    {onClose && (
-      <Tooltip content="Close dialog" side="left">
-        <button
-          onClick={onClose}
-          className="shrink-0 w-5 h-5 flex items-center justify-center rounded hover:bg-vscode-list-hoverBackground text-vscode-descriptionForeground hover:text-vscode-foreground bg-transparent border-none cursor-pointer"
-        >
-          <X size={14} />
-        </button>
-      </Tooltip>
-    )}
-  </div>
-);
-
-const ModalBody: FC<{ children: ReactNode }> = ({ children }) => (
-  <div className="p-4 flex flex-col gap-3 text-xs leading-relaxed text-[var(--vscode-foreground)]">{children}</div>
-);
-
-const ModalFooter: FC<{ children: ReactNode }> = ({ children }) => (
-  <div className="px-4 py-3 bg-[var(--vscode-sideBarSectionHeader-background)]/50 border-t border-[var(--vscode-panel-border)]/50 flex justify-end gap-2">
-    {children}
-  </div>
-);
-
 export const ConfirmDialog: FC<ConfirmDialogProps> = ({
   isOpen,
   title,
@@ -134,36 +76,55 @@ export const ConfirmDialog: FC<ConfirmDialogProps> = ({
 
   useModalKeyboard({ isOpen, onEscape: onCancel, onEnter: onConfirm });
 
-  return (
-    <Modal isOpen={isOpen} ariaLabelledBy={titleId} ariaDescribedBy={description ? descriptionId : undefined}>
-      <ModalHeader onClose={onCancel}>
-        <h3 id={titleId} className="font-semibold text-xs uppercase tracking-wider text-[var(--vscode-foreground)] m-0">
-          {title}
-        </h3>
-      </ModalHeader>
+  if (!isOpen) return null;
 
-      <ModalBody>
-        {description && (
-          <p id={descriptionId} className="m-0 text-[var(--vscode-foreground)]">
-            {description}
-          </p>
-        )}
+  return createPortal(
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 select-none">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={description ? descriptionId : undefined}
+        className="bg-[var(--vscode-editor-background)] border border-[var(--vscode-panel-border)] rounded-md w-full max-w-md overflow-hidden flex flex-col shadow-xl"
+      >
+        <div className="px-4 py-3 bg-[var(--vscode-sideBarSectionHeader-background)] border-b border-[var(--vscode-panel-border)]/50 flex justify-between items-center">
+          <h3 id={titleId} className="font-semibold text-xs uppercase tracking-wider text-[var(--vscode-foreground)] m-0">
+            {title}
+          </h3>
+          <Tooltip content="Close dialog" side="left">
+            <button
+              onClick={onCancel}
+              className="shrink-0 w-5 h-5 flex items-center justify-center rounded hover:bg-vscode-list-hoverBackground text-vscode-descriptionForeground hover:text-vscode-foreground bg-transparent border-none cursor-pointer"
+            >
+              <X size={14} />
+            </button>
+          </Tooltip>
+        </div>
 
-        {warningText && (
-          <div className="text-[var(--vscode-errorForeground)] bg-[var(--vscode-input-background)] p-3 rounded border border-[var(--vscode-panel-border)]/50 text-xs">
-            {warningText}
-          </div>
-        )}
-      </ModalBody>
+        <div className="p-4 flex flex-col gap-3 text-xs leading-relaxed text-[var(--vscode-foreground)]">
+          {description && (
+            <p id={descriptionId} className="m-0 text-[var(--vscode-foreground)]">
+              {description}
+            </p>
+          )}
 
-      <ModalFooter>
-        <Button variant="secondary" onClick={onCancel}>
-          {cancelLabel}
-        </Button>
-        <Button variant="danger" onClick={onConfirm}>
-          {confirmLabel}
-        </Button>
-      </ModalFooter>
-    </Modal>
+          {warningText && (
+            <div className="text-[var(--vscode-errorForeground)] bg-[var(--vscode-input-background)] p-3 rounded border border-[var(--vscode-panel-border)]/50 text-xs">
+              {warningText}
+            </div>
+          )}
+        </div>
+
+        <div className="px-4 py-3 bg-[var(--vscode-sideBarSectionHeader-background)]/50 border-t border-[var(--vscode-panel-border)]/50 flex justify-end gap-2">
+          <Button variant="secondary" onClick={onCancel}>
+            {cancelLabel}
+          </Button>
+          <Button variant="danger" onClick={onConfirm}>
+            {confirmLabel}
+          </Button>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 };

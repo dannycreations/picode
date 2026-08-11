@@ -4,14 +4,9 @@ import { logger } from '@pi-code/shared/core/logger';
 
 import type { MouseEvent } from 'react';
 
-interface CopyOptions {
-  readonly onSuccess?: () => void;
-}
-
-async function copyToClipboard(text: string, options?: CopyOptions): Promise<boolean> {
+async function copyToClipboard(text: string): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(text);
-    options?.onSuccess?.();
     return true;
   } catch (error) {
     const err = error instanceof Error ? error : new Error('Failed to copy to clipboard');
@@ -37,15 +32,14 @@ export const useCopyToClipboard = (feedbackDuration = 2000): UseCopyToClipboardR
         clearTimeout(timeoutRef.current);
       }
 
-      const success = await copyToClipboard(text, {
-        onSuccess: () => {
-          setShowCopy(true);
-          timeoutRef.current = setTimeout(() => {
-            setShowCopy(false);
-            timeoutRef.current = null;
-          }, feedbackDuration);
-        },
-      });
+      const success = await copyToClipboard(text);
+      if (success) {
+        setShowCopy(true);
+        timeoutRef.current = setTimeout(() => {
+          setShowCopy(false);
+          timeoutRef.current = null;
+        }, feedbackDuration);
+      }
 
       return success;
     },

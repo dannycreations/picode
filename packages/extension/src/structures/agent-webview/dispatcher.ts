@@ -18,10 +18,6 @@ type HandlerMap = {
   [T in WebviewToExtensionMessage['type']]: CommandHandler<T>;
 };
 
-interface ChatMessageDispatcher {
-  readonly dispatch: (message: WebviewToExtensionMessage, context: MessageHandlerContext) => Promise<void>;
-}
-
 type ModelSelection = Pick<ModelItem, 'id' | 'provider'>;
 
 function toModelSelection(msg: { model_id?: string; model_provider?: string }): ModelSelection | undefined {
@@ -33,9 +29,6 @@ const HANDLER_MAP: HandlerMap = {
     const data = await ctx.sessionService.getInitData(ctx.cwd);
     ctx.postMessage({ type: 'init_data', payload: data });
     ctx.agent.broadcastReplyQueue();
-  },
-  start_new_task: (msg, ctx) => {
-    void ctx.agent.startTask(msg.text, toModelSelection(msg), ctx.webview, msg.images);
   },
   send_message: (msg, ctx) => {
     void ctx.agent.startTask(msg.text, toModelSelection(msg), ctx.webview, msg.images, msg.path);
@@ -118,17 +111,13 @@ const HANDLER_MAP: HandlerMap = {
   },
 };
 
-export function createDefaultDispatcher(): ChatMessageDispatcher {
-  return {
-    async dispatch(message, context) {
-      const handler = HANDLER_MAP[message.type] as ChatMessageDispatcher['dispatch'];
-      try {
-        await handler(message, context);
-      } catch (err) {
-        const errorMessage = formatThrownValue(err);
-        logger.error(`Error handling message "${message.type}":`, err);
-        window.showErrorMessage(`Action failed (${message.type}): ${errorMessage}`);
-      }
-    },
-  };
+export async function dispatch(message: WebviewToExtensionMessage, context: MessageHandlerContext): Promise<void> {
+  try {
+    const handler = HANDLER_MAP[message.type] as Function;
+    await handler(message, context);
+  } catch (err) {
+    const errorMessage = formatThrownValue(err);
+    logger.error(`Error handling message "${message.type}":`, err);
+    window.showErrorMessage(`Action failed (${message.type}): ${errorMessage}`);
+  }
 }

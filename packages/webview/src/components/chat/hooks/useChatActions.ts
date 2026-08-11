@@ -113,7 +113,13 @@ export const useChatActions = (params: UseChatActionsProps): UseChatActionsRetur
           messages: [userMsg],
           ...EMPTY_STATS,
         });
-        vscode?.postMessage({ type: 'start_new_task', text, model_id: selectedModel, model_provider: selectedProvider, images });
+        vscode?.postMessage({
+          type: 'send_message',
+          text,
+          model_id: selectedModel,
+          model_provider: selectedProvider,
+          images,
+        });
       } else {
         if (isAgentRunning) {
           vscode?.postMessage({

@@ -32,9 +32,7 @@ interface TooltipAnchorProps {
 interface TooltipProps {
   readonly content?: ReactNode;
   readonly side?: TooltipSide;
-  readonly delay?: number;
   readonly disabled?: boolean;
-  readonly className?: string;
   readonly children: ReactElement<TooltipAnchorProps>;
 }
 
@@ -51,7 +49,7 @@ function getArrowStyle(placement: TooltipPlacement): CSSProperties {
   }
 }
 
-export const Tooltip: FC<TooltipProps> = ({ content, side = 'top', delay = OPEN_DELAY_MS, disabled = false, className, children }) => {
+export const Tooltip: FC<TooltipProps> = ({ content, side = 'top', disabled = false, children }) => {
   const tooltipId = useId();
   const anchorRef = useRef<HTMLElement | null>(null);
   const tooltipRef = useRef<HTMLDivElement | null>(null);
@@ -73,16 +71,16 @@ export const Tooltip: FC<TooltipProps> = ({ content, side = 'top', delay = OPEN_
   const show = useCallback(
     (immediate: boolean): void => {
       cancelTimer();
-      if (immediate || delay <= 0) {
+      if (immediate) {
         setOpen(true);
         return;
       }
       timerRef.current = setTimeout(() => {
         timerRef.current = null;
         setOpen(true);
-      }, delay);
+      }, OPEN_DELAY_MS);
     },
-    [cancelTimer, delay],
+    [cancelTimer],
   );
 
   const hide = useCallback((): void => {
@@ -199,7 +197,6 @@ export const Tooltip: FC<TooltipProps> = ({ content, side = 'top', delay = OPEN_
               'fixed z-[2000] w-max max-w-[280px] rounded px-2 py-1 text-xs leading-snug text-balance shadow-md pointer-events-none select-none',
               'border border-vscode-editorHoverWidget-border bg-vscode-editorHoverWidget-background text-vscode-editorHoverWidget-foreground',
               placement && 'animate-tooltip-in',
-              className,
             )}
           >
             {content}

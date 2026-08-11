@@ -3,12 +3,12 @@ interface SettingBase {
   readonly restricted?: boolean;
 }
 
-export interface BooleanSetting extends SettingBase {
+interface BooleanSetting extends SettingBase {
   readonly type: 'boolean';
   readonly default: boolean;
 }
 
-export interface NumberSetting extends SettingBase {
+interface NumberSetting extends SettingBase {
   readonly type: 'number';
   readonly default: number;
   readonly minimum: number;
@@ -17,7 +17,7 @@ export interface NumberSetting extends SettingBase {
   readonly unit?: string;
 }
 
-export interface StringListSetting extends SettingBase {
+interface StringListSetting extends SettingBase {
   readonly type: 'string[]';
   readonly default: readonly string[];
 }

@@ -1,4 +1,4 @@
-import { contentText } from '@earendil-works/pi-ai';
+import { contentText, uuidv7 } from '@earendil-works/pi-ai';
 import { calculateContextTokens, getLastAssistantUsage, parseSkillBlock } from '@earendil-works/pi-coding-agent';
 
 import { toBase64DataUrl } from '@pi-code/extension/utilities/codec';
@@ -111,7 +111,7 @@ export function convertSessionEntries(entries: readonly SessionEntry[]): ChatMes
 
       for (const toolCall of parts.filter((part) => part.type === 'toolCall')) {
         result.push({
-          id: toolCall.id || `tc-${Date.now()}`,
+          id: toolCall.id || uuidv7(),
           sender: 'tool',
           text: toolCall.name,
           toolName: toolCall.name as ToolName,

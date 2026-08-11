@@ -3,7 +3,7 @@ import { commands, ProgressLocation, window, workspace } from 'vscode';
 
 import { COMMIT_MESSAGE_PROMPT } from '@pi-code/extension/core/prompt';
 import { getSettingsManager } from '@pi-code/extension/core/settings';
-import { getModelRuntime } from '@pi-code/extension/structures/agent-runtime/resource';
+import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { buildGitContext, getGitChanges, getGitDiffContext, getRepoContext } from '@pi-code/extension/structures/commit-message/git';
 import { getGitRepository } from '@pi-code/extension/utilities/git';
 import { extractCodeFenceMessage } from '@pi-code/extension/utilities/markdown';
@@ -104,7 +104,7 @@ export function registerCommitMessageCommand(): Disposable {
           logger.info(`Fully assembled prompt (character length: ${prompt.length})`);
 
           logger.info('Initializing ModelRuntime...');
-          const runtime = await getModelRuntime(cwd);
+          const runtime = (await createAgentResources(cwd)).services.modelRuntime;
 
           const settingsManager = getSettingsManager(cwd);
           const defaultProviderId = settingsManager.getDefaultProvider();

@@ -92,8 +92,7 @@ describe('getEnvironmentDetails workspace files listing', () => {
       Uri.file('/workspace/webview/style.css'),
     ]);
 
-    const dummySession = { messages: [] } as any;
-    const details = await getEnvironmentDetails(dummySession, '/workspace', true);
+    const details = await getEnvironmentDetails('/workspace', true);
 
     // The limit is 3, so after alphabetical sorting:
     // 1. extension/main.ts

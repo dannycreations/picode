@@ -7,22 +7,21 @@ export interface SettingsTab {
   readonly id: SettingsTabId;
   readonly label: string;
   readonly icon: LucideIcon;
-  readonly title: string;
   readonly description: string;
 }
 
-export interface SettingFieldBase {
+interface SettingFieldBase {
   readonly tab: SettingsTabId;
   readonly label: string;
   readonly icon?: LucideIcon;
   readonly parent?: SettingKey;
 }
 
-export interface SettingListField extends SettingFieldBase {
+interface SettingListField extends SettingFieldBase {
   readonly placeholder: string;
 }
 
-export type SettingField<K extends SettingKey> = SettingSpecOf<K>['type'] extends 'string[]' ? SettingListField : SettingFieldBase;
+type SettingField<K extends SettingKey> = SettingSpecOf<K>['type'] extends 'string[]' ? SettingListField : SettingFieldBase;
 
 export type SettingFieldRegistry = {
   readonly [K in SettingKey]: SettingField<K>;

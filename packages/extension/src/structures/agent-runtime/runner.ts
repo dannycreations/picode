@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto';
+import { uuidv7 } from '@earendil-works/pi-ai';
 
 import { readAppSettings } from '@pi-code/extension/core/settings';
 import { EventMapper } from '@pi-code/extension/structures/agent-runtime/event';
@@ -39,7 +39,7 @@ export class AgentRunner {
 
   public addToReplyQueue(text: string, images?: string[]): void {
     const msg: QueueMessage = {
-      id: randomUUID(),
+      id: uuidv7(),
       text,
       images,
       ts: Date.now(),
@@ -190,7 +190,7 @@ export class AgentRunner {
     await this.applySelectedModel(session, selectedModel);
 
     const isNewSession = session.agent.state.messages.length === 0;
-    const envDetails = await getEnvironmentDetails(session, cwd, isNewSession);
+    const envDetails = await getEnvironmentDetails(cwd, isNewSession);
     return { session, envDetails };
   }
 

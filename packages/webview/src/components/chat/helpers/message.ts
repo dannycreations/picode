@@ -31,13 +31,13 @@ const ROW_HEIGHT_ESTIMATE_PX: Record<ChatMessage['sender'], number> = {
   assistant: 200,
 };
 
-const rowContainmentStyles = new Map<ChatMessage['sender'], CSSProperties>();
+const ROW_CONTAINMENT_STYLES = Object.fromEntries(
+  (Object.keys(ROW_HEIGHT_ESTIMATE_PX) as ChatMessage['sender'][]).map((sender) => [
+    sender,
+    { containIntrinsicSize: `auto ${ROW_HEIGHT_ESTIMATE_PX[sender]}px` },
+  ]),
+) as Record<ChatMessage['sender'], CSSProperties>;
 
 export function getRowContainmentStyle(sender: ChatMessage['sender']): CSSProperties {
-  let style = rowContainmentStyles.get(sender);
-  if (style === undefined) {
-    style = { containIntrinsicSize: `auto ${ROW_HEIGHT_ESTIMATE_PX[sender]}px` };
-    rowContainmentStyles.set(sender, style);
-  }
-  return style;
+  return ROW_CONTAINMENT_STYLES[sender];
 }
