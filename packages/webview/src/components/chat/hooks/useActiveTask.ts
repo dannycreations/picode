@@ -99,9 +99,10 @@ export const useActiveTask = (): UseActiveTaskReturn => {
             sender: 'assistant',
             text: '',
             ts: timestamp || Date.now(),
+            toolStatus: 'running',
           };
 
-          return { ...prev, messages: [...prev.messages, newMsg] };
+          return { ...prev, messages: [...settlePendingApiRequests(prev.messages), newMsg] };
         });
         break;
       }
@@ -161,12 +162,14 @@ export const useActiveTask = (): UseActiveTaskReturn => {
         setActiveTask((prev) => {
           if (!prev) return null;
           const messages = [...settlePendingApiRequests(prev.messages, { cost })];
-          if (cost !== undefined) {
-            for (let i = messages.length - 1; i >= 0; i--) {
-              if (messages[i].sender === 'assistant') {
-                messages[i] = { ...messages[i], cost };
-                break;
-              }
+          for (let i = messages.length - 1; i >= 0; i--) {
+            if (messages[i].sender === 'assistant') {
+              messages[i] = {
+                ...messages[i],
+                toolStatus: 'completed' as const,
+                cost: cost !== undefined ? cost : messages[i].cost,
+              };
+              break;
             }
           }
           const next = { ...prev, messages };
@@ -179,7 +182,17 @@ export const useActiveTask = (): UseActiveTaskReturn => {
         const { text, thinking } = msg.payload;
         setActiveTask((prev) => {
           if (!prev) return null;
-          const messages = [...prev.messages];
+          let messages = [...prev.messages];
+          let settled = false;
+          for (const m of messages) {
+            if (m.sender === 'api_request' && m.toolStatus === 'running') {
+              settled = true;
+              break;
+            }
+          }
+          if (settled) {
+            messages = settlePendingApiRequests(messages);
+          }
           for (let i = messages.length - 1; i >= 0; i--) {
             if (messages[i].sender === 'assistant') {
               const message = messages[i];
@@ -301,26 +314,32 @@ export const useActiveTask = (): UseActiveTaskReturn => {
 
       case 'agent_error':
         setIsAgentRunning(false);
-        setActiveTask((prev) =>
-          prev
-            ? {
-                ...prev,
-                messages: appendErrorMessage(
-                  settlePendingApiRequests(prev.messages, { error: msg.payload.message }),
-                  crypto.randomUUID(),
-                  msg.payload.message,
-                ),
-              }
-            : null,
-        );
+        setActiveTask((prev) => {
+          if (!prev) return null;
+          const messages = settlePendingApiRequests(prev.messages, { error: msg.payload.message }).map((m) => {
+            if (m.sender === 'assistant' && m.toolStatus === 'running') {
+              return { ...m, toolStatus: 'completed' as const };
+            }
+            return m;
+          });
+          return {
+            ...prev,
+            messages: appendErrorMessage(messages, crypto.randomUUID(), msg.payload.message),
+          };
+        });
         break;
 
       case 'agent_settled':
         setIsAgentRunning(false);
         setActiveTask((prev) => {
           if (!prev) return null;
-          const messages = settlePendingApiRequests(prev.messages);
-          const next = messages === prev.messages ? prev : { ...prev, messages };
+          const messages = settlePendingApiRequests(prev.messages).map((m) => {
+            if (m.sender === 'assistant' && m.toolStatus === 'running') {
+              return { ...m, toolStatus: 'completed' as const };
+            }
+            return m;
+          });
+          const next = { ...prev, messages };
           return msg.payload ? { ...next, ...msg.payload } : next;
         });
         break;

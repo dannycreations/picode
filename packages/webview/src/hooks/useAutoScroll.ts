@@ -57,11 +57,17 @@ export const useAutoScroll = (resetKey?: unknown): UseAutoScrollReturn => {
     if (!scroller) return;
 
     const atBottom = isAtBottom(scroller);
-    isFollowingRef.current = atBottom;
-    if (atBottom) {
+    if (isFollowingRef.current) {
+      if (shouldReleaseFollow(scroller, pinnedTopRef.current)) {
+        isFollowingRef.current = false;
+      } else if (atBottom) {
+        pinnedTopRef.current = scroller.scrollTop;
+      }
+    } else if (atBottom) {
+      isFollowingRef.current = true;
       pinnedTopRef.current = scroller.scrollTop;
     }
-    setShowScrollToBottom(!atBottom);
+    setShowScrollToBottom(!isFollowingRef.current);
   }, []);
 
   // A callback ref rather than an effect: the observer has to follow the content

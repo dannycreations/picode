@@ -32,7 +32,7 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
           titleClassName="text-emerald-500"
           timestamp={message.ts}
         />
-        <div className="ml-6 text-sm leading-normal text-vscode-foreground select-text">
+        <div className="ml-1.5 border-l-2 border-emerald-500 pl-3.5 text-sm leading-normal text-vscode-foreground select-text">
           <Markdown markdown={completionResult || (isRunning ? 'Completing task...' : '')} />
         </div>
       </div>

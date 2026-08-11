@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 import { Markdown } from '@pi-code/webview/components/chat/markdown/Markdown';
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
+import { Spinner } from '@pi-code/webview/components/shared/Spinner';
 
 import type { FC } from 'react';
 import type { ChatMessage } from '@pi-code/shared/core/protocol';
@@ -24,7 +25,13 @@ export const AssistantMessage: FC<AssistantMessageProps> = ({ message }) => {
       {hasReasoning && (
         <div className={cn('flex flex-col gap-1.5', hasText && 'mb-2')}>
           <MessageHeader
-            icon={<Lightbulb size={14} className="text-vscode-focusBorder shrink-0" />}
+            icon={
+              message.toolStatus === 'running' && !hasText ? (
+                <Spinner className="text-vscode-focusBorder" />
+              ) : (
+                <Lightbulb size={14} className="text-vscode-focusBorder shrink-0" />
+              )
+            }
             title="Pi Thinking"
             timestamp={message.ts}
             onClick={() => setIsReasoningExpanded(!isReasoningExpanded)}
@@ -41,7 +48,17 @@ export const AssistantMessage: FC<AssistantMessageProps> = ({ message }) => {
 
       {hasText && (
         <div className="flex flex-col gap-1.5">
-          <MessageHeader icon={<MessageCircle size={14} className="text-vscode-focusBorder shrink-0" />} title="Pi Said" timestamp={message.ts} />
+          <MessageHeader
+            icon={
+              message.toolStatus === 'running' ? (
+                <Spinner className="text-vscode-focusBorder" />
+              ) : (
+                <MessageCircle size={14} className="text-vscode-focusBorder shrink-0" />
+              )
+            }
+            title="Pi Said"
+            timestamp={message.ts}
+          />
           <div className="ml-6 text-sm leading-normal text-vscode-foreground select-text">
             <Markdown markdown={message.text} />
           </div>
