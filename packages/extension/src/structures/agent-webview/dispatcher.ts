@@ -32,12 +32,22 @@ const HANDLER_MAP: HandlerMap = {
   init: async (_, ctx) => {
     const data = await ctx.sessionService.getInitData(ctx.cwd);
     ctx.postMessage({ type: 'init_data', payload: data });
+    ctx.agent.broadcastReplyQueue();
   },
   start_new_task: (msg, ctx) => {
     void ctx.agent.startTask(msg.text, toModelSelection(msg), ctx.webview, msg.images);
   },
   send_message: (msg, ctx) => {
     void ctx.agent.startTask(msg.text, toModelSelection(msg), ctx.webview, msg.images, msg.path);
+  },
+  add_to_reply_queue: (msg, ctx) => {
+    ctx.agent.addToReplyQueue(msg.text, msg.images);
+  },
+  edit_reply_queue: (msg, ctx) => {
+    ctx.agent.editReplyQueue(msg.id, msg.text);
+  },
+  remove_from_reply_queue: (msg, ctx) => {
+    ctx.agent.removeFromReplyQueue(msg.id);
   },
   continue_task: (msg, ctx) => {
     void ctx.agent.continueTask(msg.path || '', ctx.webview, toModelSelection(msg));

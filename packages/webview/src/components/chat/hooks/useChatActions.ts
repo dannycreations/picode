@@ -12,6 +12,7 @@ interface UseChatActionsProps {
   readonly models: ModelItem[];
   readonly selectedModel: string;
   readonly pendingQuestion: ChatMessage | undefined;
+  readonly isAgentRunning: boolean;
   readonly setActiveTask: Dispatch<SetStateAction<ActiveTaskState | null>>;
   readonly setIsAgentRunning: Dispatch<SetStateAction<boolean>>;
   readonly setPastTasks: Dispatch<SetStateAction<HistoryItem[]>>;
@@ -29,7 +30,18 @@ interface UseChatActionsReturn {
 }
 
 export const useChatActions = (params: UseChatActionsProps): UseChatActionsReturn => {
-  const { activeTask, models, selectedModel, pendingQuestion, setActiveTask, setIsAgentRunning, setPastTasks, setInputValue, textareaRef } = params;
+  const {
+    activeTask,
+    models,
+    selectedModel,
+    pendingQuestion,
+    isAgentRunning,
+    setActiveTask,
+    setIsAgentRunning,
+    setPastTasks,
+    setInputValue,
+    textareaRef,
+  } = params;
 
   const handleAnswerQuestion = useCallback(
     (questionId: string, text: string): void => {
@@ -83,7 +95,6 @@ export const useChatActions = (params: UseChatActionsProps): UseChatActionsRetur
         return;
       }
 
-      setIsAgentRunning(true);
       const userMsg: ChatMessage = {
         id: crypto.randomUUID(),
         sender: 'user',
@@ -95,6 +106,7 @@ export const useChatActions = (params: UseChatActionsProps): UseChatActionsRetur
       const selectedProvider = models.find((m) => m.id === selectedModel)?.provider;
 
       if (!activeTask) {
+        setIsAgentRunning(true);
         setActiveTask({
           id: 'task-active',
           title: text,
@@ -103,18 +115,27 @@ export const useChatActions = (params: UseChatActionsProps): UseChatActionsRetur
         });
         vscode?.postMessage({ type: 'start_new_task', text, model_id: selectedModel, model_provider: selectedProvider, images });
       } else {
-        setActiveTask((prev) => (prev ? { ...prev, messages: [...prev.messages, userMsg] } : null));
-        vscode?.postMessage({
-          type: 'send_message',
-          text,
-          path: activeTask.path,
-          model_id: selectedModel,
-          model_provider: selectedProvider,
-          images,
-        });
+        if (isAgentRunning) {
+          vscode?.postMessage({
+            type: 'add_to_reply_queue',
+            text,
+            images: images.length > 0 ? images : undefined,
+          });
+        } else {
+          setIsAgentRunning(true);
+          setActiveTask((prev) => (prev ? { ...prev, messages: [...prev.messages, userMsg] } : null));
+          vscode?.postMessage({
+            type: 'send_message',
+            text,
+            path: activeTask.path,
+            model_id: selectedModel,
+            model_provider: selectedProvider,
+            images,
+          });
+        }
       }
     },
-    [pendingQuestion, handleAnswerQuestion, models, selectedModel, activeTask, setActiveTask, setIsAgentRunning],
+    [pendingQuestion, handleAnswerQuestion, models, selectedModel, activeTask, setActiveTask, setIsAgentRunning, isAgentRunning],
   );
 
   const handleToolResponse = useCallback(

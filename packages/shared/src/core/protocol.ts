@@ -21,7 +21,7 @@ export type ToolName =
 
 export interface ChatMessage {
   readonly id: string;
-  readonly sender: 'user' | 'assistant' | 'tool' | 'error' | 'checkpoint' | 'info' | 'api_request';
+  readonly sender: 'user' | 'assistant' | 'tool' | 'error' | 'checkpoint' | 'info' | 'api_request' | 'queue';
   readonly text: string;
   readonly ts: number;
   readonly toolName?: ToolName;
@@ -40,6 +40,13 @@ export interface HistoryItem {
   readonly id: string;
   readonly path: string;
   readonly task: string;
+  readonly ts: number;
+}
+
+export interface QueueMessage {
+  readonly id: string;
+  readonly text: string;
+  readonly images?: string[];
   readonly ts: number;
 }
 
@@ -88,7 +95,10 @@ export type WebviewToExtensionMessage =
   | { type: 'cancel_task' }
   | { type: 'compact'; id: string; path?: string; title: string }
   | { type: 'reload' }
-  | { type: 'update_settings'; settings: Partial<AppSettings> };
+  | { type: 'update_settings'; settings: Partial<AppSettings> }
+  | { type: 'add_to_reply_queue'; text: string; images?: string[] }
+  | { type: 'edit_reply_queue'; id: string; text: string }
+  | { type: 'remove_from_reply_queue'; id: string };
 
 export type ExtensionToWebviewMessage =
   | {
@@ -120,4 +130,5 @@ export type ExtensionToWebviewMessage =
   | { type: 'info'; payload: { text: string } }
   | { type: 'show_settings' }
   | { type: 'set_chat_input'; payload: { text: string } }
+  | { type: 'reply_queue_data'; payload: { queue: QueueMessage[] } }
   | { type: 'stream_delta'; payload: { text?: string; thinking?: string } };

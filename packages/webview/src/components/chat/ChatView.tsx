@@ -92,6 +92,7 @@ export const ChatView: FC = () => {
     models: config.models,
     selectedModel: config.selectedModel,
     pendingQuestion: task.pendingQuestion,
+    isAgentRunning: task.isAgentRunning,
     setActiveTask: task.setActiveTask,
     setIsAgentRunning: task.setIsAgentRunning,
     setPastTasks: history.setPastTasks,
@@ -170,7 +171,7 @@ export const ChatView: FC = () => {
   // A pending question keeps the composer usable so the user can answer with
   // free text instead of picking one of the suggestions.
   const isAwaitingApproval = activeTask?.messages.some((m) => m.toolStatus === 'approval') ?? false;
-  const isInputDisabled = !pendingQuestion && (isAgentRunning || isAwaitingApproval);
+  const isInputDisabled = !pendingQuestion && isAwaitingApproval;
 
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden max-w-5xl mx-auto bg-[var(--vscode-sideBar-background)]">

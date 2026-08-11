@@ -1,3 +1,5 @@
+import { randomUUID } from 'crypto';
+
 import { EventMapper } from '@pi-code/extension/structures/agent-runtime/event';
 import { QuestionBridge } from '@pi-code/extension/structures/agent-runtime/question';
 import { createSession } from '@pi-code/extension/structures/agent-runtime/session';
@@ -9,10 +11,10 @@ import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
 import { logger } from '@pi-code/shared/core/logger';
 
 import type { AfterToolCallResult } from '@earendil-works/pi-agent-core';
-import type { ImageContent } from '@earendil-works/pi-ai';
+import type { ImageContent, TextContent } from '@earendil-works/pi-ai';
 import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent';
 import type { Webview } from 'vscode';
-import type { ModelItem } from '@pi-code/shared/core/protocol';
+import type { ModelItem, QueueMessage } from '@pi-code/shared/core/protocol';
 
 function parseImageAttachments(images?: string[]): ImageContent[] | undefined {
   if (!images || images.length === 0) return undefined;
@@ -28,10 +30,44 @@ function parseImageAttachments(images?: string[]): ImageContent[] | undefined {
 export class AgentRunner {
   private session: AgentSession | null = null;
   private unsubscribeSessionEvents: (() => void) | null = null;
+  private replyQueue: QueueMessage[] = [];
 
   private readonly messenger = new WebviewMessenger();
   private readonly event = new EventMapper();
   private readonly question = QuestionBridge.getInstance();
+
+  public addToReplyQueue(text: string, images?: string[]): void {
+    const msg: QueueMessage = {
+      id: randomUUID(),
+      text,
+      images,
+      ts: Date.now(),
+    };
+    this.replyQueue.push(msg);
+    this.broadcastReplyQueue();
+  }
+
+  public editReplyQueue(id: string, text: string): void {
+    this.replyQueue = this.replyQueue.map((m) => (m.id === id ? { ...m, text } : m));
+    this.broadcastReplyQueue();
+  }
+
+  public removeFromReplyQueue(id: string): void {
+    this.replyQueue = this.replyQueue.filter((m) => m.id !== id);
+    this.broadcastReplyQueue();
+  }
+
+  public clearReplyQueue(): void {
+    this.replyQueue = [];
+    this.broadcastReplyQueue();
+  }
+
+  public broadcastReplyQueue(): void {
+    this.messenger.post({
+      type: 'reply_queue_data',
+      payload: { queue: this.replyQueue },
+    });
+  }
 
   public async startTask(
     promptText: string,
@@ -40,6 +76,8 @@ export class AgentRunner {
     images?: string[],
     path?: string,
   ): Promise<void> {
+    this.clearReplyQueue();
+
     try {
       const { session, envDetails } = await this.prepareSession(webview, path, selectedModel);
 
@@ -111,6 +149,7 @@ export class AgentRunner {
 
   public abort(): void {
     this.question.cancelAll();
+    this.clearReplyQueue();
 
     if (this.session) {
       void this.session.abort().catch((err) => {
@@ -123,6 +162,7 @@ export class AgentRunner {
     this.messenger.dispose();
     this.cleanupSession();
     this.question.cancelAll();
+    this.clearReplyQueue();
   }
 
   public getSessionFile(): string | undefined {
@@ -164,6 +204,7 @@ export class AgentRunner {
     this.session = session;
 
     this.setupTerminationHook(session);
+    this.setupReplyQueueHook(session);
     this.subscribeToSessionEvents(session);
 
     return session;
@@ -195,6 +236,39 @@ export class AgentRunner {
     };
   }
 
+  private setupReplyQueueHook(session: AgentSession): void {
+    const basePrepareNextTurn = session.agent.prepareNextTurnWithContext;
+    session.agent.prepareNextTurnWithContext = async (context, signal) => {
+      const snapshot = await basePrepareNextTurn?.(context, signal);
+
+      if (this.replyQueue.length > 0) {
+        const undelivered: QueueMessage[] = [];
+
+        for (const msg of this.replyQueue) {
+          const attachments = parseImageAttachments(msg.images);
+          const content: (TextContent | ImageContent)[] = [{ type: 'text', text: msg.text }];
+          if (attachments) {
+            content.push(...attachments);
+          }
+
+          try {
+            session.agent.steer({ role: 'user', content, timestamp: msg.ts });
+          } catch (err) {
+            logger.error('Failed to steer queued reply, keeping it for later:', err);
+            undelivered.push(msg);
+          }
+        }
+
+        // Only drop the messages that were actually delivered; failed ones
+        // stay queued and are retried on the next turn.
+        this.replyQueue = undelivered;
+        this.broadcastReplyQueue();
+      }
+
+      return snapshot;
+    };
+  }
+
   private subscribeToSessionEvents(session: AgentSession): void {
     this.unsubscribeSessionEvents = session.subscribe((event) => {
       this.handleSessionEvent(event, session);
@@ -202,6 +276,9 @@ export class AgentRunner {
   }
 
   private handleSessionEvent(event: AgentSessionEvent, session: AgentSession): void {
+    if (event.type === 'agent_settled' || event.type === 'agent_end') {
+      this.clearReplyQueue();
+    }
     const message = this.event.mapEvent(event, session);
     if (message) {
       this.messenger.post(message);

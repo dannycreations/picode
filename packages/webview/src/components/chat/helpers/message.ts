@@ -26,6 +26,7 @@ const ROW_HEIGHT_ESTIMATE_PX: Record<ChatMessage['sender'], number> = {
   info: 44,
   error: 96,
   user: 96,
+  queue: 96,
   tool: 120,
   assistant: 200,
 };

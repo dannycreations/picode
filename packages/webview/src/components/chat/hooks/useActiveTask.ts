@@ -76,6 +76,26 @@ export const useActiveTask = (): UseActiveTaskReturn => {
         break;
       }
 
+      case 'reply_queue_data': {
+        const { queue } = msg.payload;
+        setActiveTask((prev) => {
+          if (!prev) return null;
+          const nonQueueMessages = prev.messages.filter((m) => m.sender !== 'queue');
+          const queueMessages: ChatMessage[] = queue.map((q) => ({
+            id: q.id,
+            sender: 'queue' as const,
+            text: q.text,
+            images: q.images,
+            ts: q.ts,
+          }));
+          return {
+            ...prev,
+            messages: [...nonQueueMessages, ...queueMessages],
+          };
+        });
+        break;
+      }
+
       case 'compaction_end':
         setActiveTask((prev) => (prev ? { ...prev, ...msg.payload } : null));
         break;

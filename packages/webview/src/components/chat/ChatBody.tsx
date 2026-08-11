@@ -3,6 +3,7 @@ import { memo } from 'react';
 import { getRowContainmentStyle } from '@pi-code/webview/components/chat/helpers/message';
 import { AssistantMessage } from '@pi-code/webview/components/chat/messages/AssistantMessage';
 import { QuestionMessage } from '@pi-code/webview/components/chat/messages/QuestionMessage';
+import { QueueMessage } from '@pi-code/webview/components/chat/messages/QueueMessage';
 import { ApiRequestMessage, ErrorMessage, InfoMessage } from '@pi-code/webview/components/chat/messages/StatusMessage';
 import { ToolMessage } from '@pi-code/webview/components/chat/messages/ToolMessage';
 import { UserMessage } from '@pi-code/webview/components/chat/messages/UserMessage';
@@ -23,6 +24,8 @@ export const ChatBody = memo<ChatBodyProps>(({ message, commands, onApproveTool,
     switch (message.sender) {
       case 'user':
         return <UserMessage message={message} commands={commands} />;
+      case 'queue':
+        return <QueueMessage message={message} />;
       case 'assistant':
         return <AssistantMessage message={message} />;
       case 'tool':
