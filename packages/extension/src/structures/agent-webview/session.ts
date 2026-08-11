@@ -76,8 +76,14 @@ export class SessionService {
   }
 
   public async exportSession(sessionPath: string, defaultId?: string): Promise<boolean> {
-    const sessionManager = SessionManager.open(sessionPath);
-    const chatMessages = convertSessionEntries(sessionManager.buildContextEntries());
+    let chatMessages: ChatMessage[];
+    try {
+      const sessionManager = SessionManager.open(sessionPath);
+      chatMessages = convertSessionEntries(sessionManager.buildContextEntries());
+    } catch {
+      window.showWarningMessage('The session file for this task is not available yet.');
+      return false;
+    }
 
     const uri = await window.showSaveDialog({
       defaultUri: Uri.file(`pi-code-task-${defaultId || Date.now()}.json`),

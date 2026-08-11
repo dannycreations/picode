@@ -63,13 +63,24 @@ const HANDLER_MAP: HandlerMap = {
     const path = msg.path || ctx.agent.getSessionFile();
     await runCompact(ctx, msg.id, msg.title, path);
   },
-  close_task: (_, ctx) => {
+  close_task: async (_, ctx) => {
     try {
       ctx.agent.dispose();
     } catch (err) {
       logger.error('Failed to dispose agent runner:', err);
     }
     ctx.recreateAgent();
+
+    // The just-closed task is now persisted on disk but the webview's Recent
+    // Tasks list is still showing the stale init snapshot. Push the refreshed
+    // current-scope history so the completed task renders without the user
+    // first having to open the full History view.
+    try {
+      const history = await ctx.sessionService.fetchHistory(ctx.cwd, 'current');
+      ctx.postMessage({ type: 'history_data', payload: { history } });
+    } catch (err) {
+      logger.error('Failed to refresh history after closing task:', err);
+    }
   },
   load_session: async (msg, ctx) => {
     const { messages, stats } = await ctx.sessionService.loadSessionDetails(msg.path, ctx.cwd);

@@ -10,9 +10,7 @@ export class WorkspaceService {
     const uri = isAbsolute(relativePath) ? Uri.file(relativePath) : Uri.joinPath(Uri.file(cwd), relativePath);
     const doc = await workspace.openTextDocument(uri);
     const target = line ? doc.validateRange(new Range(new Position(line - 1, 0), new Position(line - 1, 0))) : undefined;
-    await window.showTextDocument(uri, {
-      selection: target && new Selection(target.start, target.end),
-    });
+    await window.showTextDocument(uri, { selection: target && new Selection(target.start, target.end) });
   }
 
   public async openRawTask(sessionFilePath?: string): Promise<void> {
@@ -20,8 +18,13 @@ export class WorkspaceService {
       window.showWarningMessage('No session file path found for this task.');
       return;
     }
-    const doc = await workspace.openTextDocument(Uri.file(sessionFilePath));
-    await window.showTextDocument(doc);
+
+    try {
+      const doc = await workspace.openTextDocument(Uri.file(sessionFilePath));
+      await window.showTextDocument(doc);
+    } catch {
+      window.showWarningMessage('The session file for this task is not available yet.');
+    }
   }
 
   public async openBase64Image(dataUrl: string): Promise<void> {
