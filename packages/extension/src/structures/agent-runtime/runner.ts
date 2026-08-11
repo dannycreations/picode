@@ -1,11 +1,12 @@
 import { randomUUID } from 'crypto';
 
+import { readAppSettings } from '@pi-code/extension/core/settings';
 import { EventMapper } from '@pi-code/extension/structures/agent-runtime/event';
 import { QuestionBridge } from '@pi-code/extension/structures/agent-runtime/question';
 import { createSession } from '@pi-code/extension/structures/agent-runtime/session';
 import { WebviewMessenger } from '@pi-code/extension/structures/agent-runtime/webview';
 import { listCommands } from '@pi-code/extension/structures/chat-command/command';
-import { getEnvironmentDetails } from '@pi-code/extension/structures/chat-session/environment';
+import { getEnvironmentDetails, getLatestTodoList, withTodoProgress } from '@pi-code/extension/structures/chat-session/environment';
 import { parseBase64DataUrl } from '@pi-code/extension/utilities/codec';
 import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
 import { logger } from '@pi-code/shared/core/logger';
@@ -263,6 +264,18 @@ export class AgentRunner {
         // stay queued and are retried on the next turn.
         this.replyQueue = undelivered;
         this.broadcastReplyQueue();
+      }
+
+      // Keep the agent aware of the current todo list every turn without
+      // polluting session history: inject a small, current-state reminder as a
+      // transient message (stripped before the next turn) into this request's
+      // context only. It is never persisted, so history stays clean.
+      const baseContext = snapshot?.context ?? context.context;
+      if (baseContext?.messages) {
+        const settings = readAppSettings();
+        const todoList = settings.enableTodoTool ? getLatestTodoList(context.context.messages) : undefined;
+        const messages = withTodoProgress(baseContext.messages, todoList);
+        return { ...(snapshot ?? {}), context: { ...baseContext, messages } };
       }
 
       return snapshot;

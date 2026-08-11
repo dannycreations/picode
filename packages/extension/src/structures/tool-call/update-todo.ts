@@ -9,7 +9,7 @@ import type { ToolName } from '@pi-code/shared/core/protocol';
 export const updateTodoTool = defineTool({
   name: 'update_todo' as ToolName,
   label: 'Update Todo List',
-  description: 'Update the project task checklist to track progress. Provide the full updated list in "todos".',
+  description: 'Update the project task checklist in order to track complex progress.',
   parameters: Type.Object({
     todos: Type.String({ description: 'Full updated markdown checklist of TODO items.' }),
   }),

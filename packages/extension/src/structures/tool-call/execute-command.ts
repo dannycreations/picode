@@ -61,12 +61,7 @@ export const executeCommandTool = defineTool({
   parameters: Type.Object({
     command: Type.String({ description: 'The CLI command to run.' }),
     cwd: Type.Optional(Type.Union([Type.String(), Type.Null()], { description: 'Optional working directory; defaults to the workspace.' })),
-    timeout: Type.Optional(
-      Type.Integer({
-        minimum: 1,
-        description: 'Optional timeout in milliseconds; defaults to 120000 ms (2 minutes).',
-      }),
-    ),
+    timeout: Type.Optional(Type.Integer({ minimum: 1, description: 'Optional timeout in milliseconds; defaults to 120000 ms (2 minutes).' })),
   }),
   async execute(_toolCallId, params, signal, _onUpdate, ctx) {
     const limits = getOutputLimits();

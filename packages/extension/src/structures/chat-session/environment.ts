@@ -18,12 +18,14 @@ const STATUS_MAP: Record<TodoItem['status'], string> = {
 
 const GITIGNORE_OVERSCAN = 2000;
 
-function formatReminderSection(todoList?: TodoItem[]): string {
-  const lines: string[] = ['### Reminders\n'];
+const TODO_REMINDER_SECTION = '## Todo Reminders';
+
+export function formatTodoReminder(todoList?: TodoItem[]): string {
+  const lines: string[] = [TODO_REMINDER_SECTION, ''];
 
   if (!todoList || todoList.length === 0) {
     lines.push('You have not created a todo list yet. Create one with `update_todo` if your task is complicated or involves multiple steps.');
-    return lines.join('\n');
+    return lines.join('\n').trim();
   }
 
   lines.push('Below is your current list of reminders for this task. Keep them updated as you progress.', '');
@@ -36,7 +38,28 @@ function formatReminderSection(todoList?: TodoItem[]): string {
   lines.push('');
 
   lines.push('IMPORTANT: When task status changes, remember to call the `update_todo` tool to update your progress.');
-  return lines.join('\n');
+  return lines.join('\n').trim();
+}
+
+function messageText(msg: AgentMessage): string {
+  if (msg.role !== 'user') return '';
+  const content = msg.content;
+  if (typeof content === 'string') return content;
+  return content.map((part) => (part.type === 'text' ? part.text : '')).join('');
+}
+
+export function hasReminders(msg: AgentMessage): boolean {
+  return msg.role === 'user' && messageText(msg).trimStart().startsWith(TODO_REMINDER_SECTION);
+}
+
+export function withTodoProgress(messages: readonly AgentMessage[], todoList?: TodoItem[]): AgentMessage[] {
+  const injected: AgentMessage = {
+    role: 'user',
+    content: [{ type: 'text', text: formatTodoReminder(todoList) }],
+    timestamp: Date.now(),
+  };
+  const filtered = messages.filter((msg) => !hasReminders(msg));
+  return [...filtered, injected];
 }
 
 async function listFiles(cwd: string, limit = 200, excludeIgnoredFiles = true): Promise<{ paths: string[]; hitLimit: boolean }> {
@@ -117,7 +140,7 @@ export function renderFileTree(root: FileTreeNode, rootLabel: string): string {
   return lines.join('\n');
 }
 
-function getLatestTodoList(messages: readonly AgentMessage[]): TodoItem[] | undefined {
+export function getLatestTodoList(messages: readonly AgentMessage[]): TodoItem[] | undefined {
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i];
     if (msg.role === 'toolResult' && msg.toolName === 'update_todo') {
@@ -142,7 +165,7 @@ async function getGitStatusLines(cwd: string): Promise<string[]> {
   ];
 }
 
-export async function getEnvironmentDetails(session: AgentSession, cwd: string, includeFileDetails = false): Promise<string> {
+export async function getEnvironmentDetails(_session: AgentSession, cwd: string, includeFileDetails = false): Promise<string> {
   let details = '';
   const settings = readAppSettings();
 
@@ -222,15 +245,6 @@ export async function getEnvironmentDetails(session: AgentSession, cwd: string, 
     }
   }
 
-  // Reminder Section / Todo list
-  let reminderSection = '';
-  if (settings.enableTodoTool) {
-    const messages = session.messages;
-    const todoList = getLatestTodoList(messages);
-    reminderSection = formatReminderSection(todoList);
-  }
-
   const trimmedDetails = details.trim();
-  const body = trimmedDetails ? `${trimmedDetails}\n\n${reminderSection}` : reminderSection;
-  return `## Environment Details\n\n${body}`.trim();
+  return `## Environment Details\n\n${trimmedDetails}`.trim();
 }
