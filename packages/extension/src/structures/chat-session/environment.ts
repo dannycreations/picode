@@ -56,6 +56,7 @@ async function listFiles(cwd: string, limit = 200, excludeIgnoredFiles = true): 
   }
 
   const paths = uris.map((uri) => toRelativePath(uri));
+  paths.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
   return { paths: paths.slice(0, limit), hitLimit: uris.length > limit };
 }
 
@@ -71,15 +72,21 @@ export function buildFileTree(paths: readonly string[]): FileTreeNode {
     const isDir = raw.endsWith('/');
     const segments = raw.replace(/\/+$/, '').split('/');
     let node = root;
-    for (const segment of segments) {
+    for (let i = 0; i < segments.length; i++) {
+      const segment = segments[i];
+      const isLast = i === segments.length - 1;
       let child = node.children.get(segment);
       if (!child) {
-        child = { name: segment, isDir: false, children: new Map() };
+        child = { name: segment, isDir: !isLast, children: new Map() };
         node.children.set(segment, child);
+      } else if (!isLast) {
+        child.isDir = true;
       }
       node = child;
     }
-    node.isDir = isDir;
+    if (isDir) {
+      node.isDir = true;
+    }
   }
   return root;
 }
