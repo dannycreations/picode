@@ -177,6 +177,13 @@
   overflow-wrap: anywhere;
 }
 
+/* Override VS Code's default webview code styling inside pre blocks */
+pre code {
+  background-color: transparent !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+}
+
 /* High contrast overrides */
 body[data-vscode-theme-kind*='high-contrast'] .prose-markdown code:not(pre code) {
   color: var(--vscode-editorInlayHint-foreground, var(--vscode-symbolIcon-stringForeground, #e9a700));
