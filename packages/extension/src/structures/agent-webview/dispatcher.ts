@@ -62,7 +62,7 @@ const HANDLER_MAP: HandlerMap = {
     else denyApproval(msg.approval_id);
   },
   question_response: (msg) => answerQuestion(msg.question_id, msg.text),
-  cancel_task: (_, ctx) => ctx.agent.abort(),
+  cancel_task: (_, ctx) => ctx.agent.cancelTask(),
   reload: (_, ctx) => {
     void ctx.agent.reload();
   },

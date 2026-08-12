@@ -34,6 +34,7 @@ export class AgentRunner {
   private session: AgentSession | null = null;
   private unsubscribeSessionEvents: (() => void) | null = null;
   private replyQueue: QueueMessage[] = [];
+  private cancelRequested = false;
 
   private readonly event = new EventMapper();
   private readonly messenger = new WebviewMessenger();
@@ -156,15 +157,10 @@ export class AgentRunner {
     this.clearReplyQueue();
   }
 
-  public abort(): void {
+  public cancelTask(): void {
+    this.cancelRequested = true;
     cancelAllQuestions();
     this.clearReplyQueue();
-
-    if (this.session) {
-      void this.session.abort().catch((err) => {
-        logger.error('Failed to abort session:', err);
-      });
-    }
   }
 
   public dispose(): void {
@@ -180,6 +176,7 @@ export class AgentRunner {
 
   private prepareRun(): void {
     cancelAllQuestions();
+    this.cancelRequested = false;
     this.event.resetTurnState();
   }
 
@@ -210,8 +207,7 @@ export class AgentRunner {
     const session = await createSession(cwd, path);
     this.session = session;
 
-    this.setupTerminationHook(session);
-    this.setupReplyQueueHook(session);
+    this.setupSessionHook(session);
     this.subscribeToSessionEvents(session);
 
     return session;
@@ -230,23 +226,16 @@ export class AgentRunner {
     }
   }
 
-  private setupTerminationHook(session: AgentSession): void {
-    const baseAfterToolCall = session.agent.afterToolCall;
-    session.agent.afterToolCall = async (props): Promise<AfterToolCallResult> => {
-      const baseResult = (await baseAfterToolCall?.(props)) ?? {};
-      if (props.toolCall.name === 'attempt_completion') {
-        // The completion tool ends the turn by contract, so tell Pi to stop
-        // the agent loop rather than letting it request another completion.
-        return { ...baseResult, terminate: true };
-      }
-      return baseResult;
+  private setupSessionHook(session: AgentSession): void {
+    const baseShouldStop = session.agent.shouldStopAfterTurn;
+    session.agent.shouldStopAfterTurn = (context): boolean | Promise<boolean> => {
+      if (this.cancelRequested) return true;
+      return baseShouldStop?.(context) ?? false;
     };
-  }
 
-  private setupReplyQueueHook(session: AgentSession): void {
-    const basePrepareNextTurn = session.agent.prepareNextTurnWithContext;
+    const basePrepareContext = session.agent.prepareNextTurnWithContext;
     session.agent.prepareNextTurnWithContext = async (context, signal) => {
-      const snapshot = await basePrepareNextTurn?.(context, signal);
+      const snapshot = await basePrepareContext?.(context, signal);
 
       if (this.replyQueue.length > 0) {
         const undelivered: QueueMessage[] = [];
@@ -285,6 +274,17 @@ export class AgentRunner {
       }
 
       return snapshot;
+    };
+
+    const baseAfterToolCall = session.agent.afterToolCall;
+    session.agent.afterToolCall = async (props): Promise<AfterToolCallResult> => {
+      const baseResult = (await baseAfterToolCall?.(props)) ?? {};
+      if (props.toolCall.name === 'attempt_completion') {
+        // The completion tool ends the turn by contract, so tell Pi to stop
+        // the agent loop rather than letting it request another completion.
+        return { ...baseResult, terminate: true };
+      }
+      return baseResult;
     };
   }
 
