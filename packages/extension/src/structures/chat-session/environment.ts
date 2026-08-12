@@ -17,6 +17,10 @@ const STATUS_MAP: Record<TodoItem['status'], string> = {
 };
 
 const GITIGNORE_OVERSCAN = 2000;
+// Without gitignore filtering we still overscan by one so a directory that hits
+// the limit is distinguishable from one that merely contains exactly `limit` files.
+const UNFILTERED_OVERSCAN = 1;
+const DESKTOP_DIR_SUFFIX = '/desktop';
 
 const TODO_REMINDER_SECTION = '## Todo Reminders';
 
@@ -56,7 +60,7 @@ export function withTodoProgress(messages: readonly AgentMessage[], todoList?: T
 }
 
 async function listFiles(cwd: string, limit = 200, excludeIgnoredFiles = true): Promise<{ paths: string[]; hitLimit: boolean }> {
-  const maxResults = excludeIgnoredFiles ? limit + GITIGNORE_OVERSCAN : limit + 1;
+  const maxResults = excludeIgnoredFiles ? limit + GITIGNORE_OVERSCAN : limit + UNFILTERED_OVERSCAN;
   const found = await workspace.findFiles(new RelativePattern(cwd, '**/*'), undefined, maxResults);
 
   let uris = found;
@@ -225,7 +229,7 @@ export async function getEnvironmentDetails(cwd: string, includeFileDetails = fa
     const maxWorkspaceFiles = settings.maxWorkspaceFiles;
     if (maxWorkspaceFiles > 0) {
       details += `\n\n### Workspace Files (${cwd.replace(/\\/g, '/')})\n\n`;
-      const isDesktop = cwd.replace(/\\/g, '/').toLowerCase().endsWith('/desktop');
+      const isDesktop = cwd.replace(/\\/g, '/').toLowerCase().endsWith(DESKTOP_DIR_SUFFIX);
       if (isDesktop) {
         details += 'Desktop files not shown automatically. Use `execute_command` to explore if needed.';
       } else {

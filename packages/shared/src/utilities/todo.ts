@@ -5,6 +5,9 @@ export interface TodoItem {
   readonly status: TodoStatus;
 }
 
+const COMPLETED_MARKER = 'x';
+const IN_PROGRESS_MARKERS = new Set(['-', '~']);
+
 export function parseTodoList(todoListStr: string): TodoItem[] {
   const lines = todoListStr.split(/\r?\n/);
   const list: TodoItem[] = [];
@@ -12,7 +15,7 @@ export function parseTodoList(todoListStr: string): TodoItem[] {
     const match = line.match(/^(?:-\s*)?\[\s*([ xX\-~])\s*\]\s*(.+)$/);
     if (!match) continue;
     const indicator = match[1].toLowerCase();
-    const status: TodoStatus = indicator === 'x' ? 'completed' : indicator === '-' || indicator === '~' ? 'in_progress' : 'pending';
+    const status: TodoStatus = indicator === COMPLETED_MARKER ? 'completed' : IN_PROGRESS_MARKERS.has(indicator) ? 'in_progress' : 'pending';
     list.push({ content: match[2].trim(), status });
   }
   return list;

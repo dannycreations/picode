@@ -1,5 +1,7 @@
 import { useCallback, useState } from 'react';
 
+import { DEFAULT_MODEL_ID } from '@pi-code/shared/core/protocol';
+
 import type { Dispatch, SetStateAction } from 'react';
 import type { CommandItem, ExtensionToWebviewMessage, ModelItem } from '@pi-code/shared/core/protocol';
 import type { AppSettings } from '@pi-code/shared/core/settings';
@@ -16,7 +18,7 @@ interface UseChatConfigReturn {
 export const useChatConfig = (): UseChatConfigReturn => {
   const [models, setModels] = useState<ModelItem[]>([]);
   const [settings, setSettings] = useState<AppSettings | null>(null);
-  const [selectedModel, setSelectedModel] = useState('pi-code');
+  const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL_ID);
   const [commands, setCommands] = useState<CommandItem[]>([]);
 
   const onMessage = useCallback((msg: ExtensionToWebviewMessage): void => {
@@ -26,7 +28,7 @@ export const useChatConfig = (): UseChatConfigReturn => {
         setModels(backendModels);
         setSettings(backendSettings ?? null);
         setCommands(backendCommands ?? []);
-        setSelectedModel(defaultModel || backendModels[0]?.id || 'pi-code');
+        setSelectedModel(defaultModel || backendModels[0]?.id || DEFAULT_MODEL_ID);
         break;
       }
 

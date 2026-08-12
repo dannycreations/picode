@@ -1,5 +1,7 @@
 import mermaid from 'mermaid-compact';
 
+const PNG_EXPORT_WIDTH = 2400;
+
 function cssVar(name: string, fallback: string): string {
   if (typeof document === 'undefined') return fallback;
   const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -72,7 +74,7 @@ export async function svgToPng(svgEl: SVGElement): Promise<string> {
   const originalWidth = viewBox[2] || svgClone.clientWidth || 800;
   const originalHeight = viewBox[3] || svgClone.clientHeight || 600;
 
-  const targetWidth = 2400;
+  const targetWidth = PNG_EXPORT_WIDTH;
   const scale = targetWidth / originalWidth;
   const scaledHeight = originalHeight * scale;
 

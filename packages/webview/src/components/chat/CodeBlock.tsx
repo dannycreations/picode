@@ -17,9 +17,6 @@ import type { ExtendedLanguage } from '@pi-code/webview/components/chat/helpers/
 
 const CODE_BLOCK_BG_COLOR = 'var(--vscode-editor-background, var(--vscode-sideBar-background, rgb(30, 30, 30)))';
 
-const ICON_BUTTON_CLASS =
-  'w-6 h-6 flex items-center justify-center border-none text-[var(--vscode-editor-foreground)] bg-transparent hover:bg-[var(--vscode-toolbar-hoverBackground)] cursor-pointer rounded';
-
 const COLLAPSED_HEIGHT = 500;
 
 interface CodeToolbarProps {
@@ -73,20 +70,20 @@ const CodeToolbar: FC<CodeToolbarProps> = ({
 
     {showCollapseButton && (
       <Tooltip content={windowShade ? 'Expand' : 'Collapse'} side="bottom">
-        <button className={ICON_BUTTON_CLASS} onClick={onToggleWindowShade}>
+        <button className="icon-button" onClick={onToggleWindowShade}>
           {windowShade ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
         </button>
       </Tooltip>
     )}
 
     <Tooltip content={wordWrap ? 'Disable wrap' : 'Enable wrap'} side="bottom">
-      <button className={ICON_BUTTON_CLASS} onClick={onToggleWordWrap}>
+      <button className="icon-button" onClick={onToggleWordWrap}>
         {wordWrap ? <AlignJustify size={14} /> : <WrapText size={14} />}
       </button>
     </Tooltip>
 
     <Tooltip content={showCopy ? 'Copied code!' : 'Copy code'} side="bottom">
-      <button className={ICON_BUTTON_CLASS} onClick={onCopy}>
+      <button className="icon-button" onClick={onCopy}>
         {showCopy ? <Check size={14} /> : <Copy size={14} />}
       </button>
     </Tooltip>

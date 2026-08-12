@@ -15,7 +15,7 @@ import type { AfterToolCallResult } from '@earendil-works/pi-agent-core';
 import type { ImageContent, TextContent } from '@earendil-works/pi-ai';
 import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent';
 import type { Webview } from 'vscode';
-import type { ModelItem, QueueMessage } from '@pi-code/shared/core/protocol';
+import type { ModelSelection, QueueMessage } from '@pi-code/shared/core/protocol';
 
 function parseImageAttachments(images?: string[]): ImageContent[] | undefined {
   if (!images || images.length === 0) return undefined;
@@ -72,7 +72,7 @@ export class AgentRunner {
 
   public async startTask(
     promptText: string,
-    selectedModel: Pick<ModelItem, 'id' | 'provider'> | undefined,
+    selectedModel: ModelSelection | undefined,
     webview: Webview,
     images?: string[],
     path?: string,
@@ -96,7 +96,7 @@ export class AgentRunner {
     }
   }
 
-  public async continueTask(path: string, webview: Webview, selectedModel?: Pick<ModelItem, 'id' | 'provider'>): Promise<void> {
+  public async continueTask(path: string, webview: Webview, selectedModel?: ModelSelection): Promise<void> {
     try {
       const { session, envDetails } = await this.prepareSession(webview, path, selectedModel);
 
@@ -179,7 +179,7 @@ export class AgentRunner {
   private async prepareSession(
     webview: Webview,
     path: string | undefined,
-    selectedModel: Pick<ModelItem, 'id' | 'provider'> | undefined,
+    selectedModel: ModelSelection | undefined,
   ): Promise<{ session: AgentSession; envDetails: string }> {
     this.prepareRun(webview);
     const cwd = getWorkspaceCwd();
@@ -211,7 +211,7 @@ export class AgentRunner {
     return session;
   }
 
-  private async applySelectedModel(session: AgentSession, selectedModel: Pick<ModelItem, 'id' | 'provider'> | undefined): Promise<void> {
+  private async applySelectedModel(session: AgentSession, selectedModel: ModelSelection | undefined): Promise<void> {
     if (!selectedModel || !selectedModel.id || !selectedModel.provider) return;
 
     const model = session.modelRuntime.getModel(selectedModel.provider, selectedModel.id);

@@ -5,16 +5,14 @@ export const BUILTIN_COMMANDS = [
   { name: 'compact', description: 'Summarize the current conversation to free up context.' },
 ] as const satisfies ReadonlyArray<{ name: string; description: string }>;
 
-type BuiltinCommandName = (typeof BUILTIN_COMMANDS)[number]['name'];
+const BUILTIN_COMMAND_NAMES = new Set<string>(BUILTIN_COMMANDS.map((command) => command.name));
 
-function isBuiltinCommand(name: string): name is BuiltinCommandName {
-  return BUILTIN_COMMANDS.some((command) => command.name === name);
-}
+type BuiltinCommandName = (typeof BUILTIN_COMMANDS)[number]['name'];
 
 export function parseBuiltinCommand(text: string): BuiltinCommandName | null {
   const match = BUILTIN_COMMAND_PATTERN.exec(text.trim());
   if (!match) return null;
 
-  const name = match[1];
-  return isBuiltinCommand(name) ? name : null;
+  const name = match[1] as BuiltinCommandName;
+  return BUILTIN_COMMAND_NAMES.has(name) ? name : null;
 }

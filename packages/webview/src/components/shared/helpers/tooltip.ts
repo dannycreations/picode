@@ -28,9 +28,9 @@ export interface TooltipPlacement {
 }
 
 // Gap kept between the anchor and the tooltip; the arrow lives inside it.
-export const TOOLTIP_OFFSET = 8;
+const TOOLTIP_OFFSET = 8;
 // Smallest gap kept between the tooltip and the viewport edges.
-export const TOOLTIP_PADDING = 6;
+const TOOLTIP_PADDING = 6;
 // Side length of the square that is rotated 45deg to draw the arrow.
 export const TOOLTIP_ARROW_SIZE = 8;
 

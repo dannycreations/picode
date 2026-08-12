@@ -16,9 +16,6 @@ interface MermaidModalProps {
   readonly onSave: (e: MouseEvent) => Promise<void>;
 }
 
-const CONTROL_BUTTON_CLASS =
-  'w-7 h-7 flex items-center justify-center border-none text-[var(--vscode-editor-foreground)] bg-transparent hover:bg-[var(--vscode-toolbar-hoverBackground)] cursor-pointer rounded';
-
 export const MermaidModal: FC<MermaidModalProps> = ({ code, svgContent, modalViewMode, showCopy, setModalViewMode, onClose, onCopy, onSave }) => {
   const { zoomLevel, dragPosition, isDragging, adjustZoom, handleWheel, startDrag, onDrag, stopDrag } = usePanZoom();
 
@@ -103,29 +100,29 @@ export const MermaidModal: FC<MermaidModalProps> = ({ code, svgContent, modalVie
           {modalViewMode === 'diagram' ? (
             <>
               <Tooltip content="Zoom out">
-                <button className={CONTROL_BUTTON_CLASS} onClick={() => adjustZoom(-0.2)}>
+                <button className="icon-button" onClick={() => adjustZoom(-0.2)}>
                   <span className="codicon codicon-zoom-out" />
                 </button>
               </Tooltip>
               <Tooltip content="Zoom in">
-                <button className={CONTROL_BUTTON_CLASS} onClick={() => adjustZoom(0.2)}>
+                <button className="icon-button" onClick={() => adjustZoom(0.2)}>
                   <span className="codicon codicon-zoom-in" />
                 </button>
               </Tooltip>
               <Tooltip content={showCopy ? 'Copied source!' : 'Copy source'}>
-                <button className={CONTROL_BUTTON_CLASS} onClick={onCopy}>
+                <button className="icon-button" onClick={onCopy}>
                   <span className={cn('codicon', `codicon-${showCopy ? 'check' : 'copy'}`)} />
                 </button>
               </Tooltip>
               <Tooltip content="Save as PNG">
-                <button className={CONTROL_BUTTON_CLASS} onClick={onSave}>
+                <button className="icon-button" onClick={onSave}>
                   <span className="codicon codicon-save" />
                 </button>
               </Tooltip>
             </>
           ) : (
             <Tooltip content={showCopy ? 'Copied source!' : 'Copy source'}>
-              <button className={CONTROL_BUTTON_CLASS} onClick={onCopy}>
+              <button className="icon-button" onClick={onCopy}>
                 <span className={cn('codicon', `codicon-${showCopy ? 'check' : 'copy'}`)} />
               </button>
             </Tooltip>

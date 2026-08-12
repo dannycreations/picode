@@ -13,7 +13,8 @@ import { DEFAULT_OUTPUT_LIMITS, shareOutputLimits, toOutputLimits, truncateOutpu
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
 import type { ToolName } from '@pi-code/shared/core/protocol';
 
-const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+const MEGABYTE = 1024 * 1024;
+const MAX_FILE_SIZE_BYTES = 10 * MEGABYTE;
 
 async function readLines(filePath: string, maxLines?: number): Promise<string[]> {
   const stream = createReadStream(filePath, { encoding: 'utf8' });
@@ -116,7 +117,7 @@ export const readFileTool = defineTool({
 
           if (fileStat.size > MAX_FILE_SIZE_BYTES) {
             fileResults[index] = {
-              result: `Error: ${fileObj.path} exceeds the 10 MB size limit (${(fileStat.size / (1024 * 1024)).toFixed(2)} MB).`,
+              result: `Error: ${fileObj.path} exceeds the 10 MB size limit (${(fileStat.size / MEGABYTE).toFixed(2)} MB).`,
               hasError: true,
             };
             return;

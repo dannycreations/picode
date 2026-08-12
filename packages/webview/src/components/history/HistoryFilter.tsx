@@ -1,6 +1,7 @@
 import { cn } from 'cnfast';
 import { Check, Search, X } from 'lucide-react';
 
+import { HISTORY_SCOPES } from '@pi-code/shared/core/protocol';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 
 import type { FC } from 'react';
@@ -54,7 +55,7 @@ export const HistoryFilter: FC<HistoryFilterProps> = ({
     {/* Scope & Sort Controls */}
     <div className="flex items-center justify-between gap-2 mt-1">
       <div className="flex gap-1">
-        {(['current', 'all'] as const).map((s) => (
+        {HISTORY_SCOPES.map((s) => (
           <button
             key={s}
             onClick={() => onScopeChange(s)}

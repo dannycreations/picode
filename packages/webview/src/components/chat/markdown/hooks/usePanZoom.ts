@@ -2,6 +2,10 @@ import { useCallback, useState } from 'react';
 
 import type { MouseEvent, WheelEvent } from 'react';
 
+const MIN_ZOOM = 0.5;
+const MAX_ZOOM = 20;
+const ZOOM_STEP = 0.2;
+
 interface UsePanZoomReturn {
   readonly zoomLevel: number;
   readonly dragPosition: { x: number; y: number };
@@ -19,14 +23,14 @@ export const usePanZoom = (): UsePanZoomReturn => {
   const [isDragging, setIsDragging] = useState(false);
 
   const adjustZoom = useCallback((amount: number): void => {
-    setZoomLevel((prev) => Math.max(0.5, Math.min(20, prev + amount)));
+    setZoomLevel((prev) => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, prev + amount)));
   }, []);
 
   const handleWheel = useCallback(
     (e: WheelEvent): void => {
       e.preventDefault();
       e.stopPropagation();
-      const delta = e.deltaY > 0 ? -0.2 : 0.2;
+      const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
       adjustZoom(delta);
     },
     [adjustZoom],

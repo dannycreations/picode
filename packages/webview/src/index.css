@@ -56,6 +56,10 @@
 
 /* Custom styles */
 
+.icon-button {
+  @apply flex items-center justify-center border-none text-[var(--vscode-editor-foreground)] bg-transparent hover:bg-[var(--vscode-toolbar-hoverBackground)] cursor-pointer rounded w-6 h-6;
+}
+
 .chat-row {
   content-visibility: auto;
   contain-intrinsic-size: auto 96px;

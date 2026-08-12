@@ -31,7 +31,7 @@ export const HistoryView: FC<HistoryViewProps> = ({ history, onSelectTask, onDon
   const [deleteConfirmPaths, setDeleteConfirmPaths] = useState<string[] | null>(null);
 
   const { searchQuery, setSearchQuery, sortBy, setSortBy, currentPage, setCurrentPage, totalPages, filteredHistory, paginatedItems } =
-    useHistoryFilter(history, ITEMS_PER_PAGE, scope);
+    useHistoryFilter(history, ITEMS_PER_PAGE);
 
   // Selection handlers
   const handleToggleSelection = useCallback((path: string) => {

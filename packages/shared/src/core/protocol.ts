@@ -56,6 +56,10 @@ export interface ModelItem {
   readonly provider: string;
 }
 
+export type ModelSelection = Pick<ModelItem, 'id' | 'provider'>;
+
+export const DEFAULT_MODEL_ID = 'pi-code';
+
 export interface CommandItem {
   readonly name: string;
   readonly source: 'builtin' | 'skill' | 'prompt';
@@ -75,6 +79,8 @@ export interface StatsData {
 
 export type HistoryScope = 'current' | 'all';
 
+export const HISTORY_SCOPES: readonly HistoryScope[] = ['current', 'all'];
+
 export type WebviewToExtensionMessage =
   | { type: 'init' }
   | { type: 'get_history'; scope: HistoryScope }
@@ -82,8 +88,7 @@ export type WebviewToExtensionMessage =
   | { type: 'delete_sessions'; paths: string[] }
   | { type: 'send_message'; text: string; path?: string; model_id?: string; model_provider?: string; images?: string[] }
   | { type: 'continue_task'; path?: string; model_id?: string; model_provider?: string }
-  | { type: 'approve_tool'; approval_id: string }
-  | { type: 'deny_tool'; approval_id: string }
+  | { type: 'tool_response'; approval_id: string; approved: boolean }
   | { type: 'question_response'; question_id: string; text: string }
   | { type: 'view_raw_task'; path?: string }
   | { type: 'export_session'; path: string; id: string }
@@ -115,12 +120,12 @@ export type ExtensionToWebviewMessage =
   | { type: 'settings_data'; payload: { settings: AppSettings } }
   | { type: 'session_loaded'; payload: ActiveTaskState }
   | { type: 'agent_start'; payload: { path?: string; stats?: StatsData } }
-  | { type: 'message_start'; payload: { timestamp?: number } }
+  | { type: 'message_start'; payload: { timestamp: number } }
   | { type: 'message_end'; payload: { cost?: number; stats?: StatsData } }
   | { type: 'api_request_start'; payload: { id: string; timestamp: number } }
   | { type: 'api_request_end'; payload: { id: string; cost?: number; error?: string; stats?: StatsData } }
   | { type: 'tool_approval_request'; payload: { id: string; tool_name: ToolName; arguments: string; subagent?: string } }
-  | { type: 'tool_execution_start'; payload: { id: string; tool_name?: ToolName; arguments?: string } }
+  | { type: 'tool_execution_start'; payload: { id: string; tool_name: ToolName; arguments: string } }
   | { type: 'tool_execution_update'; payload: { id: string; result: string } }
   | { type: 'tool_execution_end'; payload: { id: string; result?: string; todos?: TodoItem[]; is_error?: boolean } }
   | { type: 'agent_error'; payload: { message: string } }

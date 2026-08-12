@@ -4,7 +4,7 @@ import { parseBuiltinCommand } from '@pi-code/shared/utilities/commands';
 import { EMPTY_STATS } from '@pi-code/webview/components/chat/hooks/useActiveTask';
 import { vscode } from '@pi-code/webview/utilities/vscode';
 
-import type { Dispatch, RefObject, SetStateAction } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 import type { ActiveTaskState, ChatMessage, HistoryItem, ModelItem } from '@pi-code/shared/core/protocol';
 
 interface UseChatActionsProps {
@@ -16,13 +16,12 @@ interface UseChatActionsProps {
   readonly setActiveTask: Dispatch<SetStateAction<ActiveTaskState | null>>;
   readonly setIsAgentRunning: Dispatch<SetStateAction<boolean>>;
   readonly setPastTasks: Dispatch<SetStateAction<HistoryItem[]>>;
-  readonly setInputValue: Dispatch<SetStateAction<string>>;
-  readonly textareaRef: RefObject<HTMLTextAreaElement | null>;
+  readonly appendToInput: (text: string) => void;
 }
 
 interface UseChatActionsReturn {
   readonly handleSendPrompt: (text: string, images: string[]) => void;
-  readonly handleToolResponse: (msgId: string, status: 'running' | 'denied', actionType: 'approve_tool' | 'deny_tool') => void;
+  readonly handleToolResponse: (msgId: string, approved: boolean) => void;
   readonly handleAnswerQuestion: (questionId: string, text: string) => void;
   readonly handleCopyToInput: (text: string) => void;
   readonly handleCloseTask: () => void;
@@ -30,18 +29,8 @@ interface UseChatActionsReturn {
 }
 
 export const useChatActions = (params: UseChatActionsProps): UseChatActionsReturn => {
-  const {
-    activeTask,
-    models,
-    selectedModel,
-    pendingQuestion,
-    isAgentRunning,
-    setActiveTask,
-    setIsAgentRunning,
-    setPastTasks,
-    setInputValue,
-    textareaRef,
-  } = params;
+  const { activeTask, models, selectedModel, pendingQuestion, isAgentRunning, setActiveTask, setIsAgentRunning, setPastTasks, appendToInput } =
+    params;
 
   const handleAnswerQuestion = useCallback(
     (questionId: string, text: string): void => {
@@ -61,10 +50,9 @@ export const useChatActions = (params: UseChatActionsProps): UseChatActionsRetur
 
   const handleCopyToInput = useCallback(
     (text: string): void => {
-      setInputValue((prev) => (prev ? `${prev}\n${text}` : text));
-      setTimeout(() => textareaRef.current?.focus(), 0);
+      appendToInput(text);
     },
-    [setInputValue, textareaRef],
+    [appendToInput],
   );
 
   const handleSendPrompt = useCallback(
@@ -145,10 +133,12 @@ export const useChatActions = (params: UseChatActionsProps): UseChatActionsRetur
   );
 
   const handleToolResponse = useCallback(
-    (msgId: string, status: 'running' | 'denied', actionType: 'approve_tool' | 'deny_tool'): void => {
+    (msgId: string, approved: boolean): void => {
       setIsAgentRunning(true);
-      setActiveTask((prev) => (prev ? { ...prev, messages: prev.messages.map((m) => (m.id === msgId ? { ...m, toolStatus: status } : m)) } : null));
-      vscode?.postMessage({ type: actionType, approval_id: msgId });
+      setActiveTask((prev) =>
+        prev ? { ...prev, messages: prev.messages.map((m) => (m.id === msgId ? { ...m, toolStatus: approved ? 'running' : 'denied' } : m)) } : null,
+      );
+      vscode?.postMessage({ type: 'tool_response', approval_id: msgId, approved });
     },
     [setActiveTask, setIsAgentRunning],
   );

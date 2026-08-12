@@ -27,7 +27,7 @@ const ChatLogo: FC = () => {
   return (
     <div className="flex items-center justify-center w-14 h-14 mx-auto my-2">
       <svg
-        className="w-full h-full text-[var(--vscode-focusBorder,rgba(0,122,204,0.85))] dark:text-[var(--vscode-focusBorder,rgba(0,122,204,0.85))]"
+        className="w-full h-full text-[var(--vscode-focusBorder,rgba(0,122,204,0.85))]"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
@@ -50,7 +50,7 @@ export const ChatView: FC = () => {
 
   const composer = useChatComposer();
   const config = useChatConfig();
-  const history = useChatHistory({ view: composer.view, scope: composer.scope });
+  const history = useChatHistory({ view: composer.view });
   const task = useActiveTask();
 
   // Fan every incoming extension message out to the domain hook that owns its
@@ -84,8 +84,8 @@ export const ChatView: FC = () => {
 
   const { activeTask, isAgentRunning, pendingQuestion } = task;
   const { models, settings, selectedModel, setSelectedModel, commands } = config;
-  const { pastTasks, setPastTasks } = history;
-  const { view, setView, scope, setScope, inputValue, setInputValue, textareaRef } = composer;
+  const { pastTasks, setPastTasks, scope, setScope } = history;
+  const { view, setView, inputValue, setInputValue, textareaRef } = composer;
 
   const { handleSendPrompt, handleToolResponse, handleAnswerQuestion, handleCopyToInput, handleCloseTask, handleDeleteActiveTask } = useChatActions({
     activeTask: task.activeTask,
@@ -96,8 +96,7 @@ export const ChatView: FC = () => {
     setActiveTask: task.setActiveTask,
     setIsAgentRunning: task.setIsAgentRunning,
     setPastTasks: history.setPastTasks,
-    setInputValue: composer.setInputValue,
-    textareaRef: composer.textareaRef,
+    appendToInput: composer.appendToInput,
   });
 
   const { scrollRef, contentRef, showScrollToBottom, handleScroll, scrollToBottom } = useAutoScroll(activeTask?.id);
@@ -110,7 +109,7 @@ export const ChatView: FC = () => {
   const handleApproveTool = useCallback(
     (msgId: string) => {
       scrollToBottom();
-      handleToolResponse(msgId, 'running', 'approve_tool');
+      handleToolResponse(msgId, true);
     },
     [scrollToBottom, handleToolResponse],
   );
@@ -118,7 +117,7 @@ export const ChatView: FC = () => {
   const handleDenyTool = useCallback(
     (msgId: string) => {
       scrollToBottom();
-      handleToolResponse(msgId, 'denied', 'deny_tool');
+      handleToolResponse(msgId, false);
     },
     [scrollToBottom, handleToolResponse],
   );

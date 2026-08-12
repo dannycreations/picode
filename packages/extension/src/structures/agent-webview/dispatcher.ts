@@ -7,7 +7,7 @@ import { runCompact } from '@pi-code/extension/structures/chat-command/builtin';
 import { logger } from '@pi-code/shared/core/logger';
 
 import type { MessageHandlerContext } from '@pi-code/extension/structures/agent-webview/types';
-import type { ModelItem, WebviewToExtensionMessage } from '@pi-code/shared/core/protocol';
+import type { HistoryScope, ModelSelection, WebviewToExtensionMessage } from '@pi-code/shared/core/protocol';
 
 type CommandHandler<T extends WebviewToExtensionMessage['type']> = (
   message: Extract<WebviewToExtensionMessage, { type: T }>,
@@ -18,10 +18,21 @@ type HandlerMap = {
   [T in WebviewToExtensionMessage['type']]: CommandHandler<T>;
 };
 
-type ModelSelection = Pick<ModelItem, 'id' | 'provider'>;
-
 function toModelSelection(msg: { model_id?: string; model_provider?: string }): ModelSelection | undefined {
   return msg.model_provider && msg.model_id ? { id: msg.model_id, provider: msg.model_provider } : undefined;
+}
+
+export async function postSessionLoaded(ctx: MessageHandlerContext, id: string, title: string, path: string | undefined): Promise<void> {
+  const { messages, stats } = await ctx.sessionService.loadSessionDetails(path ?? '', ctx.cwd);
+  ctx.postMessage({
+    type: 'session_loaded',
+    payload: { id: id || 'task-active', title: title || '', messages, path, ...stats },
+  });
+}
+
+async function postHistory(ctx: MessageHandlerContext, scope: HistoryScope): Promise<void> {
+  const history = await ctx.sessionService.fetchHistory(ctx.cwd, scope);
+  ctx.postMessage({ type: 'history_data', payload: { history } });
 }
 
 const HANDLER_MAP: HandlerMap = {
@@ -45,8 +56,11 @@ const HANDLER_MAP: HandlerMap = {
   continue_task: (msg, ctx) => {
     void ctx.agent.continueTask(msg.path || '', ctx.webview, toModelSelection(msg));
   },
-  approve_tool: (msg, _ctx) => PolicyBridge.getInstance().approve(msg.approval_id),
-  deny_tool: (msg, _ctx) => PolicyBridge.getInstance().deny(msg.approval_id),
+  tool_response: (msg, _ctx) => {
+    const bridge = PolicyBridge.getInstance();
+    if (msg.approved) bridge.approve(msg.approval_id);
+    else bridge.deny(msg.approval_id);
+  },
   question_response: (msg, ctx) => ctx.agent.answerQuestion(msg.question_id, msg.text),
   cancel_task: (_, ctx) => ctx.agent.abort(),
   reload: (_, ctx) => {
@@ -68,19 +82,10 @@ const HANDLER_MAP: HandlerMap = {
     // Tasks list is still showing the stale init snapshot. Push the refreshed
     // current-scope history so the completed task renders without the user
     // first having to open the full History view.
-    try {
-      const history = await ctx.sessionService.fetchHistory(ctx.cwd, 'current');
-      ctx.postMessage({ type: 'history_data', payload: { history } });
-    } catch (err) {
-      logger.error('Failed to refresh history after closing task:', err);
-    }
+    await postHistory(ctx, 'current');
   },
   load_session: async (msg, ctx) => {
-    const { messages, stats } = await ctx.sessionService.loadSessionDetails(msg.path, ctx.cwd);
-    ctx.postMessage({
-      type: 'session_loaded',
-      payload: { id: msg.id, title: msg.title, messages, path: msg.path, ...stats },
-    });
+    await postSessionLoaded(ctx, msg.id, msg.title, msg.path);
   },
   view_raw_task: async (msg, ctx) => {
     const path = msg.path || ctx.agent.getSessionFile();
@@ -100,8 +105,7 @@ const HANDLER_MAP: HandlerMap = {
     await ctx.workspaceService.saveImage(msg.dataUrl, msg.filename);
   },
   get_history: async (msg, ctx) => {
-    const history = await ctx.sessionService.fetchHistory(ctx.cwd, msg.scope);
-    ctx.postMessage({ type: 'history_data', payload: { history } });
+    await postHistory(ctx, msg.scope);
   },
   delete_sessions: async (msg, ctx) => {
     await ctx.sessionService.deleteSessions(msg.paths);

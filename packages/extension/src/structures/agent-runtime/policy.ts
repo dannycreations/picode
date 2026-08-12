@@ -126,11 +126,6 @@ export class PolicyBridge {
     this.settle(id, false);
   }
 
-  public cancelAll(): void {
-    for (const resolve of this.pending.values()) resolve(false);
-    this.pending.clear();
-  }
-
   private settle(id: string, approved: boolean): void {
     const resolve = this.pending.get(id);
     if (resolve) {

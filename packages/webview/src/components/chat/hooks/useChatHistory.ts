@@ -7,16 +7,18 @@ import type { ExtensionToWebviewMessage, HistoryItem, HistoryScope } from '@pi-c
 
 interface UseChatHistoryProps {
   readonly view: 'chat' | 'history' | 'settings';
-  readonly scope: HistoryScope;
 }
 
 interface UseChatHistoryReturn {
   readonly pastTasks: HistoryItem[];
   readonly setPastTasks: Dispatch<SetStateAction<HistoryItem[]>>;
+  readonly scope: HistoryScope;
+  readonly setScope: Dispatch<SetStateAction<HistoryScope>>;
   readonly onMessage: (msg: ExtensionToWebviewMessage) => void;
 }
 
-export const useChatHistory = ({ view, scope }: UseChatHistoryProps): UseChatHistoryReturn => {
+export const useChatHistory = ({ view }: UseChatHistoryProps): UseChatHistoryReturn => {
+  const [scope, setScope] = useState<HistoryScope>('current');
   const [historyByScope, setHistoryByScope] = useState<Record<HistoryScope, HistoryItem[]>>({ current: [], all: [] });
   const fetchedScopes = useRef<Set<HistoryScope>>(new Set());
 
@@ -60,5 +62,5 @@ export const useChatHistory = ({ view, scope }: UseChatHistoryProps): UseChatHis
     [scope],
   );
 
-  return { pastTasks, setPastTasks, onMessage };
+  return { pastTasks, setPastTasks, scope, setScope, onMessage };
 };

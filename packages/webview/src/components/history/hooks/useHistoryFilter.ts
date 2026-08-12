@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import type { Dispatch, SetStateAction } from 'react';
-import type { HistoryItem, HistoryScope } from '@pi-code/shared/core/protocol';
+import type { HistoryItem } from '@pi-code/shared/core/protocol';
 
 export type SortOption = 'newest' | 'oldest' | 'alphabetical';
 
@@ -17,7 +17,7 @@ interface UseHistoryFilterReturn {
   readonly paginatedItems: HistoryItem[];
 }
 
-export const useHistoryFilter = (history: HistoryItem[], itemsPerPage: number, scope?: HistoryScope): UseHistoryFilterReturn => {
+export const useHistoryFilter = (history: HistoryItem[], itemsPerPage: number): UseHistoryFilterReturn => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [currentPage, setCurrentPage] = useState(1);
@@ -40,10 +40,10 @@ export const useHistoryFilter = (history: HistoryItem[], itemsPerPage: number, s
     return result;
   }, [history, searchQuery, sortBy]);
 
-  // Reset page when search, sort, or scope changes
+  // Reset page when search or sort changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, sortBy, scope]);
+  }, [searchQuery, sortBy]);
 
   // Pagination bounds logic
   const totalPages = Math.max(1, Math.ceil(filteredHistory.length / itemsPerPage));

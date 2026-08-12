@@ -104,8 +104,8 @@ export const useActiveTask = (): UseActiveTaskReturn => {
         setIsAgentRunning(true);
         setActiveTask((prev) => {
           if (!prev) return null;
-          const next = msg.payload?.path ? { ...prev, path: msg.payload.path } : prev;
-          return msg.payload?.stats ? { ...next, ...msg.payload.stats } : next;
+          const next = msg.payload.path ? { ...prev, path: msg.payload.path } : prev;
+          return msg.payload.stats ? { ...next, ...msg.payload.stats } : next;
         });
         break;
 
@@ -115,10 +115,10 @@ export const useActiveTask = (): UseActiveTaskReturn => {
         setActiveTask((prev) => {
           if (!prev) return null;
           const newMsg: ChatMessage = {
-            id: `assistant-${timestamp || Date.now()}`,
+            id: `assistant-${timestamp}`,
             sender: 'assistant',
             text: '',
-            ts: timestamp || Date.now(),
+            ts: timestamp,
             toolStatus: 'running',
           };
 
@@ -138,7 +138,7 @@ export const useActiveTask = (): UseActiveTaskReturn => {
             id,
             sender: 'api_request',
             text: 'API Request',
-            ts: timestamp || Date.now(),
+            ts: timestamp,
             toolStatus: 'running',
           };
 
@@ -287,9 +287,9 @@ export const useActiveTask = (): UseActiveTaskReturn => {
               {
                 id,
                 sender: 'tool',
-                text: tool_name || '',
+                text: tool_name,
                 toolName: tool_name,
-                toolArgs: toolArgs || '',
+                toolArgs: toolArgs,
                 toolStatus: 'running',
                 ts: Date.now(),
               },

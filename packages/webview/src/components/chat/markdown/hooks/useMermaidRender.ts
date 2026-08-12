@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { logger } from '@pi-code/shared/core/logger';
 import { applyDeterministicFixes, ensureMermaidInitialized } from '@pi-code/webview/components/chat/markdown/helpers/mermaid';
 
+const RENDER_DEBOUNCE_MS = 500;
+
 interface UseMermaidRenderReturn {
   readonly code: string;
   readonly svgContent: string;
@@ -42,7 +44,7 @@ export const useMermaidRender = (originalCode: string, enabled: boolean): UseMer
           setError(err instanceof Error ? err.message : 'Mermaid render error');
         })
         .finally(() => setIsLoading(false));
-    }, 500);
+    }, RENDER_DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
   }, [code, enabled]);

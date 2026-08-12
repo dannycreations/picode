@@ -198,7 +198,6 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
           </div>
         )}
 
-        {/* TODO List */}
         {todos && todos.length > 0 && <TodoView todos={todos} />}
       </div>
     </div>
