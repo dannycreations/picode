@@ -1,7 +1,9 @@
 import { isAbsolute } from 'node:path';
-import { commands, Position, Range, Selection, Uri, window, workspace } from 'vscode';
+import { commands, Position, Range, Selection, TextEditorRevealType, Uri, window, workspace } from 'vscode';
 
 import { extensionForMimeType, parseBase64DataUrl } from '@pi-code/extension/utilities/codec';
+
+import type { TextEditor } from 'vscode';
 
 export class WorkspaceService {
   public constructor(private readonly storageUri: Uri) {}
@@ -11,6 +13,30 @@ export class WorkspaceService {
     const doc = await workspace.openTextDocument(uri);
     const target = line ? doc.validateRange(new Range(new Position(line - 1, 0), new Position(line - 1, 0))) : undefined;
     await window.showTextDocument(uri, { selection: target && new Selection(target.start, target.end) });
+  }
+
+  public async openFileInChanges(cwd: string, relativePath: string, line?: number): Promise<void> {
+    const uri = isAbsolute(relativePath) ? Uri.file(relativePath) : Uri.joinPath(Uri.file(cwd), relativePath);
+
+    try {
+      await commands.executeCommand('git.openChange', uri);
+    } catch {
+      // Git extension unavailable: fall back to a plain editor open.
+      await this.openFile(cwd, relativePath, line);
+      return;
+    }
+
+    const editor = await this.findEditorForUri(uri);
+    if (!editor) {
+      // The diff didn't open (e.g. untracked file with no changes): fall back.
+      await this.openFile(cwd, relativePath, line);
+      return;
+    }
+
+    if (line === undefined) return;
+    const pos = new Position(Math.max(0, line - 1), 0);
+    editor.selection = new Selection(pos, pos);
+    editor.revealRange(new Range(pos, pos), TextEditorRevealType.InCenter);
   }
 
   public async openRawTask(sessionFilePath?: string): Promise<void> {
@@ -49,5 +75,19 @@ export class WorkspaceService {
     if (!uri) return;
 
     await workspace.fs.writeFile(uri, Buffer.from(parts.data, 'base64'));
+  }
+
+  private async findEditorForUri(uri: Uri, attempts = 10, delayMs = 50): Promise<TextEditor | undefined> {
+    const target = uri.toString();
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      const editor = window.activeTextEditor;
+      if (editor && editor.document.uri.toString() === target) {
+        return editor;
+      }
+      if (attempt < attempts - 1) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+    return undefined;
   }
 }

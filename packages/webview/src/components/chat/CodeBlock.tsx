@@ -180,7 +180,7 @@ export const CodeBlock = memo(({ source = '', language }: CodeBlockProps) => {
       ref={codeBlockRef}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="relative overflow-hidden my-2 border border-vscode-editorGroup-border rounded-md"
+      className="relative overflow-hidden border border-vscode-editorGroup-border rounded-md"
       style={{ backgroundColor: CODE_BLOCK_BG_COLOR }}
     >
       <div

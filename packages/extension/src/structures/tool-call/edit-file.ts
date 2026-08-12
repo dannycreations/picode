@@ -149,7 +149,7 @@ function replaceExpected(originalLF: string, oldLF: string, newLF: string, expec
     error:
       `Error: matched ${exact} occurrence(s) of "old_string" in ${filePath}, but "expected_replacements" is ${expected}.\n` +
       `Exact: ${exact}, whitespace-tolerant: ${whitespace}, token-based: ${token}.\n\n` +
-      `Verify "old_string" matches the target exactly, including whitespace and line endings.`,
+      `Verify "old_string" matches the target exactly as-is, including whitespace and line endings.`,
   };
 }
 

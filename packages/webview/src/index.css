@@ -54,6 +54,7 @@
   --color-vscode-list-activeSelectionForeground: var(--vscode-list-activeSelectionForeground);
   --color-vscode-charts-blue: var(--vscode-charts-blue, #1f9cf0);
   --color-vscode-charts-green: var(--vscode-charts-green, #89d185);
+  --color-vscode-charts-red: var(--vscode-charts-red, #f14c4c);
   --color-vscode-charts-orange: var(--vscode-charts-orange, #d16d13);
   --color-vscode-errorForeground: var(--vscode-errorForeground, #f48771);
   --color-vscode-editorError-foreground: var(--vscode-editorError-foreground, #f48771);

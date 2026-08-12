@@ -5,7 +5,9 @@ import { useState } from 'react';
 import { CodeBlock } from '@pi-code/webview/components/chat/CodeBlock';
 import { Markdown } from '@pi-code/webview/components/chat/markdown/Markdown';
 import {
+  getDiffStat,
   getFileToolMeta,
+  getFirstDiffLine,
   getToolDiffMeta,
   getToolFilePath,
   getToolLanguage,
@@ -76,8 +78,13 @@ const FileToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDenyT
   const hasApproval = message.toolStatus === 'approval';
   const visibleSections = isExpanded ? sections : sections.slice(0, 1);
 
-  const openFile = (target: string) => {
-    if (target) vscode?.postMessage({ type: 'open_file', text: target });
+  const openFile = (target: string, content?: string) => {
+    if (!target) return;
+    if (message.toolName === 'edit_file') {
+      vscode?.postMessage({ type: 'open_file', text: target, values: { line: getFirstDiffLine(content), diff: true } });
+      return;
+    }
+    vscode?.postMessage({ type: 'open_file', text: target });
   };
 
   return (
@@ -129,8 +136,19 @@ interface FileSectionCardProps {
   readonly defaultOpen: boolean;
   readonly isFirst: boolean;
   readonly isLast: boolean;
-  readonly onOpenFile: (path: string) => void;
+  readonly onOpenFile: (path: string, content?: string) => void;
 }
+
+const DiffStat: FC<{ content?: string; className?: string }> = ({ content, className }) => {
+  const stat = getDiffStat(content);
+  if (!stat) return null;
+  return (
+    <span className={cn('flex items-center gap-1 text-xs font-mono select-none', className)}>
+      {stat.added > 0 && <span className="text-vscode-charts-green">+{stat.added}</span>}
+      {stat.removed > 0 && <span className="text-vscode-charts-red">-{stat.removed}</span>}
+    </span>
+  );
+};
 
 const FileSectionCard: FC<FileSectionCardProps> = ({ section: { path, content }, language, defaultOpen, isFirst, isLast, onOpenFile }) => {
   const [open, setOpen] = useState(defaultOpen);
@@ -152,7 +170,7 @@ const FileSectionCard: FC<FileSectionCardProps> = ({ section: { path, content },
         {path ? (
           <button
             type="button"
-            onClick={() => onOpenFile(path)}
+            onClick={() => setOpen(!open)}
             title={path}
             className="font-mono text-xs text-vscode-foreground truncate hover:text-vscode-textLink cursor-pointer select-text"
           >
@@ -163,13 +181,18 @@ const FileSectionCard: FC<FileSectionCardProps> = ({ section: { path, content },
         )}
         <div className="flex-grow" />
         {path && (
-          <button
-            type="button"
-            onClick={() => onOpenFile(path)}
-            title="Open file"
-            aria-label="Open file"
-            className="codicon codicon-link-external text-vscode-descriptionForeground hover:text-vscode-foreground opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shrink-0"
-          />
+          <div className="flex items-center shrink-0">
+            {language === 'diff' && <DiffStat content={content} className="group-hover:hidden" />}
+            <span className="hidden group-hover:inline-flex">
+              <button
+                type="button"
+                onClick={() => onOpenFile(path, content)}
+                title="Open file"
+                aria-label="Open file"
+                className="codicon codicon-link-external text-vscode-descriptionForeground hover:text-vscode-foreground cursor-pointer"
+              />
+            </span>
+          </div>
         )}
       </div>
 

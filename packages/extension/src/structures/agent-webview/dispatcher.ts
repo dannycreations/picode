@@ -110,7 +110,11 @@ const HANDLER_MAP: HandlerMap = {
     if (exported) window.showInformationMessage('Task exported successfully!');
   },
   open_file: async (msg, ctx) => {
-    await ctx.workspace.openFile(ctx.cwd, msg.text, msg.values?.line);
+    if (msg.values?.diff) {
+      await ctx.workspace.openFileInChanges(ctx.cwd, msg.text, msg.values?.line);
+    } else {
+      await ctx.workspace.openFile(ctx.cwd, msg.text, msg.values?.line);
+    }
   },
   open_image: async (msg, ctx) => {
     await ctx.workspace.openBase64Image(msg.dataUrl);

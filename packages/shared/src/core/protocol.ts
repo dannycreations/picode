@@ -101,7 +101,7 @@ export type WebviewToExtensionMessage =
   | { type: 'question_response'; question_id: string; text: string }
   | { type: 'view_raw_task'; path?: string }
   | { type: 'export_session'; path: string; id: string }
-  | { type: 'open_file'; text: string; values?: { line: number } }
+  | { type: 'open_file'; text: string; values?: { line?: number; diff?: boolean } }
   | { type: 'open_image'; dataUrl: string }
   | { type: 'save_image'; dataUrl: string; filename: string }
   | { type: 'close_task' }
