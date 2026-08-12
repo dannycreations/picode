@@ -6,6 +6,10 @@ export function getWorkspaceCwd(): string {
   return workspaceFolders && workspaceFolders.length > 0 ? workspaceFolders[0].uri.fsPath : process.cwd();
 }
 
+export function getWorkspaceUri(): Uri | undefined {
+  return workspace.workspaceFolders?.[0]?.uri;
+}
+
 function toUri(target: Uri | string): Uri {
   return typeof target === 'string' ? Uri.file(target) : target;
 }

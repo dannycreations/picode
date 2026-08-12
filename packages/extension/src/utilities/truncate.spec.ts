@@ -1,13 +1,8 @@
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES } from '@earendil-works/pi-coding-agent';
 import { describe, expect, it } from 'vitest';
 
-import {
-  DEFAULT_OUTPUT_LIMITS,
-  formatTruncationNotice,
-  shareOutputLimits,
-  toOutputLimits,
-  truncateOutput,
-} from '@pi-code/extension/utilities/truncate';
+import { formatTruncationNotice, shareOutputLimits, toOutputLimits, truncateOutput } from '@pi-code/extension/utilities/truncate';
+import { DEFAULT_SETTINGS } from '@pi-code/shared/core/settings';
 
 import type { AppSettings } from '@pi-code/shared/core/settings';
 
@@ -24,7 +19,7 @@ describe('toOutputLimits', () => {
   });
 
   it('matches the pi defaults out of the box', () => {
-    expect(DEFAULT_OUTPUT_LIMITS).toEqual({ maxLines: DEFAULT_MAX_LINES, maxBytes: DEFAULT_MAX_BYTES });
+    expect(toOutputLimits(DEFAULT_SETTINGS)).toEqual({ maxLines: DEFAULT_MAX_LINES, maxBytes: DEFAULT_MAX_BYTES });
   });
 });
 

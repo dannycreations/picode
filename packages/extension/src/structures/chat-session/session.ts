@@ -45,123 +45,130 @@ export function collapseSkillBlock(text: string): string {
 
 export function convertSessionEntries(entries: readonly SessionEntry[]): ChatMessage[] {
   const result: ChatMessage[] = [];
+
   for (const entry of entries) {
-    const timestamp = new Date(entry.timestamp).getTime();
+    const ts = new Date(entry.timestamp).getTime();
 
-    if (entry.type === 'compaction') {
+    switch (entry.type) {
+      case 'compaction':
+        result.push({ id: entry.id, sender: 'info', text: `Compacted: ${entry.summary}`, ts });
+        break;
+
+      case 'label':
+        if (entry.label) {
+          result.push({ id: entry.id, sender: 'checkpoint', text: 'Checkpoint saved', ts });
+        }
+        break;
+
+      case 'message':
+        appendMessage(result, entry.id, entry.message, ts);
+        break;
+    }
+  }
+
+  return result;
+}
+
+type SessionMessage = Extract<SessionEntry, { type: 'message' }>['message'];
+
+function appendMessage(result: ChatMessage[], id: string, msg: SessionMessage, ts: number): void {
+  switch (msg.role) {
+    case 'user': {
+      const images = collectImages(toContentParts(msg.content));
       result.push({
-        id: entry.id,
-        sender: 'info',
-        text: `Compacted: ${entry.summary}`,
-        ts: timestamp,
-      });
-      continue;
-    }
-
-    if (entry.type === 'label') {
-      if (entry.label) {
-        result.push({
-          id: entry.id,
-          sender: 'checkpoint',
-          text: 'Checkpoint saved',
-          ts: timestamp,
-        });
-      }
-      continue;
-    }
-
-    if (entry.type !== 'message') {
-      continue;
-    }
-
-    const msg = entry.message;
-    if (msg.role === 'user') {
-      const parts = toContentParts(msg.content);
-      const images = collectImages(parts);
-      result.push({
-        id: entry.id,
+        id,
         sender: 'user',
         text: collapseSkillBlock(contentText(msg.content).trim()),
         images: images.length > 0 ? images : undefined,
-        ts: timestamp,
+        ts,
       });
-    } else if (msg.role === 'assistant') {
-      const parts = toContentParts(msg.content);
-      const cost = msg.usage?.cost?.total;
-      const errorMessage = msg.errorMessage;
+      break;
+    }
 
+    case 'assistant':
+      appendAssistantTurn(result, id, msg, ts);
+      break;
+
+    // A tool result is not a row of its own: it completes the `tool` row that
+    // the assistant's matching tool call already pushed.
+    case 'toolResult':
+      patchToolCall(result, msg);
+      break;
+
+    case 'bashExecution':
       result.push({
-        id: `${entry.id}-api-req`,
-        sender: 'api_request',
-        text: 'API Request',
-        ts: timestamp - 1,
-        toolStatus: errorMessage ? 'denied' : 'completed',
-        errorMessage,
-        cost,
-      });
-
-      result.push({
-        id: entry.id,
-        sender: 'assistant',
-        text: contentText(msg.content),
-        reasoning: joinThinking(parts),
-        cost,
-        ts: timestamp,
-      });
-
-      for (const toolCall of parts.filter((part) => part.type === 'toolCall')) {
-        result.push({
-          id: toolCall.id || uuidv7(),
-          sender: 'tool',
-          text: toolCall.name,
-          toolName: toolCall.name as ToolName,
-          toolArgs: typeof toolCall.arguments === 'string' ? toolCall.arguments : JSON.stringify(toolCall.arguments),
-          toolStatus: 'completed',
-          ts: timestamp,
-        });
-      }
-
-      if (errorMessage) {
-        result.push({
-          id: `${entry.id}-error`,
-          sender: 'error',
-          text: errorMessage,
-          errorMessage,
-          ts: timestamp,
-        });
-      }
-    } else if (msg.role === 'toolResult') {
-      const existingIndex = result.findIndex((r) => r.sender === 'tool' && r.id === msg.toolCallId);
-      if (existingIndex !== -1) {
-        const existingToolMsg = result[existingIndex];
-        const resultText = contentText(msg.content);
-        const details: ToolResultDetails | undefined = msg.details;
-
-        result[existingIndex] = {
-          ...existingToolMsg,
-          toolStatus: msg.isError ? 'denied' : 'completed',
-          diff: details?.diff || resultText,
-          todos: details?.todos,
-          errorMessage: msg.isError ? resultText : existingToolMsg.errorMessage,
-        };
-      }
-    } else if (msg.role === 'bashExecution') {
-      result.push({
-        id: entry.id,
+        id,
         sender: 'tool',
         text: msg.command,
         toolName: 'execute_command',
         toolArgs: `command: ${msg.command}`,
         toolStatus: msg.cancelled ? 'denied' : 'completed',
         diff: msg.output,
-        ts: timestamp,
+        ts,
       });
-    }
+      break;
   }
-  return result;
 }
 
-export function calculateSessionStats(entries: readonly SessionEntry[], contextLimit: number = DEFAULT_CONTEXT_LIMIT): StatsData {
+function appendAssistantTurn(result: ChatMessage[], id: string, msg: Extract<SessionMessage, { role: 'assistant' }>, ts: number): void {
+  const parts = toContentParts(msg.content);
+  const cost = msg.usage?.cost?.total;
+  const errorMessage = msg.errorMessage;
+
+  result.push({
+    id: `${id}-api-req`,
+    sender: 'api_request',
+    text: 'API Request',
+    ts: ts - 1,
+    toolStatus: errorMessage ? 'denied' : 'completed',
+    errorMessage,
+    cost,
+  });
+
+  result.push({
+    id,
+    sender: 'assistant',
+    text: contentText(msg.content),
+    reasoning: joinThinking(parts),
+    cost,
+    ts,
+  });
+
+  for (const toolCall of parts.filter((part) => part.type === 'toolCall')) {
+    result.push({
+      id: toolCall.id || uuidv7(),
+      sender: 'tool',
+      text: toolCall.name,
+      toolName: toolCall.name as ToolName,
+      toolArgs: typeof toolCall.arguments === 'string' ? toolCall.arguments : JSON.stringify(toolCall.arguments),
+      toolStatus: 'completed',
+      ts,
+    });
+  }
+
+  if (errorMessage) {
+    result.push({ id: `${id}-error`, sender: 'error', text: errorMessage, errorMessage, ts });
+  }
+}
+
+function patchToolCall(result: ChatMessage[], msg: Extract<SessionMessage, { role: 'toolResult' }>): void {
+  const index = result.findIndex((r) => r.sender === 'tool' && r.id === msg.toolCallId);
+  if (index === -1) return;
+
+  const existing = result[index];
+  const resultText = contentText(msg.content);
+  const details: ToolResultDetails | undefined = msg.details;
+
+  result[index] = {
+    ...existing,
+    toolStatus: msg.isError ? 'denied' : 'completed',
+    diff: details?.diff || resultText,
+    todos: details?.todos,
+    errorMessage: msg.isError ? resultText : existing.errorMessage,
+  };
+}
+
+function calculateSessionStats(entries: readonly SessionEntry[], contextLimit: number = DEFAULT_CONTEXT_LIMIT): StatsData {
   let tokensIn = 0;
   let tokensOut = 0;
   let cacheWrites = 0;
@@ -204,4 +211,10 @@ export function calculateSessionStats(entries: readonly SessionEntry[], contextL
     contextTokens,
     contextLimit,
   };
+}
+
+export function loadSessionTranscript(entries: readonly SessionEntry[], contextLimit: number): { messages: ChatMessage[]; stats: StatsData } {
+  const messages = convertSessionEntries(entries);
+  const stats = calculateSessionStats(entries, contextLimit);
+  return { messages, stats };
 }

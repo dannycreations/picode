@@ -6,15 +6,28 @@ import { coerceSetting, coerceSettings, SETTING_KEYS } from '@pi-code/shared/cor
 import manifest from '../../package.json' with { type: 'json' };
 
 import type { WorkspaceConfiguration } from 'vscode';
+import type { ModelSelection } from '@pi-code/shared/core/protocol';
 import type { AppSettings } from '@pi-code/shared/core/settings';
 
+// VS Code settings are read from the editor on demand and only change in
+// response to `onDidChangeConfiguration`, so the snapshot is memoized and invalidated
+// from that single listener instead of being re-read on every tool call, turn, and tool result.
+let cachedSettings: AppSettings | null = null;
+
+export function invalidateAppSettings(): void {
+  cachedSettings = null;
+}
+
 export function readAppSettings(): AppSettings {
+  if (cachedSettings) return cachedSettings;
+
   const config = workspace.getConfiguration(manifest.name);
   const settings: Record<string, unknown> = {};
   for (const key of SETTING_KEYS) {
     settings[key] = coerceSetting(key, config.get(key));
   }
-  return settings as unknown as AppSettings;
+  cachedSettings = settings as unknown as AppSettings;
+  return cachedSettings;
 }
 
 function resolveConfigurationTarget(config: WorkspaceConfiguration, key: string): ConfigurationTarget {
@@ -31,11 +44,6 @@ export async function writeAppSettings(partial: Partial<AppSettings>): Promise<v
   }
 }
 
-export async function updateAppSettings(partial: Partial<AppSettings>): Promise<AppSettings> {
-  await writeAppSettings(partial);
-  return readAppSettings();
-}
-
 // SettingsManager is the only settings state that is genuinely workspace bound,
 // so it is memoized per cwd. Editor settings are read straight from VS Code.
 const settingsManagers = new Map<string, SettingsManager>();
@@ -49,8 +57,13 @@ export function getSettingsManager(cwd: string): SettingsManager {
   return manager;
 }
 
-export async function getDefaultModel(cwd: string): Promise<string | undefined> {
+// Provider and model are always needed together to identify a model
+// unambiguously, so both are read from a single reload of the agent settings.
+export async function getDefaultModelSelection(cwd: string): Promise<Partial<ModelSelection>> {
   const manager = getSettingsManager(cwd);
   await manager.reload();
-  return manager.getDefaultModel();
+
+  const id = manager.getDefaultModel();
+  const provider = manager.getDefaultProvider();
+  return { id, provider };
 }

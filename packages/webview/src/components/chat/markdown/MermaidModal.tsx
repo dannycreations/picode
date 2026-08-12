@@ -1,23 +1,45 @@
 import { cn } from 'cnfast';
 
 import { usePanZoom } from '@pi-code/webview/components/chat/markdown/hooks/usePanZoom';
-import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
+import { IconButton } from '@pi-code/webview/components/shared/IconButton';
 
 import type { FC, MouseEvent } from 'react';
+
+type ViewMode = 'diagram' | 'code';
 
 interface MermaidModalProps {
   readonly code: string;
   readonly svgContent: string;
-  readonly modalViewMode: 'diagram' | 'code';
+  readonly modalViewMode: ViewMode;
   readonly showCopy: boolean;
-  readonly setModalViewMode: (mode: 'diagram' | 'code') => void;
+  readonly setModalViewMode: (mode: ViewMode) => void;
   readonly onClose: () => void;
   readonly onCopy: (e: MouseEvent) => Promise<void>;
   readonly onSave: (e: MouseEvent) => Promise<void>;
 }
 
+const ViewTab: FC<{ readonly icon: string; readonly label: string; readonly isActive: boolean; readonly onClick: () => void }> = ({
+  icon,
+  label,
+  isActive,
+  onClick,
+}) => (
+  <button
+    className={cn(
+      'px-4 py-2 border-none cursor-pointer flex items-center gap-1.5 text-xs transition-all duration-200',
+      isActive
+        ? 'border-b-2 border-vscode-focusBorder text-vscode-editor-foreground font-semibold'
+        : 'text-vscode-descriptionForeground hover:text-vscode-editor-foreground',
+    )}
+    onClick={onClick}
+  >
+    <span className={cn('codicon', `codicon-${icon}`, 'text-sm')} /> {label}
+  </button>
+);
+
 export const MermaidModal: FC<MermaidModalProps> = ({ code, svgContent, modalViewMode, showCopy, setModalViewMode, onClose, onCopy, onSave }) => {
   const { zoomLevel, dragPosition, isDragging, adjustZoom, handleWheel, startDrag, onDrag, stopDrag } = usePanZoom();
+  const isDiagram = modalViewMode === 'diagram';
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -28,42 +50,18 @@ export const MermaidModal: FC<MermaidModalProps> = ({ code, svgContent, modalVie
         {/* Modal Header */}
         <div className="flex justify-between items-center border-b border-vscode-editorGroup-border bg-vscode-editor-background px-2">
           <div className="flex">
-            <button
-              className={cn(
-                'px-4 py-2 border-none cursor-pointer flex items-center gap-1.5 text-xs transition-all duration-200',
-                modalViewMode === 'diagram'
-                  ? 'border-b-2 border-vscode-focusBorder text-vscode-editor-foreground font-semibold'
-                  : 'text-vscode-descriptionForeground hover:text-vscode-editor-foreground',
-              )}
-              onClick={() => setModalViewMode('diagram')}
-            >
-              <span className="codicon codicon-graph text-sm" /> Diagram
-            </button>
-            <button
-              className={cn(
-                'px-4 py-2 border-none cursor-pointer flex items-center gap-1.5 text-xs transition-all duration-200',
-                modalViewMode === 'code'
-                  ? 'border-b-2 border-vscode-focusBorder text-vscode-editor-foreground font-semibold'
-                  : 'text-vscode-descriptionForeground hover:text-vscode-editor-foreground',
-              )}
-              onClick={() => setModalViewMode('code')}
-            >
-              <span className="codicon codicon-code text-sm" /> Source Code
-            </button>
+            <ViewTab icon="graph" label="Diagram" isActive={isDiagram} onClick={() => setModalViewMode('diagram')} />
+            <ViewTab icon="code" label="Source Code" isActive={!isDiagram} onClick={() => setModalViewMode('code')} />
           </div>
-          <Tooltip content="Close" side="bottom">
-            <button className="icon-button" onClick={onClose}>
-              <span className="codicon codicon-close text-sm" />
-            </button>
-          </Tooltip>
+          <IconButton icon="close" tooltip="Close" side="bottom" className="text-sm" onClick={onClose} />
         </div>
 
         {/* Modal Content */}
         <div
           className="flex-1 p-4 pb-16 overflow-auto flex items-center justify-center relative bg-vscode-editor-background"
-          onWheel={modalViewMode === 'diagram' ? handleWheel : undefined}
+          onWheel={isDiagram ? handleWheel : undefined}
         >
-          {modalViewMode === 'diagram' ? (
+          {isDiagram ? (
             <div className="w-full h-full flex items-center justify-center overflow-hidden">
               <div
                 style={{
@@ -92,38 +90,16 @@ export const MermaidModal: FC<MermaidModalProps> = ({ code, svgContent, modalVie
           )}
         </div>
 
-        {/* Modal Footer Controls */}
+        {/* Modal Footer Controls: zoom and export only apply to the diagram. */}
         <div className="absolute bottom-0 right-0 left-0 p-3 flex items-center justify-end gap-2 bg-vscode-editor-background border-t border-vscode-editorGroup-border rounded-b">
-          {modalViewMode === 'diagram' ? (
+          {isDiagram && (
             <>
-              <Tooltip content="Zoom out">
-                <button className="icon-button" onClick={() => adjustZoom(-0.2)}>
-                  <span className="codicon codicon-zoom-out" />
-                </button>
-              </Tooltip>
-              <Tooltip content="Zoom in">
-                <button className="icon-button" onClick={() => adjustZoom(0.2)}>
-                  <span className="codicon codicon-zoom-in" />
-                </button>
-              </Tooltip>
-              <Tooltip content={showCopy ? 'Copied source!' : 'Copy source'}>
-                <button className="icon-button" onClick={onCopy}>
-                  <span className={cn('codicon', `codicon-${showCopy ? 'check' : 'copy'}`)} />
-                </button>
-              </Tooltip>
-              <Tooltip content="Save as PNG">
-                <button className="icon-button" onClick={onSave}>
-                  <span className="codicon codicon-save" />
-                </button>
-              </Tooltip>
+              <IconButton icon="zoom-out" tooltip="Zoom out" onClick={() => adjustZoom(-0.2)} />
+              <IconButton icon="zoom-in" tooltip="Zoom in" onClick={() => adjustZoom(0.2)} />
             </>
-          ) : (
-            <Tooltip content={showCopy ? 'Copied source!' : 'Copy source'}>
-              <button className="icon-button" onClick={onCopy}>
-                <span className={cn('codicon', `codicon-${showCopy ? 'check' : 'copy'}`)} />
-              </button>
-            </Tooltip>
           )}
+          <IconButton icon={showCopy ? 'check' : 'copy'} tooltip={showCopy ? 'Copied source!' : 'Copy source'} onClick={onCopy} />
+          {isDiagram && <IconButton icon="save" tooltip="Save as PNG" onClick={onSave} />}
         </div>
       </div>
     </div>

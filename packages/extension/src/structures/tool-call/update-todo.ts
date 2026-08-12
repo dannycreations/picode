@@ -2,6 +2,7 @@ import { formatThrownValue } from '@earendil-works/pi-ai';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
+import { toolError, toolResult } from '@pi-code/extension/structures/tool-call/helpers/result';
 import { parseTodoList } from '@pi-code/shared/utilities/todo';
 
 import type { ToolName } from '@pi-code/shared/core/protocol';
@@ -15,16 +16,9 @@ export const updateTodoTool = defineTool({
   }),
   async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
     try {
-      return {
-        content: [{ type: 'text', text: 'Todo list updated.' }],
-        details: { todos: parseTodoList(params.todos) },
-      };
+      return toolResult('Todo list updated.', { todos: parseTodoList(params.todos) });
     } catch (err) {
-      return {
-        content: [{ type: 'text', text: `Error updating todo list: ${formatThrownValue(err)}` }],
-        details: {},
-        isError: true,
-      };
+      return toolError(`Error updating todo list: ${formatThrownValue(err)}`);
     }
   },
 });

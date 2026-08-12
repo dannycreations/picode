@@ -2,7 +2,8 @@ import { formatThrownValue } from '@earendil-works/pi-ai';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
-import { QuestionBridge } from '@pi-code/extension/structures/agent-runtime/question';
+import { askQuestion } from '@pi-code/extension/structures/agent-runtime/brokers/question';
+import { toolError, toolResult } from '@pi-code/extension/structures/tool-call/helpers/result';
 
 import type { ToolName } from '@pi-code/shared/core/protocol';
 
@@ -22,33 +23,18 @@ export const askQuestionTool = defineTool({
       // The chat view renders the question straight from the tool call
       // arguments, so an empty question would surface as an empty card.
       if (!params.question.trim()) {
-        return {
-          content: [{ type: 'text', text: 'Error: "question" is required and cannot be empty.' }],
-          details: {},
-          isError: true,
-        };
+        return toolError('Error: "question" is required and cannot be empty.');
       }
 
-      const response = await QuestionBridge.getInstance().ask(toolCallId, signal);
+      const response = await askQuestion(toolCallId, signal);
 
       if (response === null || response.trim() === '') {
-        return {
-          content: [{ type: 'text', text: 'Error: the user provided no response.' }],
-          details: {},
-          isError: true,
-        };
+        return toolError('Error: the user provided no response.');
       }
 
-      return {
-        content: [{ type: 'text', text: response }],
-        details: { response },
-      };
+      return toolResult(response, { response });
     } catch (err) {
-      return {
-        content: [{ type: 'text', text: `Error asking question: ${formatThrownValue(err)}` }],
-        details: {},
-        isError: true,
-      };
+      return toolError(`Error asking question: ${formatThrownValue(err)}`);
     }
   },
 });

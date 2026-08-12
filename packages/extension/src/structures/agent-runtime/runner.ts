@@ -1,21 +1,23 @@
 import { uuidv7 } from '@earendil-works/pi-ai';
 
 import { readAppSettings } from '@pi-code/extension/core/settings';
+import { cancelAllQuestions } from '@pi-code/extension/structures/agent-runtime/brokers/question';
 import { EventMapper } from '@pi-code/extension/structures/agent-runtime/event';
-import { QuestionBridge } from '@pi-code/extension/structures/agent-runtime/question';
 import { createSession } from '@pi-code/extension/structures/agent-runtime/session';
 import { WebviewMessenger } from '@pi-code/extension/structures/agent-runtime/webview';
 import { listCommands } from '@pi-code/extension/structures/chat-command/command';
 import { getEnvironmentDetails, getLatestTodoList, withTodoProgress } from '@pi-code/extension/structures/chat-session/environment';
+import { loadSessionTranscript } from '@pi-code/extension/structures/chat-session/session';
 import { parseBase64DataUrl } from '@pi-code/extension/utilities/codec';
 import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
+import { DEFAULT_CONTEXT_LIMIT } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
 
 import type { AfterToolCallResult } from '@earendil-works/pi-agent-core';
 import type { ImageContent, TextContent } from '@earendil-works/pi-ai';
 import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent';
 import type { Webview } from 'vscode';
-import type { ModelSelection, QueueMessage } from '@pi-code/shared/core/protocol';
+import type { ChatMessage, ExtensionToWebviewMessage, ModelSelection, QueueMessage, StatsData } from '@pi-code/shared/core/protocol';
 
 function parseImageAttachments(images?: string[]): ImageContent[] | undefined {
   if (!images || images.length === 0) return undefined;
@@ -33,9 +35,16 @@ export class AgentRunner {
   private unsubscribeSessionEvents: (() => void) | null = null;
   private replyQueue: QueueMessage[] = [];
 
-  private readonly messenger = new WebviewMessenger();
   private readonly event = new EventMapper();
-  private readonly question = QuestionBridge.getInstance();
+  private readonly messenger = new WebviewMessenger();
+
+  public constructor(webview: Webview) {
+    this.messenger.attach(webview);
+  }
+
+  public postMessage(message: ExtensionToWebviewMessage): void {
+    this.messenger.post(message);
+  }
 
   public addToReplyQueue(text: string, images?: string[]): void {
     const msg: QueueMessage = {
@@ -70,17 +79,11 @@ export class AgentRunner {
     });
   }
 
-  public async startTask(
-    promptText: string,
-    selectedModel: ModelSelection | undefined,
-    webview: Webview,
-    images?: string[],
-    path?: string,
-  ): Promise<void> {
+  public async startTask(promptText: string, selectedModel: ModelSelection | undefined, images?: string[], path?: string): Promise<void> {
     this.clearReplyQueue();
 
     try {
-      const { session, envDetails } = await this.prepareSession(webview, path, selectedModel);
+      const { session, envDetails } = await this.prepareSession(path, selectedModel);
 
       // `nextTurn` makes pi attach the details to the upcoming user message, so
       // they reach the model and get persisted with the turn that used them.
@@ -96,9 +99,9 @@ export class AgentRunner {
     }
   }
 
-  public async continueTask(path: string, webview: Webview, selectedModel?: ModelSelection): Promise<void> {
+  public async continueTask(path: string, selectedModel?: ModelSelection): Promise<void> {
     try {
-      const { session, envDetails } = await this.prepareSession(webview, path, selectedModel);
+      const { session, envDetails } = await this.prepareSession(path, selectedModel);
 
       void session
         .sendCustomMessage({ customType: 'environment_details', content: envDetails, display: false }, { triggerTurn: true })
@@ -110,26 +113,25 @@ export class AgentRunner {
     }
   }
 
-  public answerQuestion(questionId: string, text: string): void {
-    this.question.answer(questionId, text);
-  }
-
-  public async compact(path: string | undefined, webview: Webview): Promise<void> {
-    this.prepareRun(webview);
+  public async compact(path: string | undefined): Promise<{ messages: ChatMessage[]; stats: StatsData } | null> {
+    this.prepareRun();
     const cwd = getWorkspaceCwd();
 
-    const session = await this.getOrCreateSession(path, cwd);
-
     try {
+      const session = await this.getOrCreateSession(path, cwd);
       await session.compact();
+
+      // Returns the compacted transcript and its stats so the caller can refresh the
+      // webview from the in-memory session instead of re-opening the file on disk.
+      const entries = session.sessionManager.buildContextEntries();
+      return loadSessionTranscript(entries, session.model?.contextWindow ?? DEFAULT_CONTEXT_LIMIT);
     } catch (err) {
       this.messenger.postError(err);
+      return null;
     }
   }
 
-  public async reload(webview: Webview): Promise<void> {
-    this.messenger.attach(webview);
-
+  public async reload(): Promise<void> {
     if (this.session?.isStreaming || this.session?.isCompacting) {
       this.messenger.post({ type: 'info', payload: { text: 'Wait for the current task to finish before reloading.' } });
       return;
@@ -148,8 +150,14 @@ export class AgentRunner {
     }
   }
 
+  public reset(): void {
+    this.cleanupSession();
+    cancelAllQuestions();
+    this.clearReplyQueue();
+  }
+
   public abort(): void {
-    this.question.cancelAll();
+    cancelAllQuestions();
     this.clearReplyQueue();
 
     if (this.session) {
@@ -162,7 +170,7 @@ export class AgentRunner {
   public dispose(): void {
     this.messenger.dispose();
     this.cleanupSession();
-    this.question.cancelAll();
+    cancelAllQuestions();
     this.clearReplyQueue();
   }
 
@@ -170,18 +178,16 @@ export class AgentRunner {
     return this.session?.sessionFile;
   }
 
-  private prepareRun(webview: Webview): void {
-    this.messenger.attach(webview);
-    this.question.cancelAll();
+  private prepareRun(): void {
+    cancelAllQuestions();
     this.event.resetTurnState();
   }
 
   private async prepareSession(
-    webview: Webview,
     path: string | undefined,
     selectedModel: ModelSelection | undefined,
   ): Promise<{ session: AgentSession; envDetails: string }> {
-    this.prepareRun(webview);
+    this.prepareRun();
     const cwd = getWorkspaceCwd();
 
     const session = await this.getOrCreateSession(path, cwd);

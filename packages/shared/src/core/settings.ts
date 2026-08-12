@@ -22,7 +22,7 @@ interface StringListSetting extends SettingBase {
   readonly default: readonly string[];
 }
 
-export type SettingSpec = BooleanSetting | NumberSetting | StringListSetting;
+type SettingSpec = BooleanSetting | NumberSetting | StringListSetting;
 
 export const SETTINGS_SCHEMA = {
   enableTodoTool: {
@@ -201,7 +201,13 @@ export type SettingKey = keyof typeof SETTINGS_SCHEMA;
 
 export type SettingSpecOf<K extends SettingKey> = (typeof SETTINGS_SCHEMA)[K];
 
-type SettingValue<S> = S extends { readonly type: 'boolean' } ? boolean : S extends { readonly type: 'number' } ? number : readonly string[];
+type SettingValue<S> = S extends { readonly type: 'boolean' }
+  ? boolean
+  : S extends { readonly type: 'number' }
+    ? number
+    : S extends { readonly type: 'string[]' }
+      ? readonly string[]
+      : never;
 
 export type AppSettings = {
   readonly [K in SettingKey]: SettingValue<SettingSpecOf<K>>;

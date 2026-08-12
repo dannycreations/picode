@@ -1,10 +1,10 @@
 import { SessionManager } from '@earendil-works/pi-coding-agent';
 import { Uri, window, workspace } from 'vscode';
 
-import { getDefaultModel } from '@pi-code/extension/core/settings';
+import { getDefaultModelSelection } from '@pi-code/extension/core/settings';
 import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { collectCommands } from '@pi-code/extension/structures/chat-command/command';
-import { calculateSessionStats, convertSessionEntries } from '@pi-code/extension/structures/chat-session/session';
+import { convertSessionEntries, loadSessionTranscript } from '@pi-code/extension/structures/chat-session/session';
 import { DEFAULT_CONTEXT_LIMIT } from '@pi-code/shared/core/constants';
 
 import type { ModelRuntime, SessionInfo } from '@earendil-works/pi-coding-agent';
@@ -18,91 +18,82 @@ async function listSelectableModels(modelRuntime: ModelRuntime): Promise<ModelIt
   return models.map((model) => ({ id: model.id, name: model.name, provider: model.provider }));
 }
 
-export class SessionService {
-  public async getInitData(cwd: string): Promise<SessionInitData> {
-    const [sessions, resources] = await Promise.all([SessionManager.list(cwd), createAgentResources(cwd)]);
-    const models = await listSelectableModels(resources.services.modelRuntime);
+function formatSessions(sessions: SessionInfo[]): HistoryItem[] {
+  return sessions.map((session) => ({
+    id: session.id,
+    path: session.path,
+    task: session.firstMessage || 'Untitled Task',
+    ts: session.created ? new Date(session.created).getTime() : Date.now(),
+  }));
+}
 
-    const history = this.formatSessions(sessions);
-    const defaultModel = await getDefaultModel(cwd);
+export async function getInitData(cwd: string): Promise<SessionInitData> {
+  const [sessions, resources] = await Promise.all([SessionManager.list(cwd), createAgentResources(cwd)]);
+  const [models, defaultModel] = await Promise.all([listSelectableModels(resources.services.modelRuntime), getDefaultModelSelection(cwd)]);
 
-    return {
-      models,
-      history,
-      default_model: defaultModel,
-      settings: resources.settings,
-      commands: collectCommands(resources.services.resourceLoader),
-    };
-  }
+  return {
+    models,
+    history: formatSessions(sessions),
+    default_model: defaultModel.id,
+    settings: resources.settings,
+    commands: collectCommands(resources.services.resourceLoader),
+  };
+}
 
-  public async loadSessionDetails(
-    sessionPath: string,
-    cwd: string,
-  ): Promise<{
-    messages: ChatMessage[];
-    stats: StatsData;
-  }> {
-    const sessionManager = SessionManager.open(sessionPath);
-    const entries = sessionManager.buildContextEntries();
-    const chatMessages = convertSessionEntries(entries);
+export async function loadSessionDetails(
+  sessionPath: string,
+  cwd: string,
+): Promise<{
+  messages: ChatMessage[];
+  stats: StatsData;
+}> {
+  const sessionManager = SessionManager.open(sessionPath);
+  const entries = sessionManager.buildContextEntries();
 
-    const modelRuntime = (await createAgentResources(cwd)).services.modelRuntime;
+  const modelRuntime = (await createAgentResources(cwd)).services.modelRuntime;
 
-    const sessionContextModel = sessionManager.buildSessionContext().model;
-    const fallbackModelId = await getDefaultModel(cwd);
+  // Prefer the provider/model the session actually ran with; the saved id alone
+  // is ambiguous when two providers share a model id. The agent settings are
+  // only re-read when the session did not record a model.
+  const sessionContextModel = sessionManager.buildSessionContext().model;
+  const sessionModelId = sessionContextModel?.modelId ?? (await getDefaultModelSelection(cwd)).id;
+  const sessionProvider = sessionContextModel?.provider;
 
-    // Prefer the provider/model the session actually ran with; the saved id alone
-    // is ambiguous when two providers share a model id.
-    const sessionModelId = sessionContextModel?.modelId ?? fallbackModelId;
-    const sessionProvider = sessionContextModel?.provider;
+  const model = sessionModelId
+    ? sessionProvider
+      ? modelRuntime.getModel(sessionProvider, sessionModelId)
+      : modelRuntime.getModels().find((candidate) => candidate.id === sessionModelId)
+    : undefined;
 
-    const model = sessionModelId
-      ? sessionProvider
-        ? modelRuntime.getModel(sessionProvider, sessionModelId)
-        : modelRuntime.getModels().find((candidate) => candidate.id === sessionModelId)
-      : undefined;
+  return loadSessionTranscript(entries, model?.contextWindow ?? DEFAULT_CONTEXT_LIMIT);
+}
 
-    const stats = calculateSessionStats(entries, model?.contextWindow ?? DEFAULT_CONTEXT_LIMIT);
-    return { messages: chatMessages, stats };
-  }
+export async function fetchHistory(cwd: string, scope: HistoryScope): Promise<HistoryItem[]> {
+  const sessions = scope === 'all' ? await SessionManager.listAll() : await SessionManager.list(cwd);
+  return formatSessions(sessions);
+}
 
-  public async fetchHistory(cwd: string, scope: HistoryScope): Promise<HistoryItem[]> {
-    const sessions = scope === 'all' ? await SessionManager.listAll() : await SessionManager.list(cwd);
-    return this.formatSessions(sessions);
-  }
+export async function deleteSessions(paths: string[]): Promise<void> {
+  await Promise.allSettled(paths.map((path) => workspace.fs.delete(Uri.file(path), { useTrash: true })));
+}
 
-  public async deleteSessions(paths: string[]): Promise<void> {
-    await Promise.allSettled(paths.map((p) => workspace.fs.delete(Uri.file(p), { useTrash: true })));
-  }
-
-  public async exportSession(sessionPath: string, defaultId?: string): Promise<boolean> {
-    let chatMessages: ChatMessage[];
-    try {
-      const sessionManager = SessionManager.open(sessionPath);
-      chatMessages = convertSessionEntries(sessionManager.buildContextEntries());
-    } catch {
-      window.showWarningMessage('The session file for this task is not available yet.');
-      return false;
-    }
-
-    const uri = await window.showSaveDialog({
-      defaultUri: Uri.file(`pi-code-task-${defaultId || Date.now()}.json`),
-      filters: { 'JSON Files': ['json'] },
-    });
-
-    if (uri) {
-      await workspace.fs.writeFile(uri, new TextEncoder().encode(JSON.stringify(chatMessages, null, 2)));
-      return true;
-    }
+export async function exportSession(sessionPath: string, defaultId?: string): Promise<boolean> {
+  let chatMessages: ChatMessage[];
+  try {
+    chatMessages = convertSessionEntries(SessionManager.open(sessionPath).buildContextEntries());
+  } catch {
+    window.showWarningMessage('The session file for this task is not available yet.');
     return false;
   }
 
-  private formatSessions(sessions: SessionInfo[]): HistoryItem[] {
-    return sessions.map((s) => ({
-      id: s.id,
-      path: s.path,
-      task: s.firstMessage || 'Untitled Task',
-      ts: s.created ? new Date(s.created).getTime() : Date.now(),
-    }));
+  const uri = await window.showSaveDialog({
+    defaultUri: Uri.file(`pi-code-task-${defaultId || Date.now()}.json`),
+    filters: { 'JSON Files': ['json'] },
+  });
+
+  if (uri) {
+    await workspace.fs.writeFile(uri, new TextEncoder().encode(JSON.stringify(chatMessages, null, 2)));
+    return true;
   }
+  return false;
 }

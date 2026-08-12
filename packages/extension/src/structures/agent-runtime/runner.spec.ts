@@ -3,6 +3,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { AgentRunner } from '@pi-code/extension/structures/agent-runtime/runner';
 
 import type { AgentSession } from '@earendil-works/pi-coding-agent';
+import type { Webview } from 'vscode';
+
+function makeFakeWebview(): Webview {
+  return { postMessage: vi.fn() } as unknown as Webview;
+}
 
 function makeFakeSession(steer: () => void): AgentSession {
   return {
@@ -15,7 +20,7 @@ function makeFakeSession(steer: () => void): AgentSession {
 
 describe('AgentRunner reply queue', () => {
   it('adds, edits, removes, and clears reply queue messages', () => {
-    const runner = new AgentRunner();
+    const runner = new AgentRunner(makeFakeWebview());
 
     expect(runner['replyQueue']).toEqual([]);
 
@@ -42,7 +47,7 @@ describe('AgentRunner reply queue', () => {
   it('drains queued replies into the running session via steer on the next turn', async () => {
     const steer = vi.fn();
     const session = makeFakeSession(steer);
-    const runner = new AgentRunner();
+    const runner = new AgentRunner(makeFakeWebview());
 
     runner.addToReplyQueue('Hello World');
     runner.addToReplyQueue('Second Message');
@@ -63,7 +68,7 @@ describe('AgentRunner reply queue', () => {
       throw new Error('boom');
     });
     const session = makeFakeSession(steer);
-    const runner = new AgentRunner();
+    const runner = new AgentRunner(makeFakeWebview());
 
     runner.addToReplyQueue('Stays');
     runner['setupReplyQueueHook'](session);

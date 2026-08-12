@@ -4,6 +4,7 @@ import { formatThrownValue } from '@earendil-works/pi-ai';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
+import { toolError } from '@pi-code/extension/structures/tool-call/helpers/result';
 import { buildFileChangeResult } from '@pi-code/extension/utilities/truncate';
 
 import type { ToolName } from '@pi-code/shared/core/protocol';
@@ -120,6 +121,38 @@ function countRegexMatches(content: string, regex: RegExp): number {
   return count;
 }
 
+type ReplacementOutcome = { readonly content: string; readonly error?: undefined } | { readonly content?: undefined; readonly error: string };
+
+// Three matching strategies, tried in order of strictness and evaluated lazily
+// so an exact hit never pays for the regex passes. The first strategy whose
+// match count equals `expected` wins; otherwise all counts are reported so the
+// model can see how close each one got.
+function replaceExpected(originalLF: string, oldLF: string, newLF: string, expected: number, filePath: string): ReplacementOutcome {
+  const exact = countOccurrences(originalLF, oldLF);
+  if (exact === expected) {
+    return { content: safeLiteralReplace(originalLF, oldLF, newLF) };
+  }
+
+  const wsRegex = buildWhitespaceTolerantRegex(oldLF);
+  const whitespace = countRegexMatches(originalLF, wsRegex);
+  if (whitespace === expected) {
+    return { content: originalLF.replace(wsRegex, () => newLF) };
+  }
+
+  const tokenRegex = buildTokenRegex(oldLF);
+  const token = countRegexMatches(originalLF, tokenRegex);
+  if (token === expected) {
+    return { content: originalLF.replace(tokenRegex, () => newLF) };
+  }
+
+  return {
+    error:
+      `Error: matched ${exact} occurrence(s) of "old_string" in ${filePath}, but "expected_replacements" is ${expected}.\n` +
+      `Exact: ${exact}, whitespace-tolerant: ${whitespace}, token-based: ${token}.\n\n` +
+      `Verify "old_string" matches the target exactly, including whitespace and line endings.`,
+  };
+}
+
 export const editFileTool = defineTool({
   name: 'edit_file' as ToolName,
   label: 'Edit File',
@@ -145,108 +178,51 @@ export const editFileTool = defineTool({
         fileExists = true;
       } catch (err: unknown) {
         const isEnoent = err && typeof err === 'object' && 'code' in err && (err as { code?: string }).code === 'ENOENT';
-        if (isEnoent) {
-          fileExists = false;
-        } else {
-          return {
-            content: [{ type: 'text', text: `Error reading file ${file_path}: ${formatThrownValue(err)}` }],
-            details: {},
-            isError: true,
-          };
+        if (!isEnoent) {
+          return toolError(`Error reading file ${file_path}: ${formatThrownValue(err)}`);
         }
       }
 
-      if (fileExists) {
-        if (old_string === '') {
-          return {
-            content: [{ type: 'text', text: `Error: "file_path" already exists: ${file_path}. Use a non-empty "old_string" to modify it.` }],
-            details: {},
-            isError: true,
-          };
-        }
-      } else {
-        if (old_string !== '') {
-          return {
-            content: [
-              { type: 'text', text: `Error: "file_path" does not exist: ${file_path}. Set "old_string" to empty string to create a new file.` },
-            ],
-            details: {},
-            isError: true,
-          };
-        }
+      if (fileExists && old_string === '') {
+        return toolError(`Error: "file_path" already exists: ${file_path}. Use a non-empty "old_string" to modify it.`);
+      }
+      if (!fileExists && old_string !== '') {
+        return toolError(`Error: "file_path" does not exist: ${file_path}. Set "old_string" to empty string to create a new file.`);
       }
 
-      let newContent = '';
+      let newContent: string;
 
       if (!fileExists) {
-        // Creating new file
         newContent = new_string;
         await mkdir(dirname(resolvedPath), { recursive: true });
         await writeFile(resolvedPath, newContent, 'utf8');
       } else {
-        // Modifying existing file
         const originalEol = detectLineEnding(originalContent);
         const originalLF = normalizeToLF(originalContent);
         const oldLF = normalizeToLF(old_string);
         const newLF = normalizeToLF(new_string);
 
         if (oldLF === newLF) {
-          return {
-            content: [{ type: 'text', text: 'Error: "old_string" and "new_string" are identical; nothing to change.' }],
-            details: {},
-            isError: true,
-          };
+          return toolError('Error: "old_string" and "new_string" are identical; nothing to change.');
         }
 
-        let updatedLF = originalLF;
-
-        // Strategy 1: Exact literal match (fast path)
-        const exactOccurrences = countOccurrences(originalLF, oldLF);
-        if (exactOccurrences === expected_replacements) {
-          updatedLF = safeLiteralReplace(originalLF, oldLF, newLF);
-        } else {
-          // Strategy 2: Whitespace-tolerant regex (fallback)
-          const wsRegex = buildWhitespaceTolerantRegex(oldLF);
-          const wsOccurrences = countRegexMatches(originalLF, wsRegex);
-          if (wsOccurrences === expected_replacements) {
-            updatedLF = originalLF.replace(wsRegex, () => newLF);
-          } else {
-            // Strategy 3: Token-based regex (fallback)
-            const tokenRegex = buildTokenRegex(oldLF);
-            const tokenOccurrences = countRegexMatches(originalLF, tokenRegex);
-            if (tokenOccurrences === expected_replacements) {
-              updatedLF = originalLF.replace(tokenRegex, () => newLF);
-            } else {
-              // Mismatch error details
-              let errorMsg = `Error: matched ${exactOccurrences} occurrence(s) of "old_string" in ${file_path}, but "expected_replacements" is ${expected_replacements}.\n`;
-              errorMsg += `Exact: ${exactOccurrences}, whitespace-tolerant: ${wsOccurrences}, token-based: ${tokenOccurrences}.\n\n`;
-              errorMsg += `Verify "old_string" matches the target exactly, including whitespace and line endings.`;
-              return {
-                content: [{ type: 'text', text: errorMsg }],
-                details: {},
-                isError: true,
-              };
-            }
-          }
+        const outcome = replaceExpected(originalLF, oldLF, newLF, expected_replacements, file_path);
+        if (outcome.error !== undefined) {
+          return toolError(outcome.error);
         }
 
-        newContent = restoreLineEnding(updatedLF, originalEol);
+        newContent = restoreLineEnding(outcome.content, originalEol);
         await writeFile(resolvedPath, newContent, 'utf8');
       }
 
       return buildFileChangeResult({
-        cwd: ctx.cwd,
         oldContent: originalContent,
         newContent,
         successMessage: `Updated ${file_path}`,
         hint: `Edit applied; read "${file_path}" to verify the remaining changes.`,
       });
     } catch (err) {
-      return {
-        content: [{ type: 'text', text: `Error editing file: ${formatThrownValue(err)}` }],
-        details: {},
-        isError: true,
-      };
+      return toolError(`Error editing file: ${formatThrownValue(err)}`);
     }
   },
 });

@@ -18,7 +18,7 @@ import { SettingsView } from '@pi-code/webview/components/setting/SettingsView';
 import { ConfirmDialog } from '@pi-code/webview/components/shared/ConfirmDialog';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { useAutoScroll } from '@pi-code/webview/hooks/useAutoScroll';
-import { vscode } from '@pi-code/webview/utilities/vscode';
+import { postCompactMessage, vscode } from '@pi-code/webview/utilities/vscode';
 
 import type { FC } from 'react';
 import type { ExtensionToWebviewMessage, HistoryItem } from '@pi-code/shared/core/protocol';
@@ -83,20 +83,18 @@ export const ChatView: FC = () => {
   }, [pendingQuestionId, composer.textareaRef]);
 
   const { activeTask, isAgentRunning, pendingQuestion } = task;
-  const { models, settings, selectedModel, setSelectedModel, commands } = config;
-  const { pastTasks, setPastTasks, scope, setScope } = history;
+  const { models, settings, selectedModel, modelSelection, setSelectedModel, commands } = config;
+  const { pastTasks, deleteSessions, scope, setScope } = history;
   const { view, setView, inputValue, setInputValue, textareaRef } = composer;
 
-  const { handleSendPrompt, handleToolResponse, handleAnswerQuestion, handleCopyToInput, handleCloseTask, handleDeleteActiveTask } = useChatActions({
-    activeTask: task.activeTask,
-    models: config.models,
-    selectedModel: config.selectedModel,
-    pendingQuestion: task.pendingQuestion,
-    isAgentRunning: task.isAgentRunning,
+  const { handleSendPrompt, handleToolResponse, handleAnswerQuestion, handleCloseTask, handleDeleteActiveTask } = useChatActions({
+    activeTask,
+    modelSelection,
+    pendingQuestion,
+    isAgentRunning,
     setActiveTask: task.setActiveTask,
     setIsAgentRunning: task.setIsAgentRunning,
-    setPastTasks: history.setPastTasks,
-    appendToInput: composer.appendToInput,
+    deleteSessions,
   });
 
   const { scrollRef, contentRef, showScrollToBottom, handleScroll, scrollToBottom } = useAutoScroll(activeTask?.id);
@@ -130,6 +128,19 @@ export const ChatView: FC = () => {
     [scrollToBottom, handleAnswerQuestion],
   );
 
+  const loadSession = useCallback((item: HistoryItem) => {
+    vscode?.postMessage({ type: 'load_session', path: item.path, id: item.id, title: item.task });
+  }, []);
+
+  const exportSession = useCallback((item: { id: string; path?: string }) => {
+    if (!item.path) return;
+    vscode?.postMessage({ type: 'export_session', path: item.path, id: item.id });
+  }, []);
+
+  const viewRaw = useCallback((path: string | undefined) => {
+    if (path) vscode?.postMessage({ type: 'view_raw_task', path });
+  }, []);
+
   if (view === 'settings') {
     return (
       <div className="view-container">
@@ -147,19 +158,16 @@ export const ChatView: FC = () => {
       <div className="view-container">
         <HistoryView
           history={pastTasks}
-          onSelectTask={(item: HistoryItem) => vscode?.postMessage({ type: 'load_session', path: item.path, id: item.id, title: item.task })}
+          onSelectTask={loadSession}
           onDone={() => {
             setScope('current');
             setView('chat');
           }}
-          onDeleteTasks={(paths) => {
-            setPastTasks((prev) => prev.filter((item) => !paths.includes(item.path)));
-            vscode?.postMessage({ type: 'delete_sessions', paths });
-          }}
+          onDeleteTasks={deleteSessions}
           scope={scope}
           setScope={setScope}
-          onViewRaw={(path) => vscode?.postMessage({ type: 'view_raw_task', path })}
-          onExport={(item) => vscode?.postMessage({ type: 'export_session', path: item.path, id: item.id })}
+          onViewRaw={viewRaw}
+          onExport={exportSession}
         />
       </div>
     );
@@ -177,21 +185,10 @@ export const ChatView: FC = () => {
         <ChatHeader
           {...activeTask}
           onClose={handleCloseTask}
-          onCompact={() => {
-            vscode?.postMessage({ type: 'compact', id: activeTask.id, path: activeTask.path, title: activeTask.title });
-          }}
-          onExport={
-            activeTask.path
-              ? () =>
-                  vscode?.postMessage({
-                    type: 'export_session',
-                    path: activeTask.path ?? '',
-                    id: activeTask.id,
-                  })
-              : undefined
-          }
+          onCompact={() => postCompactMessage(activeTask)}
+          onExport={activeTask.path ? () => exportSession(activeTask) : undefined}
           onDelete={!isAgentRunning && activeTask.path ? () => setShowDeleteActiveConfirm(true) : undefined}
-          onViewRaw={() => vscode?.postMessage({ type: 'view_raw_task', path: activeTask.path })}
+          onViewRaw={() => viewRaw(activeTask.path)}
         />
       ) : (
         <div className="flex items-center justify-between w-full mx-auto px-3.5 pt-3 shrink-0 select-none">
@@ -219,7 +216,7 @@ export const ChatView: FC = () => {
                 onApproveTool={handleApproveTool}
                 onDenyTool={handleDenyTool}
                 onAnswerQuestion={handleAnswer}
-                onCopyToInput={handleCopyToInput}
+                onCopyToInput={composer.appendToInput}
               />
             ))}
           </div>
@@ -235,12 +232,9 @@ export const ChatView: FC = () => {
               {historyExpanded && (
                 <HistoryPreview
                   history={pastTasks}
-                  onSelectTask={(item) => vscode?.postMessage({ type: 'load_session', path: item.path, id: item.id, title: item.task })}
+                  onSelectTask={loadSession}
                   onViewAllHistory={() => setView('history')}
-                  onDeleteTask={(path) => {
-                    setPastTasks((prev) => prev.filter((i) => i.path !== path));
-                    vscode?.postMessage({ type: 'delete_sessions', paths: [path] });
-                  }}
+                  onDeleteTask={(path) => deleteSessions([path])}
                 />
               )}
             </div>
@@ -262,8 +256,8 @@ export const ChatView: FC = () => {
           vscode?.postMessage({
             type: 'continue_task',
             path: activeTask.path,
-            model_id: selectedModel,
-            model_provider: models.find((m) => m.id === selectedModel)?.provider,
+            model_id: modelSelection.id,
+            model_provider: modelSelection.provider,
           });
         }}
       />

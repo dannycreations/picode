@@ -1,4 +1,4 @@
-import { Uri, workspace } from 'vscode';
+import { open } from 'node:fs/promises';
 
 const BASE64_DATA_URL_PATTERN = /^data:([^;,]+)((?:;[^;,]+)*);base64,(.+)$/;
 
@@ -41,8 +41,13 @@ export function extensionForMimeType(mimeType: string): string {
   return /^[a-z0-9]+$/.test(cleaned) ? cleaned : DEFAULT_EXTENSION;
 }
 
-export async function isBinaryFile(filePath: string, sampleBytes: number = 4096): Promise<boolean> {
-  const data = await workspace.fs.readFile(Uri.file(filePath));
-  const sampleLength = Math.min(sampleBytes, data.byteLength);
-  return data.subarray(0, sampleLength).includes(0);
+export async function isBinaryFile(filePath: string, sampleBytes = 4096): Promise<boolean> {
+  const buffer = Buffer.alloc(sampleBytes);
+  const handle = await open(filePath, 'r');
+  try {
+    const { bytesRead } = await handle.read(buffer, 0, sampleBytes, 0);
+    return buffer.subarray(0, bytesRead).includes(0);
+  } finally {
+    await handle.close();
+  }
 }

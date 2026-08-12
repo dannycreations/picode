@@ -7,14 +7,16 @@ import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
 import { readAppSettings } from '@pi-code/extension/core/settings';
+import { toolError, toolResult } from '@pi-code/extension/structures/tool-call/helpers/result';
 import { isBinaryFile } from '@pi-code/extension/utilities/codec';
-import { DEFAULT_OUTPUT_LIMITS, shareOutputLimits, toOutputLimits, truncateOutput } from '@pi-code/extension/utilities/truncate';
+import { shareOutputLimits, toOutputLimits, truncateOutput } from '@pi-code/extension/utilities/truncate';
 
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
 import type { ToolName } from '@pi-code/shared/core/protocol';
 
 const MEGABYTE = 1024 * 1024;
 const MAX_FILE_SIZE_BYTES = 10 * MEGABYTE;
+const DEFAULT_MAX_CONCURRENT_READS = 5;
 
 async function readLines(filePath: string, maxLines?: number): Promise<string[]> {
   const stream = createReadStream(filePath, { encoding: 'utf8' });
@@ -58,6 +60,87 @@ function truncateFileSection(header: string, body: string, path: string, limits:
   return `${header}\n${text}`;
 }
 
+interface FileRequest {
+  readonly path: string;
+  readonly line_ranges?: readonly (readonly [number, number])[];
+}
+
+interface FileSection {
+  readonly result: string;
+  readonly hasError: boolean;
+}
+
+function numberLines(lines: readonly string[], ranges: FileRequest['line_ranges']): string {
+  if (!ranges || ranges.length === 0) {
+    return lines.map((line, index) => `${index + 1}|${line}`).join('\n');
+  }
+
+  const parts: string[] = [];
+  for (const range of ranges) {
+    const start = Math.max(1, range[0]);
+    const end = Math.min(lines.length, range[1]);
+
+    if (start > end) {
+      parts.push(`Invalid range: ${start}-${end}`);
+      continue;
+    }
+
+    for (let i = start; i <= end; i++) {
+      parts.push(`${i}|${lines[i - 1]}`);
+    }
+  }
+  return parts.join('\n');
+}
+
+async function readFileSection(cwd: string, file: FileRequest, limits: OutputLimits): Promise<FileSection> {
+  try {
+    const resolvedPath = resolve(cwd, file.path);
+
+    const fileStat = await stat(resolvedPath);
+    if (!fileStat.isFile()) {
+      return { result: `Error: "path" is not a regular file: ${file.path}`, hasError: true };
+    }
+    if (fileStat.size > MAX_FILE_SIZE_BYTES) {
+      return {
+        result: `Error: ${file.path} exceeds the 10 MB size limit (${(fileStat.size / MEGABYTE).toFixed(2)} MB).`,
+        hasError: true,
+      };
+    }
+    if (await isBinaryFile(resolvedPath)) {
+      return { result: `Error: ${file.path} is binary and cannot be read as text.`, hasError: true };
+    }
+
+    const ranges = file.line_ranges;
+    const hasRanges = ranges !== undefined && ranges.length > 0;
+
+    // With ranges, stop streaming at the highest requested line number.
+    const maxLines = hasRanges ? Math.max(...ranges.map((range) => Math.max(1, range[1]))) : undefined;
+    const lines = await readLines(resolvedPath, maxLines);
+
+    const header = hasRanges ? `File: ${file.path} (Ranges: ${JSON.stringify(ranges)})` : `File: ${file.path}`;
+    return { result: truncateFileSection(header, numberLines(lines, ranges), file.path, limits), hasError: false };
+  } catch (err) {
+    return { result: `Error reading file ${file.path}: ${formatThrownValue(err)}`, hasError: true };
+  }
+}
+
+// Fixed-size worker pool over a shared index counter: bounded concurrency
+// without per-file promise bookkeeping.
+async function mapConcurrent<T, R>(items: readonly T[], limit: number, signal: AbortSignal | undefined, run: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = Array(items.length);
+  let nextIndex = 0;
+
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (nextIndex < items.length && !signal?.aborted) {
+      const index = nextIndex++;
+      results[index] = await run(items[index]);
+    }
+  });
+
+  await Promise.all(workers);
+  return results;
+}
+
 export const readFileTool = defineTool({
   name: 'read_file' as ToolName,
   label: 'Read File',
@@ -82,122 +165,23 @@ export const readFileTool = defineTool({
       { description: 'Files to read, at least one.', minItems: 1 },
     ),
   }),
-  async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+  async execute(_toolCallId, params, signal, _onUpdate, ctx) {
     try {
-      let maxConcurrent = 5;
-      let limits = DEFAULT_OUTPUT_LIMITS;
-      try {
-        const settings = readAppSettings();
-        if (typeof settings?.maxConcurrentFileReads === 'number' && settings.maxConcurrentFileReads > 0) {
-          maxConcurrent = settings.maxConcurrentFileReads;
-        }
-        limits = toOutputLimits(settings);
-      } catch {}
+      const settings = readAppSettings();
+      const maxConcurrent = settings.maxConcurrentFileReads > 0 ? settings.maxConcurrentFileReads : DEFAULT_MAX_CONCURRENT_READS;
+      const limits = toOutputLimits(settings);
 
       // Split the budget so one large file cannot consume the whole batch.
       const perFileLimits = shareOutputLimits(limits, params.files.length);
 
-      const fileResults: { result: string; hasError: boolean }[] = Array(params.files.length);
+      const sections = await mapConcurrent(params.files, maxConcurrent, signal, (file) => readFileSection(ctx.cwd, file, perFileLimits));
 
-      const processFile = async (index: number) => {
-        if (_signal?.aborted) return;
-        const fileObj = params.files[index];
-
-        try {
-          const resolvedPath = resolve(ctx.cwd, fileObj.path);
-
-          const fileStat = await stat(resolvedPath);
-          if (!fileStat.isFile()) {
-            fileResults[index] = {
-              result: `Error: "path" is not a regular file: ${fileObj.path}`,
-              hasError: true,
-            };
-            return;
-          }
-
-          if (fileStat.size > MAX_FILE_SIZE_BYTES) {
-            fileResults[index] = {
-              result: `Error: ${fileObj.path} exceeds the 10 MB size limit (${(fileStat.size / MEGABYTE).toFixed(2)} MB).`,
-              hasError: true,
-            };
-            return;
-          }
-
-          if (await isBinaryFile(resolvedPath)) {
-            fileResults[index] = {
-              result: `Error: ${fileObj.path} is binary and cannot be read as text.`,
-              hasError: true,
-            };
-            return;
-          }
-
-          let header = '';
-          let body = '';
-
-          if (fileObj.line_ranges && fileObj.line_ranges.length > 0) {
-            const maxRequestedLine = Math.max(...fileObj.line_ranges.map((range) => Math.max(1, range[1])));
-
-            // Stream file up to the highest requested line number and stop early
-            const lines = await readLines(resolvedPath, maxRequestedLine);
-
-            header = `File: ${fileObj.path} (Ranges: ${JSON.stringify(fileObj.line_ranges)})`;
-            const parts: string[] = [];
-
-            for (const range of fileObj.line_ranges) {
-              const start = Math.max(1, range[0]);
-              const end = Math.min(lines.length, range[1]);
-
-              if (start > end) {
-                parts.push(`Invalid range: ${start}-${end}`);
-                continue;
-              }
-
-              for (let i = start; i <= end; i++) {
-                parts.push(`${i}|${lines[i - 1]}`);
-              }
-            }
-            body = parts.join('\n');
-          } else {
-            const lines = await readLines(resolvedPath);
-            header = `File: ${fileObj.path}`;
-            body = lines.map((line, index) => `${index + 1}|${line}`).join('\n');
-          }
-
-          fileResults[index] = {
-            result: truncateFileSection(header, body, fileObj.path, perFileLimits),
-            hasError: false,
-          };
-        } catch (err) {
-          fileResults[index] = {
-            result: `Error reading file ${fileObj.path}: ${formatThrownValue(err)}`,
-            hasError: true,
-          };
-        }
-      };
-
-      // Run workers using a lock-free index counter and fixed concurrency worker pool
-      let nextIndex = 0;
-      const workerCount = Math.min(maxConcurrent, params.files.length);
-      const workers = Array.from({ length: workerCount }, async () => {
-        while (nextIndex < params.files.length) {
-          if (_signal?.aborted) break;
-          const index = nextIndex++;
-          await processFile(index);
-        }
-      });
-
-      await Promise.all(workers);
-
-      if (_signal?.aborted) {
-        return {
-          content: [{ type: 'text', text: 'Error: read operation was aborted.' }],
-          details: {},
-          isError: true,
-        };
+      if (signal?.aborted) {
+        return toolError('Error: read operation was aborted.');
       }
 
-      const results = fileResults.map((r) => r?.result ?? 'Error file processing failed.');
-      const allFailed = fileResults.length > 0 && fileResults.every((r) => r?.hasError);
+      const results = sections.map((section) => section?.result ?? 'Error file processing failed.');
+      const allFailed = sections.length > 0 && sections.every((section) => section?.hasError);
 
       // Final cap: per-file headers and separators sit outside the shared budget.
       const { text } = truncateOutput(results.join('\n\n'), {
@@ -206,17 +190,9 @@ export const readFileTool = defineTool({
         hint: 'Read fewer files per call to see the rest.',
       });
 
-      return {
-        content: [{ type: 'text', text }],
-        details: {},
-        isError: allFailed,
-      };
+      return allFailed ? toolError(text) : toolResult(text);
     } catch (err) {
-      return {
-        content: [{ type: 'text', text: `Error: ${formatThrownValue(err)}` }],
-        details: {},
-        isError: true,
-      };
+      return toolError(`Error: ${formatThrownValue(err)}`);
     }
   },
 });

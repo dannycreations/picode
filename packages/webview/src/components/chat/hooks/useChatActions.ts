@@ -1,36 +1,33 @@
 import { useCallback } from 'react';
 
+import { ACTIVE_TASK_ID } from '@pi-code/shared/core/protocol';
 import { parseBuiltinCommand } from '@pi-code/shared/utilities/commands';
-import { EMPTY_STATS } from '@pi-code/webview/components/chat/hooks/useActiveTask';
-import { vscode } from '@pi-code/webview/utilities/vscode';
+import { createActiveTask, patchMessage } from '@pi-code/webview/components/chat/helpers/message';
+import { postCompactMessage, vscode } from '@pi-code/webview/utilities/vscode';
 
 import type { Dispatch, SetStateAction } from 'react';
-import type { ActiveTaskState, ChatMessage, HistoryItem, ModelItem } from '@pi-code/shared/core/protocol';
+import type { ActiveTaskState, ChatMessage, ModelSelection } from '@pi-code/shared/core/protocol';
 
 interface UseChatActionsProps {
   readonly activeTask: ActiveTaskState | null;
-  readonly models: ModelItem[];
-  readonly selectedModel: string;
+  readonly modelSelection: ModelSelection;
   readonly pendingQuestion: ChatMessage | undefined;
   readonly isAgentRunning: boolean;
   readonly setActiveTask: Dispatch<SetStateAction<ActiveTaskState | null>>;
   readonly setIsAgentRunning: Dispatch<SetStateAction<boolean>>;
-  readonly setPastTasks: Dispatch<SetStateAction<HistoryItem[]>>;
-  readonly appendToInput: (text: string) => void;
+  readonly deleteSessions: (paths: string[]) => void;
 }
 
 interface UseChatActionsReturn {
   readonly handleSendPrompt: (text: string, images: string[]) => void;
   readonly handleToolResponse: (msgId: string, approved: boolean) => void;
   readonly handleAnswerQuestion: (questionId: string, text: string) => void;
-  readonly handleCopyToInput: (text: string) => void;
   readonly handleCloseTask: () => void;
   readonly handleDeleteActiveTask: () => void;
 }
 
 export const useChatActions = (params: UseChatActionsProps): UseChatActionsReturn => {
-  const { activeTask, models, selectedModel, pendingQuestion, isAgentRunning, setActiveTask, setIsAgentRunning, setPastTasks, appendToInput } =
-    params;
+  const { activeTask, modelSelection, pendingQuestion, isAgentRunning, setActiveTask, setIsAgentRunning, deleteSessions } = params;
 
   const handleAnswerQuestion = useCallback(
     (questionId: string, text: string): void => {
@@ -40,19 +37,12 @@ export const useChatActions = (params: UseChatActionsProps): UseChatActionsRetur
       // Settle the card optimistically so the suggestions stop accepting clicks
       // while the tool result travels back from the extension host.
       setActiveTask((prev) =>
-        prev ? { ...prev, messages: prev.messages.map((m) => (m.id === questionId ? { ...m, toolStatus: 'completed', diff: answer } : m)) } : null,
+        prev ? { ...prev, messages: patchMessage(prev.messages, questionId, { toolStatus: 'completed', diff: answer }) } : null,
       );
       setIsAgentRunning(true);
       vscode?.postMessage({ type: 'question_response', question_id: questionId, text: answer });
     },
     [setActiveTask, setIsAgentRunning],
-  );
-
-  const handleCopyToInput = useCallback(
-    (text: string): void => {
-      appendToInput(text);
-    },
-    [appendToInput],
   );
 
   const handleSendPrompt = useCallback(
@@ -74,12 +64,14 @@ export const useChatActions = (params: UseChatActionsProps): UseChatActionsRetur
         return;
       }
       if (builtin === 'compact') {
-        vscode?.postMessage({
-          type: 'compact',
-          id: activeTask?.id ?? '',
-          path: activeTask?.path,
-          title: activeTask?.title ?? '',
-        });
+        postCompactMessage(activeTask);
+        return;
+      }
+
+      // A running agent cannot take a new turn, so the reply is queued and
+      // steered into the current one instead.
+      if (activeTask && isAgentRunning) {
+        vscode?.postMessage({ type: 'add_to_reply_queue', text, images: images.length > 0 ? images : undefined });
         return;
       }
 
@@ -91,52 +83,25 @@ export const useChatActions = (params: UseChatActionsProps): UseChatActionsRetur
         ts: Date.now(),
       };
 
-      const selectedProvider = models.find((m) => m.id === selectedModel)?.provider;
-
-      if (!activeTask) {
-        setIsAgentRunning(true);
-        setActiveTask({
-          id: 'task-active',
-          title: text,
-          messages: [userMsg],
-          ...EMPTY_STATS,
-        });
-        vscode?.postMessage({
-          type: 'send_message',
-          text,
-          model_id: selectedModel,
-          model_provider: selectedProvider,
-          images,
-        });
-      } else {
-        if (isAgentRunning) {
-          vscode?.postMessage({
-            type: 'add_to_reply_queue',
-            text,
-            images: images.length > 0 ? images : undefined,
-          });
-        } else {
-          setIsAgentRunning(true);
-          setActiveTask((prev) => (prev ? { ...prev, messages: [...prev.messages, userMsg] } : null));
-          vscode?.postMessage({
-            type: 'send_message',
-            text,
-            path: activeTask.path,
-            model_id: selectedModel,
-            model_provider: selectedProvider,
-            images,
-          });
-        }
-      }
+      setIsAgentRunning(true);
+      setActiveTask((prev) => (prev ? { ...prev, messages: [...prev.messages, userMsg] } : createActiveTask(ACTIVE_TASK_ID, text, [userMsg])));
+      vscode?.postMessage({
+        type: 'send_message',
+        text,
+        path: activeTask?.path,
+        model_id: modelSelection.id,
+        model_provider: modelSelection.provider,
+        images,
+      });
     },
-    [pendingQuestion, handleAnswerQuestion, models, selectedModel, activeTask, setActiveTask, setIsAgentRunning, isAgentRunning],
+    [pendingQuestion, handleAnswerQuestion, modelSelection, activeTask, setActiveTask, setIsAgentRunning, isAgentRunning],
   );
 
   const handleToolResponse = useCallback(
     (msgId: string, approved: boolean): void => {
       setIsAgentRunning(true);
       setActiveTask((prev) =>
-        prev ? { ...prev, messages: prev.messages.map((m) => (m.id === msgId ? { ...m, toolStatus: approved ? 'running' : 'denied' } : m)) } : null,
+        prev ? { ...prev, messages: patchMessage(prev.messages, msgId, { toolStatus: approved ? 'running' : 'denied' }) } : null,
       );
       vscode?.postMessage({ type: 'tool_response', approval_id: msgId, approved });
     },
@@ -150,16 +115,11 @@ export const useChatActions = (params: UseChatActionsProps): UseChatActionsRetur
   }, [setActiveTask, setIsAgentRunning]);
 
   const handleDeleteActiveTask = useCallback((): void => {
-    if (!activeTask) return;
-    if (activeTask.path) {
-      const deletedPath = activeTask.path;
-      setPastTasks((prev) => prev.filter((item) => item.path !== deletedPath));
-      vscode?.postMessage({ type: 'delete_sessions', paths: [deletedPath] });
+    if (activeTask?.path) {
+      deleteSessions([activeTask.path]);
     }
-    vscode?.postMessage({ type: 'close_task' });
-    setActiveTask(null);
-    setIsAgentRunning(false);
-  }, [activeTask, setPastTasks, setActiveTask, setIsAgentRunning]);
+    handleCloseTask();
+  }, [activeTask, deleteSessions, handleCloseTask]);
 
-  return { handleSendPrompt, handleToolResponse, handleAnswerQuestion, handleCopyToInput, handleCloseTask, handleDeleteActiveTask };
+  return { handleSendPrompt, handleToolResponse, handleAnswerQuestion, handleCloseTask, handleDeleteActiveTask };
 };

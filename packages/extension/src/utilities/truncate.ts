@@ -1,8 +1,9 @@
-import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, formatSize, generateDiffString, truncateHead, truncateTail } from '@earendil-works/pi-coding-agent';
+import { formatSize, generateDiffString, truncateHead, truncateTail } from '@earendil-works/pi-coding-agent';
 
 import { readAppSettings } from '@pi-code/extension/core/settings';
 
 import type { TruncationResult } from '@earendil-works/pi-coding-agent';
+import type { CustomToolResult } from '@pi-code/extension/types/extension';
 import type { AppSettings } from '@pi-code/shared/core/settings';
 
 const BYTES_PER_KILOBYTE = 1024;
@@ -11,11 +12,6 @@ export interface OutputLimits {
   readonly maxLines: number;
   readonly maxBytes: number;
 }
-
-export const DEFAULT_OUTPUT_LIMITS: OutputLimits = {
-  maxLines: DEFAULT_MAX_LINES,
-  maxBytes: DEFAULT_MAX_BYTES,
-};
 
 type TruncateKeep = 'head' | 'tail';
 
@@ -91,15 +87,13 @@ export function truncateOutput(content: string, options: TruncateOutputOptions):
 }
 
 interface FileChangeResultOptions {
-  readonly cwd: string;
   readonly oldContent: string;
   readonly newContent: string;
   readonly successMessage: string;
   readonly hint: string;
-  readonly extraDetails?: Record<string, unknown>;
 }
 
-export async function buildFileChangeResult(opts: FileChangeResultOptions) {
+export async function buildFileChangeResult(opts: FileChangeResultOptions): Promise<CustomToolResult<{ diff: string }>> {
   const diffResult = generateDiffString(opts.oldContent, opts.newContent);
   const { text } = truncateOutput(diffResult.diff || opts.successMessage, {
     limits: getOutputLimits(),
@@ -109,6 +103,6 @@ export async function buildFileChangeResult(opts: FileChangeResultOptions) {
 
   return {
     content: [{ type: 'text' as const, text }],
-    details: { diff: diffResult.diff, ...(opts.extraDetails ?? {}) },
+    details: { diff: diffResult.diff },
   };
 }

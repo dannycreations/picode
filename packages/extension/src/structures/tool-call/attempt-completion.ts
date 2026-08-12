@@ -1,6 +1,8 @@
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
+import { toolResult } from '@pi-code/extension/structures/tool-call/helpers/result';
+
 import type { ToolName } from '@pi-code/shared/core/protocol';
 
 export const attemptCompletionTool = defineTool({
@@ -11,9 +13,6 @@ export const attemptCompletionTool = defineTool({
     result: Type.String({ description: 'Summary of what was done and the final outcome.' }),
   }),
   async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
-    return {
-      content: [{ type: 'text', text: 'Completion reported to the user.' }],
-      details: { result: params.result },
-    };
+    return toolResult('Completion reported to the user.', { result: params.result });
   },
 });

@@ -1,9 +1,10 @@
 import { useCallback, useMemo, useState } from 'react';
 
-import { DEFAULT_CONTEXT_LIMIT } from '@pi-code/shared/core/constants';
+import { ACTIVE_TASK_ID } from '@pi-code/shared/core/protocol';
+import { createActiveTask, EMPTY_STATS, patchLastAssistant, patchMessage } from '@pi-code/webview/components/chat/helpers/message';
 import { findPendingQuestion } from '@pi-code/webview/components/chat/helpers/question';
 
-import type { ActiveTaskState, ChatMessage, ExtensionToWebviewMessage, StatsData } from '@pi-code/shared/core/protocol';
+import type { ActiveTaskState, ChatMessage, ExtensionToWebviewMessage } from '@pi-code/shared/core/protocol';
 
 interface ApiRequestSettlePatch {
   readonly cost?: number;
@@ -25,33 +26,34 @@ function settlePendingApiRequests(messages: ChatMessage[], patch: ApiRequestSett
   return changed ? next : messages;
 }
 
-function appendErrorMessage(messages: ChatMessage[], id: string, error: string): ChatMessage[] {
-  if (messages.some((m) => m.id === id)) return messages;
-
-  const last = messages[messages.length - 1];
-  if (last?.sender === 'error' && (last.errorMessage ?? last.text) === error) return messages;
-
-  return [...messages, { id, sender: 'error', text: error, errorMessage: error, ts: Date.now() }];
+// A turn can end while an assistant row is still marked running (error, abort,
+// or a tool-only turn), so close those out alongside the API request rows.
+function settleTurn(messages: ChatMessage[], patch?: ApiRequestSettlePatch): ChatMessage[] {
+  return settlePendingApiRequests(messages, patch).map((m) =>
+    m.sender === 'assistant' && m.toolStatus === 'running' ? { ...m, toolStatus: 'completed' as const } : m,
+  );
 }
 
-function appendInfoMessage(messages: ChatMessage[], id: string, text: string): ChatMessage[] {
-  if (messages.some((m) => m.id === id)) return messages;
-
-  const last = messages[messages.length - 1];
-  if (last?.sender === 'info' && last.text === text) return messages;
-
-  return [...messages, { id, sender: 'info', text, ts: Date.now() }];
+// Approval and execution events for the same tool call arrive in either order,
+// so the row is created on first sight and patched afterwards.
+function upsertToolMessage(messages: ChatMessage[], id: string, patch: Partial<ChatMessage>): ChatMessage[] {
+  if (messages.some((m) => m.id === id)) {
+    return patchMessage(messages, id, patch);
+  }
+  return [...messages, { id, sender: 'tool', text: '', ts: Date.now(), ...patch }];
 }
 
-export const EMPTY_STATS: StatsData = {
-  tokensIn: 0,
-  tokensOut: 0,
-  cacheWrites: 0,
-  cacheReads: 0,
-  totalCost: 0,
-  contextTokens: 0,
-  contextLimit: DEFAULT_CONTEXT_LIMIT,
-};
+function appendOnce(messages: ChatMessage[], message: ChatMessage): ChatMessage[] {
+  if (messages.some((m) => m.id === message.id)) return messages;
+
+  // Consecutive identical notices are collapsed into the first one.
+  const last = messages[messages.length - 1];
+  if (last?.sender === message.sender && (last.errorMessage ?? last.text) === (message.errorMessage ?? message.text)) {
+    return messages;
+  }
+
+  return [...messages, message];
+}
 
 interface UseActiveTaskReturn {
   readonly activeTask: ActiveTaskState | null;
@@ -68,318 +70,178 @@ export const useActiveTask = (): UseActiveTaskReturn => {
 
   const pendingQuestion = useMemo(() => findPendingQuestion(activeTask?.messages ?? []), [activeTask?.messages]);
 
-  const onMessage = useCallback((msg: ExtensionToWebviewMessage): void => {
-    switch (msg.type) {
-      case 'session_loaded': {
-        setActiveTask({ ...EMPTY_STATS, ...msg.payload });
-        setIsAgentRunning(false);
-        break;
-      }
+  // Every stream event patches the task that is already open; there is nothing
+  // to update before a session is loaded.
+  const updateTask = useCallback((update: (task: ActiveTaskState) => ActiveTaskState): void => {
+    setActiveTask((prev) => (prev ? update(prev) : null));
+  }, []);
 
-      case 'reply_queue_data': {
-        const { queue } = msg.payload;
-        setActiveTask((prev) => {
-          if (!prev) return null;
-          const nonQueueMessages = prev.messages.filter((m) => m.sender !== 'queue');
-          const queueMessages: ChatMessage[] = queue.map((q) => ({
+  const updateMessages = useCallback(
+    (update: (messages: ChatMessage[]) => ChatMessage[]): void => {
+      updateTask((prev) => ({ ...prev, messages: update(prev.messages) }));
+    },
+    [updateTask],
+  );
+
+  const onMessage = useCallback(
+    (msg: ExtensionToWebviewMessage): void => {
+      switch (msg.type) {
+        case 'session_loaded': {
+          setActiveTask({ ...EMPTY_STATS, ...msg.payload });
+          setIsAgentRunning(false);
+          break;
+        }
+
+        case 'reply_queue_data': {
+          const queued: ChatMessage[] = msg.payload.queue.map((q) => ({
             id: q.id,
-            sender: 'queue' as const,
+            sender: 'queue',
             text: q.text,
             images: q.images,
             ts: q.ts,
           }));
-          return {
-            ...prev,
-            messages: [...nonQueueMessages, ...queueMessages],
-          };
-        });
-        break;
-      }
+          updateMessages((messages) => [...messages.filter((m) => m.sender !== 'queue'), ...queued]);
+          break;
+        }
 
-      case 'compaction_end':
-        setActiveTask((prev) => (prev ? { ...prev, ...msg.payload } : null));
-        break;
+        case 'compaction_end':
+          updateTask((prev) => ({ ...prev, ...msg.payload }));
+          break;
 
-      case 'agent_start':
-        setIsAgentRunning(true);
-        setActiveTask((prev) => {
-          if (!prev) return null;
-          const next = msg.payload.path ? { ...prev, path: msg.payload.path } : prev;
-          return msg.payload.stats ? { ...next, ...msg.payload.stats } : next;
-        });
-        break;
+        case 'agent_start': {
+          const { path, stats } = msg.payload;
+          setIsAgentRunning(true);
+          updateTask((prev) => ({ ...prev, path: path ?? prev.path, ...stats }));
+          break;
+        }
 
-      case 'message_start': {
-        const { timestamp } = msg.payload;
-        setIsAgentRunning(true);
-        setActiveTask((prev) => {
-          if (!prev) return null;
-          const newMsg: ChatMessage = {
-            id: `assistant-${timestamp}`,
-            sender: 'assistant',
-            text: '',
-            ts: timestamp,
-            toolStatus: 'running',
-          };
+        case 'message_start': {
+          const { timestamp } = msg.payload;
+          setIsAgentRunning(true);
+          updateMessages((messages) => [
+            ...settlePendingApiRequests(messages),
+            { id: `assistant-${timestamp}`, sender: 'assistant', text: '', ts: timestamp, toolStatus: 'running' },
+          ]);
+          break;
+        }
 
-          return { ...prev, messages: [...settlePendingApiRequests(prev.messages), newMsg] };
-        });
-        break;
-      }
+        case 'api_request_start': {
+          const { id, timestamp } = msg.payload;
+          setIsAgentRunning(true);
+          updateMessages((messages) =>
+            messages.some((m) => m.id === id)
+              ? messages
+              : [...settlePendingApiRequests(messages), { id, sender: 'api_request', text: 'API Request', ts: timestamp, toolStatus: 'running' }],
+          );
+          break;
+        }
 
-      case 'api_request_start': {
-        const { id, timestamp } = msg.payload;
-        setIsAgentRunning(true);
-        setActiveTask((prev) => {
-          if (!prev) return null;
-          if (prev.messages.some((m) => m.id === id)) return prev;
+        case 'api_request_end': {
+          const { id, cost, error, stats } = msg.payload;
+          updateTask((prev) => {
+            const target = prev.messages.find((m) => m.id === id && m.sender === 'api_request');
+            let messages = target
+              ? patchMessage(prev.messages, id, {
+                  toolStatus: error ? 'denied' : 'completed',
+                  cost: cost ?? target.cost,
+                  errorMessage: error ?? target.errorMessage,
+                })
+              : settlePendingApiRequests(prev.messages, { cost, error });
 
-          const apiMsg: ChatMessage = {
-            id,
-            sender: 'api_request',
-            text: 'API Request',
-            ts: timestamp,
-            toolStatus: 'running',
-          };
-
-          return { ...prev, messages: [...settlePendingApiRequests(prev.messages), apiMsg] };
-        });
-        break;
-      }
-
-      case 'api_request_end': {
-        const { id, cost, error, stats } = msg.payload;
-        setActiveTask((prev) => {
-          if (!prev) return null;
-
-          const target = prev.messages.find((m) => m.id === id && m.sender === 'api_request');
-          let messages = target
-            ? prev.messages.map((m) =>
-                m === target
-                  ? {
-                      ...m,
-                      toolStatus: error ? ('denied' as const) : ('completed' as const),
-                      cost: cost ?? m.cost,
-                      errorMessage: error ?? m.errorMessage,
-                    }
-                  : m,
-              )
-            : settlePendingApiRequests(prev.messages, { cost, error });
-
-          if (error) {
-            messages = appendErrorMessage(messages, `${id}-error`, error);
-          }
-
-          const next = { ...prev, messages };
-          return stats ? { ...next, ...stats } : next;
-        });
-        break;
-      }
-
-      case 'message_end': {
-        const { cost, stats } = msg.payload;
-
-        setActiveTask((prev) => {
-          if (!prev) return null;
-          const messages = [...settlePendingApiRequests(prev.messages, { cost })];
-          for (let i = messages.length - 1; i >= 0; i--) {
-            if (messages[i].sender === 'assistant') {
-              messages[i] = {
-                ...messages[i],
-                toolStatus: 'completed' as const,
-                cost: cost !== undefined ? cost : messages[i].cost,
-              };
-              break;
+            if (error) {
+              messages = appendOnce(messages, { id: `${id}-error`, sender: 'error', text: error, errorMessage: error, ts: Date.now() });
             }
-          }
-          const next = { ...prev, messages };
-          return stats ? { ...next, ...stats } : next;
-        });
-        break;
-      }
 
-      case 'stream_delta': {
-        const { text, thinking } = msg.payload;
-        setActiveTask((prev) => {
-          if (!prev) return null;
-          let messages = [...prev.messages];
-          let settled = false;
-          for (const m of messages) {
-            if (m.sender === 'api_request' && m.toolStatus === 'running') {
-              settled = true;
-              break;
-            }
-          }
-          if (settled) {
-            messages = settlePendingApiRequests(messages);
-          }
-          for (let i = messages.length - 1; i >= 0; i--) {
-            if (messages[i].sender === 'assistant') {
-              const message = messages[i];
-              messages[i] = {
-                ...message,
-                text: text ? message.text + text : message.text,
-                reasoning: thinking ? (message.reasoning || '') + thinking : message.reasoning,
-              };
-              break;
-            }
-          }
-          return { ...prev, messages };
-        });
-        break;
-      }
-
-      case 'tool_approval_request': {
-        const { id, tool_name, arguments: toolArgs } = msg.payload;
-        setActiveTask((prev) => {
-          if (!prev) return null;
-          const exists = prev.messages.some((m) => m.id === id);
-          if (exists) {
-            return {
-              ...prev,
-              messages: prev.messages.map((m) =>
-                m.id === id
-                  ? {
-                      ...m,
-                      toolStatus: 'approval',
-                      toolName: tool_name,
-                      toolArgs,
-                      text: tool_name,
-                      subagent: msg.payload.subagent,
-                    }
-                  : m,
-              ),
-            };
-          }
-          return {
-            ...prev,
-            messages: [
-              ...prev.messages,
-              {
-                id,
-                sender: 'tool',
-                text: tool_name,
-                toolName: tool_name,
-                toolArgs,
-                toolStatus: 'approval',
-                subagent: msg.payload.subagent,
-                ts: Date.now(),
-              },
-            ],
-          };
-        });
-        break;
-      }
-
-      case 'tool_execution_start': {
-        const { id, tool_name, arguments: toolArgs } = msg.payload;
-        setIsAgentRunning(true);
-        setActiveTask((prev) => {
-          if (!prev) return null;
-          const exists = prev.messages.some((m) => m.id === id);
-          if (exists) {
-            return { ...prev, messages: prev.messages.map((m) => (m.id === id ? { ...m, toolStatus: 'running' } : m)) };
-          }
-          return {
-            ...prev,
-            messages: [
-              ...prev.messages,
-              {
-                id,
-                sender: 'tool',
-                text: tool_name,
-                toolName: tool_name,
-                toolArgs: toolArgs,
-                toolStatus: 'running',
-                ts: Date.now(),
-              },
-            ],
-          };
-        });
-        break;
-      }
-
-      case 'tool_execution_update': {
-        const { id, result } = msg.payload;
-        setActiveTask((prev) => {
-          if (!prev) return null;
-          return {
-            ...prev,
-            messages: prev.messages.map((m) => (m.id === id ? { ...m, diff: result } : m)),
-          };
-        });
-        break;
-      }
-
-      case 'tool_execution_end': {
-        const { id, result, todos, is_error } = msg.payload;
-        setActiveTask((prev) => {
-          if (!prev) return null;
-          return {
-            ...prev,
-            messages: prev.messages.map((m) =>
-              m.id === id
-                ? {
-                    ...m,
-                    todos,
-                    toolStatus: is_error ? 'denied' : 'completed',
-                    diff: is_error ? undefined : result,
-                  }
-                : m,
-            ),
-          };
-        });
-        break;
-      }
-
-      case 'agent_error':
-        setIsAgentRunning(false);
-        setActiveTask((prev) => {
-          if (!prev) return null;
-          const messages = settlePendingApiRequests(prev.messages, { error: msg.payload.message }).map((m) => {
-            if (m.sender === 'assistant' && m.toolStatus === 'running') {
-              return { ...m, toolStatus: 'completed' as const };
-            }
-            return m;
+            return { ...prev, messages, ...stats };
           });
-          return {
+          break;
+        }
+
+        case 'message_end': {
+          const { cost, stats } = msg.payload;
+          updateTask((prev) => ({
             ...prev,
-            messages: appendErrorMessage(messages, crypto.randomUUID(), msg.payload.message),
-          };
-        });
-        break;
+            messages: patchLastAssistant(settlePendingApiRequests(prev.messages, { cost }), (message) => ({
+              toolStatus: 'completed',
+              cost: cost ?? message.cost,
+            })),
+            ...stats,
+          }));
+          break;
+        }
 
-      case 'agent_settled':
-        setIsAgentRunning(false);
-        setActiveTask((prev) => {
-          if (!prev) return null;
-          const messages = settlePendingApiRequests(prev.messages).map((m) => {
-            if (m.sender === 'assistant' && m.toolStatus === 'running') {
-              return { ...m, toolStatus: 'completed' as const };
-            }
-            return m;
-          });
-          const next = { ...prev, messages };
-          return msg.payload ? { ...next, ...msg.payload } : next;
-        });
-        break;
+        case 'stream_delta': {
+          const { text, thinking } = msg.payload;
+          updateMessages((messages) =>
+            patchLastAssistant(settlePendingApiRequests(messages), (message) => ({
+              text: text ? message.text + text : message.text,
+              reasoning: thinking ? (message.reasoning || '') + thinking : message.reasoning,
+            })),
+          );
+          break;
+        }
 
-      case 'info':
-        setActiveTask((prev) => {
-          const id = crypto.randomUUID();
-          if (!prev) {
-            return {
-              id: 'task-active',
-              title: 'Pi',
-              messages: [{ id, sender: 'info', text: msg.payload.text, ts: Date.now() }],
-              ...EMPTY_STATS,
-            };
-          }
-          return { ...prev, messages: appendInfoMessage(prev.messages, id, msg.payload.text) };
-        });
-        break;
-    }
-  }, []);
+        case 'tool_approval_request': {
+          const { id, tool_name, arguments: toolArgs, subagent } = msg.payload;
+          updateMessages((messages) =>
+            upsertToolMessage(messages, id, { text: tool_name, toolName: tool_name, toolArgs, toolStatus: 'approval', subagent }),
+          );
+          break;
+        }
+
+        case 'tool_execution_start': {
+          const { id, tool_name, arguments: toolArgs } = msg.payload;
+          setIsAgentRunning(true);
+          updateMessages((messages) => upsertToolMessage(messages, id, { text: tool_name, toolName: tool_name, toolArgs, toolStatus: 'running' }));
+          break;
+        }
+
+        case 'tool_execution_update': {
+          const { id, result } = msg.payload;
+          updateMessages((messages) => patchMessage(messages, id, { diff: result }));
+          break;
+        }
+
+        case 'tool_execution_end': {
+          const { id, result, todos, is_error } = msg.payload;
+          updateMessages((messages) =>
+            patchMessage(messages, id, { todos, toolStatus: is_error ? 'denied' : 'completed', diff: is_error ? undefined : result }),
+          );
+          break;
+        }
+
+        case 'agent_error': {
+          const { message } = msg.payload;
+          setIsAgentRunning(false);
+          updateMessages((messages) =>
+            appendOnce(settleTurn(messages, { error: message }), {
+              id: crypto.randomUUID(),
+              sender: 'error',
+              text: message,
+              errorMessage: message,
+              ts: Date.now(),
+            }),
+          );
+          break;
+        }
+
+        case 'agent_settled':
+          setIsAgentRunning(false);
+          updateTask((prev) => ({ ...prev, messages: settleTurn(prev.messages), ...msg.payload }));
+          break;
+
+        case 'info': {
+          const { text } = msg.payload;
+          const notice: ChatMessage = { id: crypto.randomUUID(), sender: 'info', text, ts: Date.now() };
+          setActiveTask((prev) =>
+            prev ? { ...prev, messages: appendOnce(prev.messages, notice) } : createActiveTask(ACTIVE_TASK_ID, 'Pi', [notice]),
+          );
+          break;
+        }
+      }
+    },
+    [updateMessages, updateTask],
+  );
 
   return { activeTask, isAgentRunning, setActiveTask, setIsAgentRunning, pendingQuestion, onMessage };
 };

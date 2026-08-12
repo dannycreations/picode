@@ -1,3 +1,5 @@
+import { extractResultText } from '@pi-code/webview/components/chat/messages/helpers/common';
+
 import type { ChatMessage } from '@pi-code/shared/core/protocol';
 
 interface QuestionData {
@@ -42,14 +44,8 @@ export function parseQuestionAnswer(diff?: string): string {
   const parsed = parseJson<RawQuestionResult>(diff);
   if (!parsed) return diff.trim();
 
-  if (typeof parsed.details?.response === 'string') {
-    return parsed.details.response.trim();
-  }
-  if (Array.isArray(parsed.content) && typeof parsed.content[0]?.text === 'string') {
-    return parsed.content[0].text.trim();
-  }
-
-  return '';
+  const text = extractResultText(parsed);
+  return text ? text.trim() : '';
 }
 
 export function findPendingQuestion(messages: readonly ChatMessage[]): ChatMessage | undefined {

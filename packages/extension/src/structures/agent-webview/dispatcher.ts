@@ -1,10 +1,12 @@
 import { formatThrownValue } from '@earendil-works/pi-ai';
 import { window } from 'vscode';
 
-import { updateAppSettings } from '@pi-code/extension/core/settings';
-import { PolicyBridge } from '@pi-code/extension/structures/agent-runtime/policy';
-import { runCompact } from '@pi-code/extension/structures/chat-command/builtin';
+import { writeAppSettings } from '@pi-code/extension/core/settings';
+import { approveApproval, denyApproval } from '@pi-code/extension/structures/agent-runtime/brokers/policy';
+import { answerQuestion } from '@pi-code/extension/structures/agent-runtime/brokers/question';
+import { deleteSessions, exportSession, fetchHistory, getInitData, loadSessionDetails } from '@pi-code/extension/structures/agent-webview/session';
 import { logger } from '@pi-code/shared/core/logger';
+import { ACTIVE_TASK_ID } from '@pi-code/shared/core/protocol';
 
 import type { MessageHandlerContext } from '@pi-code/extension/structures/agent-webview/types';
 import type { HistoryScope, ModelSelection, WebviewToExtensionMessage } from '@pi-code/shared/core/protocol';
@@ -23,26 +25,25 @@ function toModelSelection(msg: { model_id?: string; model_provider?: string }): 
 }
 
 export async function postSessionLoaded(ctx: MessageHandlerContext, id: string, title: string, path: string | undefined): Promise<void> {
-  const { messages, stats } = await ctx.sessionService.loadSessionDetails(path ?? '', ctx.cwd);
+  const { messages, stats } = await loadSessionDetails(path ?? '', ctx.cwd);
   ctx.postMessage({
     type: 'session_loaded',
-    payload: { id: id || 'task-active', title: title || '', messages, path, ...stats },
+    payload: { id: id || ACTIVE_TASK_ID, title: title || '', messages, path, ...stats },
   });
 }
 
 async function postHistory(ctx: MessageHandlerContext, scope: HistoryScope): Promise<void> {
-  const history = await ctx.sessionService.fetchHistory(ctx.cwd, scope);
-  ctx.postMessage({ type: 'history_data', payload: { history } });
+  const history = await fetchHistory(ctx.cwd, scope);
+  ctx.postMessage({ type: 'history_data', payload: { history, scope } });
 }
 
 const HANDLER_MAP: HandlerMap = {
   init: async (_, ctx) => {
-    const data = await ctx.sessionService.getInitData(ctx.cwd);
+    const data = await getInitData(ctx.cwd);
     ctx.postMessage({ type: 'init_data', payload: data });
-    ctx.agent.broadcastReplyQueue();
   },
   send_message: (msg, ctx) => {
-    void ctx.agent.startTask(msg.text, toModelSelection(msg), ctx.webview, msg.images, msg.path);
+    void ctx.agent.startTask(msg.text, toModelSelection(msg), msg.images, msg.path);
   },
   add_to_reply_queue: (msg, ctx) => {
     ctx.agent.addToReplyQueue(msg.text, msg.images);
@@ -54,29 +55,42 @@ const HANDLER_MAP: HandlerMap = {
     ctx.agent.removeFromReplyQueue(msg.id);
   },
   continue_task: (msg, ctx) => {
-    void ctx.agent.continueTask(msg.path || '', ctx.webview, toModelSelection(msg));
+    void ctx.agent.continueTask(msg.path || '', toModelSelection(msg));
   },
-  tool_response: (msg, _ctx) => {
-    const bridge = PolicyBridge.getInstance();
-    if (msg.approved) bridge.approve(msg.approval_id);
-    else bridge.deny(msg.approval_id);
+  tool_response: (msg) => {
+    if (msg.approved) approveApproval(msg.approval_id);
+    else denyApproval(msg.approval_id);
   },
-  question_response: (msg, ctx) => ctx.agent.answerQuestion(msg.question_id, msg.text),
+  question_response: (msg) => answerQuestion(msg.question_id, msg.text),
   cancel_task: (_, ctx) => ctx.agent.abort(),
   reload: (_, ctx) => {
-    void ctx.agent.reload(ctx.webview);
+    void ctx.agent.reload();
   },
   compact: async (msg, ctx) => {
     const path = msg.path || ctx.agent.getSessionFile();
-    await runCompact(ctx, msg.id, msg.title, path);
+    if (!path) {
+      ctx.postMessage({ type: 'info', payload: { text: 'Open or start a task before using /compact.' } });
+      return;
+    }
+
+    const details = await ctx.agent.compact(path);
+    if (!details) return;
+
+    // Refresh the webview from the in-memory session we just compacted instead
+    // of re-opening and re-parsing the same session file a second time.
+    ctx.postMessage({
+      type: 'session_loaded',
+      payload: {
+        id: msg.id || ACTIVE_TASK_ID,
+        title: msg.title || '',
+        messages: details.messages,
+        path,
+        ...details.stats,
+      },
+    });
   },
   close_task: async (_, ctx) => {
-    try {
-      ctx.agent.dispose();
-    } catch (err) {
-      logger.error('Failed to dispose agent runner:', err);
-    }
-    ctx.recreateAgent();
+    ctx.agent.reset();
 
     // The just-closed task is now persisted on disk but the webview's Recent
     // Tasks list is still showing the stale init snapshot. Push the refreshed
@@ -89,35 +103,37 @@ const HANDLER_MAP: HandlerMap = {
   },
   view_raw_task: async (msg, ctx) => {
     const path = msg.path || ctx.agent.getSessionFile();
-    await ctx.workspaceService.openRawTask(path);
+    await ctx.workspace.openRawTask(path);
   },
-  export_session: async (msg, ctx) => {
-    const exported = await ctx.sessionService.exportSession(msg.path, msg.id);
+  export_session: async (msg) => {
+    const exported = await exportSession(msg.path, msg.id);
     if (exported) window.showInformationMessage('Task exported successfully!');
   },
   open_file: async (msg, ctx) => {
-    await ctx.workspaceService.openFile(ctx.cwd, msg.text, msg.values?.line);
+    await ctx.workspace.openFile(ctx.cwd, msg.text, msg.values?.line);
   },
   open_image: async (msg, ctx) => {
-    await ctx.workspaceService.openBase64Image(msg.dataUrl);
+    await ctx.workspace.openBase64Image(msg.dataUrl);
   },
   save_image: async (msg, ctx) => {
-    await ctx.workspaceService.saveImage(msg.dataUrl, msg.filename);
+    await ctx.workspace.saveImage(msg.dataUrl, msg.filename);
   },
   get_history: async (msg, ctx) => {
     await postHistory(ctx, msg.scope);
   },
-  delete_sessions: async (msg, ctx) => {
-    await ctx.sessionService.deleteSessions(msg.paths);
+  delete_sessions: async (msg) => {
+    await deleteSessions(msg.paths);
   },
   update_settings: async (msg) => {
-    await updateAppSettings(msg.settings);
+    // The write triggers `onDidChangeConfiguration`, which pushes the fresh
+    // settings back to the webview; no need to read them back here.
+    await writeAppSettings(msg.settings);
   },
 };
 
 export async function dispatch(message: WebviewToExtensionMessage, context: MessageHandlerContext): Promise<void> {
   try {
-    const handler = HANDLER_MAP[message.type] as Function;
+    const handler = HANDLER_MAP[message.type] as CommandHandler<typeof message.type>;
     await handler(message, context);
   } catch (err) {
     const errorMessage = formatThrownValue(err);

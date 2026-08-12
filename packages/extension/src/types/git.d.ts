@@ -1,32 +1,8 @@
 import type { Uri } from 'vscode';
 
-export enum Status {
-  INDEX_MODIFIED,
-  INDEX_ADDED,
-  INDEX_DELETED,
-  INDEX_RENAMED,
-  INDEX_COPIED,
-
-  MODIFIED,
-  DELETED,
-  UNTRACKED,
-  IGNORED,
-  INTENT_TO_ADD,
-  INTENT_TO_RENAME,
-  TYPE_CHANGED,
-
-  ADDED_BY_US,
-  ADDED_BY_THEM,
-  DELETED_BY_US,
-  DELETED_BY_THEM,
-  BOTH_ADDED,
-  BOTH_DELETED,
-  BOTH_MODIFIED,
-}
-
 export interface Change {
   readonly uri: Uri;
-  readonly status: Status;
+  readonly status: number;
 }
 
 export interface RepositoryState {

@@ -5,13 +5,11 @@ import { registerAddToContextCommand } from '@pi-code/extension/structures/add-t
 import { invalidateAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { ChatViewProvider } from '@pi-code/extension/structures/agent-webview/provider';
 import { registerCommitMessageCommand } from '@pi-code/extension/structures/commit-message/command';
-// import { initializeFetchInterceptor } from '@pi-code/extension/utilities/interceptor';
 import { logger } from '@pi-code/shared/core/logger';
 
 import type { ExtensionContext } from 'vscode';
 
 export function activate(context: ExtensionContext): void {
-  // initializeFetchInterceptor();
   registerSessionResourceCleanup(() => {});
 
   const output = window.createOutputChannel('Pi Code', { log: true });

@@ -4,6 +4,7 @@ import { formatThrownValue } from '@earendil-works/pi-ai';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
+import { toolError } from '@pi-code/extension/structures/tool-call/helpers/result';
 import { stripCodeFence } from '@pi-code/extension/utilities/markdown';
 import { buildFileChangeResult } from '@pi-code/extension/utilities/truncate';
 
@@ -34,18 +35,13 @@ export const writeFileTool = defineTool({
       await writeFile(resolvedPath, finalContent, 'utf8');
 
       return buildFileChangeResult({
-        cwd: ctx.cwd,
         oldContent,
         newContent: finalContent,
         successMessage: `Wrote ${params.path}`,
         hint: `Write applied; read "${params.path}" to verify the remaining changes.`,
       });
     } catch (err) {
-      return {
-        content: [{ type: 'text', text: `Error writing to file: ${formatThrownValue(err)}` }],
-        details: {},
-        isError: true,
-      };
+      return toolError(`Error writing to file: ${formatThrownValue(err)}`);
     }
   },
 });

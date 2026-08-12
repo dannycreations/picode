@@ -1,6 +1,4 @@
-import { cn } from 'cnfast';
-
-import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
+import { IconButton } from '@pi-code/webview/components/shared/IconButton';
 
 import type { FC, MouseEvent } from 'react';
 
@@ -14,25 +12,9 @@ interface MermaidToolbarProps {
 
 export const MermaidToolbar: FC<MermaidToolbarProps> = ({ showCopy, onOpenZoom, onOpenSource, onCopy, onSave }) => (
   <div className="absolute bottom-2 right-2 flex gap-1 bg-vscode-editor-background/90 border border-vscode-editorGroup-border rounded p-0.5 z-10">
-    <Tooltip content="Zoom diagram">
-      <button className="icon-button" onClick={onOpenZoom}>
-        <span className="codicon codicon-zoom-in" />
-      </button>
-    </Tooltip>
-    <Tooltip content="View source">
-      <button className="icon-button" onClick={onOpenSource}>
-        <span className="codicon codicon-code" />
-      </button>
-    </Tooltip>
-    <Tooltip content={showCopy ? 'Copied source!' : 'Copy source'}>
-      <button className="icon-button" onClick={onCopy}>
-        <span className={cn('codicon', `codicon-${showCopy ? 'check' : 'copy'}`)} />
-      </button>
-    </Tooltip>
-    <Tooltip content="Save as PNG">
-      <button className="icon-button" onClick={onSave}>
-        <span className="codicon codicon-save" />
-      </button>
-    </Tooltip>
+    <IconButton icon="zoom-in" tooltip="Zoom diagram" onClick={onOpenZoom} />
+    <IconButton icon="code" tooltip="View source" onClick={onOpenSource} />
+    <IconButton icon={showCopy ? 'check' : 'copy'} tooltip={showCopy ? 'Copied source!' : 'Copy source'} onClick={onCopy} />
+    <IconButton icon="save" tooltip="Save as PNG" onClick={onSave} />
   </div>
 );

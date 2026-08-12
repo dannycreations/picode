@@ -26,8 +26,6 @@ const CUSTOM_TOOLS = [
   spawnSubagentTool,
 ] as const;
 
-const DEFAULT_TOOLS: ToolName[] = CUSTOM_TOOLS.map((tool) => tool.name as ToolName);
-
 export async function createSession(cwd: string, sessionPath?: string): Promise<AgentSession> {
   const sessionManager = sessionPath ? SessionManager.open(sessionPath) : SessionManager.create(cwd);
   const { settings, services } = await createAgentResources(cwd);
@@ -37,11 +35,13 @@ export async function createSession(cwd: string, sessionPath?: string): Promise<
   if (!settings.enableAskQuestionTool) disabledTools.add('ask_question');
   if (!settings.enableSubagentTool) disabledTools.add('spawn_subagent');
 
+  const enabledTools = CUSTOM_TOOLS.filter((tool) => !disabledTools.has(tool.name as ToolName));
+
   const { session } = await createAgentSessionFromServices({
     services,
     sessionManager,
-    tools: DEFAULT_TOOLS.filter((tool) => !disabledTools.has(tool)),
-    customTools: CUSTOM_TOOLS.filter((tool) => !disabledTools.has(tool.name as ToolName)),
+    tools: enabledTools.map((tool) => tool.name as ToolName),
+    customTools: enabledTools,
   });
 
   const contextWindow = session.model?.contextWindow ?? DEFAULT_CONTEXT_LIMIT;

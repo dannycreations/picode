@@ -10,6 +10,7 @@ import {
   SUBAGENT_NAMES,
   SUBAGENTS,
 } from '@pi-code/extension/structures/agent-runtime/subagent';
+import { toolError, toolResult } from '@pi-code/extension/structures/tool-call/helpers/result';
 import { getOutputLimits, truncateOutput } from '@pi-code/extension/utilities/truncate';
 
 import type { SubagentOutcome, SubagentUsage } from '@pi-code/extension/structures/agent-runtime/subagent';
@@ -77,22 +78,17 @@ ${describeSubagents()}
     }),
   }),
   async execute(_toolCallId, params, signal, onUpdate, ctx): Promise<CustomToolResult<SubagentDetails>> {
+    const failure = (text: string, agentName: string): CustomToolResult<SubagentDetails> =>
+      toolError(text, { agent: agentName, description: params.description, steps: '' });
+
     const agent = getSubagent(params.agent);
     if (!agent) {
       const available = SUBAGENTS.map((item) => item.name).join(', ');
-      return {
-        content: [{ type: 'text', text: `Error: unknown sub-agent "${params.agent}". Available sub-agents: ${available}.` }],
-        details: { agent: params.agent, description: params.description, steps: '' },
-        isError: true,
-      };
+      return failure(`Error: unknown sub-agent "${params.agent}". Available sub-agents: ${available}.`, params.agent);
     }
 
     if (!params.task.trim()) {
-      return {
-        content: [{ type: 'text', text: 'Error: "task" is required and cannot be empty.' }],
-        details: { agent: agent.name, description: params.description, steps: '' },
-        isError: true,
-      };
+      return failure('Error: "task" is required and cannot be empty.', agent.name);
     }
 
     try {
@@ -125,17 +121,10 @@ ${describeSubagents()}
         usage: outcome.usage,
       };
 
-      return {
-        content: [{ type: 'text', text: renderOutcome(outcome, failed ? 'error' : 'completed') }],
-        details,
-        isError: failed,
-      };
+      const report = renderOutcome(outcome, failed ? 'error' : 'completed');
+      return failed ? toolError(report, details) : toolResult(report, details);
     } catch (err) {
-      return {
-        content: [{ type: 'text', text: `Error running the ${agent.name} sub-agent: ${formatThrownValue(err)}` }],
-        details: { agent: agent.name, description: params.description, steps: '' },
-        isError: true,
-      };
+      return failure(`Error running the ${agent.name} sub-agent: ${formatThrownValue(err)}`, agent.name);
     }
   },
 });

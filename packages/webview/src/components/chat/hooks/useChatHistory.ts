@@ -11,9 +11,9 @@ interface UseChatHistoryProps {
 
 interface UseChatHistoryReturn {
   readonly pastTasks: HistoryItem[];
-  readonly setPastTasks: Dispatch<SetStateAction<HistoryItem[]>>;
   readonly scope: HistoryScope;
   readonly setScope: Dispatch<SetStateAction<HistoryScope>>;
+  readonly deleteSessions: (paths: string[]) => void;
   readonly onMessage: (msg: ExtensionToWebviewMessage) => void;
 }
 
@@ -34,33 +34,33 @@ export const useChatHistory = ({ view }: UseChatHistoryProps): UseChatHistoryRet
     if (view === 'history') requestScope(scope);
   }, [view, scope, requestScope]);
 
-  const setPastTasks = useCallback<Dispatch<SetStateAction<HistoryItem[]>>>(
-    (updater) => {
-      setHistoryByScope((prev) => {
-        const current = prev[scope] ?? [];
-        const next = typeof updater === 'function' ? (updater as (p: HistoryItem[]) => HistoryItem[])(current) : updater;
-        return { ...prev, [scope]: next };
-      });
-    },
-    [scope],
-  );
+  // Optimistically drop the deleted rows from every cached scope (not just the
+  // visible one) so a later switch to "All" re-fetches instead of showing
+  // stale entries, then ask the host to remove the files.
+  const deleteSessions = useCallback((paths: string[]): void => {
+    const removed = new Set(paths);
+    setHistoryByScope((prev) => ({
+      current: prev.current.filter((item) => !removed.has(item.path)),
+      all: prev.all.filter((item) => !removed.has(item.path)),
+    }));
+    vscode?.postMessage({ type: 'delete_sessions', paths });
+  }, []);
 
-  const onMessage = useCallback(
-    (msg: ExtensionToWebviewMessage): void => {
-      switch (msg.type) {
-        case 'init_data':
-          fetchedScopes.current.add('current');
-          setHistoryByScope((prev) => ({ ...prev, current: msg.payload.history }));
-          break;
+  // The response carries its own scope, so a reply that arrives after the user
+  // switched tabs still lands in the cache entry it was requested for.
+  const onMessage = useCallback((msg: ExtensionToWebviewMessage): void => {
+    switch (msg.type) {
+      case 'init_data':
+        fetchedScopes.current.add('current');
+        setHistoryByScope((prev) => ({ ...prev, current: msg.payload.history }));
+        break;
 
-        case 'history_data':
-          fetchedScopes.current.add(scope);
-          setHistoryByScope((prev) => ({ ...prev, [scope]: msg.payload.history }));
-          break;
-      }
-    },
-    [scope],
-  );
+      case 'history_data':
+        fetchedScopes.current.add(msg.payload.scope);
+        setHistoryByScope((prev) => ({ ...prev, [msg.payload.scope]: msg.payload.history }));
+        break;
+    }
+  }, []);
 
-  return { pastTasks, setPastTasks, scope, setScope, onMessage };
+  return { pastTasks, scope, setScope, deleteSessions, onMessage };
 };

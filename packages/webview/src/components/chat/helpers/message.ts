@@ -1,5 +1,21 @@
+import { DEFAULT_CONTEXT_LIMIT } from '@pi-code/shared/core/constants';
+
 import type { CSSProperties } from 'react';
-import type { ChatMessage } from '@pi-code/shared/core/protocol';
+import type { ActiveTaskState, ChatMessage, StatsData } from '@pi-code/shared/core/protocol';
+
+export const EMPTY_STATS: StatsData = {
+  tokensIn: 0,
+  tokensOut: 0,
+  cacheWrites: 0,
+  cacheReads: 0,
+  totalCost: 0,
+  contextTokens: 0,
+  contextLimit: DEFAULT_CONTEXT_LIMIT,
+};
+
+export function createActiveTask(id: string, title: string, messages: ChatMessage[]): ActiveTaskState {
+  return { id, title, messages, ...EMPTY_STATS };
+}
 
 function hasContent(value: string | undefined): boolean {
   return value !== undefined && value.trim() !== '';
@@ -20,24 +36,28 @@ export function isRenderableMessage(message: ChatMessage): boolean {
   return true;
 }
 
-const ROW_HEIGHT_ESTIMATE_PX: Record<ChatMessage['sender'], number> = {
-  api_request: 44,
-  checkpoint: 44,
-  info: 44,
-  error: 96,
-  user: 96,
-  queue: 96,
-  tool: 120,
-  assistant: 200,
-};
-
-const ROW_CONTAINMENT_STYLES = Object.fromEntries(
-  (Object.keys(ROW_HEIGHT_ESTIMATE_PX) as ChatMessage['sender'][]).map((sender) => [
-    sender,
-    { containIntrinsicSize: `auto ${ROW_HEIGHT_ESTIMATE_PX[sender]}px` },
-  ]),
-) as Record<ChatMessage['sender'], CSSProperties>;
-
-export function getRowContainmentStyle(sender: ChatMessage['sender']): CSSProperties {
-  return ROW_CONTAINMENT_STYLES[sender];
+export function patchMessage(messages: ChatMessage[], id: string, patch: Partial<ChatMessage>): ChatMessage[] {
+  return messages.map((message) => (message.id === id ? { ...message, ...patch } : message));
 }
+
+export function patchLastAssistant(messages: ChatMessage[], patch: (message: ChatMessage) => Partial<ChatMessage>): ChatMessage[] {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].sender !== 'assistant') continue;
+
+    const next = [...messages];
+    next[i] = { ...messages[i], ...patch(messages[i]) };
+    return next;
+  }
+  return messages;
+}
+
+export const ROW_CONTAINMENT_STYLE: Record<ChatMessage['sender'], CSSProperties> = {
+  api_request: { containIntrinsicSize: 'auto 44px' },
+  checkpoint: { containIntrinsicSize: 'auto 44px' },
+  info: { containIntrinsicSize: 'auto 44px' },
+  error: { containIntrinsicSize: 'auto 96px' },
+  user: { containIntrinsicSize: 'auto 96px' },
+  queue: { containIntrinsicSize: 'auto 96px' },
+  tool: { containIntrinsicSize: 'auto 120px' },
+  assistant: { containIntrinsicSize: 'auto 200px' },
+};

@@ -4,6 +4,8 @@ import { formatThrownValue } from '@earendil-works/pi-ai';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
+import { toolError, toolResult } from '@pi-code/extension/structures/tool-call/helpers/result';
+
 import type { ToolName } from '@pi-code/shared/core/protocol';
 
 export const deleteFileTool = defineTool({
@@ -20,33 +22,19 @@ export const deleteFileTool = defineTool({
       try {
         await access(resolvedPath);
       } catch {
-        return {
-          content: [{ type: 'text', text: `Error: "path" does not exist: ${params.path}` }],
-          details: {},
-          isError: true,
-        };
+        return toolError(`Error: "path" does not exist: ${params.path}`);
       }
 
       const stats = await stat(resolvedPath);
       if (stats.isDirectory()) {
         await rm(resolvedPath, { recursive: true, force: true });
-        return {
-          content: [{ type: 'text', text: `Deleted directory: ${params.path}` }],
-          details: {},
-        };
-      } else {
-        await unlink(resolvedPath);
-        return {
-          content: [{ type: 'text', text: `Deleted file: ${params.path}` }],
-          details: {},
-        };
+        return toolResult(`Deleted directory: ${params.path}`);
       }
+
+      await unlink(resolvedPath);
+      return toolResult(`Deleted file: ${params.path}`);
     } catch (err) {
-      return {
-        content: [{ type: 'text', text: `Error deleting file: ${formatThrownValue(err)}` }],
-        details: {},
-        isError: true,
-      };
+      return toolError(`Error deleting file: ${formatThrownValue(err)}`);
     }
   },
 });

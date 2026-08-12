@@ -8,6 +8,9 @@ export interface ActiveTaskState extends StatsData {
   readonly path?: string;
 }
 
+// Id used for the placeholder task shown before a real session has loaded.
+export const ACTIVE_TASK_ID = 'task-active';
+
 export type ToolName =
   | 'attempt_completion'
   | 'ask_question'
@@ -77,9 +80,9 @@ export interface StatsData {
   readonly contextLimit: number;
 }
 
-export type HistoryScope = 'current' | 'all';
+export const HISTORY_SCOPES = ['current', 'all'] as const;
 
-export const HISTORY_SCOPES: readonly HistoryScope[] = ['current', 'all'];
+export type HistoryScope = (typeof HISTORY_SCOPES)[number];
 
 export type WebviewToExtensionMessage =
   | { type: 'init' }
@@ -115,7 +118,7 @@ export type ExtensionToWebviewMessage =
         commands: CommandItem[];
       };
     }
-  | { type: 'history_data'; payload: { history: HistoryItem[] } }
+  | { type: 'history_data'; payload: { history: HistoryItem[]; scope: HistoryScope } }
   | { type: 'commands_data'; payload: { commands: CommandItem[] } }
   | { type: 'settings_data'; payload: { settings: AppSettings } }
   | { type: 'session_loaded'; payload: ActiveTaskState }

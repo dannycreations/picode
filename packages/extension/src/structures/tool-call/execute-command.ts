@@ -16,9 +16,7 @@ const MAX_TIMEOUT_MS = 1_800_000;
 const KILL_GRACE_MS = 2_000;
 
 function resolveTimeout(requested: number | undefined): number {
-  const base = requested ?? DEFAULT_TIMEOUT_MS;
-  if (Number.isFinite(MAX_TIMEOUT_MS) && MAX_TIMEOUT_MS > 0) return Math.min(base, MAX_TIMEOUT_MS);
-  return base;
+  return Math.min(requested ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
 }
 
 export function cleanCommandOutput(raw: string): string {

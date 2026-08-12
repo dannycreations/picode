@@ -34,7 +34,7 @@ export const COMMIT_MESSAGE_PROMPT = `Analyze the provided \`git diff\`, then ge
 - **style**: Adjusts code formatting, indentation, or whitespace without affecting logical execution.
 - **test**: Adds missing tests, refactors existing tests, or corrects test suites.`;
 
-export const SUBAGENT_SHARED_RULES = `You are a sub-agent executing one delegated task within a larger session.
+const SUBAGENT_SHARED_RULES = `You are a sub-agent executing one delegated task within a larger session.
 
 - You cannot ask the user questions, and the user never sees your intermediate work. Never pause for input; never leave the task unfinished.
 - The calling agent receives only your final message. Make that message complete, self-contained, and immediately usable, requiring no follow-up.

@@ -7,7 +7,7 @@ import { svgToPng } from '@pi-code/webview/components/chat/markdown/helpers/merm
 import { useMermaidRender } from '@pi-code/webview/components/chat/markdown/hooks/useMermaidRender';
 import { MermaidModal } from '@pi-code/webview/components/chat/markdown/MermaidModal';
 import { MermaidToolbar } from '@pi-code/webview/components/chat/markdown/MermaidToolbar';
-import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
+import { IconButton } from '@pi-code/webview/components/shared/IconButton';
 import { useCopyToClipboard } from '@pi-code/webview/hooks/useCopyToClipboard';
 import { useInViewport } from '@pi-code/webview/hooks/useInViewport';
 import { vscode } from '@pi-code/webview/utilities/vscode';
@@ -64,16 +64,8 @@ export const MermaidBlock: FC<MermaidBlockProps> = ({ code: originalCode }) => {
               <span className="font-bold text-xs text-vscode-editor-foreground">Mermaid render error</span>
             </div>
             <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-              <Tooltip content="Auto-fix common syntax issues">
-                <button className="icon-button" onClick={handleSyntaxFix}>
-                  <span className="codicon codicon-wand" />
-                </button>
-              </Tooltip>
-              <Tooltip content={showCopy ? 'Copied diagram code!' : 'Copy diagram code'}>
-                <button className="icon-button" onClick={handleCopy}>
-                  <span className={cn('codicon', `codicon-${showCopy ? 'check' : 'copy'}`)} />
-                </button>
-              </Tooltip>
+              <IconButton icon="wand" tooltip="Auto-fix common syntax issues" onClick={handleSyntaxFix} />
+              <IconButton icon={showCopy ? 'check' : 'copy'} tooltip={showCopy ? 'Copied diagram code!' : 'Copy diagram code'} onClick={handleCopy} />
               <span className={cn('codicon', `codicon-chevron-${isErrorExpanded ? 'up' : 'down'}`, 'text-xs')} />
             </div>
           </div>

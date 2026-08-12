@@ -2,8 +2,8 @@ import { User } from 'lucide-react';
 
 import { splitCommand } from '@pi-code/webview/components/chat/helpers/command';
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
+import { ImageThumb } from '@pi-code/webview/components/shared/ImageThumb';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
-import { vscode } from '@pi-code/webview/utilities/vscode';
 
 import type { FC } from 'react';
 import type { ChatMessage, CommandItem } from '@pi-code/shared/core/protocol';
@@ -34,11 +34,7 @@ export const UserMessage: FC<UserMessageProps> = ({ message, commands }) => {
         {message.images && message.images.length > 0 && (
           <div className="image-row">
             {message.images.map((img, idx) => (
-              <Tooltip key={idx} content="Click to view image">
-                <div onClick={() => vscode?.postMessage({ type: 'open_image', dataUrl: img })} className="image-thumb">
-                  <img src={img} alt="attachment" className="w-full h-full object-cover" />
-                </div>
-              </Tooltip>
+              <ImageThumb key={idx} url={img} />
             ))}
           </div>
         )}

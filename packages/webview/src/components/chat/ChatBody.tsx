@@ -1,6 +1,6 @@
 import { memo } from 'react';
 
-import { getRowContainmentStyle } from '@pi-code/webview/components/chat/helpers/message';
+import { ROW_CONTAINMENT_STYLE } from '@pi-code/webview/components/chat/helpers/message';
 import { AssistantMessage } from '@pi-code/webview/components/chat/messages/AssistantMessage';
 import { QuestionMessage } from '@pi-code/webview/components/chat/messages/QuestionMessage';
 import { QueueMessage } from '@pi-code/webview/components/chat/messages/QueueMessage';
@@ -44,7 +44,7 @@ export const ChatBody = memo<ChatBodyProps>(({ message, commands, onApproveTool,
   };
 
   return (
-    <div className="chat-row px-3.5 py-2.5 relative border-b border-vscode-editorGroup-border/30" style={getRowContainmentStyle(message.sender)}>
+    <div className="chat-row px-3.5 py-2.5 relative border-b border-vscode-editorGroup-border/30" style={ROW_CONTAINMENT_STYLE[message.sender]}>
       {renderMessageContent()}
     </div>
   );

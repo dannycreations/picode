@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getRowContainmentStyle, isRenderableMessage } from '@pi-code/webview/components/chat/helpers/message';
+import { isRenderableMessage } from '@pi-code/webview/components/chat/helpers/message';
 
 import type { ChatMessage } from '@pi-code/shared/core/protocol';
 
@@ -37,15 +37,5 @@ describe('isRenderableMessage', () => {
     for (const sender of SENDERS.filter((s) => s !== 'assistant')) {
       expect(isRenderableMessage(createMessage({ sender, text: '' }))).toBe(true);
     }
-  });
-});
-
-describe('getRowContainmentStyle', () => {
-  it('should let the browser remember the real height once measured', () => {
-    expect(getRowContainmentStyle('assistant')).toEqual({ containIntrinsicSize: 'auto 200px' });
-  });
-
-  it('should return a stable object so memoised rows are not invalidated', () => {
-    expect(getRowContainmentStyle('tool')).toBe(getRowContainmentStyle('tool'));
   });
 });
