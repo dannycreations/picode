@@ -40,7 +40,7 @@ export const SettingSlider: FC<SettingSliderProps> = ({ label, value, min, max, 
           {unit}
         </span>
       </div>
-      {description && <div className="text-vscode-descriptionForeground text-xs leading-normal">{description}</div>}
+      {description && <div className="text-muted leading-normal">{description}</div>}
     </div>
   );
 };

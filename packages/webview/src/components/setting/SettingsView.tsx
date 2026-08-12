@@ -56,11 +56,7 @@ export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
       <div className="flex justify-between items-center gap-2 px-5 py-2.5 border-b border-vscode-panel-border bg-vscode-sideBar-background shrink-0">
         <div className="flex items-center gap-2 grow">
           <Tooltip content="Discard unsaved changes and go back to tasks view" side="bottom">
-            <button
-              type="button"
-              onClick={() => checkUnsavedChanges(onDone)}
-              className="p-1.5 -ml-2 hover:bg-vscode-list-hoverBackground rounded text-vscode-foreground bg-transparent border-none cursor-pointer flex items-center justify-center transition-colors duration-150"
-            >
+            <button type="button" onClick={() => checkUnsavedChanges(onDone)} className="icon-button -ml-2 transition-colors duration-150">
               <ArrowLeft size={16} />
             </button>
           </Tooltip>
@@ -93,11 +89,7 @@ export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
                 }}
               />
               {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="p-0.5 hover:bg-vscode-list-hoverBackground rounded text-vscode-foreground bg-transparent border-none cursor-pointer flex items-center justify-center shrink-0"
-                >
+                <button type="button" onClick={() => setSearchQuery('')} className="icon-button icon-button-sm">
                   <X size={12} />
                 </button>
               )}
@@ -118,12 +110,7 @@ export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
             type="button"
             disabled={!isChangeDetected}
             onClick={handleSave}
-            className={cn(
-              'h-7 px-3 text-xs font-semibold rounded cursor-pointer transition-colors duration-150',
-              isChangeDetected
-                ? 'bg-vscode-button-background text-vscode-button-foreground hover:bg-vscode-button-hoverBackground border-none'
-                : 'bg-vscode-button-secondaryBackground text-vscode-button-secondaryForeground hover:bg-vscode-button-secondaryHoverBackground border-none opacity-50 cursor-not-allowed',
-            )}
+            className={cn('action-button h-7 px-3', isChangeDetected ? '' : 'action-button-secondary opacity-50 cursor-not-allowed border-none')}
           >
             Save
           </button>
@@ -169,7 +156,7 @@ export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
         <div className="flex-1 overflow-y-auto pb-6 flex flex-col min-w-0 bg-vscode-sideBar-background">
           <div className="sticky top-0 z-10 bg-vscode-sideBar-background text-vscode-sideBar-foreground px-5 pt-6 pb-4">
             <h3 className="text-xl font-semibold text-vscode-foreground m-0">{activeTab.label}</h3>
-            <p className="text-vscode-descriptionForeground text-xs mt-2 mb-0">{activeTab.description}</p>
+            <p className="text-muted mt-2 mb-0">{activeTab.description}</p>
           </div>
 
           {/* Controls are generated from the shared settings schema */}
@@ -180,7 +167,7 @@ export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
               ))
             ) : (
               <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-                <p className="text-vscode-descriptionForeground text-xs">No settings found matching &quot;{searchQuery}&quot;</p>
+                <p className="text-muted">No settings found matching &quot;{searchQuery}&quot;</p>
               </div>
             )}
           </div>

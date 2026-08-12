@@ -27,7 +27,7 @@ const ChatLogo: FC = () => {
   return (
     <div className="flex items-center justify-center w-14 h-14 mx-auto my-2">
       <svg
-        className="w-full h-full text-[var(--vscode-focusBorder,rgba(0,122,204,0.85))]"
+        className="w-full h-full text-vscode-focusBorder"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
@@ -132,13 +132,11 @@ export const ChatView: FC = () => {
 
   if (view === 'settings') {
     return (
-      <div className="fixed inset-0 flex flex-col overflow-hidden max-w-5xl mx-auto bg-[var(--vscode-sideBar-background)]">
+      <div className="view-container">
         {settings ? (
           <SettingsView settings={settings} onDone={() => setView('chat')} />
         ) : (
-          <div className="flex items-center justify-center h-full text-[var(--vscode-descriptionForeground)] text-xs select-none">
-            Loading settings...
-          </div>
+          <div className="flex items-center justify-center h-full text-muted select-none">Loading settings...</div>
         )}
       </div>
     );
@@ -146,7 +144,7 @@ export const ChatView: FC = () => {
 
   if (view === 'history') {
     return (
-      <div className="fixed inset-0 flex flex-col overflow-hidden max-w-5xl mx-auto bg-[var(--vscode-sideBar-background)]">
+      <div className="view-container">
         <HistoryView
           history={pastTasks}
           onSelectTask={(item: HistoryItem) => vscode?.postMessage({ type: 'load_session', path: item.path, id: item.id, title: item.task })}
@@ -173,7 +171,7 @@ export const ChatView: FC = () => {
   const isInputDisabled = !pendingQuestion && isAwaitingApproval;
 
   return (
-    <div className="fixed inset-0 flex flex-col overflow-hidden max-w-5xl mx-auto bg-[var(--vscode-sideBar-background)]">
+    <div className="view-container">
       {/* Task Header / Welcome Header */}
       {activeTask ? (
         <ChatHeader
@@ -200,9 +198,9 @@ export const ChatView: FC = () => {
           <Tooltip content={historyExpanded ? 'Hide recent tasks' : 'Show recent tasks'} side="bottom">
             <button
               onClick={() => setHistoryExpanded(!historyExpanded)}
-              className="flex items-center cursor-pointer bg-transparent border-none text-xs font-semibold text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)]"
+              className="text-button text-xs font-semibold text-vscode-descriptionForeground hover:text-vscode-foreground"
             >
-              <span className={cn('codicon', historyExpanded ? 'codicon-eye' : 'codicon-eye-closed', 'scale-90 mr-1.5')} />
+              <span className={cn('codicon', historyExpanded ? 'codicon-eye' : 'codicon-eye-closed', 'scale-90')} />
               <span className="text-xs">Recent Tasks</span>
             </button>
           </Tooltip>
@@ -231,7 +229,7 @@ export const ChatView: FC = () => {
           <div className="w-full flex-grow flex flex-col justify-start gap-4 px-3.5 transition-all duration-300">
             <div className="flex flex-col justify-center flex-grow py-4">
               <ChatLogo />
-              <p className="text-[var(--vscode-editor-foreground)] leading-relaxed font-sans text-center text-balance max-w-[380px] mx-auto my-3 text-sm">
+              <p className="text-vscode-editor-foreground leading-relaxed font-sans text-center text-balance max-w-[380px] mx-auto my-3 text-sm">
                 Generate, refactor, and debug code with Pi Code.
               </p>
               {historyExpanded && (

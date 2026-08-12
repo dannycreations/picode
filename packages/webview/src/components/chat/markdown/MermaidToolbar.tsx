@@ -13,7 +13,7 @@ interface MermaidToolbarProps {
 }
 
 export const MermaidToolbar: FC<MermaidToolbarProps> = ({ showCopy, onOpenZoom, onOpenSource, onCopy, onSave }) => (
-  <div className="absolute bottom-2 right-2 flex gap-1 bg-[var(--vscode-editor-background)]/90 border border-[var(--vscode-editorGroup-border)] rounded p-0.5 z-10">
+  <div className="absolute bottom-2 right-2 flex gap-1 bg-vscode-editor-background/90 border border-vscode-editorGroup-border rounded p-0.5 z-10">
     <Tooltip content="Zoom diagram">
       <button className="icon-button" onClick={onOpenZoom}>
         <span className="codicon codicon-zoom-in" />

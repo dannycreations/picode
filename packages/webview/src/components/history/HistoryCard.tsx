@@ -34,10 +34,10 @@ export const HistoryCard: FC<HistoryCardProps> = ({
     <div
       onClick={onClick}
       className={cn(
-        'group flex items-start gap-3 p-3 bg-[var(--vscode-editor-background)] rounded border transition-colors cursor-pointer relative',
+        'group flex items-start gap-3 p-3 bg-vscode-editor-background rounded border transition-colors cursor-pointer relative',
         isSelected
-          ? 'border-[var(--vscode-focusBorder)] bg-[var(--vscode-list-hoverBackground)]/30'
-          : 'border-[var(--vscode-panel-border)]/50 hover:bg-[var(--vscode-list-hoverBackground)]',
+          ? 'border-vscode-focusBorder bg-vscode-list-hoverBackground/30'
+          : 'border-vscode-panel-border/50 hover:bg-vscode-list-hoverBackground',
       )}
     >
       {isSelectionMode && onToggleSelect && (
@@ -47,11 +47,11 @@ export const HistoryCard: FC<HistoryCardProps> = ({
       )}
 
       <div className="flex-1 min-w-0 flex flex-col gap-1.5">
-        <div className={cn('text-xs leading-relaxed font-light text-[var(--vscode-foreground)]', lineClamp === 2 ? 'line-clamp-2' : 'line-clamp-3')}>
+        <div className={cn('text-xs leading-relaxed font-light text-vscode-foreground', lineClamp === 2 ? 'line-clamp-2' : 'line-clamp-3')}>
           {item.task}
         </div>
 
-        <div className="flex items-center justify-between text-xs text-[var(--vscode-descriptionForeground)] mt-1">
+        <div className="flex items-center justify-between text-muted mt-1">
           <div className="flex items-center gap-1.5 opacity-80">
             <Calendar size={10} className="opacity-80" />
             <span>{formatTimeAgo(item.ts)}</span>
@@ -60,8 +60,8 @@ export const HistoryCard: FC<HistoryCardProps> = ({
           {!isSelectionMode && (
             <TaskActions
               iconSize={12}
-              buttonClassName="p-1 rounded bg-transparent border-none cursor-pointer flex items-center transition-colors hover:bg-[var(--vscode-list-hoverBackground)] text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)]"
-              deleteButtonClassName="p-1 rounded bg-transparent border-none cursor-pointer flex items-center transition-colors hover:bg-[var(--vscode-list-hoverBackground)] text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-errorForeground)]"
+              buttonClassName="icon-button"
+              deleteButtonClassName="icon-button hover:text-vscode-errorForeground"
               copyText={item.task}
               onExport={onExport ? () => onExport(item) : undefined}
               onDelete={() => onDelete(item.path)}

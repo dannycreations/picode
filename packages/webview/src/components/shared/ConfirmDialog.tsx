@@ -50,8 +50,8 @@ const Button: FC<ButtonProps> = ({ variant = 'secondary', children, className = 
     'px-3 py-1.5 text-xs font-semibold rounded cursor-pointer transition-colors border flex items-center justify-center gap-2 select-none disabled:opacity-50 disabled:cursor-not-allowed';
 
   const variants = {
-    secondary: 'bg-transparent hover:bg-[var(--vscode-list-hoverBackground)] border-[var(--vscode-panel-border)]/50 text-[var(--vscode-foreground)]',
-    danger: 'bg-[var(--vscode-errorForeground)]/90 hover:bg-[var(--vscode-errorForeground)] text-white border-transparent',
+    secondary: 'bg-transparent hover:bg-vscode-list-hoverBackground border-vscode-panel-border/50 text-vscode-foreground',
+    danger: 'bg-vscode-errorForeground/90 hover:bg-vscode-errorForeground text-white border-transparent',
   };
 
   return (
@@ -79,43 +79,40 @@ export const ConfirmDialog: FC<ConfirmDialogProps> = ({
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 select-none">
+    <div className="modal-overlay">
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={description ? descriptionId : undefined}
-        className="bg-[var(--vscode-editor-background)] border border-[var(--vscode-panel-border)] rounded-md w-full max-w-md overflow-hidden flex flex-col shadow-xl"
+        className="bg-vscode-editor-background border border-vscode-panel-border rounded-md w-full max-w-md overflow-hidden flex flex-col shadow-xl"
       >
-        <div className="px-4 py-3 bg-[var(--vscode-sideBarSectionHeader-background)] border-b border-[var(--vscode-panel-border)]/50 flex justify-between items-center">
-          <h3 id={titleId} className="font-semibold text-xs uppercase tracking-wider text-[var(--vscode-foreground)] m-0">
+        <div className="px-4 py-3 bg-vscode-sideBarSectionHeader-background border-b border-vscode-panel-border/50 flex justify-between items-center">
+          <h3 id={titleId} className="font-semibold text-xs uppercase tracking-wider text-vscode-foreground m-0">
             {title}
           </h3>
           <Tooltip content="Close dialog" side="left">
-            <button
-              onClick={onCancel}
-              className="shrink-0 w-5 h-5 flex items-center justify-center rounded hover:bg-vscode-list-hoverBackground text-vscode-descriptionForeground hover:text-vscode-foreground bg-transparent border-none cursor-pointer"
-            >
+            <button onClick={onCancel} className="icon-button">
               <X size={14} />
             </button>
           </Tooltip>
         </div>
 
-        <div className="p-4 flex flex-col gap-3 text-xs leading-relaxed text-[var(--vscode-foreground)]">
+        <div className="p-4 flex flex-col gap-3 text-xs leading-relaxed text-vscode-foreground">
           {description && (
-            <p id={descriptionId} className="m-0 text-[var(--vscode-foreground)]">
+            <p id={descriptionId} className="m-0 text-vscode-foreground">
               {description}
             </p>
           )}
 
           {warningText && (
-            <div className="text-[var(--vscode-errorForeground)] bg-[var(--vscode-input-background)] p-3 rounded border border-[var(--vscode-panel-border)]/50 text-xs">
+            <div className="text-vscode-errorForeground bg-vscode-input-background p-3 rounded border border-vscode-panel-border/50 text-xs">
               {warningText}
             </div>
           )}
         </div>
 
-        <div className="px-4 py-3 bg-[var(--vscode-sideBarSectionHeader-background)]/50 border-t border-[var(--vscode-panel-border)]/50 flex justify-end gap-2">
+        <div className="px-4 py-3 bg-vscode-sideBarSectionHeader-background/50 border-t border-vscode-panel-border/50 flex justify-end gap-2">
           <Button variant="secondary" onClick={onCancel}>
             {cancelLabel}
           </Button>

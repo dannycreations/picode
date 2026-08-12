@@ -70,17 +70,14 @@ export const HistoryView: FC<HistoryViewProps> = ({ history, onSelectTask, onDon
   return (
     <div className="flex-1 flex flex-col overflow-hidden w-full h-full">
       {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--vscode-panel-border)]/40 shrink-0">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-vscode-panel-border/40 shrink-0">
         <Tooltip content="Back to chat" side="bottom">
-          <button
-            onClick={onDone}
-            className="p-1 hover:bg-[var(--vscode-list-hoverBackground)] rounded cursor-pointer text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] transition-colors border-none bg-transparent"
-          >
+          <button onClick={onDone} className="icon-button icon-button-sm transition-colors">
             <ArrowLeft size={16} />
           </button>
         </Tooltip>
-        <span className="font-semibold text-sm text-[var(--vscode-foreground)]">Task History</span>
-        <span className="ml-auto text-xs text-[var(--vscode-descriptionForeground)] font-mono">
+        <span className="font-semibold text-sm text-vscode-foreground">Task History</span>
+        <span className="ml-auto text-muted font-mono">
           {filteredHistory.length} task{filteredHistory.length !== 1 ? 's' : ''}
         </span>
       </div>
@@ -128,7 +125,7 @@ export const HistoryView: FC<HistoryViewProps> = ({ history, onSelectTask, onDon
             />
           ))
         ) : (
-          <div className="flex flex-col items-center justify-center py-12 text-center text-xs text-[var(--vscode-descriptionForeground)] gap-2">
+          <div className="flex flex-col items-center justify-center py-12 text-center text-muted gap-2">
             <Folder size={24} className="opacity-40" />
             <span>No task history found</span>
           </div>

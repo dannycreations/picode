@@ -22,11 +22,11 @@ export const ApiRequestMessage: FC<{ readonly message: ChatMessage }> = ({ messa
         {isRunning ? (
           <Spinner className="text-vscode-focusBorder" />
         ) : isFailed ? (
-          <AlertTriangle size={14} className="text-[var(--vscode-editorError-foreground)] shrink-0" />
+          <AlertTriangle size={14} className="text-vscode-editorError-foreground shrink-0" />
         ) : (
           <RefreshCw size={14} className="text-vscode-focusBorder shrink-0" />
         )}
-        <span className={cn('font-semibold', isFailed ? 'text-[var(--vscode-editorError-foreground)]' : 'text-vscode-foreground')}>
+        <span className={cn('font-semibold', isFailed ? 'text-vscode-editorError-foreground' : 'text-vscode-foreground')}>
           {isRunning ? 'API Request...' : isFailed ? 'API Request Failed' : 'API Request'}
         </span>
       </div>
@@ -36,14 +36,14 @@ export const ApiRequestMessage: FC<{ readonly message: ChatMessage }> = ({ messa
             ${message.cost.toFixed(4)}
           </span>
         )}
-        <span className="text-xs text-vscode-descriptionForeground font-normal">{formatTime(message.ts)}</span>
+        <span className="text-muted font-normal">{formatTime(message.ts)}</span>
       </div>
     </div>
   );
 };
 
 export const ErrorMessage: FC<{ readonly message: ChatMessage }> = ({ message }) => (
-  <div className="p-3 rounded-md bg-[var(--vscode-editorError-background)]/10 border border-[var(--vscode-editorError-foreground)]/30 flex gap-2 text-xs text-[var(--vscode-editorError-foreground)]">
+  <div className="p-3 rounded-md bg-vscode-editorError-background/10 border border-vscode-editorError-foreground/30 flex gap-2 text-xs text-vscode-editorError-foreground">
     <AlertTriangle size={16} className="shrink-0 mt-0.5" />
     <div className="flex-1 min-w-0">
       <div className="font-semibold text-sm mb-1 select-none">Execution Error</div>
@@ -60,6 +60,6 @@ export const InfoMessage: FC<{ readonly message: ChatMessage }> = ({ message }) 
       <Info size={14} className="text-vscode-focusBorder shrink-0 mt-0.5" />
       <span className="font-semibold text-vscode-foreground break-words">{message.text}</span>
     </div>
-    <span className="text-xs text-vscode-descriptionForeground font-normal shrink-0 whitespace-nowrap">{formatTime(message.ts)}</span>
+    <span className="text-muted font-normal shrink-0 whitespace-nowrap">{formatTime(message.ts)}</span>
   </div>
 );

@@ -20,20 +20,20 @@ export const MermaidModal: FC<MermaidModalProps> = ({ code, svgContent, modalVie
   const { zoomLevel, dragPosition, isDragging, adjustZoom, handleWheel, startDrag, onDrag, stopDrag } = usePanZoom();
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[1000] p-4 select-none" onClick={onClose}>
+    <div className="modal-overlay" onClick={onClose}>
       <div
-        className="bg-[var(--vscode-editor-background)] rounded w-[90vw] h-[90vh] max-w-[1200px] flex flex-col shadow-lg border border-[var(--vscode-editorGroup-border)] relative"
+        className="bg-vscode-editor-background rounded w-[90vw] h-[90vh] max-w-[1200px] flex flex-col shadow-lg border border-vscode-editorGroup-border relative"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="flex justify-between items-center border-b border-[var(--vscode-editorGroup-border)] bg-[var(--vscode-editor-background)] px-2">
+        <div className="flex justify-between items-center border-b border-vscode-editorGroup-border bg-vscode-editor-background px-2">
           <div className="flex">
             <button
               className={cn(
                 'px-4 py-2 border-none cursor-pointer flex items-center gap-1.5 text-xs transition-all duration-200',
                 modalViewMode === 'diagram'
-                  ? 'border-b-2 border-[var(--vscode-focusBorder)] text-[var(--vscode-editor-foreground)] font-semibold'
-                  : 'text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-editor-foreground)]',
+                  ? 'border-b-2 border-vscode-focusBorder text-vscode-editor-foreground font-semibold'
+                  : 'text-vscode-descriptionForeground hover:text-vscode-editor-foreground',
               )}
               onClick={() => setModalViewMode('diagram')}
             >
@@ -43,8 +43,8 @@ export const MermaidModal: FC<MermaidModalProps> = ({ code, svgContent, modalVie
               className={cn(
                 'px-4 py-2 border-none cursor-pointer flex items-center gap-1.5 text-xs transition-all duration-200',
                 modalViewMode === 'code'
-                  ? 'border-b-2 border-[var(--vscode-focusBorder)] text-[var(--vscode-editor-foreground)] font-semibold'
-                  : 'text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-editor-foreground)]',
+                  ? 'border-b-2 border-vscode-focusBorder text-vscode-editor-foreground font-semibold'
+                  : 'text-vscode-descriptionForeground hover:text-vscode-editor-foreground',
               )}
               onClick={() => setModalViewMode('code')}
             >
@@ -52,10 +52,7 @@ export const MermaidModal: FC<MermaidModalProps> = ({ code, svgContent, modalVie
             </button>
           </div>
           <Tooltip content="Close" side="bottom">
-            <button
-              className="w-8 h-8 flex items-center justify-center border-none text-[var(--vscode-editor-foreground)] bg-transparent hover:bg-[var(--vscode-toolbar-hoverBackground)] cursor-pointer rounded"
-              onClick={onClose}
-            >
+            <button className="icon-button" onClick={onClose}>
               <span className="codicon codicon-close text-sm" />
             </button>
           </Tooltip>
@@ -63,7 +60,7 @@ export const MermaidModal: FC<MermaidModalProps> = ({ code, svgContent, modalVie
 
         {/* Modal Content */}
         <div
-          className="flex-1 p-4 pb-16 overflow-auto flex items-center justify-center relative bg-[var(--vscode-editor-background)]"
+          className="flex-1 p-4 pb-16 overflow-auto flex items-center justify-center relative bg-vscode-editor-background"
           onWheel={modalViewMode === 'diagram' ? handleWheel : undefined}
         >
           {modalViewMode === 'diagram' ? (
@@ -82,13 +79,13 @@ export const MermaidModal: FC<MermaidModalProps> = ({ code, svgContent, modalVie
                 dangerouslySetInnerHTML={{ __html: svgContent }}
                 className="max-w-full max-h-full"
               />
-              <div className="absolute bottom-4 left-4 bg-[var(--vscode-editor-background)] border border-[var(--vscode-editorGroup-border)] rounded px-2 py-1 text-xs text-[var(--vscode-descriptionForeground)] opacity-80">
+              <div className="absolute bottom-4 left-4 bg-vscode-editor-background border border-vscode-editorGroup-border rounded px-2 py-1 text-muted opacity-80">
                 {Math.round(zoomLevel * 100)}%
               </div>
             </div>
           ) : (
             <textarea
-              className="w-full h-full bg-[var(--vscode-editor-background)] text-[var(--vscode-editor-foreground)] border border-[var(--vscode-editorGroup-border)] rounded p-3 font-mono resize-none outline-none text-xs"
+              className="w-full h-full bg-vscode-editor-background text-vscode-editor-foreground border border-vscode-editorGroup-border rounded p-3 font-mono resize-none outline-none text-xs"
               readOnly
               value={code}
             />
@@ -96,7 +93,7 @@ export const MermaidModal: FC<MermaidModalProps> = ({ code, svgContent, modalVie
         </div>
 
         {/* Modal Footer Controls */}
-        <div className="absolute bottom-0 right-0 left-0 p-3 flex items-center justify-end gap-2 bg-[var(--vscode-editor-background)] border-t border-[var(--vscode-editorGroup-border)] rounded-b">
+        <div className="absolute bottom-0 right-0 left-0 p-3 flex items-center justify-end gap-2 bg-vscode-editor-background border-t border-vscode-editorGroup-border rounded-b">
           {modalViewMode === 'diagram' ? (
             <>
               <Tooltip content="Zoom out">

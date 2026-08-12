@@ -41,7 +41,7 @@ export const SettingList: FC<SettingListProps> = ({ label, description, placehol
     <div className="flex flex-col gap-2 mt-2">
       <div className="flex flex-col gap-0.5">
         <span className="text-xs font-semibold text-vscode-foreground">{label}</span>
-        <span className="text-xs text-vscode-descriptionForeground leading-normal">{description}</span>
+        <span className="text-muted leading-normal">{description}</span>
       </div>
       <div className="flex gap-2">
         <input
@@ -59,11 +59,7 @@ export const SettingList: FC<SettingListProps> = ({ label, description, placehol
           className="h-7 px-2 text-xs rounded border border-vscode-focusBorder bg-vscode-settings-textInputBackground text-vscode-settings-textInputForeground outline-none hover:ring-1 hover:ring-vscode-focusBorder focus:ring-1 focus:ring-vscode-focusBorder grow"
         />
         <Tooltip content="Add entry" side="left">
-          <button
-            type="button"
-            onClick={handleAdd}
-            className="h-7 px-2.5 text-xs font-semibold rounded cursor-pointer bg-vscode-button-secondaryBackground text-vscode-button-secondaryForeground hover:bg-vscode-button-secondaryHoverBackground border border-vscode-editorGroup-border/50 flex items-center justify-center shrink-0"
-          >
+          <button type="button" onClick={handleAdd} className="action-button action-button-secondary h-7 px-2.5 shrink-0">
             <Plus size={14} />
           </button>
         </Tooltip>
@@ -92,11 +88,7 @@ export const SettingList: FC<SettingListProps> = ({ label, description, placehol
                 </span>
               </Tooltip>
               <Tooltip content="Remove entry">
-                <button
-                  type="button"
-                  onClick={() => handleRemove(idx)}
-                  className="p-0.5 hover:bg-vscode-list-hoverBackground rounded text-vscode-badge-foreground bg-transparent border-none cursor-pointer flex items-center justify-center"
-                >
+                <button type="button" onClick={() => handleRemove(idx)} className="icon-button icon-button-sm text-vscode-badge-foreground">
                   <X size={12} />
                 </button>
               </Tooltip>

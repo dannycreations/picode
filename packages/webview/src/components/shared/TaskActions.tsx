@@ -1,8 +1,8 @@
 import { cn } from 'cnfast';
-import { Check, Copy, Download, FileJson, Trash2 } from 'lucide-react';
+import { Download, FileJson, Trash2 } from 'lucide-react';
 
+import { CopyButton } from '@pi-code/webview/components/shared/CopyButton';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
-import { useCopyToClipboard } from '@pi-code/webview/hooks/useCopyToClipboard';
 
 import type { FC, MouseEvent } from 'react';
 
@@ -27,8 +27,6 @@ export const TaskActions: FC<TaskActionsProps> = ({
   onDelete,
   onViewRaw,
 }) => {
-  const { showCopy, copy } = useCopyToClipboard();
-
   const stop = (e: MouseEvent): void => e.stopPropagation();
 
   return (
@@ -47,10 +45,8 @@ export const TaskActions: FC<TaskActionsProps> = ({
           </button>
         </Tooltip>
       )}
-      <Tooltip content={showCopy ? 'Copied prompt!' : 'Copy prompt'}>
-        <button type="button" className={buttonClassName} onClick={(e) => void copy(copyText, e)}>
-          {showCopy ? <Check size={iconSize} /> : <Copy size={iconSize} />}
-        </button>
+      <Tooltip content="Copy prompt">
+        <CopyButton text={copyText} size={iconSize} className={buttonClassName} />
       </Tooltip>
       {onDelete && (
         <Tooltip content="Delete task">

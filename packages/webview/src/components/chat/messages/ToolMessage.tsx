@@ -27,12 +27,14 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
     return (
       <div className="group flex flex-col gap-1.5">
         <MessageHeader
-          icon={isRunning ? <Spinner className="text-vscode-focusBorder" /> : <ClipboardCheck size={14} className="text-emerald-500 shrink-0" />}
+          icon={
+            isRunning ? <Spinner className="text-vscode-focusBorder" /> : <ClipboardCheck size={14} className="text-vscode-charts-green shrink-0" />
+          }
           title="Task Completed"
-          titleClassName="text-emerald-500"
+          titleClassName="text-vscode-charts-green"
           timestamp={message.ts}
         />
-        <div className="ml-1.5 border-l-2 border-emerald-500 pl-3.5 text-sm leading-normal text-vscode-foreground select-text">
+        <div className="ml-1.5 border-l-2 border-vscode-charts-green pl-3.5 text-sm leading-normal text-vscode-foreground select-text">
           <Markdown markdown={completionResult || (isRunning ? 'Completing task...' : '')} />
         </div>
       </div>
@@ -45,9 +47,9 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
   const renderToolStatusIcon = () => {
     switch (message.toolStatus) {
       case 'completed':
-        return <CheckCircle size={14} className="text-emerald-500 shrink-0" />;
+        return <CheckCircle size={14} className="text-vscode-charts-green shrink-0" />;
       case 'denied':
-        return <ShieldAlert size={14} className="text-red-500 shrink-0" />;
+        return <ShieldAlert size={14} className="text-vscode-errorForeground shrink-0" />;
       case 'running':
         return <Spinner className="text-vscode-focusBorder" />;
       default:
@@ -81,7 +83,7 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
             <div className={hasBottomBlock ? 'border-b border-vscode-editorGroup-border/45' : ''}>
               <button
                 onClick={() => setIsDiffExpanded(!isDiffExpanded)}
-                className="w-full flex items-center justify-between px-3 py-1.5 bg-vscode-input-background text-xs text-vscode-descriptionForeground border-none cursor-pointer text-left hover:bg-vscode-list-hoverBackground select-none"
+                className="w-full flex items-center justify-between px-3 py-1.5 bg-vscode-input-background text-muted border-none cursor-pointer text-left hover:bg-vscode-list-hoverBackground select-none"
               >
                 <span className="font-semibold flex items-center gap-1.5">
                   <span className={cn('codicon', `codicon-${diffIcon}`, 'pr-0.5')} />
@@ -114,16 +116,10 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
                 )}
               </div>
               <div className="flex items-center gap-2 select-none">
-                <button
-                  onClick={() => onApproveTool(message.id)}
-                  className="flex-1 py-1.5 text-xs font-semibold rounded bg-vscode-button-background text-vscode-button-foreground hover:bg-vscode-button-hoverBackground border-none cursor-pointer flex items-center justify-center gap-1.5"
-                >
+                <button onClick={() => onApproveTool(message.id)} className="action-button flex-1">
                   <Play size={12} fill="currentColor" /> Approve
                 </button>
-                <button
-                  onClick={() => onDenyTool(message.id)}
-                  className="flex-1 py-1.5 text-xs font-semibold rounded bg-vscode-button-secondaryBackground text-vscode-button-secondaryForeground hover:bg-vscode-button-secondaryHoverBackground border border-vscode-editorGroup-border cursor-pointer flex items-center justify-center gap-1.5"
-                >
+                <button onClick={() => onDenyTool(message.id)} className="action-button action-button-secondary flex-1">
                   <X size={12} /> Deny
                 </button>
               </div>

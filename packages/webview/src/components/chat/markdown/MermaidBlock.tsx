@@ -48,35 +48,29 @@ export const MermaidBlock: FC<MermaidBlockProps> = ({ code: originalCode }) => {
 
   return (
     <div ref={rootRef} className="relative my-2 select-none">
-      {isLoading && <div className="py-2 text-[var(--vscode-descriptionForeground)] italic text-xs">Loading diagram...</div>}
+      {isLoading && <div className="py-2 text-vscode-descriptionForeground italic text-xs">Loading diagram...</div>}
 
       {error ? (
-        <div className="mt-0 overflow-hidden mb-2 border border-[var(--vscode-editorGroup-border)] rounded">
+        <div className="mt-0 overflow-hidden mb-2 border border-vscode-editorGroup-border rounded">
           <div
             className={cn(
-              'p-2 bg-[var(--vscode-editor-background)] flex items-center justify-between cursor-pointer',
-              isErrorExpanded ? 'border-b border-[var(--vscode-editorGroup-border)]' : '',
+              'p-2 bg-vscode-editor-background flex items-center justify-between cursor-pointer',
+              isErrorExpanded ? 'border-b border-vscode-editorGroup-border' : '',
             )}
             onClick={() => setIsErrorExpanded(!isErrorExpanded)}
           >
             <div className="flex items-center gap-2 flex-grow">
-              <span className="codicon codicon-warning text-[var(--vscode-editorWarning-foreground)] text-sm shrink-0" />
-              <span className="font-bold text-xs text-[var(--vscode-editor-foreground)]">Mermaid render error</span>
+              <span className="codicon codicon-warning text-vscode-editorWarning-foreground text-sm shrink-0" />
+              <span className="font-bold text-xs text-vscode-editor-foreground">Mermaid render error</span>
             </div>
             <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
               <Tooltip content="Auto-fix common syntax issues">
-                <button
-                  className="p-1 h-6 w-6 flex items-center justify-center bg-transparent border-none text-[var(--vscode-editor-foreground)] cursor-pointer hover:bg-[var(--vscode-toolbar-hoverBackground)] rounded"
-                  onClick={handleSyntaxFix}
-                >
+                <button className="icon-button" onClick={handleSyntaxFix}>
                   <span className="codicon codicon-wand" />
                 </button>
               </Tooltip>
               <Tooltip content={showCopy ? 'Copied diagram code!' : 'Copy diagram code'}>
-                <button
-                  className="p-1 h-6 w-6 flex items-center justify-center bg-transparent border-none text-[var(--vscode-editor-foreground)] cursor-pointer hover:bg-[var(--vscode-toolbar-hoverBackground)] rounded"
-                  onClick={handleCopy}
-                >
+                <button className="icon-button" onClick={handleCopy}>
                   <span className={cn('codicon', `codicon-${showCopy ? 'check' : 'copy'}`)} />
                 </button>
               </Tooltip>
@@ -84,9 +78,9 @@ export const MermaidBlock: FC<MermaidBlockProps> = ({ code: originalCode }) => {
             </div>
           </div>
           {isErrorExpanded && (
-            <div className="p-2 bg-[var(--vscode-editor-background)] text-xs text-[var(--vscode-descriptionForeground)] flex flex-col gap-2">
-              <div className="font-mono text-red-400 break-words">{error}</div>
-              <pre className="p-2 rounded bg-[var(--vscode-textCodeBlock-background)] text-xs overflow-x-auto font-mono text-[var(--vscode-editor-foreground)]">
+            <div className="p-2 bg-vscode-editor-background text-muted flex flex-col gap-2">
+              <div className="font-mono text-vscode-errorForeground break-words">{error}</div>
+              <pre className="p-2 rounded bg-vscode-textCodeBlock-background text-xs overflow-x-auto font-mono text-vscode-editor-foreground">
                 <code>{code}</code>
               </pre>
             </div>
@@ -94,19 +88,18 @@ export const MermaidBlock: FC<MermaidBlockProps> = ({ code: originalCode }) => {
         </div>
       ) : (
         <div
-          className="relative w-full border border-[var(--vscode-editorGroup-border)]/40 rounded bg-[var(--vscode-editor-background)] overflow-hidden"
+          className="relative w-full border border-vscode-editorGroup-border/40 rounded bg-vscode-editor-background overflow-hidden"
           onMouseEnter={() => setIsHovering(true)}
           onMouseLeave={() => setIsHovering(false)}
         >
           <div
             ref={containerRef}
             className={cn(
-              'min-h-[20px] transition-opacity duration-200 cursor-pointer flex justify-center max-h-[300px] p-4',
+              'min-h-[20px] transition-opacity duration-200 cursor-pointer flex justify-center max-h-[300px] p-4 w-full',
               isLoading ? 'opacity-30' : 'opacity-100',
             )}
             onClick={() => setShowModal(true)}
             dangerouslySetInnerHTML={{ __html: svgContent }}
-            style={{ width: '100%' }}
           />
 
           {!isLoading && isHovering && (

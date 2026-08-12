@@ -39,7 +39,7 @@ export const AssistantMessage: FC<AssistantMessageProps> = ({ message }) => {
             <ChevronUp size={14} className={cn('transition-transform duration-200', !isReasoningExpanded && 'rotate-180')} />
           </MessageHeader>
           {isReasoningExpanded && (
-            <div className="ml-6 border-l border-vscode-descriptionForeground/20 pl-4 pb-1 text-vscode-descriptionForeground text-xs whitespace-pre-wrap leading-relaxed select-text">
+            <div className="ml-6 border-l border-vscode-descriptionForeground/20 pl-4 pb-1 text-muted whitespace-pre-wrap leading-relaxed select-text">
               {reasoning}
             </div>
           )}

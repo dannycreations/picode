@@ -31,40 +31,25 @@ export const ChatAction: FC<ChatActionProps> = ({
     <div className="flex gap-2 px-3.5 pt-2 shrink-0">
       {showScrollToBottom ? (
         <Tooltip content="Scroll to bottom of chat">
-          <button
-            onClick={onScrollToBottom}
-            className="w-full py-1.5 text-xs font-semibold rounded bg-vscode-button-background text-vscode-button-foreground hover:bg-vscode-button-hoverBackground border-none cursor-pointer flex items-center justify-center gap-1.5"
-          >
+          <button onClick={onScrollToBottom} className="action-button w-full">
             <span className="codicon codicon-chevron-down mr-1" />
           </button>
         </Tooltip>
       ) : isAgentRunning ? (
-        <button
-          onClick={onCancelTask}
-          className="w-full py-1.5 text-xs font-semibold rounded bg-vscode-button-secondaryBackground text-vscode-button-secondaryForeground hover:bg-vscode-button-secondaryHoverBackground border border-vscode-editorGroup-border cursor-pointer flex items-center justify-center gap-1.5"
-        >
-          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse mr-1" />
+        <button onClick={onCancelTask} className="action-button action-button-secondary w-full">
+          <span className="w-1.5 h-1.5 rounded-full bg-vscode-errorForeground animate-pulse mr-1" />
           Cancel Task
         </button>
       ) : activeTask.messages.some((msg) => msg.toolName === 'attempt_completion') ? (
-        <button
-          onClick={onCloseTask}
-          className="w-full py-1.5 text-xs font-semibold rounded bg-vscode-button-background text-vscode-button-foreground hover:bg-vscode-button-hoverBackground border-none cursor-pointer flex items-center justify-center gap-1.5"
-        >
+        <button onClick={onCloseTask} className="action-button w-full">
           Start New Task
         </button>
       ) : (
         <>
-          <button
-            onClick={onContinueTask}
-            className="flex-1 py-1.5 text-xs font-semibold rounded bg-vscode-button-background text-vscode-button-foreground hover:bg-vscode-button-hoverBackground border-none cursor-pointer flex items-center justify-center gap-1.5"
-          >
+          <button onClick={onContinueTask} className="action-button flex-1">
             Continue
           </button>
-          <button
-            onClick={onCloseTask}
-            className="flex-1 py-1.5 text-xs font-semibold rounded bg-vscode-button-secondaryBackground text-vscode-button-secondaryForeground hover:bg-vscode-button-secondaryHoverBackground border border-vscode-editorGroup-border cursor-pointer flex items-center justify-center gap-1.5"
-          >
+          <button onClick={onCloseTask} className="action-button action-button-secondary flex-1">
             New Task
           </button>
         </>

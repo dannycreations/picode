@@ -20,7 +20,7 @@ interface ChatHeaderProps extends StatsData {
 
 const ContextProgressBar: FC<{ readonly percentage: number }> = ({ percentage }) => (
   <div className="flex-grow h-1.5 bg-vscode-editor-background rounded-full overflow-hidden border border-vscode-editorGroup-border/40">
-    <div className="h-full bg-blue-500 rounded-full transition-all duration-300" style={{ width: `${percentage}%` }} />
+    <div className="h-full bg-vscode-charts-blue rounded-full transition-all duration-300" style={{ width: `${percentage}%` }} />
   </div>
 );
 
@@ -55,7 +55,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
     <div className="py-2 px-3.5 border-b border-vscode-editorGroup-border/30 bg-vscode-sideBar-background shrink-0 select-none">
       <div
         onClick={handleContainerClick}
-        className="px-3 pt-2.5 pb-2 flex flex-col gap-1.5 relative z-1 cursor-pointer bg-vscode-input-background hover:bg-vscode-input-background/90 text-vscode-foreground/80 hover:text-vscode-foreground shadow-lg shadow-vscode-sideBar-background/50 rounded-xl border border-[var(--vscode-panel-border)]/50 transition-all duration-200"
+        className="px-3 pt-2.5 pb-2 flex flex-col gap-1.5 relative z-1 cursor-pointer bg-vscode-input-background hover:bg-vscode-input-background/90 text-vscode-foreground/80 hover:text-vscode-foreground shadow-lg shadow-vscode-sideBar-background/50 rounded-xl border border-vscode-panel-border/50 transition-all duration-200"
       >
         {/* Title Bar */}
         <div className="flex justify-between items-center gap-2">
@@ -74,10 +74,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
           </div>
           <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
             <Tooltip content="Close task" side="bottom">
-              <button
-                onClick={onClose}
-                className="shrink-0 w-5 h-5 flex items-center justify-center rounded hover:bg-vscode-list-hoverBackground text-vscode-descriptionForeground hover:text-vscode-foreground bg-transparent border-none cursor-pointer"
-              >
+              <button onClick={onClose} className="icon-button icon-button-sm">
                 <X size={14} />
               </button>
             </Tooltip>
@@ -88,16 +85,13 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
         {!isExpanded && (
           <div className="w-full flex items-center justify-between gap-3" onClick={(e) => e.stopPropagation()}>
             <div className="flex-1 flex items-center gap-2">
-              <span className="text-xs text-vscode-descriptionForeground whitespace-nowrap">Context: {contextPercentage}%</span>
+              <span className="text-muted whitespace-nowrap">Context: {contextPercentage}%</span>
               <ContextProgressBar percentage={contextPercentage} />
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {totalCost > 0 && <span className="text-xs font-mono text-vscode-foreground/80">${totalCost.toFixed(4)}</span>}
               <Tooltip content="Compact context">
-                <button
-                  onClick={onCompact}
-                  className="p-1 rounded text-vscode-descriptionForeground hover:text-vscode-foreground bg-transparent hover:bg-vscode-list-hoverBackground border-none cursor-pointer flex items-center"
-                >
+                <button onClick={onCompact} className="icon-button">
                   <FoldVertical size={14} />
                 </button>
               </Tooltip>
@@ -108,7 +102,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
         {/* Expanded Details Table */}
         {isExpanded && (
           <div className="flex flex-col gap-2 pt-0.5" onClick={(e) => e.stopPropagation()}>
-            <table className="w-full text-xs text-vscode-descriptionForeground">
+            <table className="w-full text-muted">
               <tbody>
                 {/* Context Row */}
                 <tr>
@@ -120,10 +114,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
                       </span>
                       <ContextProgressBar percentage={contextPercentage} />
                       <Tooltip content="Compact context">
-                        <button
-                          onClick={onCompact}
-                          className="p-1 rounded text-vscode-descriptionForeground hover:text-vscode-foreground bg-transparent hover:bg-vscode-list-hoverBackground border-none cursor-pointer flex items-center"
-                        >
+                        <button onClick={onCompact} className="icon-button">
                           <FoldVertical size={14} />
                         </button>
                       </Tooltip>
@@ -179,11 +170,11 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
                       <div className="flex items-center gap-1.5">
                         <Coins size={12} className="text-vscode-descriptionForeground" />
                         <span className="text-vscode-editorWarning-foreground font-bold">${(totalCost || 0).toFixed(4)}</span>
-                        <span className="text-xs text-vscode-descriptionForeground/60 font-normal">USD</span>
+                        <span className="text-muted/60 font-normal">USD</span>
                       </div>
                       <TaskActions
                         iconSize={14}
-                        buttonClassName="relative inline-flex items-center justify-center bg-transparent border-none p-1.5 rounded-md text-vscode-foreground opacity-80 transition-all duration-150 active:bg-vscode-list-hoverBackground/20 cursor-pointer hover:opacity-100 hover:bg-vscode-list-hoverBackground"
+                        buttonClassName="icon-button opacity-80 hover:opacity-100 active:bg-vscode-list-hoverBackground/40 transition-opacity"
                         wrapperClassName="select-none -my-1"
                         copyText={title}
                         onExport={onExport}

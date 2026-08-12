@@ -20,7 +20,7 @@ export const UserMessage: FC<UserMessageProps> = ({ message, commands }) => {
   return (
     <div className="group flex flex-col gap-1">
       <MessageHeader icon={<User size={14} className="text-vscode-focusBorder shrink-0" />} title="You Said" timestamp={message.ts} />
-      <div className="ml-6 border border-vscode-editorGroup-border rounded bg-vscode-editor-background text-vscode-editor-foreground p-3 text-sm whitespace-pre-wrap leading-normal select-text">
+      <div className="message-surface whitespace-pre-wrap leading-normal select-text">
         {highlight ? (
           <>
             <Tooltip content="Loaded on request">
@@ -32,13 +32,10 @@ export const UserMessage: FC<UserMessageProps> = ({ message, commands }) => {
           text
         )}
         {message.images && message.images.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-[var(--vscode-panel-border)]">
+          <div className="image-row">
             {message.images.map((img, idx) => (
               <Tooltip key={idx} content="Click to view image">
-                <div
-                  onClick={() => vscode?.postMessage({ type: 'open_image', dataUrl: img })}
-                  className="relative w-10 h-10 rounded border border-[var(--vscode-panel-border)] overflow-hidden cursor-pointer hover:opacity-80"
-                >
+                <div onClick={() => vscode?.postMessage({ type: 'open_image', dataUrl: img })} className="image-thumb">
                   <img src={img} alt="attachment" className="w-full h-full object-cover" />
                 </div>
               </Tooltip>

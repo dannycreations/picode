@@ -1,4 +1,3 @@
-import { cn } from 'cnfast';
 import { memo, useDeferredValue, useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeKatex from 'rehype-katex';
@@ -9,8 +8,8 @@ import { visit } from 'unist-util-visit';
 import { CodeBlock } from '@pi-code/webview/components/chat/CodeBlock';
 import { extractCodeFromChildren, parseFileUri } from '@pi-code/webview/components/chat/markdown/helpers/markdown';
 import { MermaidBlock } from '@pi-code/webview/components/chat/markdown/MermaidBlock';
+import { CopyButton } from '@pi-code/webview/components/shared/CopyButton';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
-import { useCopyToClipboard } from '@pi-code/webview/hooks/useCopyToClipboard';
 import { vscode } from '@pi-code/webview/utilities/vscode';
 
 import type { FC, MouseEvent, ReactNode } from 'react';
@@ -121,7 +120,6 @@ interface MarkdownProps {
 
 export const Markdown = memo(({ markdown }: MarkdownProps) => {
   const [isHovering, setIsHovering] = useState(false);
-  const { showCopy, copy } = useCopyToClipboard();
 
   const deferredMarkdown = useDeferredValue(markdown ?? '');
 
@@ -134,13 +132,8 @@ export const Markdown = memo(({ markdown }: MarkdownProps) => {
       </div>
       {isHovering && (
         <div className="absolute -bottom-1 right-2 animate-fade-in rounded z-10">
-          <Tooltip content={showCopy ? 'Copied markdown!' : 'Copy as markdown'} side="left">
-            <button
-              className="p-1 h-6 w-6 flex items-center justify-center border-none text-[var(--vscode-editor-foreground)] bg-[var(--vscode-editor-background)] hover:bg-[var(--vscode-toolbar-hoverBackground)] cursor-pointer rounded transition-all duration-200"
-              onClick={(e) => copy(markdown, e)}
-            >
-              <span className={cn('codicon', `codicon-${showCopy ? 'check' : 'copy'}`, 'text-xs')} />
-            </button>
+          <Tooltip content="Copy as markdown" side="left">
+            <CopyButton text={markdown ?? ''} className="bg-vscode-editor-background transition-all duration-200" />
           </Tooltip>
         </div>
       )}

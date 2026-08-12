@@ -19,7 +19,7 @@ export const SettingCheckbox: FC<SettingCheckboxProps> = ({ label, checked, onCh
           <span>{label}</span>
         </div>
       </label>
-      {description && <span className="text-vscode-descriptionForeground text-xs leading-normal font-normal">{description}</span>}
+      {description && <span className="text-muted leading-normal font-normal">{description}</span>}
     </div>
     {checked && children && <div className="mt-1 pl-3 border-l-2 border-vscode-button-background/60 flex flex-col gap-4">{children}</div>}
   </div>

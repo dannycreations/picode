@@ -32,7 +32,7 @@ const AttachedImagesPreview: FC<{
   return (
     <div className="flex flex-wrap gap-2 mb-2 mt-1">
       {images.map((img, idx) => (
-        <div key={idx} className="relative w-10 h-10 rounded border border-[var(--vscode-panel-border)] overflow-hidden group">
+        <div key={idx} className="relative w-10 h-10 rounded border border-vscode-panel-border overflow-hidden group">
           <img src={img} alt="attachment" className="w-full h-full object-cover" />
           <Tooltip content="Remove attachment">
             <button
@@ -115,7 +115,7 @@ export const ChatInput: FC<ChatInputProps> = ({ inputValue, setInputValue, onSen
   const isSendButtonActive = (inputValue.trim().length > 0 || selectedImages.length > 0) && !sendingDisabled;
 
   return (
-    <div className={cn('relative flex flex-col px-3.5 pt-2 pb-1 outline-none w-full box-border bg-[var(--vscode-sideBar-background)] shrink-0')}>
+    <div className={cn('relative flex flex-col px-3.5 pt-2 pb-1 outline-none w-full box-border bg-vscode-sideBar-background shrink-0')}>
       {command.isOpen && (
         <CommandMenu commands={command.matches} selectedIndex={command.selectedIndex} onSelect={command.select} onHover={command.setSelectedIndex} />
       )}
@@ -125,9 +125,7 @@ export const ChatInput: FC<ChatInputProps> = ({ inputValue, setInputValue, onSen
       <div
         className={cn(
           'relative flex flex-col rounded border transition-all duration-150',
-          isFocused
-            ? 'border-[var(--vscode-focusBorder)] ring-1 ring-[var(--vscode-focusBorder)]'
-            : 'border-[var(--vscode-input-border,transparent)] bg-[var(--vscode-input-background)]',
+          isFocused ? 'border-vscode-focusBorder ring-1 ring-vscode-focusBorder' : 'border-vscode-input-border bg-vscode-input-background',
         )}
       >
         <div className="relative flex">
@@ -174,7 +172,7 @@ export const ChatInput: FC<ChatInputProps> = ({ inputValue, setInputValue, onSen
             maxRows={6}
             className={cn(
               'chat-input-text',
-              'relative w-full bg-transparent text-[var(--vscode-input-foreground)] border-none outline-none resize-none z-10 scrollbar-none',
+              'relative w-full bg-transparent text-vscode-input-foreground border-none outline-none resize-none z-10 scrollbar-none',
             )}
           />
         </div>
@@ -183,10 +181,7 @@ export const ChatInput: FC<ChatInputProps> = ({ inputValue, setInputValue, onSen
           <div className="flex items-center gap-1.5 ml-auto">
             <input type="file" ref={fileInputRef} onChange={handleAttachImage} accept="image/*" className="hidden" />
             <Tooltip content="Add image attachment">
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="p-1.5 rounded hover:bg-[var(--vscode-list-hoverBackground)] text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] bg-transparent border-none cursor-pointer transition-colors"
-              >
+              <button onClick={() => fileInputRef.current?.click()} className="icon-button">
                 <ImageIcon size={14} />
               </button>
             </Tooltip>
@@ -195,12 +190,7 @@ export const ChatInput: FC<ChatInputProps> = ({ inputValue, setInputValue, onSen
               <button
                 onClick={handleSend}
                 disabled={!isSendButtonActive}
-                className={cn(
-                  'p-1.5 rounded border-none cursor-pointer transition-colors',
-                  isSendButtonActive
-                    ? 'bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] hover:bg-[var(--vscode-button-hoverBackground)]'
-                    : 'bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] opacity-40 cursor-not-allowed',
-                )}
+                className={cn('action-button p-1.5', isSendButtonActive ? '' : 'action-button-secondary opacity-40 cursor-not-allowed')}
               >
                 <Send size={13} fill="currentColor" />
               </button>

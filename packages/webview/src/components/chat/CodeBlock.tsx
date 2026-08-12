@@ -1,17 +1,17 @@
 import { cn } from 'cnfast';
 import { toJsxRuntime } from 'hast-util-to-jsx-runtime';
-import { AlignJustify, Check, ChevronDown, ChevronUp, Copy, WrapText } from 'lucide-react';
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { AlignJustify, ChevronDown, ChevronUp, WrapText } from 'lucide-react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime';
 import { bundledLanguages } from 'shiki';
 
 import { logger } from '@pi-code/shared/core/logger';
 import { getHighlighter, normalizeLanguage } from '@pi-code/webview/components/chat/helpers/highlighter';
+import { CopyButton } from '@pi-code/webview/components/shared/CopyButton';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
-import { useCopyToClipboard } from '@pi-code/webview/hooks/useCopyToClipboard';
 import { useInViewport } from '@pi-code/webview/hooks/useInViewport';
 
-import type { FC, MouseEvent, ReactNode } from 'react';
+import type { FC, ReactNode } from 'react';
 import type { ShikiTransformer } from 'shiki';
 import type { ExtendedLanguage } from '@pi-code/webview/components/chat/helpers/highlighter';
 
@@ -20,6 +20,7 @@ const CODE_BLOCK_BG_COLOR = 'var(--vscode-editor-background, var(--vscode-sideBa
 const COLLAPSED_HEIGHT = 500;
 
 interface CodeToolbarProps {
+  readonly source: string;
   readonly currentLanguage: string;
   readonly onLanguageChange: (lang: ExtendedLanguage) => void;
   readonly showCollapseButton: boolean;
@@ -27,11 +28,10 @@ interface CodeToolbarProps {
   readonly onToggleWindowShade: () => void;
   readonly wordWrap: boolean;
   readonly onToggleWordWrap: () => void;
-  readonly showCopy: boolean;
-  readonly onCopy: (e: MouseEvent) => void;
 }
 
 const CodeToolbar: FC<CodeToolbarProps> = ({
+  source,
   currentLanguage,
   onLanguageChange,
   showCollapseButton,
@@ -39,17 +39,12 @@ const CodeToolbar: FC<CodeToolbarProps> = ({
   onToggleWindowShade,
   wordWrap,
   onToggleWordWrap,
-  showCopy,
-  onCopy,
 }) => (
-  <div
-    className="absolute top-2 right-2 flex items-center bg-[var(--vscode-editor-background)]/85 backdrop-blur-sm border border-[var(--vscode-editorGroup-border)] rounded p-0.5 z-10 gap-0.5 select-none"
-    style={{ pointerEvents: 'all' }}
-  >
+  <div className="absolute top-2 right-2 flex items-center bg-vscode-editor-background/85 backdrop-blur-sm border border-vscode-editorGroup-border rounded p-0.5 z-10 gap-0.5 select-none pointer-events-auto">
     <Tooltip content="Change syntax highlighting" side="bottom">
       <select
         value={currentLanguage}
-        className="text-xs text-[var(--vscode-foreground)] bg-transparent border-none cursor-pointer p-1 font-mono outline-none hover:bg-[var(--vscode-toolbar-hoverBackground)] rounded"
+        className="icon-button font-mono text-xs outline-none"
         style={{ width: `calc(${currentLanguage?.length || 0}ch + 20px)` }}
         onChange={(e) => onLanguageChange(normalizeLanguage(e.target.value))}
       >
@@ -60,7 +55,7 @@ const CodeToolbar: FC<CodeToolbarProps> = ({
             const normalized = normalizeLanguage(lang);
             if (normalized === currentLanguage) return null;
             return (
-              <option key={lang} value={normalized} className="bg-[var(--vscode-editor-background)] text-[var(--vscode-foreground)]">
+              <option key={lang} value={normalized} className="bg-vscode-editor-background text-vscode-foreground">
                 {normalized}
               </option>
             );
@@ -82,10 +77,8 @@ const CodeToolbar: FC<CodeToolbarProps> = ({
       </button>
     </Tooltip>
 
-    <Tooltip content={showCopy ? 'Copied code!' : 'Copy code'} side="bottom">
-      <button className="icon-button" onClick={onCopy}>
-        {showCopy ? <Check size={14} /> : <Copy size={14} />}
-      </button>
+    <Tooltip content="Copy code" side="bottom">
+      <CopyButton text={source} size={14} />
     </Tooltip>
   </div>
 );
@@ -101,7 +94,7 @@ interface PlainCodeProps {
 }
 
 const PlainCode: FC<PlainCodeProps> = ({ source, language }) => (
-  <pre style={{ padding: 0, margin: 0, backgroundColor: 'transparent' }}>
+  <pre className="p-0 m-0 bg-transparent">
     <code className={cn('hljs', `language-${language || 'txt'}`)}>{source}</code>
   </pre>
 );
@@ -164,7 +157,6 @@ export const CodeBlock = memo(({ source = '', language }: CodeBlockProps) => {
 
   const userChangedLanguageRef = useRef(false);
   const { ref: codeBlockRef, hasBeenVisible } = useInViewport<HTMLDivElement>();
-  const { showCopy, copy } = useCopyToClipboard();
 
   useEffect(() => {
     const normalizedLang = normalizeLanguage(language);
@@ -181,14 +173,6 @@ export const CodeBlock = memo(({ source = '', language }: CodeBlockProps) => {
     }
   }, [highlightedCode]);
 
-  const handleCopy = useCallback(
-    (e: MouseEvent) => {
-      e.stopPropagation();
-      if (source) copy(source, e);
-    },
-    [source, copy],
-  );
-
   if (source.length === 0) return null;
 
   return (
@@ -196,7 +180,7 @@ export const CodeBlock = memo(({ source = '', language }: CodeBlockProps) => {
       ref={codeBlockRef}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="relative overflow-hidden my-2 border border-[var(--vscode-editorGroup-border)] rounded-md"
+      className="relative overflow-hidden my-2 border border-vscode-editorGroup-border rounded-md"
       style={{ backgroundColor: CODE_BLOCK_BG_COLOR }}
     >
       <div
@@ -226,8 +210,7 @@ export const CodeBlock = memo(({ source = '', language }: CodeBlockProps) => {
           onToggleWindowShade={() => setWindowShade(!windowShade)}
           wordWrap={wordWrap}
           onToggleWordWrap={() => setWordWrap(!wordWrap)}
-          showCopy={showCopy}
-          onCopy={handleCopy}
+          source={source}
         />
       )}
     </div>

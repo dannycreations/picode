@@ -76,7 +76,7 @@ export const QuestionMessage: FC<QuestionMessageProps> = ({ message, onAnswerQue
         )}
 
         {isPending && (
-          <div className="text-xs text-vscode-descriptionForeground select-none">
+          <div className="text-muted select-none">
             {suggestions.length > 0 ? 'Pick an answer above or type your own reply below.' : 'Type your reply below to answer.'}
           </div>
         )}
@@ -84,7 +84,7 @@ export const QuestionMessage: FC<QuestionMessageProps> = ({ message, onAnswerQue
         {!isPending && (answer || isCancelled) && (
           <div className="flex items-start gap-2 px-3 py-2 rounded-md border border-vscode-editorGroup-border bg-vscode-input-background">
             {isCancelled ? (
-              <ShieldAlert size={14} className="mt-0.5 shrink-0 text-red-500" />
+              <ShieldAlert size={14} className="mt-0.5 shrink-0 text-vscode-errorForeground" />
             ) : (
               <CornerDownRight size={14} className="mt-0.5 shrink-0 text-vscode-focusBorder" />
             )}
