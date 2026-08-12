@@ -16,7 +16,6 @@ interface HistoryCardProps {
   readonly onDelete: (path: string) => void;
   readonly onViewRaw?: (path: string) => void;
   readonly onExport?: (item: HistoryItem) => void;
-  readonly lineClamp?: number;
 }
 
 export const HistoryCard: FC<HistoryCardProps> = ({
@@ -28,7 +27,6 @@ export const HistoryCard: FC<HistoryCardProps> = ({
   onDelete,
   onViewRaw,
   onExport,
-  lineClamp = 3,
 }) => {
   return (
     <div
@@ -47,9 +45,7 @@ export const HistoryCard: FC<HistoryCardProps> = ({
       )}
 
       <div className="flex-1 min-w-0 flex flex-col gap-1.5">
-        <div className={cn('text-xs leading-relaxed font-light text-vscode-foreground', lineClamp === 2 ? 'line-clamp-2' : 'line-clamp-3')}>
-          {item.task}
-        </div>
+        <div className="text-xs leading-relaxed font-light text-vscode-foreground line-clamp-2">{item.task}</div>
 
         <div className="flex items-center justify-between text-muted mt-1">
           <div className="flex items-center gap-1.5 opacity-80">
