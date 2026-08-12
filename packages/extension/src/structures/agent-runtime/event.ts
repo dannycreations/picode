@@ -6,7 +6,7 @@ import { logger } from '@pi-code/shared/core/logger';
 
 import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent';
 import type { AgentToWebviewMessage } from '@pi-code/extension/structures/agent-runtime/webview';
-import type { StatsData, ToolName } from '@pi-code/shared/core/protocol';
+import type { ReadFileSection, StatsData, ToolName } from '@pi-code/shared/core/protocol';
 import type { TodoItem } from '@pi-code/shared/utilities/todo';
 
 interface ToolResultPart {
@@ -112,13 +112,21 @@ export class EventMapper {
         };
 
       case 'tool_execution_end': {
-        const toolResult = event.result as { details?: { todos?: TodoItem[] } } | undefined;
+        const toolResult = event.result as
+          | {
+              details?: {
+                todos?: TodoItem[];
+                files?: ReadonlyArray<ReadFileSection>;
+              };
+            }
+          | undefined;
         return {
           type: 'tool_execution_end',
           payload: {
             id: event.toolCallId,
             result: toolResultText(event.result),
             todos: toolResult?.details?.todos,
+            files: toolResult?.details?.files,
             is_error: event.isError,
           },
         };

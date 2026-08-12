@@ -203,9 +203,14 @@ export const useActiveTask = (): UseActiveTaskReturn => {
         }
 
         case 'tool_execution_end': {
-          const { id, result, todos, is_error } = msg.payload;
+          const { id, result, todos, files, is_error } = msg.payload;
           updateMessages((messages) =>
-            patchMessage(messages, id, { todos, toolStatus: is_error ? 'denied' : 'completed', diff: is_error ? undefined : result }),
+            patchMessage(messages, id, {
+              todos,
+              files,
+              toolStatus: is_error ? 'denied' : 'completed',
+              diff: is_error ? undefined : result,
+            }),
           );
           break;
         }

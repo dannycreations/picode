@@ -7,7 +7,7 @@ import { logger } from '@pi-code/shared/core/logger';
 
 import type { ImageContent, TextContent, ThinkingContent, ToolCall, Usage } from '@earendil-works/pi-ai';
 import type { SessionEntry } from '@earendil-works/pi-coding-agent';
-import type { ChatMessage, StatsData, ToolName } from '@pi-code/shared/core/protocol';
+import type { ChatMessage, ReadFileSection, StatsData, ToolName } from '@pi-code/shared/core/protocol';
 import type { TodoItem } from '@pi-code/shared/utilities/todo';
 
 type MessageContentPart = TextContent | ThinkingContent | ToolCall | ImageContent;
@@ -15,6 +15,7 @@ type MessageContentPart = TextContent | ThinkingContent | ToolCall | ImageConten
 interface ToolResultDetails {
   readonly diff?: string;
   readonly todos?: TodoItem[];
+  readonly files?: ReadonlyArray<ReadFileSection>;
 }
 
 function toContentParts(content: string | readonly MessageContentPart[]): readonly MessageContentPart[] {
@@ -164,6 +165,7 @@ function patchToolCall(result: ChatMessage[], msg: Extract<SessionMessage, { rol
     toolStatus: msg.isError ? 'denied' : 'completed',
     diff: details?.diff || resultText,
     todos: details?.todos,
+    files: details?.files,
     errorMessage: msg.isError ? resultText : existing.errorMessage,
   };
 }

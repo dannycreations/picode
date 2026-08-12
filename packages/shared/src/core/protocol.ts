@@ -22,6 +22,11 @@ export type ToolName =
   | 'delete_file'
   | 'spawn_subagent';
 
+export interface ReadFileSection {
+  readonly path: string;
+  readonly content: string;
+}
+
 export interface ChatMessage {
   readonly id: string;
   readonly sender: 'user' | 'assistant' | 'tool' | 'error' | 'checkpoint' | 'info' | 'api_request' | 'queue';
@@ -37,6 +42,7 @@ export interface ChatMessage {
   readonly errorMessage?: string;
   readonly images?: string[];
   readonly subagent?: string;
+  readonly files?: ReadonlyArray<ReadFileSection>;
 }
 
 export interface HistoryItem {
@@ -110,13 +116,7 @@ export type WebviewToExtensionMessage =
 export type ExtensionToWebviewMessage =
   | {
       type: 'init_data';
-      payload: {
-        models: ModelItem[];
-        history: HistoryItem[];
-        default_model?: string;
-        settings: AppSettings;
-        commands: CommandItem[];
-      };
+      payload: { models: ModelItem[]; history: HistoryItem[]; default_model?: string; settings: AppSettings; commands: CommandItem[] };
     }
   | { type: 'history_data'; payload: { history: HistoryItem[]; scope: HistoryScope } }
   | { type: 'commands_data'; payload: { commands: CommandItem[] } }
@@ -130,7 +130,10 @@ export type ExtensionToWebviewMessage =
   | { type: 'tool_approval_request'; payload: { id: string; tool_name: ToolName; arguments: string; subagent?: string } }
   | { type: 'tool_execution_start'; payload: { id: string; tool_name: ToolName; arguments: string } }
   | { type: 'tool_execution_update'; payload: { id: string; result: string } }
-  | { type: 'tool_execution_end'; payload: { id: string; result?: string; todos?: TodoItem[]; is_error?: boolean } }
+  | {
+      type: 'tool_execution_end';
+      payload: { id: string; result?: string; todos?: TodoItem[]; is_error?: boolean; files?: ReadonlyArray<ReadFileSection> };
+    }
   | { type: 'agent_error'; payload: { message: string } }
   | { type: 'agent_settled'; payload?: StatsData }
   | { type: 'compaction_end'; payload: StatsData }

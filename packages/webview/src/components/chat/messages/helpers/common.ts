@@ -31,6 +31,70 @@ export function getToolDiffMeta(toolName?: string): { label: string; icon: strin
   }
 }
 
+export function getToolFilePath(toolArgs?: string): string | undefined {
+  if (!toolArgs) return undefined;
+  try {
+    const parsed = JSON.parse(toolArgs) as Record<string, unknown> | null;
+    if (!parsed || typeof parsed !== 'object') return undefined;
+
+    for (const key of ['path', 'file_path']) {
+      if (typeof parsed[key] === 'string') return parsed[key];
+    }
+
+    const files = parsed['files'];
+    if (Array.isArray(files) && typeof files[0]?.path === 'string') {
+      return files[0].path;
+    }
+  } catch {}
+  return undefined;
+}
+
+export interface FileSection {
+  readonly path: string;
+  readonly content: string;
+}
+
+export interface FileToolMeta {
+  readonly title: string;
+  readonly icon: string;
+  readonly language: string;
+}
+
+export function getFileToolMeta(toolName: string | undefined, status?: string): FileToolMeta {
+  const running = status === 'running';
+  const wants = status === 'approval';
+  const denied = status === 'denied';
+
+  switch (toolName) {
+    case 'read_file':
+      return {
+        title: running ? 'Reading file' : wants ? 'Wants to read file' : denied ? 'Read denied' : 'Read file',
+        icon: 'file',
+        language: 'text',
+      };
+    case 'write_file':
+      return {
+        title: running ? 'Writing file' : wants ? 'Wants to write file' : denied ? 'Write denied' : 'Wrote file',
+        icon: 'new-file',
+        language: 'diff',
+      };
+    case 'edit_file':
+      return {
+        title: running ? 'Editing file' : wants ? 'Wants to edit file' : denied ? 'Edit denied' : 'Edited file',
+        icon: 'edit',
+        language: 'diff',
+      };
+    case 'delete_file':
+      return {
+        title: running ? 'Deleting file' : wants ? 'Wants to delete file' : denied ? 'Delete denied' : 'Deleted file',
+        icon: 'trash',
+        language: 'text',
+      };
+    default:
+      return { title: 'File operation', icon: 'file', language: 'text' };
+  }
+}
+
 // A tool result is either `{ details: { result | response } }` or an
 // Anthropic-style `{ content: [{ text }] }`. Return the first human text.
 export function extractResultText(parsed: unknown): string {
