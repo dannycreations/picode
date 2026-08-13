@@ -6,7 +6,8 @@ import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { useClickOutside } from '@pi-code/webview/hooks/useClickOutside';
 
 import type { FC } from 'react';
-import type { ModelItem, ModelThinkingLevel } from '@pi-code/shared/core/protocol';
+import type { ModelItem } from '@pi-code/shared/core/protocol';
+import type { ModelThinkingLevel } from '@pi-code/shared/core/types';
 
 interface ChatFooterProps {
   readonly currentModel: string;
@@ -22,6 +23,29 @@ interface ModelDropdownMenuProps {
   readonly currentModel: string;
   readonly onSelectModel: (modelId: string) => void;
 }
+
+interface DropdownMenuItemProps {
+  readonly label: string;
+  readonly selected: boolean;
+  readonly onSelect: () => void;
+  readonly className?: string;
+}
+
+const DropdownMenuItem: FC<DropdownMenuItemProps> = ({ label, selected, onSelect, className = '' }) => (
+  <button
+    onClick={onSelect}
+    className={cn(
+      'w-full text-left px-3 py-1.5 border-none cursor-pointer flex items-center justify-between text-xs transition-colors shrink-0',
+      className,
+      selected
+        ? 'bg-vscode-list-hoverBackground text-vscode-foreground'
+        : 'bg-transparent text-vscode-descriptionForeground hover:bg-vscode-list-hoverBackground/50 hover:text-vscode-foreground',
+    )}
+  >
+    <span className="truncate mr-2">{label}</span>
+    {selected && <Check size={10} className="text-vscode-focusBorder shrink-0" />}
+  </button>
+);
 
 const ModelDropdownMenu: FC<ModelDropdownMenuProps> = ({ models, currentModel, onSelectModel }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -45,21 +69,7 @@ const ModelDropdownMenu: FC<ModelDropdownMenuProps> = ({ models, currentModel, o
         {filteredModels.length > 0 ? (
           filteredModels.map((m) => {
             const isSelected = currentModel === m.id;
-            return (
-              <button
-                key={m.id}
-                onClick={() => onSelectModel(m.id)}
-                className={cn(
-                  'w-full text-left px-3 py-1.5 border-none cursor-pointer flex items-center justify-between text-xs transition-colors shrink-0',
-                  isSelected
-                    ? 'bg-vscode-list-hoverBackground text-vscode-foreground'
-                    : 'bg-transparent text-vscode-descriptionForeground hover:bg-vscode-list-hoverBackground/50 hover:text-vscode-foreground',
-                )}
-              >
-                <span className="truncate mr-2">{m.name}</span>
-                {isSelected && <Check size={10} className="text-vscode-focusBorder shrink-0" />}
-              </button>
-            );
+            return <DropdownMenuItem key={m.id} label={m.name} selected={isSelected} onSelect={() => onSelectModel(m.id)} />;
           })
         ) : (
           <div className="px-3 py-2 text-muted text-center">No models found</div>
@@ -80,21 +90,7 @@ const ThinkingLevelMenu: FC<ThinkingLevelMenuProps> = ({ levels, currentLevel, o
     <div className="absolute bottom-full right-0 mb-1 w-32 bg-vscode-dropdown-background border border-vscode-panel-border/50 rounded-md shadow-lg overflow-hidden flex flex-col z-50 py-1">
       {levels.map((level) => {
         const isSelected = currentLevel === level;
-        return (
-          <button
-            key={level}
-            onClick={() => onSelectLevel(level)}
-            className={cn(
-              'w-full text-left px-3 py-1.5 border-none cursor-pointer flex items-center justify-between text-xs capitalize transition-colors shrink-0',
-              isSelected
-                ? 'bg-vscode-list-hoverBackground text-vscode-foreground'
-                : 'bg-transparent text-vscode-descriptionForeground hover:bg-vscode-list-hoverBackground/50 hover:text-vscode-foreground',
-            )}
-          >
-            <span className="truncate mr-2">{level}</span>
-            {isSelected && <Check size={10} className="text-vscode-focusBorder shrink-0" />}
-          </button>
-        );
+        return <DropdownMenuItem key={level} label={level} selected={isSelected} onSelect={() => onSelectLevel(level)} className="capitalize" />;
       })}
     </div>
   );

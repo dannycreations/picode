@@ -5,10 +5,6 @@ import type { ExtensionToWebviewMessage } from '@pi-code/shared/core/protocol';
 
 const FLUSH_INTERVAL_MS = 16;
 
-type AgentStreamDeltaMessage = { type: 'text_delta'; payload: { delta: string } } | { type: 'thinking_delta'; payload: { delta: string } };
-
-export type AgentToWebviewMessage = ExtensionToWebviewMessage | AgentStreamDeltaMessage;
-
 export class WebviewMessenger {
   private webview: Webview | null = null;
   private isDisposed = false;
@@ -20,18 +16,14 @@ export class WebviewMessenger {
     this.webview = webview;
   }
 
-  public post(message: AgentToWebviewMessage): void {
+  public post(message: ExtensionToWebviewMessage): void {
     if (this.isDisposed || !this.webview) {
       return;
     }
 
-    if (message.type === 'text_delta') {
-      this.textBuffer += message.payload.delta;
-      this.scheduleFlush();
-      return;
-    }
-    if (message.type === 'thinking_delta') {
-      this.thinkingBuffer += message.payload.delta;
+    if (message.type === 'stream_delta') {
+      if (message.payload.text) this.textBuffer += message.payload.text;
+      if (message.payload.thinking) this.thinkingBuffer += message.payload.thinking;
       this.scheduleFlush();
       return;
     }

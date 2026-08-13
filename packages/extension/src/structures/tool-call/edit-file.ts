@@ -4,10 +4,10 @@ import { formatThrownValue } from '@earendil-works/pi-ai';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
-import { toolError } from '@pi-code/extension/structures/tool-call/helpers/result';
+import { toolError, toolErrorFrom } from '@pi-code/extension/structures/tool-call/helpers/result';
 import { buildFileChangeResult } from '@pi-code/extension/utilities/truncate';
 
-import type { ToolName } from '@pi-code/shared/core/protocol';
+import type { ToolName } from '@pi-code/shared/core/types';
 
 type LineEnding = '\r\n' | '\n';
 
@@ -222,7 +222,7 @@ export const editFileTool = defineTool({
         hint: `Edit applied; read "${file_path}" to verify the remaining changes.`,
       });
     } catch (err) {
-      return toolError(`Error editing file: ${formatThrownValue(err)}`);
+      return toolErrorFrom(err, 'editing file');
     }
   },
 });

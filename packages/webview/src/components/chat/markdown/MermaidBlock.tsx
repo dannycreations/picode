@@ -6,7 +6,6 @@ import { logger } from '@pi-code/shared/core/logger';
 import { svgToPng } from '@pi-code/webview/components/chat/markdown/helpers/mermaid';
 import { useMermaidRender } from '@pi-code/webview/components/chat/markdown/hooks/useMermaidRender';
 import { MermaidModal } from '@pi-code/webview/components/chat/markdown/MermaidModal';
-import { MermaidToolbar } from '@pi-code/webview/components/chat/markdown/MermaidToolbar';
 import { IconButton } from '@pi-code/webview/components/shared/IconButton';
 import { useCopyToClipboard } from '@pi-code/webview/hooks/useCopyToClipboard';
 import { useInViewport } from '@pi-code/webview/hooks/useInViewport';
@@ -95,16 +94,19 @@ export const MermaidBlock: FC<MermaidBlockProps> = ({ code: originalCode }) => {
           />
 
           {!isLoading && isHovering && (
-            <MermaidToolbar
-              showCopy={showCopy}
-              onOpenZoom={() => setShowModal(true)}
-              onOpenSource={() => {
-                setModalViewMode('code');
-                setShowModal(true);
-              }}
-              onCopy={handleCopy}
-              onSave={handleSave}
-            />
+            <div className="absolute bottom-2 right-2 flex gap-1 bg-vscode-editor-background/90 border border-vscode-editorGroup-border rounded p-0.5 z-10">
+              <IconButton icon="zoom-in" tooltip="Zoom diagram" onClick={() => setShowModal(true)} />
+              <IconButton
+                icon="code"
+                tooltip="View source"
+                onClick={() => {
+                  setModalViewMode('code');
+                  setShowModal(true);
+                }}
+              />
+              <IconButton icon={showCopy ? 'check' : 'copy'} tooltip={showCopy ? 'Copied source!' : 'Copy source'} onClick={handleCopy} />
+              <IconButton icon="save" tooltip="Save as PNG" onClick={handleSave} />
+            </div>
           )}
         </div>
       )}

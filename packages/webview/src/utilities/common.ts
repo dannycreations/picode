@@ -8,6 +8,14 @@ const TIME_DIVISIONS: Array<[Intl.RelativeTimeFormatUnit, number]> = [
   ['minute', 60],
 ];
 
+export function formatTime(ts: number): string {
+  return new Date(ts).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+}
+
 export function formatTimeAgo(ts: number): string {
   const diffSeconds = Math.round((ts - Date.now()) / 1000);
 

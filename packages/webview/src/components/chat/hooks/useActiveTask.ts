@@ -1,10 +1,12 @@
 import { useCallback, useMemo, useState } from 'react';
 
-import { ACTIVE_TASK_ID } from '@pi-code/shared/core/protocol';
-import { createActiveTask, EMPTY_STATS, patchLastAssistant, patchMessage } from '@pi-code/webview/components/chat/helpers/message';
+import { ACTIVE_TASK_ID } from '@pi-code/shared/core/constants';
+import { createActiveTask } from '@pi-code/shared/utilities/common';
+import { patchLastAssistant, patchMessage } from '@pi-code/webview/components/chat/helpers/message';
 import { findPendingQuestion } from '@pi-code/webview/components/chat/helpers/question';
 
-import type { ActiveTaskState, ChatMessage, ExtensionToWebviewMessage } from '@pi-code/shared/core/protocol';
+import type { ExtensionToWebviewMessage } from '@pi-code/shared/core/protocol';
+import type { ActiveTaskState, ChatMessage } from '@pi-code/shared/core/types';
 
 interface ApiRequestSettlePatch {
   readonly cost?: number;
@@ -87,7 +89,7 @@ export const useActiveTask = (): UseActiveTaskReturn => {
     (msg: ExtensionToWebviewMessage): void => {
       switch (msg.type) {
         case 'session_loaded': {
-          setActiveTask({ ...EMPTY_STATS, ...msg.payload });
+          setActiveTask(msg.payload);
           setIsAgentRunning(false);
           break;
         }

@@ -9,9 +9,9 @@ import { readFileTool } from '@pi-code/extension/structures/tool-call/read-file'
 import { spawnSubagentTool } from '@pi-code/extension/structures/tool-call/spawn-subagent';
 import { updateTodoTool } from '@pi-code/extension/structures/tool-call/update-todo';
 import { writeFileTool } from '@pi-code/extension/structures/tool-call/write-file';
-import { DEFAULT_CONTEXT_LIMIT } from '@pi-code/shared/core/constants';
+import { EMPTY_STATS } from '@pi-code/shared/utilities/common';
 
-import type { ToolName } from '@pi-code/shared/core/protocol';
+import type { ToolName } from '@pi-code/shared/core/types';
 
 const CUSTOM_TOOLS = [
   deleteFileTool,
@@ -42,7 +42,7 @@ export async function createSession(cwd: string, sessionPath?: string): Promise<
     customTools: enabledTools,
   });
 
-  const contextWindow = session.model?.contextWindow ?? DEFAULT_CONTEXT_LIMIT;
+  const contextWindow = session.model?.contextWindow ?? EMPTY_STATS.contextLimit;
   const reserveTokens = Math.round(((100 - settings.autoCompactContextPercent) / 100) * contextWindow);
   session.settingsManager.applyOverrides({
     compaction: {

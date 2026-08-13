@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { isRenderableMessage } from '@pi-code/webview/components/chat/helpers/message';
 
-import type { ChatMessage } from '@pi-code/shared/core/protocol';
+import type { ChatMessage } from '@pi-code/shared/core/types';
 
 const SENDERS = ['user', 'assistant', 'tool', 'error', 'checkpoint', 'info', 'api_request'] as const;
 

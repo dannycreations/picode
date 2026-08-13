@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { DEFAULT_MODEL_ID } from '@pi-code/shared/core/protocol';
+import { DEFAULT_MODEL_ID } from '@pi-code/shared/core/constants';
+import { defaultThinkingLevel } from '@pi-code/shared/utilities/common';
 import { vscode } from '@pi-code/webview/utilities/vscode';
 
 import type { Dispatch, SetStateAction } from 'react';
-import type { CommandItem, ExtensionToWebviewMessage, ModelItem, ModelSelection, ModelThinkingLevel } from '@pi-code/shared/core/protocol';
+import type { CommandItem, ExtensionToWebviewMessage, ModelItem, ModelSelection } from '@pi-code/shared/core/protocol';
 import type { AppSettings } from '@pi-code/shared/core/settings';
+import type { ModelThinkingLevel } from '@pi-code/shared/core/types';
 
 interface UseChatConfigReturn {
   readonly models: ModelItem[];
@@ -18,12 +20,6 @@ interface UseChatConfigReturn {
   readonly selectedThinkingLevel: ModelThinkingLevel | null;
   readonly setSelectedThinkingLevel: (level: ModelThinkingLevel) => void;
   readonly onMessage: (msg: ExtensionToWebviewMessage) => void;
-}
-
-function defaultThinkingLevel(levels: readonly ModelThinkingLevel[]): ModelThinkingLevel | null {
-  if (levels.length === 0) return null;
-  if (levels.includes('medium')) return 'medium';
-  return levels.find((level) => level !== 'off') ?? levels[0];
 }
 
 export const useChatConfig = (): UseChatConfigReturn => {

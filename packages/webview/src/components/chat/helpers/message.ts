@@ -1,21 +1,5 @@
-import { DEFAULT_CONTEXT_LIMIT } from '@pi-code/shared/core/constants';
-
 import type { CSSProperties } from 'react';
-import type { ActiveTaskState, ChatMessage, StatsData } from '@pi-code/shared/core/protocol';
-
-export const EMPTY_STATS: StatsData = {
-  tokensIn: 0,
-  tokensOut: 0,
-  cacheWrites: 0,
-  cacheReads: 0,
-  totalCost: 0,
-  contextTokens: 0,
-  contextLimit: DEFAULT_CONTEXT_LIMIT,
-};
-
-export function createActiveTask(id: string, title: string, messages: ChatMessage[]): ActiveTaskState {
-  return { id, title, messages, ...EMPTY_STATS };
-}
+import type { ChatMessage } from '@pi-code/shared/core/types';
 
 function hasContent(value: string | undefined): boolean {
   return value !== undefined && value.trim() !== '';

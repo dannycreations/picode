@@ -1,8 +1,9 @@
 import { uuidv7 } from '@earendil-works/pi-ai';
 
 import { getSettingsManager, readAppSettings } from '@pi-code/extension/core/settings';
+import { cancelAllApprovals } from '@pi-code/extension/structures/agent-runtime/brokers/policy';
 import { cancelAllQuestions } from '@pi-code/extension/structures/agent-runtime/brokers/question';
-import { EventMapper } from '@pi-code/extension/structures/agent-runtime/event';
+import { mapEvent } from '@pi-code/extension/structures/agent-runtime/event';
 import { createSession } from '@pi-code/extension/structures/agent-runtime/session';
 import { WebviewMessenger } from '@pi-code/extension/structures/agent-runtime/webview';
 import { listCommands } from '@pi-code/extension/structures/chat-command/command';
@@ -10,20 +11,14 @@ import { getEnvironmentDetails, getLatestTodoList, withTodoProgress } from '@pi-
 import { loadSessionTranscript } from '@pi-code/extension/structures/chat-session/session';
 import { parseBase64DataUrl } from '@pi-code/extension/utilities/codec';
 import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
-import { DEFAULT_CONTEXT_LIMIT } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
+import { EMPTY_STATS } from '@pi-code/shared/utilities/common';
 
-import type { ImageContent, TextContent } from '@earendil-works/pi-ai';
+import type { ImageContent, ModelThinkingLevel, TextContent } from '@earendil-works/pi-ai';
 import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent';
 import type { Webview } from 'vscode';
-import type {
-  ChatMessage,
-  ExtensionToWebviewMessage,
-  ModelSelection,
-  ModelThinkingLevel,
-  QueueMessage,
-  StatsData,
-} from '@pi-code/shared/core/protocol';
+import type { ExtensionToWebviewMessage, ModelSelection, QueueMessage } from '@pi-code/shared/core/protocol';
+import type { ChatMessage, StatsData } from '@pi-code/shared/core/types';
 
 function parseImageAttachments(images?: string[]): ImageContent[] | undefined {
   if (!images || images.length === 0) return undefined;
@@ -42,8 +37,9 @@ export class AgentRunner {
   private replyQueue: QueueMessage[] = [];
   private cancelRequested = false;
   private pendingThinkingLevel?: ModelThinkingLevel;
+  private apiRequestId: string | null = null;
+  private compacting = false;
 
-  private readonly event = new EventMapper();
   private readonly messenger = new WebviewMessenger();
 
   public constructor(webview: Webview) {
@@ -133,6 +129,7 @@ export class AgentRunner {
     this.prepareRun();
     const cwd = getWorkspaceCwd();
 
+    this.compacting = true;
     try {
       const session = await this.getOrCreateSession(path, cwd);
       await session.compact();
@@ -140,10 +137,12 @@ export class AgentRunner {
       // Returns the compacted transcript and its stats so the caller can refresh the
       // webview from the in-memory session instead of re-opening the file on disk.
       const entries = session.sessionManager.buildContextEntries();
-      return loadSessionTranscript(entries, session.model?.contextWindow ?? DEFAULT_CONTEXT_LIMIT);
+      return loadSessionTranscript(entries, session.model?.contextWindow ?? EMPTY_STATS.contextLimit);
     } catch (err) {
       this.messenger.postError(err);
       return null;
+    } finally {
+      this.compacting = false;
     }
   }
 
@@ -184,13 +183,13 @@ export class AgentRunner {
 
   public reset(): void {
     this.cleanupSession();
-    cancelAllQuestions();
+    this.cleanupPending();
     this.clearReplyQueue();
   }
 
   public cancelTask(): void {
     this.cancelRequested = true;
-    cancelAllQuestions();
+    this.cleanupPending();
     this.clearReplyQueue();
     void this.session?.abort().catch((err) => logger.warn('Failed to abort session on cancel:', err));
   }
@@ -198,18 +197,23 @@ export class AgentRunner {
   public dispose(): void {
     this.messenger.dispose();
     this.cleanupSession();
-    cancelAllQuestions();
+    this.cleanupPending();
     this.clearReplyQueue();
+  }
+
+  private cleanupPending(): void {
+    cancelAllQuestions();
+    cancelAllApprovals();
+  }
+
+  private prepareRun(): void {
+    this.cleanupPending();
+    this.cancelRequested = false;
+    this.apiRequestId = null;
   }
 
   public getSessionFile(): string | undefined {
     return this.session?.sessionFile;
-  }
-
-  private prepareRun(): void {
-    cancelAllQuestions();
-    this.cancelRequested = false;
-    this.event.resetTurnState();
   }
 
   private async prepareSession(
@@ -327,7 +331,14 @@ export class AgentRunner {
     if (event.type === 'agent_settled' || event.type === 'agent_end') {
       this.clearReplyQueue();
     }
-    const message = this.event.mapEvent(event, session);
+
+    if (this.compacting && (event.type === 'compaction_start' || event.type === 'compaction_end')) {
+      return;
+    }
+
+    const { message, apiRequestId } = mapEvent(event, session, this.apiRequestId);
+    this.apiRequestId = apiRequestId;
+
     if (message) {
       this.messenger.post(message);
     }

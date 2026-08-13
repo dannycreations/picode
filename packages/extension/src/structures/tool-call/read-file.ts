@@ -12,7 +12,7 @@ import { isBinaryFile } from '@pi-code/extension/utilities/codec';
 import { shareOutputLimits, toOutputLimits, truncateOutput } from '@pi-code/extension/utilities/truncate';
 
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
-import type { ToolName } from '@pi-code/shared/core/protocol';
+import type { ToolName } from '@pi-code/shared/core/types';
 
 const MEGABYTE = 1024 * 1024;
 const MAX_FILE_SIZE_BYTES = 10 * MEGABYTE;

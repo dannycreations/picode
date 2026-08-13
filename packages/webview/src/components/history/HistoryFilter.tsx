@@ -1,7 +1,7 @@
 import { cn } from 'cnfast';
 import { Check, Search, X } from 'lucide-react';
 
-import { HISTORY_SCOPES } from '@pi-code/shared/core/protocol';
+import { HISTORY_SCOPES } from '@pi-code/shared/core/constants';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 
 import type { FC } from 'react';

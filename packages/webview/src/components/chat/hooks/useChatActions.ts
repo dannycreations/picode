@@ -1,12 +1,14 @@
 import { useCallback } from 'react';
 
-import { ACTIVE_TASK_ID } from '@pi-code/shared/core/protocol';
+import { ACTIVE_TASK_ID } from '@pi-code/shared/core/constants';
 import { parseBuiltinCommand } from '@pi-code/shared/utilities/commands';
-import { createActiveTask, patchMessage } from '@pi-code/webview/components/chat/helpers/message';
+import { createActiveTask } from '@pi-code/shared/utilities/common';
+import { patchMessage } from '@pi-code/webview/components/chat/helpers/message';
 import { postCompactMessage, vscode } from '@pi-code/webview/utilities/vscode';
 
 import type { Dispatch, SetStateAction } from 'react';
-import type { ActiveTaskState, ChatMessage, ModelSelection } from '@pi-code/shared/core/protocol';
+import type { ModelSelection } from '@pi-code/shared/core/protocol';
+import type { ActiveTaskState, ChatMessage } from '@pi-code/shared/core/types';
 
 interface UseChatActionsProps {
   readonly activeTask: ActiveTaskState | null;
@@ -89,8 +91,7 @@ export const useChatActions = (params: UseChatActionsProps): UseChatActionsRetur
         type: 'send_message',
         text,
         path: activeTask?.path,
-        model_id: modelSelection.id,
-        model_provider: modelSelection.provider,
+        model: modelSelection,
         images,
       });
     },

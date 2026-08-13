@@ -7,7 +7,7 @@ import { MessageHeader } from '@pi-code/webview/components/chat/messages/Message
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 
 import type { FC, MouseEvent } from 'react';
-import type { ChatMessage } from '@pi-code/shared/core/protocol';
+import type { ChatMessage } from '@pi-code/shared/core/types';
 
 interface QuestionMessageProps {
   readonly message: ChatMessage;

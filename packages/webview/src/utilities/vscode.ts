@@ -1,5 +1,6 @@
 import type { WebviewApi as InternalWebviewApi } from 'vscode-webview';
-import type { ActiveTaskState, WebviewToExtensionMessage } from '@pi-code/shared/core/protocol';
+import type { WebviewToExtensionMessage } from '@pi-code/shared/core/protocol';
+import type { ActiveTaskState } from '@pi-code/shared/core/types';
 
 interface WebviewApi extends Omit<InternalWebviewApi<unknown>, 'postMessage'> {
   postMessage(message: WebviewToExtensionMessage): void;

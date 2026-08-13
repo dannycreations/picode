@@ -1,6 +1,6 @@
 import { cn } from 'cnfast';
 
-import { formatTime } from '@pi-code/webview/components/chat/messages/helpers/common';
+import { formatTime } from '@pi-code/webview/utilities/common';
 
 import type { FC, ReactNode } from 'react';
 

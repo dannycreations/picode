@@ -1,41 +1,7 @@
+import type { HISTORY_SCOPES } from '@pi-code/shared/core/constants';
 import type { AppSettings } from '@pi-code/shared/core/settings';
+import type { ActiveTaskState, ModelThinkingLevel, ReadFileSection, StatsData, ToolName } from '@pi-code/shared/core/types';
 import type { TodoItem } from '@pi-code/shared/utilities/todo';
-
-export interface ActiveTaskState extends StatsData {
-  readonly id: string;
-  readonly title: string;
-  readonly messages: ChatMessage[];
-  readonly path?: string;
-}
-
-// Id used for the placeholder task shown before a real session has loaded.
-export const ACTIVE_TASK_ID = 'task-active';
-
-export type ToolName =
-  'ask_question' | 'write_file' | 'execute_command' | 'read_file' | 'update_todo' | 'edit_file' | 'delete_file' | 'spawn_subagent';
-
-export interface ReadFileSection {
-  readonly path: string;
-  readonly content: string;
-}
-
-export interface ChatMessage {
-  readonly id: string;
-  readonly sender: 'user' | 'assistant' | 'tool' | 'error' | 'checkpoint' | 'info' | 'api_request' | 'queue';
-  readonly text: string;
-  readonly ts: number;
-  readonly toolName?: ToolName;
-  readonly toolArgs?: string;
-  readonly toolStatus?: 'approval' | 'running' | 'completed' | 'denied';
-  readonly reasoning?: string;
-  readonly cost?: number;
-  readonly diff?: string;
-  readonly todos?: TodoItem[];
-  readonly errorMessage?: string;
-  readonly images?: string[];
-  readonly subagent?: string;
-  readonly files?: ReadonlyArray<ReadFileSection>;
-}
 
 export interface HistoryItem {
   readonly id: string;
@@ -51,8 +17,6 @@ export interface QueueMessage {
   readonly ts: number;
 }
 
-export type ModelThinkingLevel = 'off' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
-
 export interface ModelItem {
   readonly id: string;
   readonly name: string;
@@ -62,26 +26,12 @@ export interface ModelItem {
 
 export type ModelSelection = Pick<ModelItem, 'id' | 'provider'>;
 
-export const DEFAULT_MODEL_ID = 'pi-code';
-
 export interface CommandItem {
   readonly name: string;
   readonly source: 'builtin' | 'skill' | 'prompt';
   readonly description?: string;
   readonly detail?: string;
 }
-
-export interface StatsData {
-  readonly tokensIn: number;
-  readonly tokensOut: number;
-  readonly cacheWrites?: number;
-  readonly cacheReads?: number;
-  readonly totalCost: number;
-  readonly contextTokens: number;
-  readonly contextLimit: number;
-}
-
-export const HISTORY_SCOPES = ['current', 'all'] as const;
 
 export type HistoryScope = (typeof HISTORY_SCOPES)[number];
 
@@ -90,8 +40,8 @@ export type WebviewToExtensionMessage =
   | { type: 'get_history'; scope: HistoryScope }
   | { type: 'load_session'; id: string; path: string; title: string }
   | { type: 'delete_sessions'; paths: string[] }
-  | { type: 'send_message'; text: string; path?: string; model_id?: string; model_provider?: string; images?: string[] }
-  | { type: 'continue_task'; path?: string; model_id?: string; model_provider?: string }
+  | { type: 'send_message'; text: string; path?: string; model?: ModelSelection; images?: string[] }
+  | { type: 'continue_task'; path?: string; model?: ModelSelection }
   | { type: 'tool_response'; approval_id: string; approved: boolean }
   | { type: 'question_response'; question_id: string; text: string }
   | { type: 'view_raw_task'; path?: string }

@@ -9,14 +9,14 @@ export class WorkspaceService {
   public constructor(private readonly storageUri: Uri) {}
 
   public async openFile(cwd: string, relativePath: string, line?: number): Promise<void> {
-    const uri = isAbsolute(relativePath) ? Uri.file(relativePath) : Uri.joinPath(Uri.file(cwd), relativePath);
+    const uri = this.resolveTargetUri(cwd, relativePath);
     const doc = await workspace.openTextDocument(uri);
     const target = line ? doc.validateRange(new Range(new Position(line - 1, 0), new Position(line - 1, 0))) : undefined;
     await window.showTextDocument(uri, { selection: target && new Selection(target.start, target.end) });
   }
 
   public async openFileInChanges(cwd: string, relativePath: string, line?: number): Promise<void> {
-    const uri = isAbsolute(relativePath) ? Uri.file(relativePath) : Uri.joinPath(Uri.file(cwd), relativePath);
+    const uri = this.resolveTargetUri(cwd, relativePath);
 
     try {
       await commands.executeCommand('git.openChange', uri);
@@ -89,5 +89,9 @@ export class WorkspaceService {
       }
     }
     return undefined;
+  }
+
+  private resolveTargetUri(cwd: string, relativePath: string): Uri {
+    return isAbsolute(relativePath) ? Uri.file(relativePath) : Uri.joinPath(Uri.file(cwd), relativePath);
   }
 }

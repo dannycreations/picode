@@ -1,7 +1,7 @@
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 
 import type { FC } from 'react';
-import type { ActiveTaskState } from '@pi-code/shared/core/protocol';
+import type { ActiveTaskState } from '@pi-code/shared/core/types';
 
 interface ChatActionProps {
   readonly showScrollToBottom: boolean;

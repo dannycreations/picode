@@ -7,7 +7,7 @@ import { MessageHeader } from '@pi-code/webview/components/chat/messages/Message
 import { Spinner } from '@pi-code/webview/components/shared/Spinner';
 
 import type { FC } from 'react';
-import type { ChatMessage } from '@pi-code/shared/core/protocol';
+import type { ChatMessage } from '@pi-code/shared/core/types';
 
 interface AssistantMessageProps {
   readonly message: ChatMessage;

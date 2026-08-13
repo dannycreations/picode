@@ -4,7 +4,7 @@ import { resolveCommandAction, resolvePathAction, resolveReadPath } from '@pi-co
 
 import type { InlineExtension, ToolCallEventResult } from '@earendil-works/pi-coding-agent';
 import type { ApprovalDecision } from '@pi-code/extension/structures/agent-runtime/policy-action';
-import type { ToolName } from '@pi-code/shared/core/protocol';
+import type { ToolName } from '@pi-code/shared/core/types';
 
 interface ToolCallArgs {
   readonly files?: ReadonlyArray<{ path?: string }>;

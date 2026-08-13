@@ -6,24 +6,16 @@ import { getDefaultModelSelection, getSettingsManager } from '@pi-code/extension
 import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { collectCommands } from '@pi-code/extension/structures/chat-command/command';
 import { convertSessionEntries, loadSessionTranscript } from '@pi-code/extension/structures/chat-session/session';
-import { DEFAULT_CONTEXT_LIMIT } from '@pi-code/shared/core/constants';
+import { THINKING_LEVEL_ORDER } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
+import { EMPTY_STATS } from '@pi-code/shared/utilities/common';
 
-import type { Api, Model } from '@earendil-works/pi-ai';
+import type { Api, Model, ModelThinkingLevel } from '@earendil-works/pi-ai';
 import type { ModelRuntime, SessionInfo } from '@earendil-works/pi-coding-agent';
-import type {
-  ChatMessage,
-  ExtensionToWebviewMessage,
-  HistoryItem,
-  HistoryScope,
-  ModelItem,
-  ModelThinkingLevel,
-  StatsData,
-} from '@pi-code/shared/core/protocol';
+import type { ExtensionToWebviewMessage, HistoryItem, HistoryScope, ModelItem } from '@pi-code/shared/core/protocol';
+import type { ChatMessage, StatsData } from '@pi-code/shared/core/types';
 
 type SessionInitData = Extract<ExtensionToWebviewMessage, { type: 'init_data' }>['payload'];
-
-const THINKING_LEVEL_ORDER: readonly ModelThinkingLevel[] = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'];
 
 function resolveThinkingLevels(model: Model<Api>): ModelThinkingLevel[] {
   if (!model.reasoning) return [];
@@ -109,7 +101,7 @@ export async function loadSessionDetails(
       : modelRuntime.getModels().find((candidate) => candidate.id === sessionModelId)
     : undefined;
 
-  return loadSessionTranscript(entries, model?.contextWindow ?? DEFAULT_CONTEXT_LIMIT);
+  return loadSessionTranscript(entries, model?.contextWindow ?? EMPTY_STATS.contextLimit);
 }
 
 export async function fetchHistory(cwd: string, scope: HistoryScope): Promise<HistoryItem[]> {

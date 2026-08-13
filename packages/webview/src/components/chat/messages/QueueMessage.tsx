@@ -6,7 +6,7 @@ import { ImageThumb } from '@pi-code/webview/components/shared/ImageThumb';
 import { vscode } from '@pi-code/webview/utilities/vscode';
 
 import type { FC } from 'react';
-import type { ChatMessage } from '@pi-code/shared/core/protocol';
+import type { ChatMessage } from '@pi-code/shared/core/types';
 
 interface QueueMessageProps {
   readonly message: ChatMessage;

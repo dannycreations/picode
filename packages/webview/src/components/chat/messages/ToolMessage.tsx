@@ -3,22 +3,15 @@ import { CheckCircle, ChevronUp, Play, PocketKnife, ShieldAlert, X } from 'lucid
 import { useState } from 'react';
 
 import { CodeBlock } from '@pi-code/webview/components/chat/CodeBlock';
-import {
-  getDiffStat,
-  getFileToolMeta,
-  getFirstDiffLine,
-  getToolDiffMeta,
-  getToolFilePath,
-  getToolLanguage,
-} from '@pi-code/webview/components/chat/messages/helpers/common';
+import { getDiffStat, getFirstDiffLine } from '@pi-code/webview/components/chat/messages/helpers/common';
+import { getFileToolMeta, getToolDiffMeta, getToolFilePath, getToolLanguage } from '@pi-code/webview/components/chat/messages/helpers/tool';
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
 import { Spinner } from '@pi-code/webview/components/shared/Spinner';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { vscode } from '@pi-code/webview/utilities/vscode';
 
 import type { FC } from 'react';
-import type { ChatMessage, ToolName } from '@pi-code/shared/core/protocol';
-import type { FileSection } from '@pi-code/webview/components/chat/messages/helpers/common';
+import type { ChatMessage, ReadFileSection, ToolName } from '@pi-code/shared/core/types';
 
 interface ToolMessageProps {
   readonly message: ChatMessage;
@@ -42,7 +35,7 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
 const FileToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDenyTool }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const { title, icon, language } = getFileToolMeta(message.toolName, message.toolStatus);
-  const sections: FileSection[] = message.files
+  const sections: ReadonlyArray<ReadFileSection> = message.files
     ? message.files.map((file) => ({ path: file.path, content: file.content }))
     : [{ path: getToolFilePath(message.toolArgs) ?? '', content: message.diff ?? '' }];
   const isRead = message.toolName === 'read_file';
@@ -104,7 +97,7 @@ const FileToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDenyT
 };
 
 interface FileSectionCardProps {
-  readonly section: FileSection;
+  readonly section: ReadFileSection;
   readonly language: string;
   readonly defaultOpen: boolean;
   readonly isFirst: boolean;

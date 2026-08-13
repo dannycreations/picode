@@ -6,7 +6,8 @@ import { ImageThumb } from '@pi-code/webview/components/shared/ImageThumb';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 
 import type { FC } from 'react';
-import type { ChatMessage, CommandItem } from '@pi-code/shared/core/protocol';
+import type { CommandItem } from '@pi-code/shared/core/protocol';
+import type { ChatMessage } from '@pi-code/shared/core/types';
 
 interface UserMessageProps {
   readonly message: ChatMessage;

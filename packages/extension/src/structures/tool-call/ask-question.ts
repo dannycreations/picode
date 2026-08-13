@@ -1,11 +1,10 @@
-import { formatThrownValue } from '@earendil-works/pi-ai';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
 import { askQuestion } from '@pi-code/extension/structures/agent-runtime/brokers/question';
-import { toolError, toolResult } from '@pi-code/extension/structures/tool-call/helpers/result';
+import { toolError, toolErrorFrom, toolResult } from '@pi-code/extension/structures/tool-call/helpers/result';
 
-import type { ToolName } from '@pi-code/shared/core/protocol';
+import type { ToolName } from '@pi-code/shared/core/types';
 
 export const askQuestionTool = defineTool({
   name: 'ask_question' as ToolName,
@@ -34,7 +33,7 @@ export const askQuestionTool = defineTool({
 
       return toolResult(response, { response });
     } catch (err) {
-      return toolError(`Error asking question: ${formatThrownValue(err)}`);
+      return toolErrorFrom(err, 'asking question');
     }
   },
 });

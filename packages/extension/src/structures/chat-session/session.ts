@@ -2,12 +2,12 @@ import { contentText, uuidv7 } from '@earendil-works/pi-ai';
 import { calculateContextTokens, getLastAssistantUsage, parseSkillBlock } from '@earendil-works/pi-coding-agent';
 
 import { toBase64DataUrl } from '@pi-code/extension/utilities/codec';
-import { DEFAULT_CONTEXT_LIMIT } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
+import { EMPTY_STATS } from '@pi-code/shared/utilities/common';
 
 import type { ImageContent, TextContent, ThinkingContent, ToolCall, Usage } from '@earendil-works/pi-ai';
 import type { SessionEntry } from '@earendil-works/pi-coding-agent';
-import type { ChatMessage, ReadFileSection, StatsData, ToolName } from '@pi-code/shared/core/protocol';
+import type { ChatMessage, ReadFileSection, StatsData, ToolName } from '@pi-code/shared/core/types';
 import type { TodoItem } from '@pi-code/shared/utilities/todo';
 
 type MessageContentPart = TextContent | ThinkingContent | ToolCall | ImageContent;
@@ -170,7 +170,7 @@ function patchToolCall(result: ChatMessage[], msg: Extract<SessionMessage, { rol
   };
 }
 
-function calculateSessionStats(entries: readonly SessionEntry[], contextLimit: number = DEFAULT_CONTEXT_LIMIT): StatsData {
+function calculateSessionStats(entries: readonly SessionEntry[], contextLimit: number = EMPTY_STATS.contextLimit): StatsData {
   let tokensIn = 0;
   let tokensOut = 0;
   let cacheWrites = 0;

@@ -1,22 +1,10 @@
-type QuestionResolver = (answer: string | null) => void;
+import { createRequestRegistry } from '@pi-code/extension/structures/agent-runtime/brokers/registry';
 
-const resolvers = new Map<string, QuestionResolver>();
-
-function settle(questionId: string, answer: string | null): boolean {
-  const resolve = resolvers.get(questionId);
-  if (!resolve) {
-    return false;
-  }
-
-  resolvers.delete(questionId);
-  resolve(answer);
-
-  return true;
-}
+const questions = createRequestRegistry<string | null>();
 
 export function askQuestion(questionId: string, signal?: AbortSignal): Promise<string | null> {
-  // Cancel an existing question with the same ID.
-  resolvers.get(questionId)?.(null);
+  // Settle any in-flight question that still carries this id.
+  questions.resolve(questionId, null);
 
   if (signal?.aborted) {
     return Promise.resolve(null);
@@ -24,32 +12,22 @@ export function askQuestion(questionId: string, signal?: AbortSignal): Promise<s
 
   return new Promise<string | null>((resolve) => {
     const onAbort = (): void => {
-      settle(questionId, null);
+      questions.resolve(questionId, null);
     };
 
-    const resolver: QuestionResolver = (answer) => {
-      if (!resolvers.has(questionId)) {
-        return;
-      }
-
-      resolvers.delete(questionId);
+    questions.register(questionId, (answer) => {
       signal?.removeEventListener('abort', onAbort);
       resolve(answer);
-    };
+    });
 
-    resolvers.set(questionId, resolver);
     signal?.addEventListener('abort', onAbort, { once: true });
   });
 }
 
 export function answerQuestion(questionId: string, text: string): boolean {
-  return settle(questionId, text);
+  return questions.resolve(questionId, text);
 }
 
 export function cancelAllQuestions(): void {
-  for (const resolve of [...resolvers.values()]) {
-    resolve(null);
-  }
-
-  resolvers.clear();
+  questions.cancelAll(null);
 }

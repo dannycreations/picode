@@ -1,6 +1,8 @@
 import { uuidv7 } from '@earendil-works/pi-ai';
 
-import type { ToolName } from '@pi-code/shared/core/protocol';
+import { createRequestRegistry } from '@pi-code/extension/structures/agent-runtime/brokers/registry';
+
+import type { ToolName } from '@pi-code/shared/core/types';
 
 interface ApprovalRequest {
   readonly id: string;
@@ -11,17 +13,9 @@ interface ApprovalRequest {
 
 type ApprovalPresenter = (request: ApprovalRequest) => void;
 
-const resolvers = new Map<string, (approved: boolean) => void>();
+const approvals = createRequestRegistry<boolean>();
 
 let presenter: ApprovalPresenter | null = null;
-
-function settle(id: string, approved: boolean): void {
-  const resolve = resolvers.get(id);
-  if (resolve) {
-    resolvers.delete(id);
-    resolve(approved);
-  }
-}
 
 export function setApprovalPresenter(next: ApprovalPresenter): () => void {
   presenter = next;
@@ -40,15 +34,19 @@ export function requestApproval(toolName: ToolName, toolCallId: string | undefin
 
   const id = toolCallId || uuidv7();
   return new Promise<boolean>((resolve) => {
-    resolvers.set(id, resolve);
+    approvals.register(id, resolve);
     currentPresenter({ id, toolName, args, subagent });
   });
 }
 
 export function approveApproval(id: string): void {
-  settle(id, true);
+  approvals.resolve(id, true);
 }
 
 export function denyApproval(id: string): void {
-  settle(id, false);
+  approvals.resolve(id, false);
+}
+
+export function cancelAllApprovals(): void {
+  approvals.cancelAll(false);
 }

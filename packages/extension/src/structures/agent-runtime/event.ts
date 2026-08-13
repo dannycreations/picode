@@ -1,12 +1,12 @@
 import { uuidv7 } from '@earendil-works/pi-ai';
 
 import { takeSubagentUsage } from '@pi-code/extension/structures/agent-runtime/subagent';
-import { DEFAULT_CONTEXT_LIMIT } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
+import { EMPTY_STATS } from '@pi-code/shared/utilities/common';
 
 import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent';
-import type { AgentToWebviewMessage } from '@pi-code/extension/structures/agent-runtime/webview';
-import type { ReadFileSection, StatsData, ToolName } from '@pi-code/shared/core/protocol';
+import type { ExtensionToWebviewMessage } from '@pi-code/shared/core/protocol';
+import type { ReadFileSection, StatsData, ToolName } from '@pi-code/shared/core/types';
 import type { TodoItem } from '@pi-code/shared/utilities/todo';
 
 interface ToolResultPart {
@@ -24,103 +24,122 @@ export function toolResultText(result: unknown): string {
   return parts.map((part) => part.text).join('\n');
 }
 
-export class EventMapper {
-  private apiRequestId: string | null = null;
+interface MappedEvent {
+  readonly message: ExtensionToWebviewMessage | null;
+  readonly apiRequestId: string | null;
+}
 
-  public resetTurnState(): void {
-    this.apiRequestId = null;
-  }
-
-  public mapEvent(event: AgentSessionEvent, session: AgentSession): AgentToWebviewMessage | null {
-    switch (event.type) {
-      case 'agent_start':
-        return {
+export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiRequestId: string | null): MappedEvent {
+  switch (event.type) {
+    case 'agent_start':
+      return {
+        message: {
           type: 'agent_start',
-          payload: { path: session.sessionFile, stats: this.createStats(session) ?? undefined },
-        };
+          payload: { path: session.sessionFile, stats: createStats(session) ?? undefined },
+        },
+        apiRequestId,
+      };
 
-      case 'turn_start': {
-        this.apiRequestId = this.nextApiRequestId();
-        return {
+    case 'turn_start': {
+      const nextId = nextApiRequestId();
+      return {
+        message: {
           type: 'api_request_start',
-          payload: { id: this.apiRequestId, timestamp: Date.now() },
-        };
-      }
+          payload: { id: nextId, timestamp: Date.now() },
+        },
+        apiRequestId: nextId,
+      };
+    }
 
-      case 'turn_end': {
-        const id = this.apiRequestId || this.nextApiRequestId();
-        this.apiRequestId = null;
-        const msg = event.message?.role === 'assistant' ? event.message : undefined;
-        const isError = msg?.stopReason === 'error';
-        return {
+    case 'turn_end': {
+      const id = apiRequestId || nextApiRequestId();
+      const msg = event.message?.role === 'assistant' ? event.message : undefined;
+      const isError = msg?.stopReason === 'error';
+      return {
+        message: {
           type: 'api_request_end',
           payload: {
             id,
             cost: msg?.usage?.cost?.total,
             error: isError ? msg.errorMessage || 'The API request failed.' : undefined,
-            stats: this.createStats(session) ?? undefined,
+            stats: createStats(session) ?? undefined,
           },
-        };
-      }
+        },
+        apiRequestId: null,
+      };
+    }
 
-      case 'message_start':
-        if (event.message.role !== 'assistant') {
-          return null;
-        }
-        return {
+    case 'message_start':
+      if (event.message.role !== 'assistant') {
+        return { message: null, apiRequestId };
+      }
+      return {
+        message: {
           type: 'message_start',
           payload: { timestamp: event.message.timestamp },
-        };
+        },
+        apiRequestId,
+      };
 
-      case 'message_update': {
-        const type = event.assistantMessageEvent.type;
-        if (type === 'text_delta' || type === 'thinking_delta') {
-          return {
-            type,
-            payload: { delta: event.assistantMessageEvent.delta },
-          };
-        }
-        return null;
+    case 'message_update': {
+      const delta = event.assistantMessageEvent;
+      if (delta.type === 'text_delta') {
+        return { message: { type: 'stream_delta', payload: { text: delta.delta } }, apiRequestId };
       }
+      if (delta.type === 'thinking_delta') {
+        return { message: { type: 'stream_delta', payload: { thinking: delta.delta } }, apiRequestId };
+      }
+      return { message: null, apiRequestId };
+    }
 
-      case 'message_end':
-        if (event.message.role !== 'assistant') {
-          return null;
-        }
-        return {
+    case 'message_end':
+      if (event.message.role !== 'assistant') {
+        return { message: null, apiRequestId };
+      }
+      return {
+        message: {
           type: 'message_end',
           payload: {
             cost: event.message.usage?.cost?.total,
-            stats: this.createStats(session) ?? undefined,
+            stats: createStats(session) ?? undefined,
           },
-        };
+        },
+        apiRequestId,
+      };
 
-      case 'tool_execution_start':
-        return {
+    case 'tool_execution_start':
+      return {
+        message: {
           type: 'tool_execution_start',
           payload: {
             id: event.toolCallId,
             tool_name: event.toolName as ToolName,
             arguments: JSON.stringify(event.args),
           },
-        };
+        },
+        apiRequestId,
+      };
 
-      case 'tool_execution_update':
-        return {
+    case 'tool_execution_update':
+      return {
+        message: {
           type: 'tool_execution_update',
           payload: { id: event.toolCallId, result: toolResultText(event.partialResult) },
-        };
+        },
+        apiRequestId,
+      };
 
-      case 'tool_execution_end': {
-        const toolResult = event.result as
-          | {
-              details?: {
-                todos?: TodoItem[];
-                files?: ReadonlyArray<ReadFileSection>;
-              };
-            }
-          | undefined;
-        return {
+    case 'tool_execution_end': {
+      const toolResult = event.result as
+        | {
+            details?: {
+              todos?: TodoItem[];
+              files?: ReadonlyArray<ReadFileSection>;
+            };
+          }
+        | undefined;
+      return {
+        message: {
           type: 'tool_execution_end',
           payload: {
             id: event.toolCallId,
@@ -129,18 +148,21 @@ export class EventMapper {
             files: toolResult?.details?.files,
             is_error: event.isError,
           },
-        };
-      }
+        },
+        apiRequestId,
+      };
+    }
 
-      case 'agent_settled': {
-        const stats = this.createStats(session);
-        if (!stats) return { type: 'agent_settled' };
+    case 'agent_settled': {
+      const stats = createStats(session);
+      if (!stats) return { message: { type: 'agent_settled' }, apiRequestId };
 
-        // Sub-agent spend is in-memory only, so it never lands in the session
-        // file. Fold this turn's delegated usage into the header stats here,
-        // then clear it so the next turn accounts for its own runs.
-        const child = takeSubagentUsage(session.sessionId);
-        return {
+      // Sub-agent spend is in-memory only, so it never lands in the session
+      // file. Fold this turn's delegated usage into the header stats here,
+      // then clear it so the next turn accounts for its own runs.
+      const child = takeSubagentUsage(session.sessionId);
+      return {
+        message: {
           type: 'agent_settled',
           payload: {
             ...stats,
@@ -148,44 +170,48 @@ export class EventMapper {
             tokensOut: stats.tokensOut + child.tokensOut,
             totalCost: stats.totalCost + child.cost,
           },
-        };
-      }
-
-      case 'compaction_start':
-        return {
-          type: 'agent_start',
-          payload: { path: session.sessionFile, stats: this.createStats(session) ?? undefined },
-        };
-
-      case 'compaction_end': {
-        const stats = this.createStats(session);
-        return stats ? { type: 'compaction_end', payload: stats } : null;
-      }
-
-      default:
-        return null;
-    }
-  }
-
-  private createStats(session: AgentSession): StatsData | null {
-    try {
-      const stats = session.getSessionStats();
-      return {
-        tokensIn: stats.tokens.input,
-        tokensOut: stats.tokens.output,
-        cacheReads: stats.tokens.cacheRead,
-        cacheWrites: stats.tokens.cacheWrite,
-        totalCost: stats.cost,
-        contextTokens: stats.contextUsage?.tokens ?? 0,
-        contextLimit: stats.contextUsage?.contextWindow ?? session.model?.contextWindow ?? DEFAULT_CONTEXT_LIMIT,
+        },
+        apiRequestId,
       };
-    } catch (err) {
-      logger.error('Failed to create session stats message:', err);
-      return null;
     }
-  }
 
-  private nextApiRequestId(): string {
-    return `api-req-${uuidv7()}`;
+    case 'compaction_start':
+      return {
+        message: {
+          type: 'agent_start',
+          payload: { path: session.sessionFile, stats: createStats(session) ?? undefined },
+        },
+        apiRequestId,
+      };
+
+    case 'compaction_end': {
+      const stats = createStats(session);
+      return stats ? { message: { type: 'compaction_end', payload: stats }, apiRequestId } : { message: null, apiRequestId };
+    }
+
+    default:
+      return { message: null, apiRequestId };
   }
+}
+
+function createStats(session: AgentSession): StatsData | null {
+  try {
+    const stats = session.getSessionStats();
+    return {
+      tokensIn: stats.tokens.input,
+      tokensOut: stats.tokens.output,
+      cacheReads: stats.tokens.cacheRead,
+      cacheWrites: stats.tokens.cacheWrite,
+      totalCost: stats.cost,
+      contextTokens: stats.contextUsage?.tokens ?? 0,
+      contextLimit: stats.contextUsage?.contextWindow ?? session.model?.contextWindow ?? EMPTY_STATS.contextLimit,
+    };
+  } catch (err) {
+    logger.error('Failed to create session stats message:', err);
+    return null;
+  }
+}
+
+function nextApiRequestId(): string {
+  return `api-req-${uuidv7()}`;
 }

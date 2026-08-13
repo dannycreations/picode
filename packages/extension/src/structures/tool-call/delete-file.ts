@@ -1,12 +1,11 @@
 import { access, rm, stat, unlink } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { formatThrownValue } from '@earendil-works/pi-ai';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
-import { toolError, toolResult } from '@pi-code/extension/structures/tool-call/helpers/result';
+import { toolError, toolErrorFrom, toolResult } from '@pi-code/extension/structures/tool-call/helpers/result';
 
-import type { ToolName } from '@pi-code/shared/core/protocol';
+import type { ToolName } from '@pi-code/shared/core/types';
 
 export const deleteFileTool = defineTool({
   name: 'delete_file' as ToolName,
@@ -34,7 +33,7 @@ export const deleteFileTool = defineTool({
       await unlink(resolvedPath);
       return toolResult(`Deleted file: ${params.path}`);
     } catch (err) {
-      return toolError(`Error deleting file: ${formatThrownValue(err)}`);
+      return toolErrorFrom(err, 'deleting file');
     }
   },
 });

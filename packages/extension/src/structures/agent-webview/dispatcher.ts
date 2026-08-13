@@ -5,11 +5,12 @@ import { writeAppSettings } from '@pi-code/extension/core/settings';
 import { approveApproval, denyApproval } from '@pi-code/extension/structures/agent-runtime/brokers/policy';
 import { answerQuestion } from '@pi-code/extension/structures/agent-runtime/brokers/question';
 import { deleteSessions, exportSession, fetchHistory, getInitData, loadSessionDetails } from '@pi-code/extension/structures/agent-webview/session';
+import { ACTIVE_TASK_ID, HISTORY_SCOPES } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
-import { ACTIVE_TASK_ID } from '@pi-code/shared/core/protocol';
 
 import type { MessageHandlerContext } from '@pi-code/extension/structures/agent-webview/types';
-import type { HistoryScope, ModelSelection, WebviewToExtensionMessage } from '@pi-code/shared/core/protocol';
+import type { HistoryScope, WebviewToExtensionMessage } from '@pi-code/shared/core/protocol';
+import type { ChatMessage, StatsData } from '@pi-code/shared/core/types';
 
 type CommandHandler<T extends WebviewToExtensionMessage['type']> = (
   message: Extract<WebviewToExtensionMessage, { type: T }>,
@@ -20,15 +21,21 @@ type HandlerMap = {
   [T in WebviewToExtensionMessage['type']]: CommandHandler<T>;
 };
 
-function toModelSelection(msg: { model_id?: string; model_provider?: string }): ModelSelection | undefined {
-  return msg.model_provider && msg.model_id ? { id: msg.model_id, provider: msg.model_provider } : undefined;
+interface TranscriptDetails {
+  readonly messages: ChatMessage[];
+  readonly stats: StatsData;
 }
 
-export async function postSessionLoaded(ctx: MessageHandlerContext, id: string, title: string, path: string | undefined): Promise<void> {
-  const { messages, stats } = await loadSessionDetails(path ?? '', ctx.cwd);
+async function postSession(
+  ctx: MessageHandlerContext,
+  id: string,
+  title: string,
+  path: string | undefined,
+  details: TranscriptDetails,
+): Promise<void> {
   ctx.postMessage({
     type: 'session_loaded',
-    payload: { id: id || ACTIVE_TASK_ID, title: title || '', messages, path, ...stats },
+    payload: { id: id || ACTIVE_TASK_ID, title: title || '', messages: details.messages, path, ...details.stats },
   });
 }
 
@@ -43,7 +50,7 @@ const HANDLER_MAP: HandlerMap = {
     ctx.postMessage({ type: 'init_data', payload: data });
   },
   send_message: (msg, ctx) => {
-    void ctx.agent.startTask(msg.text, toModelSelection(msg), msg.images, msg.path);
+    void ctx.agent.startTask(msg.text, msg.model, msg.images, msg.path);
   },
   add_to_reply_queue: (msg, ctx) => {
     ctx.agent.addToReplyQueue(msg.text, msg.images);
@@ -55,7 +62,7 @@ const HANDLER_MAP: HandlerMap = {
     ctx.agent.removeFromReplyQueue(msg.id);
   },
   continue_task: (msg, ctx) => {
-    void ctx.agent.continueTask(msg.path || '', toModelSelection(msg));
+    void ctx.agent.continueTask(msg.path || '', msg.model);
   },
   tool_response: (msg) => {
     if (msg.approved) approveApproval(msg.approval_id);
@@ -78,16 +85,7 @@ const HANDLER_MAP: HandlerMap = {
 
     // Refresh the webview from the in-memory session we just compacted instead
     // of re-opening and re-parsing the same session file a second time.
-    ctx.postMessage({
-      type: 'session_loaded',
-      payload: {
-        id: msg.id || ACTIVE_TASK_ID,
-        title: msg.title || '',
-        messages: details.messages,
-        path,
-        ...details.stats,
-      },
-    });
+    await postSession(ctx, msg.id || ACTIVE_TASK_ID, msg.title || '', path, details);
   },
   close_task: async (_, ctx) => {
     ctx.agent.reset();
@@ -96,10 +94,11 @@ const HANDLER_MAP: HandlerMap = {
     // Tasks list is still showing the stale init snapshot. Push the refreshed
     // current-scope history so the completed task renders without the user
     // first having to open the full History view.
-    await postHistory(ctx, 'current');
+    await postHistory(ctx, HISTORY_SCOPES[0]);
   },
   load_session: async (msg, ctx) => {
-    await postSessionLoaded(ctx, msg.id, msg.title, msg.path);
+    const details = await loadSessionDetails(msg.path ?? '', ctx.cwd);
+    await postSession(ctx, msg.id, msg.title, msg.path, details);
   },
   view_raw_task: async (msg, ctx) => {
     const path = msg.path || ctx.agent.getSessionFile();

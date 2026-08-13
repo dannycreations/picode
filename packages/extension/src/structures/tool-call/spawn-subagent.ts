@@ -15,7 +15,7 @@ import { getOutputLimits, truncateOutput } from '@pi-code/extension/utilities/tr
 
 import type { SubagentOutcome, SubagentUsage } from '@pi-code/extension/structures/agent-runtime/subagent';
 import type { CustomToolResult } from '@pi-code/extension/types/extension';
-import type { ToolName } from '@pi-code/shared/core/protocol';
+import type { ToolName } from '@pi-code/shared/core/types';
 
 interface SubagentDetails {
   readonly agent: string;

@@ -1,11 +1,11 @@
 import { cn } from 'cnfast';
 import { AlertTriangle, Info, RefreshCw } from 'lucide-react';
 
-import { formatTime } from '@pi-code/webview/components/chat/messages/helpers/common';
 import { Spinner } from '@pi-code/webview/components/shared/Spinner';
+import { formatTime } from '@pi-code/webview/utilities/common';
 
 import type { FC } from 'react';
-import type { ChatMessage } from '@pi-code/shared/core/protocol';
+import type { ChatMessage } from '@pi-code/shared/core/types';
 
 export const ApiRequestMessage: FC<{ readonly message: ChatMessage }> = ({ message }) => {
   const isRunning = message.toolStatus === 'running';

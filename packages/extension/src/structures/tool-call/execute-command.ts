@@ -7,7 +7,7 @@ import { Type } from 'typebox';
 import { getOutputLimits, truncateOutput } from '@pi-code/extension/utilities/truncate';
 
 import type { CustomToolResult } from '@pi-code/extension/types/extension';
-import type { ToolName } from '@pi-code/shared/core/protocol';
+import type { ToolName } from '@pi-code/shared/core/types';
 
 const ANSI_PATTERN = /\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b[=>c()#%*+]/g;
 

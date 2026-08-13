@@ -266,8 +266,7 @@ export const ChatView: FC = () => {
           vscode?.postMessage({
             type: 'continue_task',
             path: activeTask.path,
-            model_id: modelSelection.id,
-            model_provider: modelSelection.provider,
+            model: modelSelection,
           });
         }}
       />

@@ -1,14 +1,13 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
-import { formatThrownValue } from '@earendil-works/pi-ai';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
-import { toolError } from '@pi-code/extension/structures/tool-call/helpers/result';
+import { toolErrorFrom } from '@pi-code/extension/structures/tool-call/helpers/result';
 import { stripCodeFence } from '@pi-code/extension/utilities/markdown';
 import { buildFileChangeResult } from '@pi-code/extension/utilities/truncate';
 
-import type { ToolName } from '@pi-code/shared/core/protocol';
+import type { ToolName } from '@pi-code/shared/core/types';
 
 export const writeFileTool = defineTool({
   name: 'write_file' as ToolName,
@@ -41,7 +40,7 @@ export const writeFileTool = defineTool({
         hint: `Write applied; read "${params.path}" to verify the remaining changes.`,
       });
     } catch (err) {
-      return toolError(`Error writing to file: ${formatThrownValue(err)}`);
+      return toolErrorFrom(err, 'writing to file');
     }
   },
 });

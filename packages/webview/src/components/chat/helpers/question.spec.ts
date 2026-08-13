@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { findPendingQuestion, parseQuestionAnswer, parseQuestionData } from '@pi-code/webview/components/chat/helpers/question';
 
-import type { ChatMessage } from '@pi-code/shared/core/protocol';
+import type { ChatMessage } from '@pi-code/shared/core/types';
 
 function createMessage(overrides: Partial<ChatMessage> = {}): ChatMessage {
   return {
