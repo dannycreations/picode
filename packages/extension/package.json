@@ -243,6 +243,11 @@
         "category": "Pi Code"
       },
       {
+        "command": "pi-code.fixCode",
+        "title": "Fix Code",
+        "category": "Pi Code"
+      },
+      {
         "command": "pi-code.settingsButtonClicked",
         "title": "Settings",
         "icon": "$(settings-gear)"
