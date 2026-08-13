@@ -73,6 +73,7 @@ export type ExtensionToWebviewMessage =
     }
   | { type: 'history_data'; payload: { history: HistoryItem[]; scope: HistoryScope } }
   | { type: 'commands_data'; payload: { commands: CommandItem[] } }
+  | { type: 'models_data'; payload: { models: ModelItem[] } }
   | { type: 'settings_data'; payload: { settings: AppSettings } }
   | { type: 'session_loaded'; payload: ActiveTaskState }
   | { type: 'agent_start'; payload: { path?: string; stats?: StatsData } }

@@ -56,12 +56,6 @@ function formatSessions(sessions: SessionInfo[]): HistoryItem[] {
 export async function getInitData(cwd: string): Promise<SessionInitData> {
   const [sessions, resources] = await Promise.all([SessionManager.list(cwd), createAgentResources(cwd)]);
 
-  try {
-    await resources.services.modelRuntime.refresh({ allowNetwork: true });
-  } catch (error) {
-    logger.warn('Dynamic model refresh failed; the restored selection may fall back to another model.', error);
-  }
-
   const [models, defaultModel] = await Promise.all([listSelectableModels(resources.services.modelRuntime), getDefaultModelSelection(cwd)]);
 
   const thinkingLevel = getSettingsManager(cwd).getDefaultThinkingLevel() ?? undefined;
@@ -74,6 +68,19 @@ export async function getInitData(cwd: string): Promise<SessionInitData> {
     settings: resources.settings,
     commands: collectCommands(resources.services.resourceLoader),
   };
+}
+
+export async function refreshModelCatalog(cwd: string, onModels: (models: ModelItem[]) => void): Promise<void> {
+  const resources = await createAgentResources(cwd);
+  try {
+    await resources.services.modelRuntime.refresh({
+      allowNetwork: true,
+      signal: AbortSignal.timeout(60_000),
+    });
+    onModels(await listSelectableModels(resources.services.modelRuntime));
+  } catch (error) {
+    logger.warn('Dynamic model refresh failed; the model list stays on the local catalog.', error);
+  }
 }
 
 export async function loadSessionDetails(

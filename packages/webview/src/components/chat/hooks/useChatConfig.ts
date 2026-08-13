@@ -51,6 +51,10 @@ export const useChatConfig = (): UseChatConfigReturn => {
         setCommands(msg.payload.commands);
         break;
 
+      case 'models_data':
+        setModels(msg.payload.models);
+        break;
+
       case 'settings_data':
         setSettings(msg.payload.settings);
         break;

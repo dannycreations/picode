@@ -4,7 +4,14 @@ import { window } from 'vscode';
 import { writeAppSettings } from '@pi-code/extension/core/settings';
 import { approveApproval, denyApproval } from '@pi-code/extension/structures/agent-runtime/brokers/policy';
 import { answerQuestion } from '@pi-code/extension/structures/agent-runtime/brokers/question';
-import { deleteSessions, exportSession, fetchHistory, getInitData, loadSessionDetails } from '@pi-code/extension/structures/agent-webview/session';
+import {
+  deleteSessions,
+  exportSession,
+  fetchHistory,
+  getInitData,
+  loadSessionDetails,
+  refreshModelCatalog,
+} from '@pi-code/extension/structures/agent-webview/session';
 import { ACTIVE_TASK_ID, HISTORY_SCOPES } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
 
@@ -48,6 +55,11 @@ const HANDLER_MAP: HandlerMap = {
   init: async (_, ctx) => {
     const data = await getInitData(ctx.cwd);
     ctx.postMessage({ type: 'init_data', payload: data });
+    // The local catalog is enough to render the chat view, so refresh the
+    // remote catalog in the background and push the merged models once it lands.
+    void refreshModelCatalog(ctx.cwd, (models) => {
+      ctx.postMessage({ type: 'models_data', payload: { models } });
+    });
   },
   send_message: (msg, ctx) => {
     void ctx.agent.startTask(msg.text, msg.model, msg.images, msg.path);
