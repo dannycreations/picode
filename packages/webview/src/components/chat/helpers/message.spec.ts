@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { groupFileToolMessages, isRenderableMessage } from '@pi-code/webview/components/chat/helpers/message';
+import { groupToolMessages, isRenderableMessage } from '@pi-code/webview/components/chat/helpers/message';
 
 import type { ChatMessage, ToolName } from '@pi-code/shared/core/types';
 
@@ -44,21 +44,21 @@ describe('isRenderableMessage', () => {
   });
 });
 
-describe('groupFileToolMessages', () => {
+describe('groupToolMessages', () => {
   it('should collapse consecutive same-tool file calls into one merged message', () => {
     const messages = [
       createToolMessage('r1', 'read_file', { files: [{ path: 'a.ts', content: 'a' }] }),
       createToolMessage('r2', 'read_file', { files: [{ path: 'b.ts', content: 'b' }] }),
     ];
 
-    const result = groupFileToolMessages(messages);
+    const result = groupToolMessages(messages);
 
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe('r1');
     expect(result[0].toolName).toBe('read_file');
-    expect(result[0].files).toEqual([
-      { path: 'a.ts', content: 'a' },
-      { path: 'b.ts', content: 'b' },
+    expect(result[0].toolSections).toEqual([
+      { title: 'a.ts', content: 'a', language: 'text', openPath: 'a.ts' },
+      { title: 'b.ts', content: 'b', language: 'text', openPath: 'b.ts' },
     ]);
   });
 
@@ -68,7 +68,7 @@ describe('groupFileToolMessages', () => {
       createToolMessage('w1', 'write_file', { toolArgs: JSON.stringify({ path: 'b.ts' }), diff: '+ b' }),
     ];
 
-    const result = groupFileToolMessages(messages);
+    const result = groupToolMessages(messages);
 
     expect(result).toHaveLength(2);
     expect(result.map((m) => m.toolName)).toEqual(['read_file', 'write_file']);
@@ -80,8 +80,58 @@ describe('groupFileToolMessages', () => {
       createToolMessage('r2', 'read_file', { toolStatus: 'approval', files: [{ path: 'b.ts', content: 'b' }] }),
     ];
 
-    const result = groupFileToolMessages(messages);
+    const result = groupToolMessages(messages);
 
     expect(result).toHaveLength(2);
+  });
+
+  it('should stack and group consecutive execute_command calls', () => {
+    const messages = [
+      createToolMessage('c1', 'execute_command', { text: 'ls', diff: 'a' }),
+      createToolMessage('c2', 'execute_command', { text: 'pwd', diff: 'b' }),
+    ];
+
+    const result = groupToolMessages(messages);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].toolSections).toEqual([
+      { title: 'ls', content: 'a', language: 'shell' },
+      { title: 'pwd', content: 'b', language: 'shell' },
+    ]);
+  });
+
+  it('should drop the tool-call placeholder and extract command from toolArgs JSON', () => {
+    const messages = [
+      createToolMessage('c0', 'execute_command', { text: 'execute_command' }),
+      createToolMessage('c1', 'execute_command', { text: 'execute_command', toolArgs: JSON.stringify({ command: 'rg -n "foo"' }), diff: 'output' }),
+    ];
+
+    const result = groupToolMessages(messages);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].toolSections).toEqual([{ title: 'rg -n "foo"', content: 'output', language: 'shell' }]);
+  });
+
+  it('should stack and group consecutive spawn_subagent calls', () => {
+    const messages = [
+      createToolMessage('s1', 'spawn_subagent', {
+        toolArgs: JSON.stringify({ agent: 'explore', description: 'find files', task: 'x' }),
+        subagent: 'explore',
+        diff: '<report-1>',
+      }),
+      createToolMessage('s2', 'spawn_subagent', {
+        toolArgs: JSON.stringify({ agent: 'review', description: 'review code', task: 'y' }),
+        subagent: 'review',
+        diff: '<report-2>',
+      }),
+    ];
+
+    const result = groupToolMessages(messages);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].toolSections).toEqual([
+      { title: 'find files', subtitle: 'explore', content: '<report-1>', language: 'text' },
+      { title: 'review code', subtitle: 'review', content: '<report-2>', language: 'text' },
+    ]);
   });
 });

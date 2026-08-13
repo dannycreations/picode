@@ -17,6 +17,15 @@ export interface ReadFileSection {
   readonly content: string;
 }
 
+export interface ToolSection {
+  readonly title: string;
+  readonly subtitle?: string;
+  readonly content?: string;
+  readonly language?: string;
+  readonly openPath?: string;
+  readonly diffLine?: number;
+}
+
 export interface ChatMessage {
   readonly id: string;
   readonly sender: 'user' | 'assistant' | 'tool' | 'error' | 'checkpoint' | 'info' | 'api_request' | 'queue';
@@ -33,6 +42,7 @@ export interface ChatMessage {
   readonly images?: string[];
   readonly subagent?: string;
   readonly files?: ReadonlyArray<ReadFileSection>;
+  readonly toolSections?: ReadonlyArray<ToolSection>;
 }
 
 export interface StatsData {

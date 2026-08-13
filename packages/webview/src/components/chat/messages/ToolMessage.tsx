@@ -4,20 +4,14 @@ import { useState } from 'react';
 
 import { CodeBlock } from '@pi-code/webview/components/chat/CodeBlock';
 import { getDiffStat, getFirstDiffLine } from '@pi-code/webview/components/chat/messages/helpers/common';
-import {
-  FILE_TOOLS,
-  getFileToolMeta,
-  getToolDiffMeta,
-  getToolFilePath,
-  getToolLanguage,
-} from '@pi-code/webview/components/chat/messages/helpers/tool';
+import { getFileToolMeta, getToolDiffMeta, getToolLanguage, GROUP_TOOLS } from '@pi-code/webview/components/chat/messages/helpers/tool';
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
 import { Spinner } from '@pi-code/webview/components/shared/Spinner';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { vscode } from '@pi-code/webview/utilities/vscode';
 
 import type { FC } from 'react';
-import type { ChatMessage, ReadFileSection } from '@pi-code/shared/core/types';
+import type { ChatMessage, ToolSection } from '@pi-code/shared/core/types';
 
 interface ToolMessageProps {
   readonly message: ChatMessage;
@@ -26,23 +20,19 @@ interface ToolMessageProps {
 }
 
 export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDenyTool }) => {
-  const isStructuredFileTool =
-    message.toolName !== undefined && FILE_TOOLS.has(message.toolName) && (message.toolName !== 'read_file' || message.files !== undefined);
+  const isStackedTool = message.toolName !== undefined && GROUP_TOOLS.has(message.toolName) && (message.toolSections?.length ?? 0) > 0;
 
-  if (isStructuredFileTool) {
-    return <FileToolMessage message={message} onApproveTool={onApproveTool} onDenyTool={onDenyTool} />;
+  if (isStackedTool) {
+    return <StackedToolGroup message={message} onApproveTool={onApproveTool} onDenyTool={onDenyTool} />;
   }
 
   return <GenericToolMessage message={message} onApproveTool={onApproveTool} onDenyTool={onDenyTool} />;
 };
 
-const FileToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDenyTool }) => {
+const StackedToolGroup: FC<ToolMessageProps> = ({ message, onApproveTool, onDenyTool }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const { title, icon, language } = getFileToolMeta(message.toolName, message.toolStatus);
-  const sections: ReadonlyArray<ReadFileSection> = message.files
-    ? message.files.map((file) => ({ path: file.path, content: file.content }))
-    : [{ path: getToolFilePath(message.toolArgs) ?? '', content: message.diff ?? '' }];
-  const isRead = message.toolName === 'read_file';
+  const { title, icon } = getFileToolMeta(message.toolName, message.toolStatus);
+  const sections: ReadonlyArray<ToolSection> = message.toolSections ?? [];
   const hiddenCount = sections.length - 1;
   const hasMore = hiddenCount > 0;
   const hasApproval = message.toolStatus === 'approval';
@@ -68,10 +58,9 @@ const FileToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDenyT
       <div className="ml-6 text-sm">
         <div className="border border-vscode-editorGroup-border rounded-md overflow-hidden bg-vscode-input-background">
           {visibleSections.map((section, index) => (
-            <FileSectionCard
+            <ToolSectionCard
               key={index}
               section={section}
-              language={isRead ? 'text' : language}
               defaultOpen={false}
               isFirst={index === 0}
               isLast={index === visibleSections.length - 1 && !hasMore && !hasApproval}
@@ -80,7 +69,7 @@ const FileToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDenyT
           ))}
 
           {hasMore && (
-            <Tooltip content={isExpanded ? 'Collapse' : `Show ${hiddenCount} more file${hiddenCount === 1 ? '' : 's'}`}>
+            <Tooltip content={isExpanded ? 'Collapse' : `Show ${hiddenCount} more item${hiddenCount === 1 ? '' : 's'}`}>
               <button
                 type="button"
                 onClick={() => setIsExpanded(!isExpanded)}
@@ -100,9 +89,8 @@ const FileToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDenyT
   );
 };
 
-interface FileSectionCardProps {
-  readonly section: ReadFileSection;
-  readonly language: string;
+interface ToolSectionCardProps {
+  readonly section: ToolSection;
   readonly defaultOpen: boolean;
   readonly isFirst: boolean;
   readonly isLast: boolean;
@@ -120,7 +108,13 @@ const DiffStat: FC<{ content?: string; className?: string }> = ({ content, class
   );
 };
 
-const FileSectionCard: FC<FileSectionCardProps> = ({ section: { path, content }, language, defaultOpen, isFirst, isLast, onOpenFile }) => {
+const ToolSectionCard: FC<ToolSectionCardProps> = ({
+  section: { title, subtitle, content, language, openPath },
+  defaultOpen,
+  isFirst,
+  isLast,
+  onOpenFile,
+}) => {
   const [open, setOpen] = useState(defaultOpen);
 
   const radiusClass = isFirst && isLast ? 'rounded-md' : isFirst ? 'rounded-t-md' : isLast ? 'rounded-b-md' : 'rounded-none';
@@ -137,28 +131,32 @@ const FileSectionCard: FC<FileSectionCardProps> = ({ section: { path, content },
             open ? 'codicon-chevron-up' : 'codicon-chevron-down',
           )}
         />
-        {path ? (
-          <Tooltip content={path}>
-            <button
-              type="button"
-              onClick={() => setOpen(!open)}
-              className="font-mono text-xs text-vscode-foreground truncate hover:text-vscode-textLink cursor-pointer select-text"
-            >
-              {path}
-            </button>
-          </Tooltip>
-        ) : (
-          <span className="font-mono text-xs text-vscode-descriptionForeground truncate select-text">File</span>
-        )}
-        <div className="flex-grow" />
-        {path && (
+        <div className="min-w-0 flex-1">
+          {openPath ? (
+            <Tooltip content={openPath}>
+              <button
+                type="button"
+                onClick={() => setOpen(!open)}
+                className="font-mono text-xs text-vscode-foreground truncate hover:text-vscode-textLink cursor-pointer select-text block max-w-full text-left"
+              >
+                {title}
+              </button>
+            </Tooltip>
+          ) : (
+            <span className="font-mono text-xs text-vscode-foreground truncate select-text block" title={title}>
+              {title}
+            </span>
+          )}
+          {subtitle && <div className="text-[10px] text-vscode-descriptionForeground truncate select-text">{subtitle}</div>}
+        </div>
+        {openPath && (
           <div className="flex items-center shrink-0">
             {language === 'diff' && <DiffStat content={content} className="group-hover:hidden" />}
             <span className="hidden group-hover:inline-flex">
               <Tooltip content="Open file">
                 <button
                   type="button"
-                  onClick={() => onOpenFile(path, content)}
+                  onClick={() => onOpenFile(openPath, content)}
                   aria-label="Open file"
                   className="codicon codicon-link-external text-vscode-descriptionForeground hover:text-vscode-foreground cursor-pointer"
                 />
@@ -170,7 +168,7 @@ const FileSectionCard: FC<FileSectionCardProps> = ({ section: { path, content },
 
       {open && content && (
         <div className="border-t border-vscode-editorGroup-border/30 p-2 pt-0">
-          <CodeBlock source={content} language={language} />
+          <CodeBlock source={content} language={language ?? 'text'} />
         </div>
       )}
     </div>

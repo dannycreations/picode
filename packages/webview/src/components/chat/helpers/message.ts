@@ -1,44 +1,37 @@
-import { FILE_TOOLS, getToolFilePath } from '@pi-code/webview/components/chat/messages/helpers/tool';
+import { buildToolSections, GROUP_TOOLS } from '@pi-code/webview/components/chat/messages/helpers/tool';
 
-import type { ChatMessage, ReadFileSection } from '@pi-code/shared/core/types';
+import type { ChatMessage, ToolSection } from '@pi-code/shared/core/types';
 
 function hasContent(value: string | undefined): boolean {
   return value !== undefined && value.trim() !== '';
 }
 
-function canGroupFileTool(message: ChatMessage): boolean {
-  return message.sender === 'tool' && message.toolName !== undefined && FILE_TOOLS.has(message.toolName) && message.toolStatus !== 'approval';
+function canGroupTool(message: ChatMessage): boolean {
+  return message.sender === 'tool' && message.toolName !== undefined && GROUP_TOOLS.has(message.toolName) && message.toolStatus !== 'approval';
 }
 
-function collectFileSections(messages: ReadonlyArray<ChatMessage>): ReadonlyArray<ReadFileSection> {
-  const sections: ReadFileSection[] = [];
+function collectToolSections(messages: ReadonlyArray<ChatMessage>): ToolSection[] {
+  const sections: ToolSection[] = [];
   for (const message of messages) {
-    if (message.files && message.files.length > 0) {
-      sections.push(...message.files);
-    } else {
-      sections.push({ path: getToolFilePath(message.toolArgs) ?? '', content: message.diff ?? '' });
-    }
+    sections.push(...buildToolSections(message));
   }
   return sections;
 }
 
-export function groupFileToolMessages(messages: ReadonlyArray<ChatMessage>): ChatMessage[] {
+export function groupToolMessages(messages: ReadonlyArray<ChatMessage>): ChatMessage[] {
   const result: ChatMessage[] = [];
   let group: ChatMessage[] = [];
 
   const flushGroup = (): void => {
     if (group.length === 0) return;
-    if (group.length === 1) {
-      result.push(group[0]);
-    } else {
-      const last = group[group.length - 1];
-      result.push({ ...last, id: group[0].id, files: collectFileSections(group), diff: undefined });
-    }
+    const sections = collectToolSections(group);
+    const last = group[group.length - 1];
+    result.push(group.length === 1 ? { ...group[0], toolSections: sections } : { ...last, id: group[0].id, toolSections: sections });
     group = [];
   };
 
   for (const message of messages) {
-    if (canGroupFileTool(message)) {
+    if (canGroupTool(message)) {
       if (group.length > 0 && group[0].toolName === message.toolName) {
         group.push(message);
         continue;
