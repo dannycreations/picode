@@ -106,6 +106,15 @@ export const useActiveTask = (): UseActiveTaskReturn => {
           break;
         }
 
+        case 'reply_queue_delivered': {
+          const delivered = msg.payload.messages;
+          updateMessages((messages) => {
+            const knownIds = new Set(messages.map((m) => m.id));
+            return [...messages, ...delivered.filter((m) => !knownIds.has(m.id))];
+          });
+          break;
+        }
+
         case 'compaction_end':
           updateTask((prev) => ({ ...prev, ...msg.payload }));
           break;

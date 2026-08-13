@@ -48,7 +48,8 @@ describe('AgentRunner reply queue', () => {
   it('drains queued replies into the running session via steer on the next turn', async () => {
     const steer = vi.fn();
     const session = makeFakeSession(steer);
-    const runner = new AgentRunner(makeFakeWebview());
+    const webview = makeFakeWebview();
+    const runner = new AgentRunner(webview);
 
     runner.addToReplyQueue('Hello World');
     runner.addToReplyQueue('Second Message');
@@ -62,6 +63,19 @@ describe('AgentRunner reply queue', () => {
     expect(steer.mock.calls[0][0].content[0].text).toBe('Hello World');
     expect(steer.mock.calls[1][0].content[0].text).toBe('Second Message');
     expect(runner['replyQueue']).toEqual([]);
+
+    const delivered = (webview.postMessage as ReturnType<typeof vi.fn>).mock.calls
+      .map((call) => call[0])
+      .find((msg) => msg.type === 'reply_queue_delivered');
+    expect(delivered).toEqual({
+      type: 'reply_queue_delivered',
+      payload: {
+        messages: [
+          expect.objectContaining({ sender: 'user', text: 'Hello World' }),
+          expect.objectContaining({ sender: 'user', text: 'Second Message' }),
+        ],
+      },
+    });
   });
 
   it('keeps queued replies that fail to steer and retries them next turn', async () => {

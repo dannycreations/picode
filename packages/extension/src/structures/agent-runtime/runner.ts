@@ -283,6 +283,7 @@ export class AgentRunner {
 
       if (this.replyQueue.length > 0) {
         const undelivered: QueueMessage[] = [];
+        const delivered: ChatMessage[] = [];
 
         for (const msg of this.replyQueue) {
           const attachments = parseImageAttachments(msg.images);
@@ -293,10 +294,16 @@ export class AgentRunner {
 
           try {
             session.agent.steer({ role: 'user', content, timestamp: msg.ts });
+            delivered.push({ id: msg.id, sender: 'user', text: msg.text, images: msg.images, ts: msg.ts });
           } catch (err) {
             logger.error('Failed to steer queued reply, keeping it for later:', err);
             undelivered.push(msg);
           }
+        }
+
+        // Surface the consumed replies as user messages so they render live
+        if (delivered.length > 0) {
+          this.messenger.post({ type: 'reply_queue_delivered', payload: { messages: delivered } });
         }
 
         // Only drop the messages that were actually delivered; failed ones

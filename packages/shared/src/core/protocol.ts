@@ -1,6 +1,6 @@
 import type { HISTORY_SCOPES } from '@pi-code/shared/core/constants';
 import type { AppSettings } from '@pi-code/shared/core/settings';
-import type { ActiveTaskState, ModelThinkingLevel, ReadFileSection, StatsData, ToolName } from '@pi-code/shared/core/types';
+import type { ActiveTaskState, ChatMessage, ModelThinkingLevel, ReadFileSection, StatsData, ToolName } from '@pi-code/shared/core/types';
 import type { TodoItem } from '@pi-code/shared/utilities/todo';
 
 export interface HistoryItem {
@@ -95,4 +95,5 @@ export type ExtensionToWebviewMessage =
   | { type: 'show_settings' }
   | { type: 'set_chat_input'; payload: { text: string } }
   | { type: 'reply_queue_data'; payload: { queue: QueueMessage[] } }
+  | { type: 'reply_queue_delivered'; payload: { messages: ChatMessage[] } }
   | { type: 'stream_delta'; payload: { text?: string; thinking?: string } };

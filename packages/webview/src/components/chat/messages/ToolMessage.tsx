@@ -169,7 +169,7 @@ const FileSectionCard: FC<FileSectionCardProps> = ({ section: { path, content },
       </div>
 
       {open && content && (
-        <div className="border-t border-vscode-editorGroup-border/30 p-2">
+        <div className="border-t border-vscode-editorGroup-border/30 p-2 pt-0">
           <CodeBlock source={content} language={language} />
         </div>
       )}
