@@ -93,6 +93,10 @@ export class AgentRunner {
       const attachments = parseImageAttachments(images);
 
       void session.prompt(promptText, { images: attachments }).catch((err) => {
+        if (this.cancelRequested) {
+          this.messenger.post({ type: 'info', payload: { text: 'Task cancelled.' } });
+          return;
+        }
         this.messenger.postError(err);
       });
     } catch (err) {
@@ -107,6 +111,10 @@ export class AgentRunner {
       void session
         .sendCustomMessage({ customType: 'environment_details', content: envDetails, display: false }, { triggerTurn: true })
         .catch((err) => {
+          if (this.cancelRequested) {
+            this.messenger.post({ type: 'info', payload: { text: 'Task cancelled.' } });
+            return;
+          }
           this.messenger.postError(err);
         });
     } catch (err) {
@@ -161,6 +169,7 @@ export class AgentRunner {
     this.cancelRequested = true;
     cancelAllQuestions();
     this.clearReplyQueue();
+    void this.session?.abort().catch((err) => logger.warn('Failed to abort session on cancel:', err));
   }
 
   public dispose(): void {
