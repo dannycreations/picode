@@ -1,4 +1,6 @@
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { cn } from 'cnfast';
+import { Pi } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ChatAction } from '@pi-code/webview/components/chat/ChatAction';
@@ -6,7 +8,7 @@ import { ChatBody } from '@pi-code/webview/components/chat/ChatBody';
 import { ChatFooter } from '@pi-code/webview/components/chat/ChatFooter';
 import { ChatHeader } from '@pi-code/webview/components/chat/ChatHeader';
 import { ChatInput } from '@pi-code/webview/components/chat/ChatInput';
-import { isRenderableMessage } from '@pi-code/webview/components/chat/helpers/message';
+import { ESTIMATED_ROW_HEIGHT, isRenderableMessage } from '@pi-code/webview/components/chat/helpers/message';
 import { useActiveTask } from '@pi-code/webview/components/chat/hooks/useActiveTask';
 import { useChatActions } from '@pi-code/webview/components/chat/hooks/useChatActions';
 import { useChatComposer } from '@pi-code/webview/components/chat/hooks/useChatComposer';
@@ -22,27 +24,6 @@ import { postCompactMessage, vscode } from '@pi-code/webview/utilities/vscode';
 
 import type { FC } from 'react';
 import type { ExtensionToWebviewMessage, HistoryItem } from '@pi-code/shared/core/protocol';
-
-const ChatLogo: FC = () => {
-  return (
-    <div className="flex items-center justify-center w-14 h-14 mx-auto my-2">
-      <svg
-        className="w-full h-full text-vscode-focusBorder"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <rect x="2" y="2" width="20" height="20" rx="4" />
-        <path d="m16 8-4 4 4 4" />
-        <path d="M12 8v8" />
-        <path d="m8 8 4 4-4 4" />
-      </svg>
-    </div>
-  );
-};
 
 export const ChatView: FC = () => {
   const [historyExpanded, setHistoryExpanded] = useState(true);
@@ -111,6 +92,14 @@ export const ChatView: FC = () => {
 
   const messages = activeTask?.messages;
   const visibleMessages = useMemo(() => (messages ?? []).filter(isRenderableMessage), [messages]);
+
+  const virtualizer = useVirtualizer({
+    count: visibleMessages.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: (index) => ESTIMATED_ROW_HEIGHT[visibleMessages[index].sender],
+    getItemKey: (index) => visibleMessages[index].id,
+    overscan: 8,
+  });
 
   // Acting on a row means the user is engaged with the newest output, so
   // re-engage bottom-follow before the response to that action arrives.
@@ -217,25 +206,33 @@ export const ChatView: FC = () => {
       {/* Main Viewport */}
       {activeTask ? (
         <div ref={scrollRef} onScroll={handleScroll} className="flex-1 min-h-0 overflow-y-auto">
-          <div ref={contentRef} className="flex flex-col p-1.5">
-            {visibleMessages.map((msg) => (
-              <ChatBody
-                key={msg.id}
-                message={msg}
-                commands={commands}
-                onApproveTool={handleApproveTool}
-                onDenyTool={handleDenyTool}
-                onAnswerQuestion={handleAnswer}
-                onCopyToInput={composer.appendToInput}
-              />
+          <div ref={contentRef} style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
+            {virtualizer.getVirtualItems().map((item) => (
+              <div
+                key={item.key}
+                data-index={item.index}
+                ref={virtualizer.measureElement}
+                style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${item.start}px)` }}
+              >
+                <ChatBody
+                  message={visibleMessages[item.index]}
+                  commands={commands}
+                  onApproveTool={handleApproveTool}
+                  onDenyTool={handleDenyTool}
+                  onAnswerQuestion={handleAnswer}
+                  onCopyToInput={composer.appendToInput}
+                />
+              </div>
             ))}
           </div>
         </div>
       ) : (
         <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
-          <div className="w-full flex-grow flex flex-col justify-start gap-4 px-3.5 transition-all duration-300">
+          <div className="w-full flex-grow flex flex-col justify-start gap-4 px-3.5">
             <div className="flex flex-col justify-center flex-grow py-4">
-              <ChatLogo />
+              <div className="flex items-center justify-center w-14 h-14 mx-auto my-2">
+                <Pi className="w-full h-full text-vscode-focusBorder" />
+              </div>
               <p className="text-vscode-editor-foreground leading-relaxed font-sans text-center text-balance max-w-[380px] mx-auto my-3 text-sm">
                 Generate, refactor, and debug code with Pi Code.
               </p>

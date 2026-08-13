@@ -111,8 +111,7 @@
 }
 
 .chat-row {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 96px;
+  contain: layout paint style;
 }
 
 .chat-input-text {

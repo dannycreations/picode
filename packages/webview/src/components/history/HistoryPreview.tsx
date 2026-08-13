@@ -34,7 +34,7 @@ export const HistoryPreview: FC<HistoryPreviewProps> = ({ history, onSelectTask,
       </div>
 
       <div className="flex flex-col gap-2">
-        {history.slice(0, 5).map((item) => (
+        {history.slice(0, 3).map((item) => (
           <HistoryCard key={item.id} item={item} onClick={() => onSelectTask(item)} onDelete={handleDeleteSingle} />
         ))}
       </div>

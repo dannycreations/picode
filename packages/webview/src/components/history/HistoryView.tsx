@@ -23,15 +23,13 @@ interface HistoryViewProps {
   readonly onExport: (item: HistoryItem) => void;
 }
 
-const ITEMS_PER_PAGE = 8;
-
 export const HistoryView: FC<HistoryViewProps> = ({ history, onSelectTask, onDone, onDeleteTasks, scope, setScope, onViewRaw, onExport }) => {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
   const [deleteConfirmPaths, setDeleteConfirmPaths] = useState<string[] | null>(null);
 
   const { searchQuery, setSearchQuery, sortBy, setSortBy, currentPage, setCurrentPage, totalPages, filteredHistory, paginatedItems } =
-    useHistoryFilter(history, ITEMS_PER_PAGE);
+    useHistoryFilter(history, 6);
 
   // Selection handlers
   const handleToggleSelection = useCallback((path: string) => {

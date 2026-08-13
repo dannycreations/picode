@@ -1,4 +1,3 @@
-import type { CSSProperties } from 'react';
 import type { ChatMessage } from '@pi-code/shared/core/types';
 
 function hasContent(value: string | undefined): boolean {
@@ -35,13 +34,13 @@ export function patchLastAssistant(messages: ChatMessage[], patch: (message: Cha
   return messages;
 }
 
-export const ROW_CONTAINMENT_STYLE: Record<ChatMessage['sender'], CSSProperties> = {
-  api_request: { containIntrinsicSize: 'auto 44px' },
-  checkpoint: { containIntrinsicSize: 'auto 44px' },
-  info: { containIntrinsicSize: 'auto 44px' },
-  error: { containIntrinsicSize: 'auto 96px' },
-  user: { containIntrinsicSize: 'auto 96px' },
-  queue: { containIntrinsicSize: 'auto 96px' },
-  tool: { containIntrinsicSize: 'auto 120px' },
-  assistant: { containIntrinsicSize: 'auto 200px' },
+export const ESTIMATED_ROW_HEIGHT: Record<ChatMessage['sender'], number> = {
+  api_request: 44,
+  checkpoint: 44,
+  info: 44,
+  error: 96,
+  user: 96,
+  queue: 96,
+  tool: 120,
+  assistant: 200,
 };
