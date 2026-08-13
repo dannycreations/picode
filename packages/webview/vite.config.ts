@@ -8,7 +8,6 @@ const srcDir = resolve(import.meta.dirname, 'src');
 
 export default defineConfig(({ command }) => {
   const isBuild = command === 'build';
-
   return {
     plugins: [
       react(),
@@ -16,7 +15,7 @@ export default defineConfig(({ command }) => {
         name: 'pi-code:static-assets',
         closeBundle: buildStaticAssets,
       },
-    ],
+    ].filter(Boolean),
     build: {
       lib: {
         entry: resolve(srcDir, 'index.tsx'),

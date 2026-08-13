@@ -68,7 +68,13 @@ async function completePrompt(cwd: string, prompt: string): Promise<string> {
   });
   logger.info('Completion response received successfully.');
 
-  return contentText(response.content).trim();
+  return (
+    contentText(response.content).trim() ||
+    response.content
+      .filter((block) => block.type === 'thinking')
+      .map((block) => block.thinking)
+      .join('\n')
+  );
 }
 
 export function registerCommitMessageCommand(): Disposable {

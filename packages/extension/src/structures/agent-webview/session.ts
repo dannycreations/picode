@@ -6,6 +6,7 @@ import { createAgentResources } from '@pi-code/extension/structures/agent-runtim
 import { collectCommands } from '@pi-code/extension/structures/chat-command/command';
 import { convertSessionEntries, loadSessionTranscript } from '@pi-code/extension/structures/chat-session/session';
 import { DEFAULT_CONTEXT_LIMIT } from '@pi-code/shared/core/constants';
+import { logger } from '@pi-code/shared/core/logger';
 
 import type { ModelRuntime, SessionInfo } from '@earendil-works/pi-coding-agent';
 import type { ChatMessage, ExtensionToWebviewMessage, HistoryItem, HistoryScope, ModelItem, StatsData } from '@pi-code/shared/core/protocol';
@@ -16,6 +17,15 @@ async function listSelectableModels(modelRuntime: ModelRuntime): Promise<ModelIt
   const available = await modelRuntime.getAvailable();
   const models = available.length > 0 ? available : modelRuntime.getModels();
   return models.map((model) => ({ id: model.id, name: model.name, provider: model.provider }));
+}
+
+function resolveDefaultModelId(models: ModelItem[], preferred: { id?: string; provider?: string }): string | undefined {
+  if (preferred.id && models.some((model) => model.id === preferred.id)) return preferred.id;
+  if (preferred.provider) {
+    const sameProvider = models.find((model) => model.provider === preferred.provider);
+    if (sameProvider) return sameProvider.id;
+  }
+  return models[0]?.id;
 }
 
 function formatSessions(sessions: SessionInfo[]): HistoryItem[] {
@@ -29,12 +39,19 @@ function formatSessions(sessions: SessionInfo[]): HistoryItem[] {
 
 export async function getInitData(cwd: string): Promise<SessionInitData> {
   const [sessions, resources] = await Promise.all([SessionManager.list(cwd), createAgentResources(cwd)]);
+
+  try {
+    await resources.services.modelRuntime.refresh({ allowNetwork: true });
+  } catch (error) {
+    logger.warn('Dynamic model refresh failed; the restored selection may fall back to another model.', error);
+  }
+
   const [models, defaultModel] = await Promise.all([listSelectableModels(resources.services.modelRuntime), getDefaultModelSelection(cwd)]);
 
   return {
     models,
     history: formatSessions(sessions),
-    default_model: defaultModel.id,
+    default_model: resolveDefaultModelId(models, defaultModel),
     settings: resources.settings,
     commands: collectCommands(resources.services.resourceLoader),
   };

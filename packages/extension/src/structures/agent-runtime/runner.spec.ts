@@ -51,7 +51,7 @@ describe('AgentRunner reply queue', () => {
 
     runner.addToReplyQueue('Hello World');
     runner.addToReplyQueue('Second Message');
-    runner['setupReplyQueueHook'](session);
+    runner['setupSessionHook'](session);
 
     const prepare = session.agent.prepareNextTurnWithContext!;
     await prepare({} as Parameters<typeof prepare>[0], new AbortController().signal);
@@ -71,7 +71,7 @@ describe('AgentRunner reply queue', () => {
     const runner = new AgentRunner(makeFakeWebview());
 
     runner.addToReplyQueue('Stays');
-    runner['setupReplyQueueHook'](session);
+    runner['setupSessionHook'](session);
 
     const prepare = session.agent.prepareNextTurnWithContext!;
     await prepare({} as Parameters<typeof prepare>[0], new AbortController().signal);

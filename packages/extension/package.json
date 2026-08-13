@@ -291,7 +291,7 @@
     "@pi-code/shared": "workspace:*",
     "minimatch": "^10.2.6",
     "shell-quote": "^1.10.0",
-    "typebox": "^1.3.12"
+    "typebox": "^1.3.13"
   },
   "devDependencies": {
     "@pi-code/webview": "workspace:*",
