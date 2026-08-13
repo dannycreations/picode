@@ -133,26 +133,3 @@ export function extractResultText(parsed: unknown): string {
   if (Array.isArray(result.content) && typeof result.content[0]?.text === 'string') return result.content[0].text;
   return '';
 }
-
-export function parseCompletionResult(toolArgs?: string, diff?: string): string {
-  if (toolArgs) {
-    try {
-      const parsed = JSON.parse(toolArgs);
-      if (parsed && typeof parsed.result === 'string') {
-        return parsed.result;
-      }
-    } catch {}
-  }
-
-  if (diff) {
-    try {
-      const parsed = JSON.parse(diff);
-      const text = extractResultText(parsed);
-      if (text) return text;
-    } catch {
-      return diff;
-    }
-  }
-
-  return '';
-}

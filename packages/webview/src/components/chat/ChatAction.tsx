@@ -40,10 +40,6 @@ export const ChatAction: FC<ChatActionProps> = ({
           <span className="w-1.5 h-1.5 rounded-full bg-vscode-errorForeground animate-pulse mr-1" />
           Cancel Task
         </button>
-      ) : activeTask.messages.some((msg) => msg.toolName === 'attempt_completion') ? (
-        <button onClick={onCloseTask} className="action-button w-full">
-          Start New Task
-        </button>
       ) : (
         <>
           <button onClick={onContinueTask} className="action-button flex-1">

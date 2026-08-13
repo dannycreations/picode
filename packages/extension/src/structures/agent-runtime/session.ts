@@ -2,7 +2,6 @@ import { AgentSession, createAgentSessionFromServices, SessionManager } from '@e
 
 import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { askQuestionTool } from '@pi-code/extension/structures/tool-call/ask-question';
-import { attemptCompletionTool } from '@pi-code/extension/structures/tool-call/attempt-completion';
 import { deleteFileTool } from '@pi-code/extension/structures/tool-call/delete-file';
 import { editFileTool } from '@pi-code/extension/structures/tool-call/edit-file';
 import { executeCommandTool } from '@pi-code/extension/structures/tool-call/execute-command';
@@ -21,7 +20,6 @@ const CUSTOM_TOOLS = [
   writeFileTool,
   executeCommandTool,
   askQuestionTool,
-  attemptCompletionTool,
   updateTodoTool,
   spawnSubagentTool,
 ] as const;

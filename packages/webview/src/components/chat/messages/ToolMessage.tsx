@@ -1,9 +1,8 @@
 import { cn } from 'cnfast';
-import { CheckCircle, ChevronUp, ClipboardCheck, Play, PocketKnife, ShieldAlert, X } from 'lucide-react';
+import { CheckCircle, ChevronUp, Play, PocketKnife, ShieldAlert, X } from 'lucide-react';
 import { useState } from 'react';
 
 import { CodeBlock } from '@pi-code/webview/components/chat/CodeBlock';
-import { Markdown } from '@pi-code/webview/components/chat/markdown/Markdown';
 import {
   getDiffStat,
   getFileToolMeta,
@@ -11,7 +10,6 @@ import {
   getToolDiffMeta,
   getToolFilePath,
   getToolLanguage,
-  parseCompletionResult,
 } from '@pi-code/webview/components/chat/messages/helpers/common';
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
 import { Spinner } from '@pi-code/webview/components/shared/Spinner';
@@ -31,10 +29,6 @@ interface ToolMessageProps {
 const FILE_TOOLS: ReadonlySet<ToolName> = new Set(['read_file', 'write_file', 'edit_file', 'delete_file']);
 
 export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDenyTool }) => {
-  if (message.toolName === 'attempt_completion') {
-    return <CompletionMessage message={message} />;
-  }
-
   const isStructuredFileTool =
     message.toolName !== undefined && FILE_TOOLS.has(message.toolName) && (message.toolName !== 'read_file' || message.files !== undefined);
 
@@ -43,27 +37,6 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
   }
 
   return <GenericToolMessage message={message} onApproveTool={onApproveTool} onDenyTool={onDenyTool} />;
-};
-
-const CompletionMessage: FC<Pick<ToolMessageProps, 'message'>> = ({ message }) => {
-  const completionResult = parseCompletionResult(message.toolArgs, message.diff);
-  const isRunning = message.toolStatus === 'running';
-
-  return (
-    <div className="group flex flex-col gap-1.5">
-      <MessageHeader
-        icon={
-          isRunning ? <Spinner className="text-vscode-focusBorder" /> : <ClipboardCheck size={14} className="text-vscode-charts-green shrink-0" />
-        }
-        title="Task Completed"
-        titleClassName="text-vscode-charts-green"
-        timestamp={message.ts}
-      />
-      <div className="ml-1.5 border-l-2 border-vscode-charts-green pl-3.5 text-sm leading-normal text-vscode-foreground select-text">
-        <Markdown markdown={completionResult || (isRunning ? 'Completing task...' : '')} />
-      </div>
-    </div>
-  );
 };
 
 const FileToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDenyTool }) => {

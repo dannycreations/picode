@@ -13,7 +13,6 @@ import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
 import { DEFAULT_CONTEXT_LIMIT } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
 
-import type { AfterToolCallResult } from '@earendil-works/pi-agent-core';
 import type { ImageContent, TextContent } from '@earendil-works/pi-ai';
 import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent';
 import type { Webview } from 'vscode';
@@ -315,17 +314,6 @@ export class AgentRunner {
       }
 
       return snapshot;
-    };
-
-    const baseAfterToolCall = session.agent.afterToolCall;
-    session.agent.afterToolCall = async (props): Promise<AfterToolCallResult> => {
-      const baseResult = (await baseAfterToolCall?.(props)) ?? {};
-      if (props.toolCall.name === 'attempt_completion') {
-        // The completion tool ends the turn by contract, so tell Pi to stop
-        // the agent loop rather than letting it request another completion.
-        return { ...baseResult, terminate: true };
-      }
-      return baseResult;
     };
   }
 

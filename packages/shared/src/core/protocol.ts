@@ -12,15 +12,7 @@ export interface ActiveTaskState extends StatsData {
 export const ACTIVE_TASK_ID = 'task-active';
 
 export type ToolName =
-  | 'attempt_completion'
-  | 'ask_question'
-  | 'write_file'
-  | 'execute_command'
-  | 'read_file'
-  | 'update_todo'
-  | 'edit_file'
-  | 'delete_file'
-  | 'spawn_subagent';
+  'ask_question' | 'write_file' | 'execute_command' | 'read_file' | 'update_todo' | 'edit_file' | 'delete_file' | 'spawn_subagent';
 
 export interface ReadFileSection {
   readonly path: string;

@@ -16,7 +16,7 @@ interface ToolCallArgs {
 // Tools that reach the user or the model without touching the workspace. A
 // sub-agent run is included because every tool it uses is policed on its own,
 // so gating the delegation itself would only add a redundant prompt.
-const SELF_APPROVING_TOOLS: ReadonlySet<ToolName> = new Set<ToolName>(['attempt_completion', 'update_todo', 'ask_question', 'spawn_subagent']);
+const SELF_APPROVING_TOOLS: ReadonlySet<ToolName> = new Set<ToolName>(['update_todo', 'ask_question', 'spawn_subagent']);
 
 function evaluateToolCall(toolName: ToolName, cwd: string, input: unknown): ApprovalDecision {
   if (SELF_APPROVING_TOOLS.has(toolName)) {
