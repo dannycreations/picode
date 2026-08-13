@@ -11,19 +11,14 @@ export interface ScrollMetrics {
 // Distance from the bottom that still counts as following the conversation.
 export const AT_BOTTOM_THRESHOLD_PX = 32;
 
-// Upward drift from the last pin that reads as a deliberate scroll rather than layout noise.
-const PIN_RELEASE_TOLERANCE_PX = 4;
-
 export function isAtBottom(metrics: ScrollMetrics, threshold: number = AT_BOTTOM_THRESHOLD_PX): boolean {
   return metrics.scrollHeight - metrics.scrollTop - metrics.clientHeight <= threshold;
 }
 
-export function hasScrolledAwayFromPin(scrollTop: number, pinnedTop: number, tolerance: number = PIN_RELEASE_TOLERANCE_PX): boolean {
-  return scrollTop < pinnedTop - tolerance;
-}
-
-export function shouldReleaseFollow(metrics: ScrollMetrics, pinnedTop: number): boolean {
-  return hasScrolledAwayFromPin(metrics.scrollTop, pinnedTop) && !isAtBottom(metrics);
+export function resolveFollowState(params: { atBottom: boolean; scrolledUp: boolean; isFollowing: boolean }): boolean {
+  if (params.atBottom) return true;
+  if (!params.isFollowing) return false;
+  return !params.scrolledUp;
 }
 
 interface UseAutoScrollReturn {
@@ -38,7 +33,7 @@ export const useAutoScroll = (resetKey?: unknown): UseAutoScrollReturn => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<ResizeObserver | null>(null);
   const isFollowingRef = useRef(true);
-  const pinnedTopRef = useRef(0);
+  const lastScrollTopRef = useRef(0);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
 
   const scrollToBottom = useCallback((): void => {
@@ -49,7 +44,7 @@ export const useAutoScroll = (resetKey?: unknown): UseAutoScrollReturn => {
     if (!scroller) return;
 
     scroller.scrollTop = scroller.scrollHeight;
-    pinnedTopRef.current = scroller.scrollTop;
+    lastScrollTopRef.current = scroller.scrollTop;
   }, []);
 
   const handleScroll = useCallback((): void => {
@@ -57,17 +52,15 @@ export const useAutoScroll = (resetKey?: unknown): UseAutoScrollReturn => {
     if (!scroller) return;
 
     const atBottom = isAtBottom(scroller);
-    if (isFollowingRef.current) {
-      if (shouldReleaseFollow(scroller, pinnedTopRef.current)) {
-        isFollowingRef.current = false;
-      } else if (atBottom) {
-        pinnedTopRef.current = scroller.scrollTop;
-      }
-    } else if (atBottom) {
-      isFollowingRef.current = true;
-      pinnedTopRef.current = scroller.scrollTop;
-    }
-    setShowScrollToBottom(!isFollowingRef.current);
+    const scrolledUp = scroller.scrollTop < lastScrollTopRef.current;
+    const isFollowing = resolveFollowState({ atBottom, scrolledUp, isFollowing: isFollowingRef.current });
+
+    lastScrollTopRef.current = scroller.scrollTop;
+
+    // Only re-render when the follow state actually flips.
+    if (isFollowing === isFollowingRef.current) return;
+    isFollowingRef.current = isFollowing;
+    setShowScrollToBottom(!isFollowing);
   }, []);
 
   // A callback ref rather than an effect: the observer has to follow the content
@@ -83,16 +76,9 @@ export const useAutoScroll = (resetKey?: unknown): UseAutoScrollReturn => {
         const scroller = scrollRef.current;
         if (!scroller || !isFollowingRef.current) return;
 
-        // The resize can be observed before the user's own scroll event is
-        // dispatched, so the live position is re-checked before overriding it.
-        if (shouldReleaseFollow(scroller, pinnedTopRef.current)) {
-          isFollowingRef.current = false;
-          setShowScrollToBottom(true);
-          return;
-        }
-
+        // Content grew while following: keep the newest output in view.
         scroller.scrollTop = scroller.scrollHeight;
-        pinnedTopRef.current = scroller.scrollTop;
+        lastScrollTopRef.current = scroller.scrollTop;
       });
 
       observer.observe(node);

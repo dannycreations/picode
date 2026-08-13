@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { AT_BOTTOM_THRESHOLD_PX, hasScrolledAwayFromPin, isAtBottom, shouldReleaseFollow } from '@pi-code/webview/hooks/useAutoScroll';
+import { AT_BOTTOM_THRESHOLD_PX, isAtBottom, resolveFollowState } from '@pi-code/webview/hooks/useAutoScroll';
 
 import type { ScrollMetrics } from '@pi-code/webview/hooks/useAutoScroll';
 
@@ -27,43 +27,21 @@ describe('isAtBottom', () => {
   });
 });
 
-describe('hasScrolledAwayFromPin', () => {
-  it('should ignore layout noise within the tolerance', () => {
-    expect(hasScrolledAwayFromPin(900, 900)).toBe(false);
-    expect(hasScrolledAwayFromPin(898, 900)).toBe(false);
+describe('resolveFollowState', () => {
+  it('should re-engage follow whenever the user reaches the bottom', () => {
+    expect(resolveFollowState({ atBottom: true, scrolledUp: false, isFollowing: false })).toBe(true);
+    expect(resolveFollowState({ atBottom: true, scrolledUp: true, isFollowing: false })).toBe(true);
   });
 
-  it('should detect a deliberate scroll upward', () => {
-    expect(hasScrolledAwayFromPin(800, 900)).toBe(true);
+  it('should release follow only on an explicit upward scroll while following', () => {
+    expect(resolveFollowState({ atBottom: false, scrolledUp: true, isFollowing: true })).toBe(false);
   });
 
-  it('should never trigger on downward movement', () => {
-    expect(hasScrolledAwayFromPin(1000, 900)).toBe(false);
-  });
-});
-
-describe('shouldReleaseFollow', () => {
-  it('should keep following when new output is appended below the viewport', () => {
-    // Output grew by 500px: the gap to the bottom is large, but scrollTop has
-    // not moved, so the user is still parked where we last pinned them.
-    const metrics = createMetrics({ scrollTop: 900, scrollHeight: 1900 });
-
-    expect(isAtBottom(metrics)).toBe(false);
-    expect(shouldReleaseFollow(metrics, 900)).toBe(false);
+  it('should keep following while already at the bottom or scrolling down', () => {
+    expect(resolveFollowState({ atBottom: false, scrolledUp: false, isFollowing: true })).toBe(true);
   });
 
-  it('should stop following when the user scrolls up by the same amount', () => {
-    const metrics = createMetrics({ scrollTop: 400, scrollHeight: 1400 });
-
-    expect(shouldReleaseFollow(metrics, 900)).toBe(true);
-  });
-
-  it('should keep following when shrinking content clamps the scroll position', () => {
-    // Collapsing an expanded diff shortens the list and the browser clamps
-    // scrollTop. That lands above the last pin but is still the bottom.
-    const metrics = createMetrics({ scrollTop: 300, scrollHeight: 800 });
-
-    expect(isAtBottom(metrics)).toBe(true);
-    expect(shouldReleaseFollow(metrics, 900)).toBe(false);
+  it('should stay released once the user has scrolled away from the bottom', () => {
+    expect(resolveFollowState({ atBottom: false, scrolledUp: false, isFollowing: false })).toBe(false);
   });
 });
