@@ -133,6 +133,9 @@ const HANDLER_MAP: HandlerMap = {
     // settings back to the webview; no need to read them back here.
     await writeAppSettings(msg.settings);
   },
+  set_thinking_level: (msg, ctx) => {
+    ctx.agent.setThinkingLevel(msg.level);
+  },
 };
 
 export async function dispatch(message: WebviewToExtensionMessage, context: MessageHandlerContext): Promise<void> {

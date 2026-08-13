@@ -59,10 +59,13 @@ export interface QueueMessage {
   readonly ts: number;
 }
 
+export type ModelThinkingLevel = 'off' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+
 export interface ModelItem {
   readonly id: string;
   readonly name: string;
   readonly provider: string;
+  readonly thinkingLevels?: readonly ModelThinkingLevel[];
 }
 
 export type ModelSelection = Pick<ModelItem, 'id' | 'provider'>;
@@ -107,6 +110,7 @@ export type WebviewToExtensionMessage =
   | { type: 'close_task' }
   | { type: 'cancel_task' }
   | { type: 'compact'; id: string; path?: string; title: string }
+  | { type: 'set_thinking_level'; level: ModelThinkingLevel }
   | { type: 'reload' }
   | { type: 'update_settings'; settings: Partial<AppSettings> }
   | { type: 'add_to_reply_queue'; text: string; images?: string[] }
@@ -116,7 +120,14 @@ export type WebviewToExtensionMessage =
 export type ExtensionToWebviewMessage =
   | {
       type: 'init_data';
-      payload: { models: ModelItem[]; history: HistoryItem[]; default_model?: string; settings: AppSettings; commands: CommandItem[] };
+      payload: {
+        models: ModelItem[];
+        history: HistoryItem[];
+        default_model?: string;
+        default_thinking_level?: ModelThinkingLevel;
+        settings: AppSettings;
+        commands: CommandItem[];
+      };
     }
   | { type: 'history_data'; payload: { history: HistoryItem[]; scope: HistoryScope } }
   | { type: 'commands_data'; payload: { commands: CommandItem[] } }

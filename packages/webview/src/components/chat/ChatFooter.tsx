@@ -1,17 +1,20 @@
 import { cn } from 'cnfast';
-import { Check, ChevronDown } from 'lucide-react';
+import { Check, ChevronDown, Sparkles } from 'lucide-react';
 import { useRef, useState } from 'react';
 
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { useClickOutside } from '@pi-code/webview/hooks/useClickOutside';
 
 import type { FC } from 'react';
-import type { ModelItem } from '@pi-code/shared/core/protocol';
+import type { ModelItem, ModelThinkingLevel } from '@pi-code/shared/core/protocol';
 
 interface ChatFooterProps {
   readonly currentModel: string;
   readonly onChangeModel: (model: string) => void;
   readonly models: ModelItem[];
+  readonly thinkingLevels: readonly ModelThinkingLevel[];
+  readonly currentThinkingLevel: ModelThinkingLevel | null;
+  readonly onChangeThinkingLevel: (level: ModelThinkingLevel) => void;
 }
 
 interface ModelDropdownMenuProps {
@@ -66,11 +69,52 @@ const ModelDropdownMenu: FC<ModelDropdownMenuProps> = ({ models, currentModel, o
   );
 };
 
-export const ChatFooter: FC<ChatFooterProps> = ({ currentModel, onChangeModel, models }) => {
+interface ThinkingLevelMenuProps {
+  readonly levels: readonly ModelThinkingLevel[];
+  readonly currentLevel: ModelThinkingLevel;
+  readonly onSelectLevel: (level: ModelThinkingLevel) => void;
+}
+
+const ThinkingLevelMenu: FC<ThinkingLevelMenuProps> = ({ levels, currentLevel, onSelectLevel }) => {
+  return (
+    <div className="absolute bottom-full right-0 mb-1 w-32 bg-vscode-dropdown-background border border-vscode-panel-border/50 rounded-md shadow-lg overflow-hidden flex flex-col z-50 py-1">
+      {levels.map((level) => {
+        const isSelected = currentLevel === level;
+        return (
+          <button
+            key={level}
+            onClick={() => onSelectLevel(level)}
+            className={cn(
+              'w-full text-left px-3 py-1.5 border-none cursor-pointer flex items-center justify-between text-xs capitalize transition-colors shrink-0',
+              isSelected
+                ? 'bg-vscode-list-hoverBackground text-vscode-foreground'
+                : 'bg-transparent text-vscode-descriptionForeground hover:bg-vscode-list-hoverBackground/50 hover:text-vscode-foreground',
+            )}
+          >
+            <span className="truncate mr-2">{level}</span>
+            {isSelected && <Check size={10} className="text-vscode-focusBorder shrink-0" />}
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
+export const ChatFooter: FC<ChatFooterProps> = ({
+  currentModel,
+  onChangeModel,
+  models,
+  thinkingLevels,
+  currentThinkingLevel,
+  onChangeThinkingLevel,
+}) => {
   const [showModelMenu, setShowModelMenu] = useState(false);
+  const [showThinkingMenu, setShowThinkingMenu] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const thinkingRef = useRef<HTMLDivElement>(null);
 
   useClickOutside(dropdownRef, () => setShowModelMenu(false));
+  useClickOutside(thinkingRef, () => setShowThinkingMenu(false));
 
   const displayModels = [...models];
   if (currentModel && !models.some((m) => m.id === currentModel)) {
@@ -79,9 +123,12 @@ export const ChatFooter: FC<ChatFooterProps> = ({ currentModel, onChangeModel, m
 
   const selectedModelObj = displayModels.find((m) => m.id === currentModel) || displayModels[0] || { id: '', name: 'No model selected' };
 
+  // Only surface the control once the model exposes more than its "off" baseline.
+  const showThinking = thinkingLevels.length > 1 && currentThinkingLevel !== null;
+
   return (
-    <div className="flex flex-row w-auto items-center justify-between h-[30px] mx-3.5 mt-1 mb-2 gap-1 shrink-0 select-none">
-      <div className="flex flex-row justify-start gap-1 grow relative" ref={dropdownRef}>
+    <div className="flex flex-row w-auto items-center h-[30px] mx-3.5 mt-1 mb-2 gap-1 shrink-0 select-none">
+      <div className="flex flex-row justify-start gap-1 relative" ref={dropdownRef}>
         <Tooltip content={`Model: ${selectedModelObj.id}`}>
           <button
             onClick={() => setShowModelMenu(!showModelMenu)}
@@ -104,6 +151,32 @@ export const ChatFooter: FC<ChatFooterProps> = ({ currentModel, onChangeModel, m
           />
         )}
       </div>
+
+      {showThinking && (
+        <div className="flex flex-row relative shrink-0" ref={thinkingRef}>
+          <Tooltip content={`Thinking level: ${currentThinkingLevel}`}>
+            <button
+              onClick={() => setShowThinkingMenu(!showThinkingMenu)}
+              className="px-2 py-0.5 text-muted hover:text-vscode-foreground bg-transparent hover:bg-vscode-list-hoverBackground border border-vscode-panel-border/50 rounded flex items-center gap-1 cursor-pointer capitalize"
+            >
+              <Sparkles size={10} />
+              <span className="text-xs">{currentThinkingLevel}</span>
+              <ChevronDown size={10} />
+            </button>
+          </Tooltip>
+
+          {showThinkingMenu && (
+            <ThinkingLevelMenu
+              levels={thinkingLevels}
+              currentLevel={currentThinkingLevel}
+              onSelectLevel={(level) => {
+                onChangeThinkingLevel(level);
+                setShowThinkingMenu(false);
+              }}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 };

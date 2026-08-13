@@ -1,9 +1,10 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { DEFAULT_MODEL_ID } from '@pi-code/shared/core/protocol';
+import { vscode } from '@pi-code/webview/utilities/vscode';
 
 import type { Dispatch, SetStateAction } from 'react';
-import type { CommandItem, ExtensionToWebviewMessage, ModelItem, ModelSelection } from '@pi-code/shared/core/protocol';
+import type { CommandItem, ExtensionToWebviewMessage, ModelItem, ModelSelection, ModelThinkingLevel } from '@pi-code/shared/core/protocol';
 import type { AppSettings } from '@pi-code/shared/core/settings';
 
 interface UseChatConfigReturn {
@@ -13,7 +14,16 @@ interface UseChatConfigReturn {
   readonly selectedModel: string;
   readonly modelSelection: ModelSelection;
   readonly setSelectedModel: Dispatch<SetStateAction<string>>;
+  readonly thinkingLevels: readonly ModelThinkingLevel[];
+  readonly selectedThinkingLevel: ModelThinkingLevel | null;
+  readonly setSelectedThinkingLevel: (level: ModelThinkingLevel) => void;
   readonly onMessage: (msg: ExtensionToWebviewMessage) => void;
+}
+
+function defaultThinkingLevel(levels: readonly ModelThinkingLevel[]): ModelThinkingLevel | null {
+  if (levels.length === 0) return null;
+  if (levels.includes('medium')) return 'medium';
+  return levels.find((level) => level !== 'off') ?? levels[0];
 }
 
 export const useChatConfig = (): UseChatConfigReturn => {
@@ -21,15 +31,23 @@ export const useChatConfig = (): UseChatConfigReturn => {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL_ID);
   const [commands, setCommands] = useState<CommandItem[]>([]);
+  const [selectedThinkingLevel, setSelectedThinkingLevelState] = useState<ModelThinkingLevel | null>(null);
 
   const onMessage = useCallback((msg: ExtensionToWebviewMessage): void => {
     switch (msg.type) {
       case 'init_data': {
-        const { models: backendModels, default_model: defaultModel, settings: backendSettings, commands: backendCommands } = msg.payload;
+        const {
+          models: backendModels,
+          default_model: defaultModel,
+          default_thinking_level: defaultThinkingLevel,
+          settings: backendSettings,
+          commands: backendCommands,
+        } = msg.payload;
         setModels(backendModels);
         setSettings(backendSettings ?? null);
         setCommands(backendCommands ?? []);
         setSelectedModel(defaultModel || backendModels[0]?.id || DEFAULT_MODEL_ID);
+        setSelectedThinkingLevelState(defaultThinkingLevel ?? null);
         break;
       }
 
@@ -50,5 +68,36 @@ export const useChatConfig = (): UseChatConfigReturn => {
     [models, selectedModel],
   );
 
-  return { models, settings, commands, selectedModel, modelSelection, setSelectedModel, onMessage };
+  const thinkingLevels = useMemo<readonly ModelThinkingLevel[]>(
+    () => models.find((m) => m.id === selectedModel)?.thinkingLevels ?? [],
+    [models, selectedModel],
+  );
+
+  // Keep the displayed level valid for the selected model; drop to a default
+  // only when the current choice is unsupported (e.g. after a model switch).
+  useEffect(() => {
+    setSelectedThinkingLevelState((current) => {
+      if (thinkingLevels.length === 0) return null;
+      if (current && thinkingLevels.includes(current)) return current;
+      return defaultThinkingLevel(thinkingLevels);
+    });
+  }, [thinkingLevels]);
+
+  const setSelectedThinkingLevel = useCallback((level: ModelThinkingLevel): void => {
+    setSelectedThinkingLevelState(level);
+    vscode?.postMessage({ type: 'set_thinking_level', level });
+  }, []);
+
+  return {
+    models,
+    settings,
+    commands,
+    selectedModel,
+    modelSelection,
+    setSelectedModel,
+    thinkingLevels,
+    selectedThinkingLevel,
+    setSelectedThinkingLevel,
+    onMessage,
+  };
 };

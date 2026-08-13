@@ -83,7 +83,17 @@ export const ChatView: FC = () => {
   }, [pendingQuestionId, composer.textareaRef]);
 
   const { activeTask, isAgentRunning, pendingQuestion } = task;
-  const { models, settings, selectedModel, modelSelection, setSelectedModel, commands } = config;
+  const {
+    models,
+    settings,
+    selectedModel,
+    modelSelection,
+    setSelectedModel,
+    thinkingLevels,
+    selectedThinkingLevel,
+    setSelectedThinkingLevel,
+    commands,
+  } = config;
   const { pastTasks, deleteSessions, scope, setScope } = history;
   const { view, setView, inputValue, setInputValue, textareaRef } = composer;
 
@@ -277,7 +287,14 @@ export const ChatView: FC = () => {
       />
 
       {/* Footer */}
-      <ChatFooter currentModel={selectedModel} onChangeModel={setSelectedModel} models={models} />
+      <ChatFooter
+        currentModel={selectedModel}
+        onChangeModel={setSelectedModel}
+        models={models}
+        thinkingLevels={thinkingLevels}
+        currentThinkingLevel={selectedThinkingLevel}
+        onChangeThinkingLevel={setSelectedThinkingLevel}
+      />
 
       {/* Delete Modal */}
       <ConfirmDialog

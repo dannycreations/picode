@@ -1,6 +1,6 @@
 import { uuidv7 } from '@earendil-works/pi-ai';
 
-import { readAppSettings } from '@pi-code/extension/core/settings';
+import { getSettingsManager, readAppSettings } from '@pi-code/extension/core/settings';
 import { cancelAllQuestions } from '@pi-code/extension/structures/agent-runtime/brokers/question';
 import { EventMapper } from '@pi-code/extension/structures/agent-runtime/event';
 import { createSession } from '@pi-code/extension/structures/agent-runtime/session';
@@ -17,7 +17,14 @@ import type { AfterToolCallResult } from '@earendil-works/pi-agent-core';
 import type { ImageContent, TextContent } from '@earendil-works/pi-ai';
 import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent';
 import type { Webview } from 'vscode';
-import type { ChatMessage, ExtensionToWebviewMessage, ModelSelection, QueueMessage, StatsData } from '@pi-code/shared/core/protocol';
+import type {
+  ChatMessage,
+  ExtensionToWebviewMessage,
+  ModelSelection,
+  ModelThinkingLevel,
+  QueueMessage,
+  StatsData,
+} from '@pi-code/shared/core/protocol';
 
 function parseImageAttachments(images?: string[]): ImageContent[] | undefined {
   if (!images || images.length === 0) return undefined;
@@ -35,6 +42,7 @@ export class AgentRunner {
   private unsubscribeSessionEvents: (() => void) | null = null;
   private replyQueue: QueueMessage[] = [];
   private cancelRequested = false;
+  private pendingThinkingLevel?: ModelThinkingLevel;
 
   private readonly event = new EventMapper();
   private readonly messenger = new WebviewMessenger();
@@ -159,6 +167,22 @@ export class AgentRunner {
     }
   }
 
+  public setThinkingLevel(level: ModelThinkingLevel): void {
+    this.pendingThinkingLevel = level;
+    try {
+      getSettingsManager(getWorkspaceCwd()).setDefaultThinkingLevel(level);
+    } catch (err) {
+      logger.warn(`Could not persist thinking level ${level}:`, err);
+    }
+    if (this.session) {
+      try {
+        this.session.setThinkingLevel(level);
+      } catch (err) {
+        logger.warn(`Could not apply thinking level ${level}:`, err);
+      }
+    }
+  }
+
   public reset(): void {
     this.cleanupSession();
     cancelAllQuestions();
@@ -200,6 +224,14 @@ export class AgentRunner {
 
     // Apply and persist the model chosen in the footer before prompting.
     await this.applySelectedModel(session, selectedModel);
+
+    if (this.pendingThinkingLevel) {
+      try {
+        session.setThinkingLevel(this.pendingThinkingLevel);
+      } catch (err) {
+        logger.warn(`Could not apply thinking level ${this.pendingThinkingLevel}:`, err);
+      }
+    }
 
     const isNewSession = session.agent.state.messages.length === 0;
     const envDetails = await getEnvironmentDetails(cwd, isNewSession);

@@ -1,22 +1,46 @@
+import { getSupportedThinkingLevels } from '@earendil-works/pi-ai';
 import { SessionManager } from '@earendil-works/pi-coding-agent';
 import { Uri, window, workspace } from 'vscode';
 
-import { getDefaultModelSelection } from '@pi-code/extension/core/settings';
+import { getDefaultModelSelection, getSettingsManager } from '@pi-code/extension/core/settings';
 import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { collectCommands } from '@pi-code/extension/structures/chat-command/command';
 import { convertSessionEntries, loadSessionTranscript } from '@pi-code/extension/structures/chat-session/session';
 import { DEFAULT_CONTEXT_LIMIT } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
 
+import type { Api, Model } from '@earendil-works/pi-ai';
 import type { ModelRuntime, SessionInfo } from '@earendil-works/pi-coding-agent';
-import type { ChatMessage, ExtensionToWebviewMessage, HistoryItem, HistoryScope, ModelItem, StatsData } from '@pi-code/shared/core/protocol';
+import type {
+  ChatMessage,
+  ExtensionToWebviewMessage,
+  HistoryItem,
+  HistoryScope,
+  ModelItem,
+  ModelThinkingLevel,
+  StatsData,
+} from '@pi-code/shared/core/protocol';
 
 type SessionInitData = Extract<ExtensionToWebviewMessage, { type: 'init_data' }>['payload'];
+
+const THINKING_LEVEL_ORDER: readonly ModelThinkingLevel[] = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'];
+
+function resolveThinkingLevels(model: Model<Api>): ModelThinkingLevel[] {
+  if (!model.reasoning) return [];
+  const map = model.thinkingLevelMap;
+  const levels = map ? (Object.keys(map) as ModelThinkingLevel[]).filter((level) => map[level] !== null) : getSupportedThinkingLevels(model);
+  return THINKING_LEVEL_ORDER.filter((level) => levels.includes(level));
+}
 
 async function listSelectableModels(modelRuntime: ModelRuntime): Promise<ModelItem[]> {
   const available = await modelRuntime.getAvailable();
   const models = available.length > 0 ? available : modelRuntime.getModels();
-  return models.map((model) => ({ id: model.id, name: model.name, provider: model.provider }));
+  return models.map((model) => ({
+    id: model.id,
+    name: model.name,
+    provider: model.provider,
+    thinkingLevels: resolveThinkingLevels(model),
+  }));
 }
 
 function resolveDefaultModelId(models: ModelItem[], preferred: { id?: string; provider?: string }): string | undefined {
@@ -48,10 +72,13 @@ export async function getInitData(cwd: string): Promise<SessionInitData> {
 
   const [models, defaultModel] = await Promise.all([listSelectableModels(resources.services.modelRuntime), getDefaultModelSelection(cwd)]);
 
+  const thinkingLevel = getSettingsManager(cwd).getDefaultThinkingLevel() ?? undefined;
+
   return {
     models,
     history: formatSessions(sessions),
     default_model: resolveDefaultModelId(models, defaultModel),
+    default_thinking_level: thinkingLevel,
     settings: resources.settings,
     commands: collectCommands(resources.services.resourceLoader),
   };
