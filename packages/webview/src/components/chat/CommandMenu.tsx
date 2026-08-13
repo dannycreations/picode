@@ -26,7 +26,7 @@ export const CommandMenu: FC<CommandMenuProps> = ({ commands, selectedIndex, onS
 
   return (
     <div
-      className="absolute bottom-full left-3.5 right-3.5 z-50 mb-1 overflow-hidden rounded border border-vscode-editorGroup-border bg-vscode-dropdown-background shadow-lg"
+      className="absolute bottom-full -left-px -right-px z-50 mb-1 overflow-hidden rounded border border-vscode-editorGroup-border bg-vscode-dropdown-background shadow-lg"
       // Keep focus in the textarea so clicking a row does not blur-and-close first.
       onMouseDown={(event) => event.preventDefault()}
     >

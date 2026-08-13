@@ -30,7 +30,7 @@ const AttachedImagesPreview: FC<{
   if (images.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap gap-2 mb-2 mt-1">
+    <div className="flex flex-wrap gap-2 mb-2">
       {images.map((img, idx) => (
         <div key={idx} className="relative w-10 h-10 rounded border border-vscode-panel-border overflow-hidden group">
           <img src={img} alt="attachment" className="w-full h-full object-cover" />
@@ -116,10 +116,6 @@ export const ChatInput: FC<ChatInputProps> = ({ inputValue, setInputValue, onSen
 
   return (
     <div className={cn('relative flex flex-col px-3.5 pt-2 pb-1 outline-none w-full box-border bg-vscode-sideBar-background shrink-0')}>
-      {command.isOpen && (
-        <CommandMenu commands={command.matches} selectedIndex={command.selectedIndex} onSelect={command.select} onHover={command.setSelectedIndex} />
-      )}
-
       <AttachedImagesPreview images={selectedImages} onRemove={(idx) => setSelectedImages((prev) => prev.filter((_, i) => i !== idx))} />
 
       <div
@@ -128,6 +124,14 @@ export const ChatInput: FC<ChatInputProps> = ({ inputValue, setInputValue, onSen
           isFocused ? 'border-vscode-focusBorder ring-1 ring-vscode-focusBorder' : 'border-vscode-input-border bg-vscode-input-background',
         )}
       >
+        {command.isOpen && (
+          <CommandMenu
+            commands={command.matches}
+            selectedIndex={command.selectedIndex}
+            onSelect={command.select}
+            onHover={command.setSelectedIndex}
+          />
+        )}
         <div className="relative flex">
           <div
             ref={matchRef}

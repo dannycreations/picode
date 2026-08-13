@@ -1,11 +1,11 @@
 import { cn } from 'cnfast';
-import { Check, ChevronDown, Sparkles } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { ChevronDown, Sparkles } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { useClickOutside } from '@pi-code/webview/hooks/useClickOutside';
 
-import type { FC } from 'react';
+import type { FC, Ref } from 'react';
 import type { ModelItem } from '@pi-code/shared/core/protocol';
 import type { ModelThinkingLevel } from '@pi-code/shared/core/types';
 
@@ -29,10 +29,12 @@ interface DropdownMenuItemProps {
   readonly selected: boolean;
   readonly onSelect: () => void;
   readonly className?: string;
+  readonly buttonRef?: Ref<HTMLButtonElement>;
 }
 
-const DropdownMenuItem: FC<DropdownMenuItemProps> = ({ label, selected, onSelect, className = '' }) => (
+const DropdownMenuItem: FC<DropdownMenuItemProps> = ({ label, selected, onSelect, className = '', buttonRef }) => (
   <button
+    ref={buttonRef}
     onClick={onSelect}
     className={cn(
       'w-full text-left px-3 py-1.5 border-none cursor-pointer flex items-center justify-between text-xs transition-colors shrink-0',
@@ -43,7 +45,6 @@ const DropdownMenuItem: FC<DropdownMenuItemProps> = ({ label, selected, onSelect
     )}
   >
     <span className="truncate mr-2">{label}</span>
-    {selected && <Check size={10} className="text-vscode-focusBorder shrink-0" />}
   </button>
 );
 
@@ -52,6 +53,11 @@ const ModelDropdownMenu: FC<ModelDropdownMenuProps> = ({ models, currentModel, o
   const filteredModels = models.filter(
     (m) => m.name.toLowerCase().includes(searchQuery.toLowerCase()) || m.id.toLowerCase().includes(searchQuery.toLowerCase()),
   );
+  const selectedItemRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    selectedItemRef.current?.scrollIntoView({ block: 'center' });
+  }, []);
 
   return (
     <div className="absolute bottom-full left-0 mb-1 w-64 bg-vscode-dropdown-background border border-vscode-panel-border/50 rounded-md shadow-lg overflow-hidden flex flex-col z-50 max-h-60">
@@ -69,7 +75,15 @@ const ModelDropdownMenu: FC<ModelDropdownMenuProps> = ({ models, currentModel, o
         {filteredModels.length > 0 ? (
           filteredModels.map((m) => {
             const isSelected = currentModel === m.id;
-            return <DropdownMenuItem key={m.id} label={m.name} selected={isSelected} onSelect={() => onSelectModel(m.id)} />;
+            return (
+              <DropdownMenuItem
+                key={m.id}
+                label={m.name}
+                selected={isSelected}
+                onSelect={() => onSelectModel(m.id)}
+                buttonRef={isSelected ? selectedItemRef : undefined}
+              />
+            );
           })
         ) : (
           <div className="px-3 py-2 text-muted text-center">No models found</div>

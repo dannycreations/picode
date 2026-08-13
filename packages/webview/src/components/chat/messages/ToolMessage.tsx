@@ -134,14 +134,15 @@ const FileSectionCard: FC<FileSectionCardProps> = ({ section: { path, content },
           )}
         />
         {path ? (
-          <button
-            type="button"
-            onClick={() => setOpen(!open)}
-            title={path}
-            className="font-mono text-xs text-vscode-foreground truncate hover:text-vscode-textLink cursor-pointer select-text"
-          >
-            {path}
-          </button>
+          <Tooltip content={path}>
+            <button
+              type="button"
+              onClick={() => setOpen(!open)}
+              className="font-mono text-xs text-vscode-foreground truncate hover:text-vscode-textLink cursor-pointer select-text"
+            >
+              {path}
+            </button>
+          </Tooltip>
         ) : (
           <span className="font-mono text-xs text-vscode-descriptionForeground truncate select-text">File</span>
         )}
@@ -150,13 +151,14 @@ const FileSectionCard: FC<FileSectionCardProps> = ({ section: { path, content },
           <div className="flex items-center shrink-0">
             {language === 'diff' && <DiffStat content={content} className="group-hover:hidden" />}
             <span className="hidden group-hover:inline-flex">
-              <button
-                type="button"
-                onClick={() => onOpenFile(path, content)}
-                title="Open file"
-                aria-label="Open file"
-                className="codicon codicon-link-external text-vscode-descriptionForeground hover:text-vscode-foreground cursor-pointer"
-              />
+              <Tooltip content="Open file">
+                <button
+                  type="button"
+                  onClick={() => onOpenFile(path, content)}
+                  aria-label="Open file"
+                  className="codicon codicon-link-external text-vscode-descriptionForeground hover:text-vscode-foreground cursor-pointer"
+                />
+              </Tooltip>
             </span>
           </div>
         )}
@@ -205,7 +207,9 @@ const GenericToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
             <div className="flex-1 min-w-0">
               <div className="font-mono text-xs text-vscode-foreground truncate select-text">{message.text}</div>
               {message.toolArgs && (
-                <div className="mt-1 font-mono text-xs text-vscode-descriptionForeground truncate select-text">Arguments: {message.toolArgs}</div>
+                <Tooltip content={message.toolArgs}>
+                  <div className="mt-1 font-mono text-xs text-vscode-descriptionForeground truncate select-text">Arguments: {message.toolArgs}</div>
+                </Tooltip>
               )}
             </div>
           </div>
