@@ -8,7 +8,7 @@ import { ChatBody } from '@pi-code/webview/components/chat/ChatBody';
 import { ChatFooter } from '@pi-code/webview/components/chat/ChatFooter';
 import { ChatHeader } from '@pi-code/webview/components/chat/ChatHeader';
 import { ChatInput } from '@pi-code/webview/components/chat/ChatInput';
-import { ESTIMATED_ROW_HEIGHT, isRenderableMessage } from '@pi-code/webview/components/chat/helpers/message';
+import { ESTIMATED_ROW_HEIGHT, groupFileToolMessages, isRenderableMessage } from '@pi-code/webview/components/chat/helpers/message';
 import { useActiveTask } from '@pi-code/webview/components/chat/hooks/useActiveTask';
 import { useChatActions } from '@pi-code/webview/components/chat/hooks/useChatActions';
 import { useChatComposer } from '@pi-code/webview/components/chat/hooks/useChatComposer';
@@ -92,12 +92,13 @@ export const ChatView: FC = () => {
 
   const messages = activeTask?.messages;
   const visibleMessages = useMemo(() => (messages ?? []).filter(isRenderableMessage), [messages]);
+  const renderItems = useMemo(() => groupFileToolMessages(visibleMessages), [visibleMessages]);
 
   const virtualizer = useVirtualizer({
-    count: visibleMessages.length,
+    count: renderItems.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: (index) => ESTIMATED_ROW_HEIGHT[visibleMessages[index].sender],
-    getItemKey: (index) => visibleMessages[index].id,
+    estimateSize: (index) => ESTIMATED_ROW_HEIGHT[renderItems[index].sender],
+    getItemKey: (index) => renderItems[index].id,
     overscan: 8,
   });
 
@@ -215,7 +216,7 @@ export const ChatView: FC = () => {
                 style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${item.start}px)` }}
               >
                 <ChatBody
-                  message={visibleMessages[item.index]}
+                  message={renderItems[item.index]}
                   commands={commands}
                   onApproveTool={handleApproveTool}
                   onDenyTool={handleDenyTool}
@@ -279,7 +280,7 @@ export const ChatView: FC = () => {
           handleSendPrompt(text, images);
         }}
         sendingDisabled={isInputDisabled}
-        placeholderText={pendingQuestion ? 'Type your answer...' : activeTask ? 'Reply to Pi Code...' : 'Ask a question or type a command...'}
+        placeholderText={pendingQuestion ? 'Type your answer...' : activeTask ? 'Reply something...' : 'Ask a question or type a command...'}
       />
 
       {/* Footer */}

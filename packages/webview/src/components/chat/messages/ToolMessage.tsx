@@ -4,22 +4,26 @@ import { useState } from 'react';
 
 import { CodeBlock } from '@pi-code/webview/components/chat/CodeBlock';
 import { getDiffStat, getFirstDiffLine } from '@pi-code/webview/components/chat/messages/helpers/common';
-import { getFileToolMeta, getToolDiffMeta, getToolFilePath, getToolLanguage } from '@pi-code/webview/components/chat/messages/helpers/tool';
+import {
+  FILE_TOOLS,
+  getFileToolMeta,
+  getToolDiffMeta,
+  getToolFilePath,
+  getToolLanguage,
+} from '@pi-code/webview/components/chat/messages/helpers/tool';
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
 import { Spinner } from '@pi-code/webview/components/shared/Spinner';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { vscode } from '@pi-code/webview/utilities/vscode';
 
 import type { FC } from 'react';
-import type { ChatMessage, ReadFileSection, ToolName } from '@pi-code/shared/core/types';
+import type { ChatMessage, ReadFileSection } from '@pi-code/shared/core/types';
 
 interface ToolMessageProps {
   readonly message: ChatMessage;
   readonly onApproveTool: (msgId: string) => void;
   readonly onDenyTool: (msgId: string) => void;
 }
-
-const FILE_TOOLS: ReadonlySet<ToolName> = new Set(['read_file', 'write_file', 'edit_file', 'delete_file']);
 
 export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDenyTool }) => {
   const isStructuredFileTool =

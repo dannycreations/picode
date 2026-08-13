@@ -1,5 +1,9 @@
 import { safeJsonParse } from '@pi-code/webview/components/chat/messages/helpers/common';
 
+import type { ToolName } from '@pi-code/shared/core/types';
+
+export const FILE_TOOLS: ReadonlySet<ToolName> = new Set(['read_file', 'write_file', 'edit_file', 'delete_file']);
+
 interface ToolMeta {
   readonly diffLabel: string;
   readonly diffIcon: string;

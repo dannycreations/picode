@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { AgentRunner } from '@pi-code/extension/structures/agent-runtime/runner';
+import { logger } from '@pi-code/shared/core/logger';
 
 import type { AgentSession } from '@earendil-works/pi-coding-agent';
 import type { Webview } from 'vscode';
@@ -67,6 +68,7 @@ describe('AgentRunner reply queue', () => {
     const steer = vi.fn(() => {
       throw new Error('boom');
     });
+    const logError = vi.spyOn(logger, 'error').mockImplementation(() => {});
     const session = makeFakeSession(steer);
     const runner = new AgentRunner(makeFakeWebview());
 
@@ -78,5 +80,6 @@ describe('AgentRunner reply queue', () => {
 
     expect(steer).toHaveBeenCalledTimes(1);
     expect(runner['replyQueue'].map((m) => m.text)).toEqual(['Stays']);
+    expect(logError).toHaveBeenCalledTimes(1);
   });
 });
