@@ -13,27 +13,29 @@ interface ApiRequestSettlePatch {
   readonly error?: string;
 }
 
-function settlePendingApiRequests(messages: ChatMessage[], patch: ApiRequestSettlePatch = {}): ChatMessage[] {
+function settlePendingTurns(messages: ChatMessage[], patch: ApiRequestSettlePatch = {}): ChatMessage[] {
   let changed = false;
   const next = messages.map((m) => {
-    if (m.sender !== 'api_request' || m.toolStatus !== 'running') return m;
-    changed = true;
-    return {
-      ...m,
-      toolStatus: patch.error ? ('denied' as const) : ('completed' as const),
-      cost: patch.cost ?? m.cost,
-      errorMessage: patch.error ?? m.errorMessage,
-    };
+    if (m.toolStatus !== 'running') return m;
+    if (m.sender === 'api_request') {
+      changed = true;
+      return {
+        ...m,
+        toolStatus: patch.error ? ('denied' as const) : ('completed' as const),
+        cost: patch.cost ?? m.cost,
+        errorMessage: patch.error ?? m.errorMessage,
+      };
+    }
+    if (m.sender === 'assistant') {
+      changed = true;
+      return {
+        ...m,
+        toolStatus: 'completed' as const,
+      };
+    }
+    return m;
   });
   return changed ? next : messages;
-}
-
-// A turn can end while an assistant row is still marked running (error, abort,
-// or a tool-only turn), so close those out alongside the API request rows.
-function settleTurn(messages: ChatMessage[], patch?: ApiRequestSettlePatch): ChatMessage[] {
-  return settlePendingApiRequests(messages, patch).map((m) =>
-    m.sender === 'assistant' && m.toolStatus === 'running' ? { ...m, toolStatus: 'completed' as const } : m,
-  );
 }
 
 // Approval and execution events for the same tool call arrive in either order,
@@ -130,7 +132,7 @@ export const useActiveTask = (): UseActiveTaskReturn => {
           const { timestamp } = msg.payload;
           setIsAgentRunning(true);
           updateMessages((messages) => [
-            ...settlePendingApiRequests(messages),
+            ...settlePendingTurns(messages),
             { id: `assistant-${timestamp}`, sender: 'assistant', text: '', ts: timestamp, toolStatus: 'running' },
           ]);
           break;
@@ -142,7 +144,7 @@ export const useActiveTask = (): UseActiveTaskReturn => {
           updateMessages((messages) =>
             messages.some((m) => m.id === id)
               ? messages
-              : [...settlePendingApiRequests(messages), { id, sender: 'api_request', text: 'API Request', ts: timestamp, toolStatus: 'running' }],
+              : [...settlePendingTurns(messages), { id, sender: 'api_request', text: 'API Request', ts: timestamp, toolStatus: 'running' }],
           );
           break;
         }
@@ -153,11 +155,11 @@ export const useActiveTask = (): UseActiveTaskReturn => {
             const target = prev.messages.find((m) => m.id === id && m.sender === 'api_request');
             let messages = target
               ? patchMessage(prev.messages, id, {
-                  toolStatus: error ? 'denied' : 'completed',
+                  toolStatus: error ? 'denied' : 'running',
                   cost: cost ?? target.cost,
                   errorMessage: error ?? target.errorMessage,
                 })
-              : settlePendingApiRequests(prev.messages, { cost, error });
+              : settlePendingTurns(prev.messages, { cost, error });
 
             if (error) {
               messages = appendOnce(messages, { id: `${id}-error`, sender: 'error', text: error, errorMessage: error, ts: Date.now() });
@@ -172,8 +174,8 @@ export const useActiveTask = (): UseActiveTaskReturn => {
           const { cost, stats } = msg.payload;
           updateTask((prev) => ({
             ...prev,
-            messages: patchLastAssistant(settlePendingApiRequests(prev.messages, { cost }), (message) => ({
-              toolStatus: 'completed',
+            messages: patchLastAssistant(settlePendingTurns(prev.messages, { cost }), (message) => ({
+              toolStatus: 'running',
               cost: cost ?? message.cost,
             })),
             ...stats,
@@ -184,7 +186,7 @@ export const useActiveTask = (): UseActiveTaskReturn => {
         case 'stream_delta': {
           const { text, thinking } = msg.payload;
           updateMessages((messages) =>
-            patchLastAssistant(settlePendingApiRequests(messages), (message) => ({
+            patchLastAssistant(settlePendingTurns(messages), (message) => ({
               text: text ? message.text + text : message.text,
               reasoning: thinking ? (message.reasoning || '') + thinking : message.reasoning,
             })),
@@ -195,7 +197,13 @@ export const useActiveTask = (): UseActiveTaskReturn => {
         case 'tool_approval_request': {
           const { id, tool_name, arguments: toolArgs, subagent } = msg.payload;
           updateMessages((messages) =>
-            upsertToolMessage(messages, id, { text: tool_name, toolName: tool_name, toolArgs, toolStatus: 'approval', subagent }),
+            upsertToolMessage(settlePendingTurns(messages), id, {
+              text: tool_name,
+              toolName: tool_name,
+              toolArgs,
+              toolStatus: 'approval',
+              subagent,
+            }),
           );
           break;
         }
@@ -203,7 +211,14 @@ export const useActiveTask = (): UseActiveTaskReturn => {
         case 'tool_execution_start': {
           const { id, tool_name, arguments: toolArgs } = msg.payload;
           setIsAgentRunning(true);
-          updateMessages((messages) => upsertToolMessage(messages, id, { text: tool_name, toolName: tool_name, toolArgs, toolStatus: 'running' }));
+          updateMessages((messages) =>
+            upsertToolMessage(settlePendingTurns(messages), id, {
+              text: tool_name,
+              toolName: tool_name,
+              toolArgs,
+              toolStatus: 'running',
+            }),
+          );
           break;
         }
 
@@ -233,7 +248,7 @@ export const useActiveTask = (): UseActiveTaskReturn => {
           const { message } = msg.payload;
           setIsAgentRunning(false);
           updateMessages((messages) =>
-            appendOnce(settleTurn(messages, { error: message }), {
+            appendOnce(settlePendingTurns(messages, { error: message }), {
               id: crypto.randomUUID(),
               sender: 'error',
               text: message,
@@ -246,7 +261,7 @@ export const useActiveTask = (): UseActiveTaskReturn => {
 
         case 'agent_settled':
           setIsAgentRunning(false);
-          updateTask((prev) => ({ ...prev, messages: settleTurn(prev.messages), ...msg.payload }));
+          updateTask((prev) => ({ ...prev, messages: settlePendingTurns(prev.messages), ...msg.payload }));
           break;
 
         case 'info': {
