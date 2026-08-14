@@ -43,8 +43,6 @@ const StackedToolGroup: FC<ToolMessageProps> = ({ message, onApproveTool, onDeny
   const hasMore = hiddenCount > 0;
   const hasApproval = message.toolStatus === 'approval';
   const isSubagent = message.toolName === 'spawn_subagent';
-  const isSubagentRunning = message.toolStatus === 'running';
-  const showSubagentTimer = isSubagent && (isSubagentRunning || message.toolStatus === 'completed');
   const visibleSections = isExpanded ? sections : sections.slice(0, 1);
 
   const openFile = (target: string, content?: string) => {
@@ -66,20 +64,26 @@ const StackedToolGroup: FC<ToolMessageProps> = ({ message, onApproveTool, onDeny
 
       <div className="ml-6 text-sm">
         <div className="border border-vscode-editorGroup-border rounded-md overflow-hidden bg-vscode-input-background">
-          {visibleSections.map((section, index) => (
-            <ToolSectionCard
-              key={index}
-              section={section}
-              defaultOpen={false}
-              isFirst={index === 0}
-              isLast={index === visibleSections.length - 1 && !hasMore && !hasApproval}
-              showTimer={showSubagentTimer}
-              isRunning={isSubagentRunning}
-              startTs={message.ts}
-              duration={message.duration}
-              onOpenFile={openFile}
-            />
-          ))}
+          {visibleSections.map((section, index) => {
+            const sectionStatus = section.status ?? message.toolStatus;
+            const isSecSubagentRunning = sectionStatus === 'running';
+            const showSecSubagentTimer = isSubagent && (isSecSubagentRunning || sectionStatus === 'completed');
+
+            return (
+              <ToolSectionCard
+                key={index}
+                section={section}
+                defaultOpen={false}
+                isFirst={index === 0}
+                isLast={index === visibleSections.length - 1 && !hasMore && !hasApproval}
+                showTimer={showSecSubagentTimer}
+                isRunning={isSecSubagentRunning}
+                startTs={section.ts ?? message.ts}
+                duration={section.duration}
+                onOpenFile={openFile}
+              />
+            );
+          })}
 
           {hasMore && (
             <Tooltip content={isExpanded ? 'Collapse' : `Show ${hiddenCount} more item${hiddenCount === 1 ? '' : 's'}`}>

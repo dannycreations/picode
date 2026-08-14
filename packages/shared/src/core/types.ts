@@ -24,6 +24,9 @@ export interface ToolSection {
   readonly language?: string;
   readonly openPath?: string;
   readonly diffLine?: number;
+  readonly ts?: number;
+  readonly duration?: number;
+  readonly status?: string;
 }
 
 export interface ChatMessage {

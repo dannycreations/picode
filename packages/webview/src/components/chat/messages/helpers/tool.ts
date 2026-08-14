@@ -177,9 +177,18 @@ function fileToolSections(message: ChatMessage): ToolSection[] {
 }
 
 export function buildToolSections(message: ChatMessage): ToolSection[] {
-  if (message.toolName === 'execute_command') return commandSection(message);
-  if (message.toolName === 'spawn_subagent') return subagentSection(message);
-  return fileToolSections(message);
+  const sections = (() => {
+    if (message.toolName === 'execute_command') return commandSection(message);
+    if (message.toolName === 'spawn_subagent') return subagentSection(message);
+    return fileToolSections(message);
+  })();
+
+  return sections.map((section) => ({
+    ...section,
+    ts: message.ts,
+    duration: message.duration,
+    status: message.toolStatus,
+  }));
 }
 
 export function getFileToolMeta(toolName: string | undefined, status?: string): { title: string; icon: string; language: string } {

@@ -118,8 +118,8 @@ describe('groupToolMessages', () => {
     expect(result[0].id).toBe('r1');
     expect(result[0].toolName).toBe('read_file');
     expect(result[0].toolSections).toEqual([
-      { title: 'a.ts', content: 'a', language: 'text', openPath: 'a.ts' },
-      { title: 'b.ts', content: 'b', language: 'text', openPath: 'b.ts' },
+      { title: 'a.ts', content: 'a', language: 'text', openPath: 'a.ts', ts: 1, duration: undefined, status: 'completed' },
+      { title: 'b.ts', content: 'b', language: 'text', openPath: 'b.ts', ts: 1, duration: undefined, status: 'completed' },
     ]);
   });
 
@@ -156,8 +156,8 @@ describe('groupToolMessages', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].toolSections).toEqual([
-      { title: 'ls', content: 'a', language: 'shell' },
-      { title: 'pwd', content: 'b', language: 'shell' },
+      { title: 'ls', content: 'a', language: 'shell', ts: 1, duration: undefined, status: 'completed' },
+      { title: 'pwd', content: 'b', language: 'shell', ts: 1, duration: undefined, status: 'completed' },
     ]);
   });
 
@@ -170,7 +170,9 @@ describe('groupToolMessages', () => {
     const result = groupToolMessages(messages);
 
     expect(result).toHaveLength(1);
-    expect(result[0].toolSections).toEqual([{ title: 'rg -n "foo"', content: 'output', language: 'shell' }]);
+    expect(result[0].toolSections).toEqual([
+      { title: 'rg -n "foo"', content: 'output', language: 'shell', ts: 1, duration: undefined, status: 'completed' },
+    ]);
   });
 
   it('should stack and group consecutive spawn_subagent calls', () => {
@@ -191,8 +193,8 @@ describe('groupToolMessages', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].toolSections).toEqual([
-      { title: 'find files', subtitle: 'explore', content: '<report-1>', language: 'text' },
-      { title: 'review code', subtitle: 'review', content: '<report-2>', language: 'text' },
+      { title: 'find files', subtitle: 'explore', content: '<report-1>', language: 'text', ts: 1, duration: undefined, status: 'completed' },
+      { title: 'review code', subtitle: 'review', content: '<report-2>', language: 'text', ts: 1, duration: undefined, status: 'completed' },
     ]);
   });
 });
