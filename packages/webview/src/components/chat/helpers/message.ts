@@ -122,7 +122,13 @@ export function upsertToolMessage(messages: ChatMessage[], id: string, patch: Pa
   if (messages.some((m) => m.id === id)) {
     return patchMessage(messages, id, patch);
   }
-  return [...messages, { id, sender: 'tool', text: '', ts: Date.now(), ...patch }];
+
+  const toolMessage: ChatMessage = { id, sender: 'tool', text: '', ts: Date.now(), ...patch };
+
+  const queueIndex = messages.findIndex((message) => message.sender === 'queue');
+  if (queueIndex === -1) return [...messages, toolMessage];
+
+  return [...messages.slice(0, queueIndex), toolMessage, ...messages.slice(queueIndex)];
 }
 
 export function deliverQueuedReplies(messages: ChatMessage[], delivered: ChatMessage[]): ChatMessage[] {

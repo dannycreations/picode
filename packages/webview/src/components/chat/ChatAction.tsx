@@ -32,7 +32,7 @@ export const ChatAction: FC<ChatActionProps> = ({
       {showScrollToBottom ? (
         <Tooltip content="Scroll to bottom of chat">
           <button onClick={onScrollToBottom} className="action-button w-full">
-            <span className="codicon codicon-chevron-down mr-1" />
+            <span className="codicon codicon-chevron-down mr-1" style={{ fontSize: 'inherit', lineHeight: 'inherit' }} />
           </button>
         </Tooltip>
       ) : isAgentRunning ? (

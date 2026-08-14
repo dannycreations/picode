@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { deliverQueuedReplies, groupToolMessages, isRenderableMessage } from '@pi-code/webview/components/chat/helpers/message';
+import { deliverQueuedReplies, groupToolMessages, isRenderableMessage, upsertToolMessage } from '@pi-code/webview/components/chat/helpers/message';
 
 import type { ChatMessage, ToolName } from '@pi-code/shared/core/types';
 
@@ -72,6 +72,36 @@ describe('deliverQueuedReplies', () => {
     const queued = createMessage({ id: 'q1', sender: 'queue', text: 'hi' });
 
     expect(deliverQueuedReplies([queued], [])).toEqual([queued]);
+  });
+});
+
+describe('upsertToolMessage', () => {
+  it('should insert a tool call ahead of a trailing queued reply', () => {
+    const messages = [
+      createMessage({ id: 't', sender: 'assistant', reasoning: 'thinking' }),
+      createMessage({ id: 'q1', sender: 'queue', text: 'stand by' }),
+    ];
+
+    const result = upsertToolMessage(messages, 'tool-1', { text: 'read_file', toolName: 'read_file', toolStatus: 'running' });
+
+    expect(result.map((m) => m.id)).toEqual(['t', 'tool-1', 'q1']);
+  });
+
+  it('should append a tool call when no reply is queued', () => {
+    const messages = [createMessage({ id: 't', sender: 'assistant', reasoning: 'thinking' })];
+
+    const result = upsertToolMessage(messages, 'tool-1', { text: 'read_file', toolName: 'read_file' });
+
+    expect(result.map((m) => m.id)).toEqual(['t', 'tool-1']);
+  });
+
+  it('should patch an existing tool call instead of moving it', () => {
+    const messages = [createToolMessage('tool-1', 'read_file', { toolStatus: 'running' }), createMessage({ id: 'q1', sender: 'queue' })];
+
+    const result = upsertToolMessage(messages, 'tool-1', { toolStatus: 'completed' });
+
+    expect(result.map((m) => m.id)).toEqual(['tool-1', 'q1']);
+    expect(result[0].toolStatus).toBe('completed');
   });
 });
 
