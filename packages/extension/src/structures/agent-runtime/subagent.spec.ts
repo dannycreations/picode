@@ -5,17 +5,11 @@ import {
   formatSubagentStep,
   getSubagent,
   recordSubagentUsage,
-  SUBAGENT_NAMES,
   SUBAGENTS,
   takeSubagentUsage,
 } from '@pi-code/extension/structures/agent-runtime/subagent';
 
 describe('subagent catalog', () => {
-  it('exposes a unique name for every sub-agent', () => {
-    expect([...SUBAGENT_NAMES].sort()).toEqual([...new Set(SUBAGENT_NAMES)].sort());
-    expect(SUBAGENT_NAMES).toEqual(SUBAGENTS.map((agent) => agent.name));
-  });
-
   it('grants only read-only tools', () => {
     for (const agent of SUBAGENTS) {
       expect(agent.tools.length, agent.name).toBeGreaterThan(0);

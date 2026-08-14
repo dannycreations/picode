@@ -55,7 +55,7 @@ export function cleanCommandOutput(raw: string): string {
 export const executeCommandTool = defineTool({
   name: 'execute_command' as ToolName,
   label: 'Execute Command',
-  description: 'Run a CLI command on the host relative to the workspace. Pass the command in "command"; optionally set "cwd" and "timeout".',
+  description: 'Run a CLI command on the host. Prefer set "cwd" over using change directory command.',
   parameters: Type.Object({
     command: Type.String({ description: 'The CLI command to run.' }),
     cwd: Type.Optional(Type.Union([Type.String(), Type.Null()], { description: 'Optional working directory; defaults to the workspace.' })),

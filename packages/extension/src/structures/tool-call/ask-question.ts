@@ -9,11 +9,11 @@ import type { ToolName } from '@pi-code/shared/core/types';
 export const askQuestionTool = defineTool({
   name: 'ask_question' as ToolName,
   label: 'Ask Follow-up Question',
-  description:
-    'Ask the user for clarification when you need input to finish the task. Provide 2-4 specific, actionable options in "follow_up", ordered from most to least likely.',
+  description: 'Ask the user for clarification when you need input to finish the task.',
   parameters: Type.Object({
     question: Type.String({ description: 'The question to ask the user.' }),
     follow_up: Type.Array(Type.Object({ text: Type.String({ description: 'A complete, self-contained option with no placeholders.' }) }), {
+      minItems: 2,
       description: '2-4 suggested answers shown as clickable options, ordered from most to least likely.',
     }),
   }),

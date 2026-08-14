@@ -11,7 +11,7 @@ import type { ToolName } from '@pi-code/shared/core/types';
 export const deleteFileTool = defineTool({
   name: 'delete_file' as ToolName,
   label: 'Delete File',
-  description: 'Delete a file or directory at "path" from the workspace. This action cannot be undone.',
+  description: 'Delete a file or directory permanently from the workspace. This action cannot be undone.',
   parameters: Type.Object({
     path: Type.String({ description: 'Workspace-relative path to the file or directory to delete.' }),
   }),

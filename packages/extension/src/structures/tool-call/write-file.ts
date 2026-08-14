@@ -13,8 +13,7 @@ import type { ToolName } from '@pi-code/shared/core/types';
 export const writeFileTool = defineTool({
   name: 'write_file' as ToolName,
   label: 'Write File',
-  description:
-    'Write complete content to "path", overwriting it if it exists or creating it (and parent directories) otherwise. Always pass the full content in "content".',
+  description: 'Write complete content, overwriting it if it exists or creating it (and parent directories) otherwise.',
   parameters: Type.Object({
     path: Type.String({ description: 'Workspace-relative path of the file to write.' }),
     content: Type.String({ description: 'Complete file content; never truncate.' }),

@@ -148,7 +148,7 @@ function replaceExpected(originalLF: string, oldLF: string, newLF: string, expec
 
   return {
     error:
-      `Error: matched ${exact} occurrence(s) of "old_string" in ${filePath}, but "expected_replacements" is ${expected}.\n` +
+      `Error: matched ${exact} occurrence(s) of "old_string" in ${filePath}, but "expected" is ${expected}.\n` +
       `Exact: ${exact}, whitespace-tolerant: ${whitespace}, token-based: ${token}.\n\n` +
       `Verify "old_string" matches the target exactly as-is, including whitespace and line endings.`,
   };
@@ -157,13 +157,12 @@ function replaceExpected(originalLF: string, oldLF: string, newLF: string, expec
 export const editFileTool = defineTool({
   name: 'edit_file' as ToolName,
   label: 'Edit File',
-  description:
-    'Replace "old_string" with "new_string" in an existing file, or create a new file when "old_string" is empty. Set "expected_replacements" to confirm the match count.',
+  description: 'Replace a specified string within an existing file, or create the file when no existing string is provided.',
   parameters: Type.Object({
     file_path: Type.String({ description: 'Workspace-relative path of the file to modify or create.' }),
     old_string: Type.String({ description: 'Exact literal text to replace. Leave empty to create a new file.' }),
     new_string: Type.String({ description: 'Replacement text for "old_string".' }),
-    expected_replacements: Type.Optional(Type.Integer({ description: 'Expected number of replacements. Defaults to 1.', minimum: 1 })),
+    expected: Type.Optional(Type.Integer({ minimum: 1, description: 'Expected number of replacements. Defaults to 1.' })),
   }),
   async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
     const { file_path, old_string, new_string } = params;
@@ -205,8 +204,8 @@ export const editFileTool = defineTool({
           return toolError('Error: "old_string" and "new_string" are identical; nothing to change.');
         }
 
-        const expected_replacements = params.expected_replacements ?? 1;
-        const outcome = replaceExpected(originalLF, oldLF, newLF, expected_replacements, file_path);
+        const expected = params.expected ?? 1;
+        const outcome = replaceExpected(originalLF, oldLF, newLF, expected, file_path);
         if (outcome.error !== undefined) {
           return toolError(outcome.error);
         }

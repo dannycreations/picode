@@ -141,8 +141,7 @@ async function mapConcurrent<T, R>(items: readonly T[], limit: number, signal: A
 export const readFileTool = defineTool({
   name: 'read_file' as ToolName,
   label: 'Read File',
-  description:
-    'Read files and return contents prefixed with line numbers (lineNumber|lineContent). Always list every file you need in one call rather than issuing separate calls one by one. Use "line_ranges" to read a narrower slice.',
+  description: 'Read files and return their contents, prefixed with line numbers. Always prefer reading multiple files at once if possible.',
   parameters: Type.Object({
     files: Type.Array(
       Type.Object({
@@ -153,13 +152,11 @@ export const readFileTool = defineTool({
               Type.Integer({ minimum: 1, description: '1-based start line.' }),
               Type.Integer({ minimum: 1, description: '1-based end line, inclusive.' }),
             ]),
-            {
-              description: 'Optional ranges to read as [start, end] 1-based inclusive line numbers.',
-            },
+            { description: 'Optional ranges to read as [start, end] 1-based inclusive line numbers.' },
           ),
         ),
       }),
-      { description: 'Files to read, at least one.', minItems: 1 },
+      { minItems: 1, description: 'List files to read, at least one.' },
     ),
   }),
   async execute(_toolCallId, params, signal, _onUpdate, ctx) {

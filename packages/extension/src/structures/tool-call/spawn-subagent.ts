@@ -2,14 +2,7 @@ import { formatThrownValue, StringEnum } from '@earendil-works/pi-ai';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
-import {
-  describeSubagents,
-  getSubagent,
-  recordSubagentUsage,
-  spawnSubagent,
-  SUBAGENT_NAMES,
-  SUBAGENTS,
-} from '@pi-code/extension/structures/agent-runtime/subagent';
+import { describeSubagents, getSubagent, recordSubagentUsage, spawnSubagent, SUBAGENTS } from '@pi-code/extension/structures/agent-runtime/subagent';
 import { toolError, toolResult } from '@pi-code/extension/structures/tool-call/helpers/result';
 import { getOutputLimits, truncateOutput } from '@pi-code/extension/utilities/truncate';
 
@@ -49,10 +42,12 @@ function renderOutcome(outcome: SubagentOutcome, state: 'completed' | 'error'): 
   return [`<subagent name="${outcome.agent}" state="${state}">`, ...body, formatUsage(outcome.usage), '</subagent>'].join('\n');
 }
 
+const SUBAGENT_NAMES = SUBAGENTS.map((agent) => agent.name);
+
 export const spawnSubagentTool = defineTool({
   name: 'spawn_subagent' as ToolName,
   label: 'Spawn Sub-agent',
-  description: `Use this tool when a task requires extensive searching or file reading, and you do not need the intermediate results in your current conversation, only the final answer. This tool works best when you can fully specify the task in advance, with no back-and-forth required. The sub-agent runs in its own isolated context window, performs the work independently, and returns a final report to you.
+  description: `Use this when your task requires extensive searching or file reading, and you do not need the intermediate results in your current conversation, only the final answer. This tool works best when you can fully specify the task in advance, with no back-and-forth required. The sub-agent runs in its own isolated context window, performs the work independently, and returns a final report to you.
 
 ## Available Agents
 
@@ -65,11 +60,11 @@ ${describeSubagents()}
 
 ## Rules for Delegation
 
-1. **Concurrency**: To run multiple independent sub-agents at once, issue multiple \`spawn_subagent\` calls within a single message.
-2. **Full Context Required**: A sub-agent has no knowledge of your conversation history. Include every necessary path, constraint, and definition of "done" directly in the \`task\` field.
+1. **Concurrency**: To run multiple independent sub-agents at once, issue multiple "spawn_subagent" calls within a single message.
+2. **Full Context Required**: A sub-agent has no knowledge of your conversation history. Include every necessary path, constraint, and definition of goal directly in the "task" field.
 3. **Explicit Output Requirements**: Clearly specify what the sub-agent must return. Its final message is the *only* information you will receive — nothing else is visible to you.
 4. **User Visibility**: The user cannot see the sub-agent's work in progress. You are responsible for summarizing any relevant findings or actions for the user afterward.
-5. **Sub-Agent Limitations**: A sub-agent cannot ask clarifying questions, edit files, or spawn further sub-agents. Treat each delegation as a one-shot, fully self-contained instruction.`,
+5. **Sub-Agent Limitations**: A sub-agent cannot ask clarifying questions, edit files, or spawn further sub-agents. Treat each delegation as a one-purpose, fully self-contained instruction.`,
   parameters: Type.Object({
     agent: StringEnum(SUBAGENT_NAMES, { description: 'The sub-agent capabilities.' }),
     description: Type.String({ description: 'A 3-5 word description of the delegated task, shown to the user.' }),
@@ -83,8 +78,7 @@ ${describeSubagents()}
 
     const agent = getSubagent(params.agent);
     if (!agent) {
-      const available = SUBAGENTS.map((item) => item.name).join(', ');
-      return failure(`Error: unknown sub-agent "${params.agent}". Available sub-agents: ${available}.`, params.agent);
+      return failure(`Error: unknown sub-agent "${params.agent}". Available sub-agents: ${SUBAGENT_NAMES.join(', ')}.`, params.agent);
     }
 
     if (!params.task.trim()) {

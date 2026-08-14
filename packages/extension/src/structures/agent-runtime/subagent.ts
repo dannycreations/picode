@@ -40,8 +40,6 @@ export const SUBAGENTS: readonly SubagentDefinition[] = [
   },
 ];
 
-export const SUBAGENT_NAMES = SUBAGENTS.map((agent) => agent.name) as [string, ...string[]];
-
 export function getSubagent(name: string): SubagentDefinition | undefined {
   return SUBAGENTS.find((agent) => agent.name === name);
 }
