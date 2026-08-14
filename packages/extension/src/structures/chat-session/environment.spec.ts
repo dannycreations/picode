@@ -115,7 +115,7 @@ describe('getEnvironmentDetails workspace files listing', () => {
 
 const todos: TodoItem[] = [
   { content: 'a', status: 'completed' },
-  { content: 'b', status: 'in_progress' },
+  { content: 'b', status: 'progress' },
 ];
 
 describe('formatTodoReminder', () => {

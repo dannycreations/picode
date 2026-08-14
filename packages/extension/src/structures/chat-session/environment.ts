@@ -12,7 +12,7 @@ import type { TodoItem } from '@pi-code/shared/utilities/todo';
 
 const STATUS_MAP: Record<TodoItem['status'], string> = {
   pending: 'Pending',
-  in_progress: 'In Progress',
+  progress: 'In Progress',
   completed: 'Completed',
 };
 
@@ -28,7 +28,7 @@ export function formatTodoReminder(todoList?: TodoItem[]): string {
   const lines: string[] = [TODO_REMINDER_SECTION, ''];
 
   if (!todoList || todoList.length === 0) {
-    lines.push('You have not created a todo list yet. Create one with `update_todo` if your task is complicated or involves multiple steps.');
+    lines.push('You have not created a todo list yet. Create one with `update_todo` if your task is complex or involves multiple steps.');
     return lines.join('\n').trim();
   }
 

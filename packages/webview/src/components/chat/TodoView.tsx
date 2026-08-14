@@ -15,7 +15,7 @@ const TodoIcon: FC<{ status: TodoStatus }> = ({ status }) => {
   switch (status) {
     case 'completed':
       return <Check className="w-3 h-3 mt-1 shrink-0" />;
-    case 'in_progress':
+    case 'progress':
       return <ArrowRight className="w-3 h-3 mt-1 shrink-0" />;
     default:
       return <SquareDashed className="w-3 h-3 mt-1 shrink-0" />;
@@ -45,7 +45,7 @@ export const TodoView: FC<TodoViewProps> = ({ todos }) => {
       <div
         className={cn(
           'flex items-center gap-2 pt-2 px-3 cursor-pointer select-none',
-          mostImportantTodo?.status === 'in_progress' && isCollapsed ? 'text-vscode-charts-yellow' : 'text-vscode-foreground',
+          mostImportantTodo?.status === 'progress' && isCollapsed ? 'text-vscode-charts-yellow' : 'text-vscode-foreground',
         )}
         onClick={() => setIsCollapsed((v) => !v)}
       >
@@ -74,8 +74,8 @@ export const TodoView: FC<TodoViewProps> = ({ todos }) => {
               }}
               className={cn(
                 'font-light flex flex-row gap-2 items-start min-h-[20px] leading-normal mb-2 text-xs',
-                todo.status === 'in_progress' && 'text-vscode-charts-yellow',
-                todo.status !== 'in_progress' && todo.status !== 'completed' && 'opacity-60',
+                todo.status === 'progress' && 'text-vscode-charts-yellow',
+                todo.status !== 'progress' && todo.status !== 'completed' && 'opacity-60',
               )}
             >
               <TodoIcon status={todo.status} />
