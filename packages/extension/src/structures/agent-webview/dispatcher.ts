@@ -88,7 +88,7 @@ const HANDLER_MAP: HandlerMap = {
   compact: async (msg, ctx) => {
     const path = msg.path || ctx.agent.getSessionFile();
     if (!path) {
-      ctx.postMessage({ type: 'info', payload: { text: 'Open or start a task before using /compact.' } });
+      window.showInformationMessage('Open or start a task before using /compact.');
       return;
     }
 

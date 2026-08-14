@@ -1,4 +1,5 @@
 import { uuidv7 } from '@earendil-works/pi-ai';
+import { window } from 'vscode';
 
 import { getSettingsManager, readAppSettings } from '@pi-code/extension/core/settings';
 import { cancelAllApprovals } from '@pi-code/extension/structures/agent-runtime/brokers/policy';
@@ -148,15 +149,15 @@ export class AgentRunner {
 
   public async reload(): Promise<void> {
     if (this.session?.isStreaming || this.session?.isCompacting) {
-      this.messenger.post({ type: 'info', payload: { text: 'Wait for the current task to finish before reloading.' } });
+      window.showInformationMessage('Wait for the current task to finish before reloading.');
       return;
     }
 
-    this.messenger.post({ type: 'info', payload: { text: 'Reloading skills, context files, and configuration…' } });
+    window.showInformationMessage('Reloading skills, context files, and configuration…');
 
     try {
       await this.session?.reload();
-      this.messenger.post({ type: 'info', payload: { text: 'Reloaded skills, context files, and configuration.' } });
+      window.showInformationMessage('Reloaded skills, context files, and configuration.');
 
       const commands = await listCommands(getWorkspaceCwd());
       this.messenger.post({ type: 'commands_data', payload: { commands } });
