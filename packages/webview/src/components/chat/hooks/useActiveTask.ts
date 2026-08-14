@@ -161,29 +161,42 @@ export const useActiveTask = (): UseActiveTaskReturn => {
         }
 
         case 'tool_execution_start': {
-          const { id, tool_name, arguments: toolArgs } = msg.payload;
+          const { id, tool_name, arguments: toolArgs, subagent } = msg.payload;
           setIsAgentRunning(true);
-          updateMessages((messages) =>
-            upsertToolMessage(settlePendingTurns(messages), id, {
+          updateMessages((messages) => {
+            const exists = messages.some((m) => m.id === id);
+            if (subagent && !exists) {
+              return messages;
+            }
+            return upsertToolMessage(settlePendingTurns(messages), id, {
               text: tool_name,
               toolName: tool_name,
               toolArgs,
               toolStatus: 'running',
-            }),
-          );
+              subagent,
+            });
+          });
           break;
         }
 
         case 'tool_execution_update': {
-          const { id, result } = msg.payload;
-          updateMessages((messages) => patchMessage(messages, id, { diff: result }));
+          const { id, result, subagent } = msg.payload;
+          updateMessages((messages) => {
+            if (subagent && !messages.some((m) => m.id === id)) {
+              return messages;
+            }
+            return patchMessage(messages, id, { diff: result });
+          });
           break;
         }
 
         case 'tool_execution_end': {
-          const { id, result, todos, files, is_error } = msg.payload;
+          const { id, result, todos, files, is_error, subagent } = msg.payload;
           updateMessages((messages) => {
             const existing = messages.find((m) => m.id === id);
+            if (subagent && !existing) {
+              return messages;
+            }
             const duration = existing ? Math.max(0, Math.round((Date.now() - existing.ts) / 1000)) : undefined;
             return patchMessage(messages, id, {
               todos,

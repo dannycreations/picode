@@ -2,7 +2,7 @@ import { uuidv7 } from '@earendil-works/pi-ai';
 import { Disposable, Uri, workspace } from 'vscode';
 
 import { invalidateAppSettings, readAppSettings } from '@pi-code/extension/core/settings';
-import { setApprovalPresenter } from '@pi-code/extension/structures/agent-runtime/brokers/policy';
+import { setApprovalPresenter, setSubagentEventCallback } from '@pi-code/extension/structures/agent-runtime/brokers/policy';
 import { AgentRunner } from '@pi-code/extension/structures/agent-runtime/runner';
 import { dispatch } from '@pi-code/extension/structures/agent-webview/dispatcher';
 import { WorkspaceService } from '@pi-code/extension/structures/agent-webview/workspace';
@@ -105,6 +105,10 @@ export class ChatViewProvider implements WebviewViewProvider {
       });
     });
 
+    const disposeSubagentEventCallback = setSubagentEventCallback((msg) => {
+      void webview.postMessage(msg);
+    });
+
     const handlerContext: MessageHandlerContext = {
       cwd,
       agent: this.agent!,
@@ -117,6 +121,7 @@ export class ChatViewProvider implements WebviewViewProvider {
         void dispatch(message, handlerContext);
       }),
       Disposable.from({ dispose: disposeApprovalPresenter }),
+      Disposable.from({ dispose: disposeSubagentEventCallback }),
       // Mirror configuration edits made anywhere (settings UI, settings.json,
       // profile sync) back into the chat view.
       workspace.onDidChangeConfiguration((event) => {

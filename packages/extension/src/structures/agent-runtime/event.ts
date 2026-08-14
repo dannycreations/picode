@@ -1,5 +1,6 @@
 import { uuidv7 } from '@earendil-works/pi-ai';
 
+import { getSubagentSessionName } from '@pi-code/extension/structures/agent-runtime/policy';
 import { takeSubagentUsage } from '@pi-code/extension/structures/agent-runtime/subagent';
 import { logger } from '@pi-code/shared/core/logger';
 import { EMPTY_STATS } from '@pi-code/shared/utilities/common';
@@ -107,7 +108,8 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
         apiRequestId,
       };
 
-    case 'tool_execution_start':
+    case 'tool_execution_start': {
+      const subagent = getSubagentSessionName(session.sessionId);
       return {
         message: {
           type: 'tool_execution_start',
@@ -115,21 +117,26 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
             id: event.toolCallId,
             tool_name: event.toolName as ToolName,
             arguments: JSON.stringify(event.args),
+            subagent,
           },
         },
         apiRequestId,
       };
+    }
 
-    case 'tool_execution_update':
+    case 'tool_execution_update': {
+      const subagent = getSubagentSessionName(session.sessionId);
       return {
         message: {
           type: 'tool_execution_update',
-          payload: { id: event.toolCallId, result: toolResultText(event.partialResult) },
+          payload: { id: event.toolCallId, result: toolResultText(event.partialResult), subagent },
         },
         apiRequestId,
       };
+    }
 
     case 'tool_execution_end': {
+      const subagent = getSubagentSessionName(session.sessionId);
       const toolResult = event.result as
         | {
             details?: {
@@ -147,6 +154,7 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
             todos: toolResult?.details?.todos,
             files: toolResult?.details?.files,
             is_error: event.isError,
+            subagent,
           },
         },
         apiRequestId,

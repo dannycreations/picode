@@ -70,6 +70,7 @@ interface SubagentInput {
   readonly model?: Model<Api>;
   readonly signal?: AbortSignal;
   readonly onProgress?: (steps: string) => void;
+  readonly onEvent?: (event: AgentSessionEvent, session: AgentSession) => void;
 }
 
 let activeSpawns = 0;
@@ -183,9 +184,11 @@ export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutco
     };
 
     const unsubscribe = session.subscribe((event: AgentSessionEvent) => {
-      if (event.type !== 'tool_execution_start') return;
-      collected.push(formatSubagentStep(event.toolName as SubagentToolName, event.args));
-      input.onProgress?.(steps());
+      if (event.type === 'tool_execution_start') {
+        collected.push(formatSubagentStep(event.toolName as SubagentToolName, event.args));
+        input.onProgress?.(steps());
+      }
+      input.onEvent?.(event, session);
     });
 
     try {

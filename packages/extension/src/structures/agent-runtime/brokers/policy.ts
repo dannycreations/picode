@@ -2,6 +2,7 @@ import { uuidv7 } from '@earendil-works/pi-ai';
 
 import { createRequestRegistry } from '@pi-code/extension/structures/agent-runtime/brokers/registry';
 
+import type { ExtensionToWebviewMessage } from '@pi-code/shared/core/protocol';
 import type { ToolName } from '@pi-code/shared/core/types';
 
 interface ApprovalRequest {
@@ -16,6 +17,22 @@ type ApprovalPresenter = (request: ApprovalRequest) => void;
 const approvals = createRequestRegistry<boolean>();
 
 let presenter: ApprovalPresenter | null = null;
+
+type SubagentEventCallback = (event: ExtensionToWebviewMessage) => void;
+let subagentEventCallback: SubagentEventCallback | null = null;
+
+export function setSubagentEventCallback(callback: SubagentEventCallback): () => void {
+  subagentEventCallback = callback;
+  return () => {
+    if (subagentEventCallback === callback) {
+      subagentEventCallback = null;
+    }
+  };
+}
+
+export function notifySubagentEvent(event: ExtensionToWebviewMessage): void {
+  subagentEventCallback?.(event);
+}
 
 export function setApprovalPresenter(next: ApprovalPresenter): () => void {
   presenter = next;

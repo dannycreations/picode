@@ -2,6 +2,8 @@ import { formatThrownValue, StringEnum } from '@earendil-works/pi-ai';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
+import { notifySubagentEvent } from '@pi-code/extension/structures/agent-runtime/brokers/policy';
+import { mapEvent } from '@pi-code/extension/structures/agent-runtime/event';
 import { describeSubagents, getSubagent, recordSubagentUsage, spawnSubagent, SUBAGENTS } from '@pi-code/extension/structures/agent-runtime/subagent';
 import { toolError, toolResult } from '@pi-code/extension/structures/tool-call/helpers/result';
 import { getOutputLimits, truncateOutput } from '@pi-code/extension/utilities/truncate';
@@ -99,6 +101,14 @@ ${describeSubagents()}
                 details: { agent: agent.name, description: params.description, steps },
               })
           : undefined,
+        onEvent: (event, subagentSession) => {
+          if (event.type === 'tool_execution_start' || event.type === 'tool_execution_update' || event.type === 'tool_execution_end') {
+            const { message } = mapEvent(event, subagentSession, null);
+            if (message) {
+              notifySubagentEvent(message);
+            }
+          }
+        },
       });
 
       // Fold the delegated run's spend into the parent's live header stats.

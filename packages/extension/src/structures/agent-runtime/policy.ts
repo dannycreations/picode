@@ -70,6 +70,10 @@ export function unregisterSubagentSession(sessionId: string): void {
   subagentBySession.delete(sessionId);
 }
 
+export function getSubagentSessionName(sessionId: string): string | undefined {
+  return subagentBySession.get(sessionId);
+}
+
 const ALLOW: ToolCallEventResult = { block: false };
 
 export function createToolPolicyExtension(): InlineExtension {

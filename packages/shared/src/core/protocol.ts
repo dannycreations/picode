@@ -83,11 +83,11 @@ export type ExtensionToWebviewMessage =
   | { type: 'api_request_start'; payload: { id: string; timestamp: number } }
   | { type: 'api_request_end'; payload: { id: string; cost?: number; error?: string; stats?: StatsData } }
   | { type: 'tool_approval_request'; payload: { id: string; tool_name: ToolName; arguments: string; subagent?: string } }
-  | { type: 'tool_execution_start'; payload: { id: string; tool_name: ToolName; arguments: string } }
-  | { type: 'tool_execution_update'; payload: { id: string; result: string } }
+  | { type: 'tool_execution_start'; payload: { id: string; tool_name: ToolName; arguments: string; subagent?: string } }
+  | { type: 'tool_execution_update'; payload: { id: string; result: string; subagent?: string } }
   | {
       type: 'tool_execution_end';
-      payload: { id: string; result?: string; todos?: TodoItem[]; is_error?: boolean; files?: ReadonlyArray<ReadFileSection> };
+      payload: { id: string; result?: string; todos?: TodoItem[]; is_error?: boolean; files?: ReadonlyArray<ReadFileSection>; subagent?: string };
     }
   | { type: 'agent_error'; payload: { message: string } }
   | { type: 'agent_settled'; payload?: StatsData }
