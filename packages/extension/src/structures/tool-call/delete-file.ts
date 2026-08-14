@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
+import { fileMutex } from '@pi-code/extension/structures/tool-call/helpers/mutex';
 import { toolError, toolErrorFrom, toolResult } from '@pi-code/extension/structures/tool-call/helpers/result';
 
 import type { ToolName } from '@pi-code/shared/core/types';
@@ -15,9 +16,9 @@ export const deleteFileTool = defineTool({
     path: Type.String({ description: 'Workspace-relative path to the file or directory to delete.' }),
   }),
   async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+    const resolvedPath = resolve(ctx.cwd, params.path);
+    const release = await fileMutex.acquire(resolvedPath);
     try {
-      const resolvedPath = resolve(ctx.cwd, params.path);
-
       try {
         await access(resolvedPath);
       } catch {
@@ -34,6 +35,8 @@ export const deleteFileTool = defineTool({
       return toolResult(`Deleted file: ${params.path}`);
     } catch (err) {
       return toolErrorFrom(err, 'deleting file');
+    } finally {
+      release();
     }
   },
 });

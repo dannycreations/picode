@@ -4,6 +4,7 @@ import { formatThrownValue } from '@earendil-works/pi-ai';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
+import { fileMutex } from '@pi-code/extension/structures/tool-call/helpers/mutex';
 import { toolError, toolErrorFrom } from '@pi-code/extension/structures/tool-call/helpers/result';
 import { buildFileChangeResult } from '@pi-code/extension/utilities/truncate';
 
@@ -165,12 +166,10 @@ export const editFileTool = defineTool({
     expected_replacements: Type.Optional(Type.Integer({ description: 'Expected number of replacements. Defaults to 1.', minimum: 1 })),
   }),
   async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+    const { file_path, old_string, new_string } = params;
+    const resolvedPath = resolve(ctx.cwd, file_path);
+    const release = await fileMutex.acquire(resolvedPath);
     try {
-      const { file_path, old_string, new_string } = params;
-      const expected_replacements = params.expected_replacements ?? 1;
-
-      const resolvedPath = resolve(ctx.cwd, file_path);
-
       let fileExists = false;
       let originalContent = '';
       try {
@@ -206,6 +205,7 @@ export const editFileTool = defineTool({
           return toolError('Error: "old_string" and "new_string" are identical; nothing to change.');
         }
 
+        const expected_replacements = params.expected_replacements ?? 1;
         const outcome = replaceExpected(originalLF, oldLF, newLF, expected_replacements, file_path);
         if (outcome.error !== undefined) {
           return toolError(outcome.error);
@@ -223,6 +223,8 @@ export const editFileTool = defineTool({
       });
     } catch (err) {
       return toolErrorFrom(err, 'editing file');
+    } finally {
+      release();
     }
   },
 });
