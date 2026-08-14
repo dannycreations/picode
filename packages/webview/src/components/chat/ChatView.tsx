@@ -89,7 +89,9 @@ export const ChatView: FC = () => {
     deleteSessions,
   });
 
-  const { scrollRef, contentRef, showScrollToBottom, handleScroll, scrollToBottom } = useAutoScroll(activeTask?.id);
+  const { scrollRef, contentRef, showScrollToBottom, handleScroll, scrollToBottom, onWheel, onTouchStart, onPointerDown, onKeyDown } = useAutoScroll(
+    activeTask?.id,
+  );
 
   const messages = activeTask?.messages;
   const visibleMessages = useMemo(() => (messages ?? []).filter(isRenderableMessage), [messages]);
@@ -207,7 +209,16 @@ export const ChatView: FC = () => {
 
       {/* Main Viewport */}
       {activeTask ? (
-        <div ref={scrollRef} onScroll={handleScroll} className="flex-1 min-h-0 overflow-y-auto">
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          onWheel={onWheel}
+          onTouchStart={onTouchStart}
+          onPointerDown={onPointerDown}
+          onKeyDown={onKeyDown}
+          tabIndex={0}
+          className="flex-1 min-h-0 overflow-y-auto chat-viewport outline-none"
+        >
           <div ref={contentRef} style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
             {virtualizer.getVirtualItems().map((item) => (
               <div

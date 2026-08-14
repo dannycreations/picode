@@ -114,6 +114,10 @@
   contain: layout paint style;
 }
 
+.chat-viewport {
+  overflow-anchor: none;
+}
+
 .chat-input-text {
   @apply p-2.5 pb-1 font-sans text-sm leading-normal box-border;
 }
