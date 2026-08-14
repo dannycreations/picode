@@ -9,6 +9,7 @@ import { ChatFooter } from '@pi-code/webview/components/chat/ChatFooter';
 import { ChatHeader } from '@pi-code/webview/components/chat/ChatHeader';
 import { ChatInput } from '@pi-code/webview/components/chat/ChatInput';
 import { ESTIMATED_ROW_HEIGHT, groupToolMessages, isRenderableMessage } from '@pi-code/webview/components/chat/helpers/message';
+import { countOccurrences, getMessageSearchText } from '@pi-code/webview/components/chat/helpers/search';
 import { useActiveTask } from '@pi-code/webview/components/chat/hooks/useActiveTask';
 import { useChatActions } from '@pi-code/webview/components/chat/hooks/useChatActions';
 import { useChatComposer } from '@pi-code/webview/components/chat/hooks/useChatComposer';
@@ -24,6 +25,7 @@ import { postCompactMessage, vscode } from '@pi-code/webview/utilities/vscode';
 
 import type { FC } from 'react';
 import type { ExtensionToWebviewMessage, HistoryItem } from '@pi-code/shared/core/protocol';
+import type { SearchContext } from '@pi-code/webview/components/shared/Highlight';
 
 export const ChatView: FC = () => {
   const [historyExpanded, setHistoryExpanded] = useState(true);
@@ -97,6 +99,52 @@ export const ChatView: FC = () => {
   const visibleMessages = useMemo(() => (messages ?? []).filter(isRenderableMessage), [messages]);
   const renderItems = useMemo(() => groupToolMessages(visibleMessages), [visibleMessages]);
 
+  // In-chat text search: count matches per message so we can show a total, jump
+  // between them, and tell each renderer which occurrence to emphasize.
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeMatch, setActiveMatch] = useState(-1);
+
+  const matchCounts = useMemo(
+    () => (searchQuery ? renderItems.map((message) => countOccurrences(getMessageSearchText(message), searchQuery)) : []),
+    [renderItems, searchQuery],
+  );
+  const totalMatches = matchCounts.reduce((sum, count) => sum + count, 0);
+  const globalOffsets = useMemo(() => {
+    const offsets: number[] = [];
+    let acc = 0;
+    for (const count of matchCounts) {
+      offsets.push(acc);
+      acc += count;
+    }
+    return offsets;
+  }, [matchCounts]);
+
+  // A new query always restarts navigation at the first match.
+  useEffect(() => {
+    setActiveMatch(searchQuery ? (totalMatches > 0 ? 0 : -1) : -1);
+    // totalMatches is derived from searchQuery + renderItems; re-running only on
+    // the query keeps navigation stable when messages stream in during a search.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery]);
+
+  const goToMatch = useCallback(
+    (direction: 1 | -1) => {
+      setActiveMatch((prev) => {
+        if (totalMatches === 0) return -1;
+        const base = prev < 0 ? 0 : prev;
+        return (base + direction + totalMatches) % totalMatches;
+      });
+    },
+    [totalMatches],
+  );
+
+  const closeSearch = useCallback(() => {
+    setSearchOpen(false);
+    setSearchQuery('');
+    setActiveMatch(-1);
+  }, []);
+
   const virtualizer = useVirtualizer({
     count: renderItems.length,
     getScrollElement: () => scrollRef.current,
@@ -104,6 +152,24 @@ export const ChatView: FC = () => {
     getItemKey: (index) => renderItems[index].id,
     overscan: 8,
   });
+
+  useEffect(() => {
+    if (activeMatch < 0) return;
+    const itemIndex = globalOffsets.findIndex((offset, index) => activeMatch >= offset && activeMatch < offset + (matchCounts[index] ?? 0));
+    if (itemIndex < 0) return;
+
+    let innerRaf = 0;
+    const outerRaf = requestAnimationFrame(() => {
+      virtualizer.scrollToIndex(itemIndex, { align: 'center' });
+      innerRaf = requestAnimationFrame(() => {
+        document.querySelector('.search-hit-active')?.scrollIntoView({ block: 'center', inline: 'nearest' });
+      });
+    });
+    return () => {
+      cancelAnimationFrame(outerRaf);
+      if (innerRaf) cancelAnimationFrame(innerRaf);
+    };
+  }, [activeMatch, globalOffsets, matchCounts, virtualizer]);
 
   // Acting on a row means the user is engaged with the newest output, so
   // re-engage bottom-follow before the response to that action arrives.
@@ -192,6 +258,15 @@ export const ChatView: FC = () => {
           onExport={activeTask.path ? () => exportSession(activeTask) : undefined}
           onDelete={!isAgentRunning && activeTask.path ? () => setShowDeleteActiveConfirm(true) : undefined}
           onViewRaw={() => viewRaw(activeTask.path)}
+          isSearchOpen={searchOpen}
+          searchQuery={searchQuery}
+          matchCount={totalMatches}
+          activeMatchNumber={searchOpen && totalMatches > 0 ? activeMatch + 1 : 0}
+          onSearchOpen={() => setSearchOpen(true)}
+          onSearchClose={closeSearch}
+          onSearchChange={setSearchQuery}
+          onPrevMatch={() => goToMatch(-1)}
+          onNextMatch={() => goToMatch(1)}
         />
       ) : (
         <div className="flex items-center justify-between w-full mx-auto px-3.5 pt-3 shrink-0 select-none">
@@ -230,6 +305,11 @@ export const ChatView: FC = () => {
                 <ChatBody
                   message={renderItems[item.index]}
                   commands={commands}
+                  search={
+                    searchOpen && searchQuery
+                      ? ({ query: searchQuery, globalOffset: globalOffsets[item.index] ?? 0, activeIndex: activeMatch } as SearchContext)
+                      : undefined
+                  }
                   onApproveTool={handleApproveTool}
                   onDenyTool={handleDenyTool}
                   onAnswerQuestion={handleAnswer}

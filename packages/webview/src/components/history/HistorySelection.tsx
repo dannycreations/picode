@@ -32,7 +32,7 @@ export const HistorySelection: FC<HistorySelectionProps> = ({ selectedCount, isA
         onClick={onDeleteSelected}
         className="px-2 py-1 bg-vscode-errorForeground/90 hover:bg-vscode-errorForeground text-white border-none rounded cursor-pointer font-medium text-xs flex items-center gap-1 disabled:opacity-50 disabled:pointer-events-none"
       >
-        <Trash2 size={10} />
+        <Trash2 size={12} />
         Delete Selected
       </button>
     </div>

@@ -217,7 +217,7 @@ export const ChatInput: FC<ChatInputProps> = ({
                 disabled={!isSendButtonActive}
                 className={cn('action-button p-1.5', isSendButtonActive ? '' : 'action-button-secondary opacity-40 cursor-not-allowed')}
               >
-                <Send size={13} fill="currentColor" />
+                <Send size={14} fill="currentColor" />
               </button>
             </Tooltip>
           </div>

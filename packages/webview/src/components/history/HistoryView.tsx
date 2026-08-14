@@ -70,7 +70,7 @@ export const HistoryView: FC<HistoryViewProps> = ({ history, onSelectTask, onDon
       {/* Header */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-vscode-panel-border/40 shrink-0">
         <Tooltip content="Back to chat" side="bottom">
-          <button onClick={onDone} className="icon-button icon-button-sm transition-colors">
+          <button onClick={onDone} className="icon-button transition-colors">
             <ArrowLeft size={16} />
           </button>
         </Tooltip>

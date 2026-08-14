@@ -2,20 +2,24 @@ import { cn } from 'cnfast';
 import { ClipboardCopy, CornerDownRight, MessageCircleQuestionMark, ShieldAlert } from 'lucide-react';
 
 import { parseQuestionAnswer, parseQuestionData } from '@pi-code/webview/components/chat/helpers/question';
+import { countOccurrences, localActiveIndex } from '@pi-code/webview/components/chat/helpers/search';
 import { Markdown } from '@pi-code/webview/components/chat/markdown/Markdown';
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
+import { Highlight } from '@pi-code/webview/components/shared/Highlight';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 
 import type { FC, MouseEvent } from 'react';
 import type { ChatMessage } from '@pi-code/shared/core/types';
+import type { SearchContext } from '@pi-code/webview/components/shared/Highlight';
 
 interface QuestionMessageProps {
   readonly message: ChatMessage;
+  readonly search?: SearchContext;
   readonly onAnswerQuestion: (questionId: string, text: string) => void;
   readonly onCopyToInput: (text: string) => void;
 }
 
-export const QuestionMessage: FC<QuestionMessageProps> = ({ message, onAnswerQuestion, onCopyToInput }) => {
+export const QuestionMessage: FC<QuestionMessageProps> = ({ message, search, onAnswerQuestion, onCopyToInput }) => {
   const data = parseQuestionData(message.toolArgs);
   const question = data?.question ?? message.text;
   const suggestions = data?.suggestions ?? [];
@@ -25,6 +29,11 @@ export const QuestionMessage: FC<QuestionMessageProps> = ({ message, onAnswerQue
   const isPending = message.toolStatus === 'running';
   const isCancelled = message.toolStatus === 'denied';
   const answer = isCancelled ? '' : parseQuestionAnswer(message.diff);
+
+  const query = search?.query ?? '';
+  const questionCount = countOccurrences(question, query);
+  const answerCount = countOccurrences(answer, query);
+  const answerActive = search ? localActiveIndex(search.globalOffset + questionCount, answerCount, search.activeIndex) : -1;
 
   const handleSuggestionClick = (event: MouseEvent<HTMLButtonElement>, suggestion: string) => {
     // Shift-click mirrors the chat conventions: stage the suggestion in the
@@ -46,7 +55,10 @@ export const QuestionMessage: FC<QuestionMessageProps> = ({ message, onAnswerQue
 
       <div className="ml-6 flex flex-col gap-2 text-sm">
         <div className="leading-normal text-vscode-foreground select-text">
-          <Markdown markdown={question} />
+          <Markdown
+            markdown={question}
+            search={search ? { query: search.query, globalOffset: search.globalOffset, activeIndex: search.activeIndex } : undefined}
+          />
         </div>
 
         {isPending && suggestions.length > 0 && (
@@ -67,7 +79,7 @@ export const QuestionMessage: FC<QuestionMessageProps> = ({ message, onAnswerQue
                     }}
                     className="absolute top-1.5 right-1.5 p-1 rounded bg-vscode-input-background text-vscode-descriptionForeground hover:text-vscode-foreground border-none cursor-pointer opacity-0 group-hover/suggestion:opacity-100 transition-opacity"
                   >
-                    <ClipboardCopy size={12} />
+                    <ClipboardCopy size={14} />
                   </button>
                 </Tooltip>
               </div>
@@ -94,7 +106,7 @@ export const QuestionMessage: FC<QuestionMessageProps> = ({ message, onAnswerQue
                 isCancelled ? 'text-vscode-descriptionForeground' : 'text-vscode-foreground',
               )}
             >
-              {isCancelled ? 'No response was provided.' : answer}
+              <Highlight text={isCancelled ? 'No response was provided.' : answer} query={query} activeOccurrence={answerActive} />
             </span>
           </div>
         )}

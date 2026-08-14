@@ -6,6 +6,7 @@ import remarkMath from 'remark-math';
 import { visit } from 'unist-util-visit';
 
 import { CodeBlock } from '@pi-code/webview/components/chat/CodeBlock';
+import { createSearchHighlightPlugin } from '@pi-code/webview/components/chat/helpers/search';
 import { extractCodeFromChildren, parseFileUri } from '@pi-code/webview/components/chat/markdown/helpers/markdown';
 import { MermaidBlock } from '@pi-code/webview/components/chat/markdown/MermaidBlock';
 import { CopyButton } from '@pi-code/webview/components/shared/CopyButton';
@@ -14,6 +15,7 @@ import { vscode } from '@pi-code/webview/utilities/vscode';
 
 import type { FC, MouseEvent, ReactNode } from 'react';
 import type { Components } from 'react-markdown';
+import type { SearchContext } from '@pi-code/webview/components/shared/Highlight';
 
 interface MarkdownCodeNode {
   readonly type: 'code';
@@ -75,7 +77,7 @@ const MarkdownPre: FC<{ children?: ReactNode }> = ({ children }) => {
   );
 };
 
-const MarkdownBlock = memo(({ markdown }: MarkdownProps) => {
+const MarkdownBlock = memo(({ markdown, search }: MarkdownProps) => {
   const components = useMemo<Components>(
     () => ({
       table: ({ children, ...props }) => (
@@ -88,6 +90,9 @@ const MarkdownBlock = memo(({ markdown }: MarkdownProps) => {
     }),
     [],
   );
+
+  const searchPlugin = useMemo(() => createSearchHighlightPlugin(search), [search?.query, search?.globalOffset, search?.activeIndex]);
+  const rehypePlugins = useMemo(() => [rehypeKatex, ...(searchPlugin ? [searchPlugin as typeof rehypeKatex] : [])], [searchPlugin]);
 
   return (
     <div className="prose-markdown select-text">
@@ -105,7 +110,7 @@ const MarkdownBlock = memo(({ markdown }: MarkdownProps) => {
             });
           },
         ]}
-        rehypePlugins={[rehypeKatex]}
+        rehypePlugins={rehypePlugins}
         components={components}
       >
         {markdown || ''}
@@ -116,9 +121,10 @@ const MarkdownBlock = memo(({ markdown }: MarkdownProps) => {
 
 interface MarkdownProps {
   readonly markdown?: string;
+  readonly search?: SearchContext;
 }
 
-export const Markdown = memo(({ markdown }: MarkdownProps) => {
+export const Markdown = memo(({ markdown, search }: MarkdownProps) => {
   const [isHovering, setIsHovering] = useState(false);
 
   const deferredMarkdown = useDeferredValue(markdown ?? '');
@@ -128,7 +134,7 @@ export const Markdown = memo(({ markdown }: MarkdownProps) => {
   return (
     <div onMouseEnter={() => setIsHovering(true)} onMouseLeave={() => setIsHovering(false)} className="relative w-full">
       <div className="break-words overflow-wrap-anywhere">
-        <MarkdownBlock markdown={deferredMarkdown} />
+        <MarkdownBlock markdown={deferredMarkdown} search={search} />
       </div>
       {isHovering && (
         <div className="absolute -bottom-1 right-2 animate-fade-in rounded z-10">

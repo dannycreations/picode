@@ -10,7 +10,7 @@ interface HistoryPaginationProps {
   readonly onPageChange: (page: number) => void;
 }
 
-const PAGE_BUTTON_CLASS = 'icon-button icon-button-sm disabled:opacity-40 disabled:pointer-events-none transition-colors';
+const PAGE_BUTTON_CLASS = 'icon-button disabled:opacity-40 disabled:pointer-events-none transition-colors';
 
 export const HistoryPagination: FC<HistoryPaginationProps> = ({ currentPage, totalPages, onPageChange }) => {
   if (totalPages <= 1) return null;

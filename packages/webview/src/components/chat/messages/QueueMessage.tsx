@@ -1,20 +1,28 @@
 import { Pencil, Trash2, User } from 'lucide-react';
 import { useState } from 'react';
 
+import { countOccurrences, localActiveIndex } from '@pi-code/webview/components/chat/helpers/search';
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
+import { Highlight } from '@pi-code/webview/components/shared/Highlight';
 import { ImageThumb } from '@pi-code/webview/components/shared/ImageThumb';
 import { vscode } from '@pi-code/webview/utilities/vscode';
 
 import type { FC } from 'react';
 import type { ChatMessage } from '@pi-code/shared/core/types';
+import type { SearchContext } from '@pi-code/webview/components/shared/Highlight';
 
 interface QueueMessageProps {
   readonly message: ChatMessage;
+  readonly search?: SearchContext;
 }
 
-export const QueueMessage: FC<QueueMessageProps> = ({ message }) => {
+export const QueueMessage: FC<QueueMessageProps> = ({ message, search }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(message.text);
+
+  const query = search?.query ?? '';
+  const textCount = countOccurrences(message.text, query);
+  const active = search ? localActiveIndex(search.globalOffset, textCount, search.activeIndex) : -1;
 
   const handleSave = (): void => {
     const trimmed = editText.trim();
@@ -60,7 +68,7 @@ export const QueueMessage: FC<QueueMessageProps> = ({ message }) => {
         </div>
       ) : (
         <div className="message-surface whitespace-pre-wrap leading-normal select-text">
-          {message.text.trim()}
+          <Highlight text={message.text.trim()} query={query} activeOccurrence={active} />
           {message.images && message.images.length > 0 && (
             <div className="image-row">
               {message.images.map((img, idx) => (

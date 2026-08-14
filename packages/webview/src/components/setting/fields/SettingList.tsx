@@ -88,7 +88,7 @@ export const SettingList: FC<SettingListProps> = ({ label, description, placehol
                 </span>
               </Tooltip>
               <Tooltip content="Remove entry">
-                <button type="button" onClick={() => handleRemove(idx)} className="icon-button icon-button-sm text-vscode-badge-foreground">
+                <button type="button" onClick={() => handleRemove(idx)} className="icon-button text-vscode-badge-foreground">
                   <X size={12} />
                 </button>
               </Tooltip>

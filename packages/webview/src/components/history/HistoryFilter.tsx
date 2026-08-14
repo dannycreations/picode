@@ -42,7 +42,7 @@ export const HistoryFilter: FC<HistoryFilterProps> = ({
       />
       {searchQuery && (
         <Tooltip content="Clear search" side="bottom">
-          <button onClick={() => onSearchChange('')} className="icon-button icon-button-sm absolute right-2">
+          <button onClick={() => onSearchChange('')} className="icon-button absolute right-2">
             <X size={12} />
           </button>
         </Tooltip>

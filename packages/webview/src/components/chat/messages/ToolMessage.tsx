@@ -3,9 +3,11 @@ import { CheckCircle, ChevronUp, Play, PocketKnife, ShieldAlert, X } from 'lucid
 import { useState } from 'react';
 
 import { CodeBlock } from '@pi-code/webview/components/chat/CodeBlock';
+import { countOccurrences, localActiveIndex } from '@pi-code/webview/components/chat/helpers/search';
 import { getDiffStat, getFirstDiffLine } from '@pi-code/webview/components/chat/messages/helpers/common';
 import { getFileToolMeta, getToolDiffMeta, getToolLanguage, GROUP_TOOLS } from '@pi-code/webview/components/chat/messages/helpers/tool';
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
+import { Highlight } from '@pi-code/webview/components/shared/Highlight';
 import { Spinner } from '@pi-code/webview/components/shared/Spinner';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { useElapsedSeconds } from '@pi-code/webview/hooks/useElapsedSeconds';
@@ -14,21 +16,23 @@ import { vscode } from '@pi-code/webview/utilities/vscode';
 
 import type { FC } from 'react';
 import type { ChatMessage, ToolSection } from '@pi-code/shared/core/types';
+import type { SearchContext } from '@pi-code/webview/components/shared/Highlight';
 
 interface ToolMessageProps {
   readonly message: ChatMessage;
+  readonly search?: SearchContext;
   readonly onApproveTool: (msgId: string) => void;
   readonly onDenyTool: (msgId: string) => void;
 }
 
-export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDenyTool }) => {
+export const ToolMessage: FC<ToolMessageProps> = ({ message, search, onApproveTool, onDenyTool }) => {
   const isStackedTool = message.toolName !== undefined && GROUP_TOOLS.has(message.toolName) && (message.toolSections?.length ?? 0) > 0;
 
   if (isStackedTool) {
     return <StackedToolGroup message={message} onApproveTool={onApproveTool} onDenyTool={onDenyTool} />;
   }
 
-  return <GenericToolMessage message={message} onApproveTool={onApproveTool} onDenyTool={onDenyTool} />;
+  return <GenericToolMessage message={message} search={search} onApproveTool={onApproveTool} onDenyTool={onDenyTool} />;
 };
 
 const StackedToolGroup: FC<ToolMessageProps> = ({ message, onApproveTool, onDenyTool }) => {
@@ -149,21 +153,16 @@ const ToolSectionCard: FC<ToolSectionCardProps> = ({
           )}
         />
         <div className="min-w-0 flex-1">
-          {openPath ? (
-            <Tooltip content={openPath}>
-              <button
-                type="button"
-                onClick={() => setOpen(!open)}
-                className="font-mono text-xs text-vscode-foreground truncate hover:text-vscode-textLink cursor-pointer select-text block max-w-full text-left"
-              >
-                {title}
-              </button>
-            </Tooltip>
-          ) : (
-            <span className="font-mono text-xs text-vscode-foreground truncate select-text block" title={title}>
+          <Tooltip content={openPath ?? title}>
+            <button
+              type="button"
+              onClick={() => setOpen(!open)}
+              aria-label={open ? 'Collapse' : 'Expand'}
+              className="font-mono text-xs text-vscode-foreground truncate hover:text-vscode-textLink cursor-pointer select-text block max-w-full text-left"
+            >
               {title}
-            </span>
-          )}
+            </button>
+          </Tooltip>
           {subtitle && <div className="text-[10px] text-vscode-descriptionForeground truncate select-text">{subtitle}</div>}
         </div>
         {openPath ? (
@@ -208,10 +207,16 @@ const ElapsedTimer: FC<{ startTs: number; isRunning: boolean; duration?: number 
   );
 };
 
-const GenericToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDenyTool }) => {
+const GenericToolMessage: FC<ToolMessageProps> = ({ message, search, onApproveTool, onDenyTool }) => {
   const [isDiffExpanded, setIsDiffExpanded] = useState(false);
   const hasBottomBlock = message.toolStatus === 'approval';
   const { label: diffLabel, icon: diffIcon } = getToolDiffMeta(message.toolName);
+
+  const query = search?.query ?? '';
+  const textCount = countOccurrences(message.text, query);
+  const argsCount = countOccurrences(message.toolArgs ?? '', query);
+  const textActive = search ? localActiveIndex(search.globalOffset, textCount, search.activeIndex) : -1;
+  const argsActive = search ? localActiveIndex(search.globalOffset + textCount, argsCount, search.activeIndex) : -1;
 
   const renderToolStatusIcon = () => {
     switch (message.toolStatus) {
@@ -240,10 +245,14 @@ const GenericToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
           >
             <span className="codicon codicon-terminal text-vscode-focusBorder mt-0.5" />
             <div className="flex-1 min-w-0">
-              <div className="font-mono text-xs text-vscode-foreground truncate select-text">{message.text}</div>
+              <div className="font-mono text-xs text-vscode-foreground truncate select-text">
+                <Highlight text={message.text} query={query} activeOccurrence={textActive} />
+              </div>
               {message.toolArgs && (
                 <Tooltip content={message.toolArgs}>
-                  <div className="mt-1 font-mono text-xs text-vscode-descriptionForeground truncate select-text">Arguments: {message.toolArgs}</div>
+                  <div className="mt-1 font-mono text-xs text-vscode-descriptionForeground truncate select-text">
+                    Arguments: <Highlight text={message.toolArgs} query={query} activeOccurrence={argsActive} />
+                  </div>
                 </Tooltip>
               )}
             </div>
@@ -260,7 +269,7 @@ const GenericToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
                   <span className={cn('codicon', `codicon-${diffIcon}`, 'pr-0.5')} />
                   {diffLabel}
                 </span>
-                <ChevronUp size={12} className={cn('transition-transform duration-200', !isDiffExpanded && 'rotate-180')} />
+                <ChevronUp size={14} className={cn('transition-transform duration-200', !isDiffExpanded && 'rotate-180')} />
               </button>
               {isDiffExpanded && (
                 <div className="border-t border-vscode-editorGroup-border/30 p-2">

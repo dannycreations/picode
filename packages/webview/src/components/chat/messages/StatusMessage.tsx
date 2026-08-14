@@ -1,11 +1,14 @@
 import { cn } from 'cnfast';
 import { AlertTriangle, Info, RefreshCw } from 'lucide-react';
 
+import { countOccurrences, localActiveIndex } from '@pi-code/webview/components/chat/helpers/search';
+import { Highlight } from '@pi-code/webview/components/shared/Highlight';
 import { Spinner } from '@pi-code/webview/components/shared/Spinner';
 import { formatTime } from '@pi-code/webview/utilities/common';
 
 import type { FC } from 'react';
 import type { ChatMessage } from '@pi-code/shared/core/types';
+import type { SearchContext } from '@pi-code/webview/components/shared/Highlight';
 
 export const ApiRequestMessage: FC<{ readonly message: ChatMessage }> = ({ message }) => {
   const isRunning = message.toolStatus === 'running';
@@ -42,24 +45,39 @@ export const ApiRequestMessage: FC<{ readonly message: ChatMessage }> = ({ messa
   );
 };
 
-export const ErrorMessage: FC<{ readonly message: ChatMessage }> = ({ message }) => (
-  <div className="p-3 rounded-md bg-vscode-editorError-background/10 border border-vscode-editorError-foreground/30 flex gap-2 text-xs text-vscode-editorError-foreground">
-    <AlertTriangle size={16} className="shrink-0 mt-0.5" />
-    <div className="flex-1 min-w-0">
-      <div className="font-semibold text-sm mb-1 select-none">Execution Error</div>
-      <div className="font-mono whitespace-pre-wrap break-all leading-normal text-vscode-foreground select-text">
-        {message.errorMessage || message.text}
+export const ErrorMessage: FC<{ readonly message: ChatMessage; readonly search?: SearchContext }> = ({ message, search }) => {
+  const text = message.errorMessage || message.text;
+  const query = search?.query ?? '';
+  const textCount = countOccurrences(text, query);
+  const active = search ? localActiveIndex(search.globalOffset, textCount, search.activeIndex) : -1;
+
+  return (
+    <div className="p-3 rounded-md bg-vscode-editorError-background/10 border border-vscode-editorError-foreground/30 flex gap-2 text-xs text-vscode-editorError-foreground">
+      <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+      <div className="flex-1 min-w-0">
+        <div className="font-semibold text-sm mb-1 select-none">Execution Error</div>
+        <div className="font-mono whitespace-pre-wrap break-all leading-normal text-vscode-foreground select-text">
+          <Highlight text={text} query={query} activeOccurrence={active} />
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
-export const InfoMessage: FC<{ readonly message: ChatMessage }> = ({ message }) => (
-  <div className="flex items-start justify-between gap-2 text-xs select-none">
-    <div className="flex items-start gap-2 text-vscode-foreground min-w-0">
-      <Info size={14} className="text-vscode-focusBorder shrink-0 mt-0.5" />
-      <span className="font-semibold text-vscode-foreground break-words">{message.text}</span>
+export const InfoMessage: FC<{ readonly message: ChatMessage; readonly search?: SearchContext }> = ({ message, search }) => {
+  const query = search?.query ?? '';
+  const textCount = countOccurrences(message.text, query);
+  const active = search ? localActiveIndex(search.globalOffset, textCount, search.activeIndex) : -1;
+
+  return (
+    <div className="flex items-start justify-between gap-2 text-xs select-none">
+      <div className="flex items-start gap-2 text-vscode-foreground min-w-0">
+        <Info size={14} className="text-vscode-focusBorder shrink-0 mt-0.5" />
+        <span className="font-semibold text-vscode-foreground break-words">
+          <Highlight text={message.text} query={query} activeOccurrence={active} />
+        </span>
+      </div>
+      <span className="text-muted font-normal shrink-0 whitespace-nowrap">{formatTime(message.ts)}</span>
     </div>
-    <span className="text-muted font-normal shrink-0 whitespace-nowrap">{formatTime(message.ts)}</span>
-  </div>
-);
+  );
+};

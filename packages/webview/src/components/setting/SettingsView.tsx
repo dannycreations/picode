@@ -89,18 +89,14 @@ export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
                 }}
               />
               {searchQuery && (
-                <button type="button" onClick={() => setSearchQuery('')} className="icon-button icon-button-sm">
+                <button type="button" onClick={() => setSearchQuery('')} className="icon-button">
                   <X size={12} />
                 </button>
               )}
             </div>
           ) : (
             <Tooltip content="Search settings" side="bottom">
-              <button
-                type="button"
-                onClick={() => setIsSearchExpanded(true)}
-                className="h-7 w-7 p-0 hover:bg-vscode-list-hoverBackground rounded text-vscode-foreground bg-transparent border border-transparent cursor-pointer flex items-center justify-center transition-colors duration-150 shrink-0"
-              >
+              <button type="button" onClick={() => setIsSearchExpanded(true)} className="icon-button">
                 <Search size={16} />
               </button>
             </Tooltip>

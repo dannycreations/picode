@@ -1,11 +1,11 @@
-import { ChevronDown, ChevronRight, CloudDownload, CloudUpload, Coins, FoldVertical, X } from 'lucide-react';
-import { useState } from 'react';
+import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, CloudDownload, CloudUpload, Coins, FoldVertical, Search, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 import { TodoView } from '@pi-code/webview/components/chat/TodoView';
 import { TaskActions } from '@pi-code/webview/components/shared/TaskActions';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 
-import type { FC, MouseEvent } from 'react';
+import type { FC, KeyboardEvent, MouseEvent } from 'react';
 import type { ChatMessage, StatsData } from '@pi-code/shared/core/types';
 
 interface ChatHeaderProps extends StatsData {
@@ -16,6 +16,15 @@ interface ChatHeaderProps extends StatsData {
   readonly onExport?: () => void;
   readonly onDelete?: () => void;
   readonly onViewRaw?: () => void;
+  readonly isSearchOpen: boolean;
+  readonly searchQuery: string;
+  readonly matchCount: number;
+  readonly activeMatchNumber: number;
+  readonly onSearchOpen: () => void;
+  readonly onSearchClose: () => void;
+  readonly onSearchChange: (query: string) => void;
+  readonly onPrevMatch: () => void;
+  readonly onNextMatch: () => void;
 }
 
 const ContextProgressBar: FC<{ readonly percentage: number }> = ({ percentage }) => (
@@ -23,6 +32,72 @@ const ContextProgressBar: FC<{ readonly percentage: number }> = ({ percentage })
     <div className="h-full bg-vscode-charts-blue rounded-full transition-all duration-300" style={{ width: `${percentage}%` }} />
   </div>
 );
+
+const ChatSearchBar: FC<{
+  readonly query: string;
+  readonly matchCount: number;
+  readonly activeMatchNumber: number;
+  readonly onChange: (query: string) => void;
+  readonly onPrev: () => void;
+  readonly onNext: () => void;
+  readonly onClose: () => void;
+}> = ({ query, matchCount, activeMatchNumber, onChange, onPrev, onNext, onClose }) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const hasQuery = query.length > 0;
+  const hasMatches = hasQuery && matchCount > 0;
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>): void => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      if (event.shiftKey) onPrev();
+      else onNext();
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      onClose();
+    }
+  };
+
+  return (
+    <div
+      className="px-3 pt-2.5 pb-2 flex items-center gap-2 relative z-1 bg-vscode-input-background hover:bg-vscode-input-background/90 shadow-lg shadow-vscode-sideBar-background/50 rounded-xl border border-vscode-panel-border/50 transition-all duration-200"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <Search size={14} className="text-vscode-descriptionForeground shrink-0" />
+      <input
+        ref={inputRef}
+        value={query}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={handleKeyDown}
+        placeholder="Search chat..."
+        className="chat-search-input flex-1 min-w-0 bg-transparent outline-none text-sm text-vscode-foreground placeholder:text-vscode-descriptionForeground"
+      />
+      {hasQuery && (
+        <span className="text-xs font-mono text-vscode-descriptionForeground shrink-0 tabular-nums">
+          {matchCount === 0 ? 'No results' : `${activeMatchNumber}/${matchCount}`}
+        </span>
+      )}
+      <Tooltip content="Previous match" side="bottom">
+        <button onClick={onPrev} disabled={!hasMatches} className="icon-button disabled:opacity-40 disabled:cursor-default">
+          <ArrowUp size={14} />
+        </button>
+      </Tooltip>
+      <Tooltip content="Next match" side="bottom">
+        <button onClick={onNext} disabled={!hasMatches} className="icon-button disabled:opacity-40 disabled:cursor-default">
+          <ArrowDown size={14} />
+        </button>
+      </Tooltip>
+      <Tooltip content="Close search" side="bottom">
+        <button onClick={onClose} className="icon-button">
+          <X size={14} />
+        </button>
+      </Tooltip>
+    </div>
+  );
+};
 
 export const ChatHeader: FC<ChatHeaderProps> = ({
   title,
@@ -39,6 +114,15 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
   onExport,
   onDelete,
   onViewRaw,
+  isSearchOpen,
+  searchQuery,
+  matchCount,
+  activeMatchNumber,
+  onSearchOpen,
+  onSearchClose,
+  onSearchChange,
+  onPrevMatch,
+  onNextMatch,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -51,6 +135,22 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 
   const todos = messages.findLast((msg) => msg.toolName === 'update_todo' && msg.todos)?.todos;
 
+  if (isSearchOpen) {
+    return (
+      <div className="py-2 px-3.5 border-b border-vscode-editorGroup-border/30 bg-vscode-sideBar-background shrink-0 select-none">
+        <ChatSearchBar
+          query={searchQuery}
+          matchCount={matchCount}
+          activeMatchNumber={activeMatchNumber}
+          onChange={onSearchChange}
+          onPrev={onPrevMatch}
+          onNext={onNextMatch}
+          onClose={onSearchClose}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="py-2 px-3.5 border-b border-vscode-editorGroup-border/30 bg-vscode-sideBar-background shrink-0 select-none">
       <div
@@ -61,7 +161,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
         <div className="flex justify-between items-center gap-2">
           <div className="flex items-center grow min-w-0">
             <div className="flex items-center shrink-0 text-vscode-descriptionForeground">
-              {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+              {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
             </div>
             <div className="flex items-center gap-1.5 ml-1.5 grow min-w-0">
               <span className="font-bold text-xs uppercase tracking-wider text-vscode-descriptionForeground shrink-0">Task:</span>
@@ -74,7 +174,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
           </div>
           <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
             <Tooltip content="Close task" side="bottom">
-              <button onClick={onClose} className="icon-button icon-button-sm">
+              <button onClick={onClose} className="icon-button">
                 <X size={14} />
               </button>
             </Tooltip>
@@ -90,9 +190,9 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {totalCost > 0 && <span className="text-xs font-mono text-vscode-foreground/80">${totalCost.toFixed(4)}</span>}
-              <Tooltip content="Compact context">
-                <button onClick={onCompact} className="icon-button">
-                  <FoldVertical size={14} />
+              <Tooltip content="Search chat" side="bottom">
+                <button onClick={onSearchOpen} className="icon-button">
+                  <Search size={14} />
                 </button>
               </Tooltip>
             </div>

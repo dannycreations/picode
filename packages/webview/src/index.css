@@ -69,10 +69,6 @@
   @apply inline-flex items-center justify-center shrink-0 border-none bg-transparent text-vscode-editor-foreground cursor-pointer rounded hover:bg-vscode-list-hoverBackground w-6 h-6;
 }
 
-.icon-button-sm {
-  @apply w-5 h-5;
-}
-
 .text-button {
   @apply inline-flex items-center gap-1.5 bg-transparent border-none cursor-pointer p-0 transition-colors;
 }
@@ -135,6 +131,21 @@
   box-shadow: 0 0 0 0.5px color-mix(in srgb, var(--vscode-focusBorder) 30%, transparent);
   font-family: var(--vscode-editor-font-family, monospace);
   padding: 1px 4px;
+}
+
+.search-hit {
+  background-color: color-mix(in srgb, var(--vscode-editor-findMatchHighlightBackground, #57534e) 55%, transparent);
+  border-radius: 2px;
+  color: inherit;
+}
+
+.search-hit-active {
+  background-color: color-mix(in srgb, var(--vscode-editor-findMatchBackground, #9e6a03) 85%, transparent);
+  color: var(--vscode-editor-foreground, inherit);
+}
+
+.chat-search-input {
+  caret-color: var(--vscode-focusBorder);
 }
 
 @keyframes fade-in {
