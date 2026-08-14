@@ -17,11 +17,11 @@ describe('setting fields', () => {
     expect(new Set(rendered).size).toBe(rendered.length);
   });
 
-  it('nests controls under a boolean setting from the same tab', () => {
+  it('nests controls under a parent setting from the same tab', () => {
     for (const key of SETTING_KEYS) {
       const { parent, tab } = SETTING_FIELDS[key];
       if (!parent) continue;
-      expect(getSettingSpec(parent).type, key).toBe('boolean');
+      expect(['boolean', 'number'].includes(getSettingSpec(parent).type), key).toBe(true);
       expect(SETTING_FIELDS[parent].parent, key).toBeUndefined();
       expect(SETTING_FIELDS[parent].tab, key).toBe(tab);
     }

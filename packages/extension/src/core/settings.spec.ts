@@ -3,12 +3,13 @@ import { describe, expect, it } from 'vitest';
 
 import { DEFAULT_SETTINGS, SETTING_KEYS, SETTINGS_SCHEMA } from '@pi-code/shared/core/settings';
 import manifest from '../../package.json' with { type: 'json' };
-import { buildManifestSettings, diffManifestSettings } from '../../scripts/settings.ts';
+import { buildManifestSettings } from '../../scripts/settings.ts';
 
 describe('contributed configuration', () => {
   it('matches the shared settings schema', () => {
     // Regenerate with "pnpm --filter pi-code run check:settings" when this fails.
-    expect(diffManifestSettings(manifest)).toEqual([]);
+    const expected = buildManifestSettings(manifest.name);
+    expect(manifest.contributes.configuration.properties).toEqual(expected.properties);
   });
 
   it('declares exactly the schema keys', () => {

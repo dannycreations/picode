@@ -148,18 +148,18 @@ export const SETTINGS_SCHEMA = {
     maximum: 500,
     description: 'Maximum number of open editor tabs to include in context. Higher values provide more context but increase token usage.',
   },
-  excludeIgnoredFiles: {
-    type: 'boolean',
-    default: true,
-    description:
-      'Hide files and folders matched by .gitignore when listing workspace files. Reduces context noise from build output and dependencies.',
-  },
   maxWorkspaceFiles: {
     type: 'number',
     default: 100,
     minimum: 0,
     maximum: 500,
     description: 'Maximum number of workspace files to include in context. Higher values provide more context but increase token usage.',
+  },
+  excludeIgnoredFiles: {
+    type: 'boolean',
+    default: true,
+    description:
+      'Hide files and folders matched by .gitignore when listing workspace files. Reduces context noise from build output and dependencies.',
   },
   maxGitStatusFiles: {
     type: 'number',

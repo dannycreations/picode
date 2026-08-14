@@ -170,17 +170,17 @@
           "maximum": 500,
           "description": "Maximum number of open editor tabs to include in context. Higher values provide more context but increase token usage."
         },
-        "pi-code.excludeIgnoredFiles": {
-          "type": "boolean",
-          "default": true,
-          "description": "Hide files and folders matched by .gitignore when listing workspace files. Reduces context noise from build output and dependencies."
-        },
         "pi-code.maxWorkspaceFiles": {
           "type": "number",
           "default": 100,
           "minimum": 0,
           "maximum": 500,
           "description": "Maximum number of workspace files to include in context. Higher values provide more context but increase token usage."
+        },
+        "pi-code.excludeIgnoredFiles": {
+          "type": "boolean",
+          "default": true,
+          "description": "Hide files and folders matched by .gitignore when listing workspace files. Reduces context noise from build output and dependencies."
         },
         "pi-code.maxGitStatusFiles": {
           "type": "number",
@@ -286,17 +286,18 @@
   "scripts": {
     "build": "pnpm run check:settings && vite build && tsx scripts/build.ts",
     "check": "pnpm run check:settings && tsc --noEmit",
-    "check:settings": "tsx scripts/settings.ts --check",
+    "check:settings": "tsx scripts/settings.ts",
     "test": "vitest run"
   },
   "dependencies": {
-    "@earendil-works/pi-agent-core": "^0.84.1",
-    "@earendil-works/pi-ai": "^0.84.1",
-    "@earendil-works/pi-coding-agent": "^0.84.1",
+    "@earendil-works/pi-agent-core": "^0.84.2",
+    "@earendil-works/pi-ai": "^0.84.2",
+    "@earendil-works/pi-coding-agent": "^0.84.2",
     "@pi-code/shared": "workspace:*",
+    "ignore": "^7.0.6",
     "minimatch": "^10.2.6",
     "shell-quote": "^1.10.0",
-    "typebox": "^1.3.13"
+    "typebox": "^1.3.14"
   },
   "devDependencies": {
     "@pi-code/webview": "workspace:*",

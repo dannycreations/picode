@@ -54,20 +54,31 @@ export const SettingControl: FC<SettingControlProps> = ({ settingKey, draftSetti
       );
     }
 
-    case 'number':
+    case 'number': {
+      const childKeys = getChildFieldKeys(settingKey).filter((childKey) => isFieldVisible(childKey, searchQuery));
+      const children = childKeys.length
+        ? childKeys.map((childKey) => (
+            <SettingControl key={childKey} settingKey={childKey} draftSettings={draftSettings} onChange={onChange} searchQuery={searchQuery} />
+          ))
+        : undefined;
+
       return (
-        <SettingSlider
-          label={field.label}
-          icon={icon}
-          description={spec.description}
-          value={typeof value === 'number' ? value : spec.default}
-          min={spec.minimum}
-          max={spec.maximum}
-          step={spec.step}
-          unit={spec.unit}
-          onChange={(next) => onChange(settingKey, next)}
-        />
+        <div className="flex flex-col gap-4">
+          <SettingSlider
+            label={field.label}
+            icon={icon}
+            description={spec.description}
+            value={typeof value === 'number' ? value : spec.default}
+            min={spec.minimum}
+            max={spec.maximum}
+            step={spec.step}
+            unit={spec.unit}
+            onChange={(next) => onChange(settingKey, next)}
+          />
+          {children && <div className="pl-3 border-l-2 border-vscode-button-background/60 flex flex-col gap-4">{children}</div>}
+        </div>
       );
+    }
 
     case 'string[]':
       return (

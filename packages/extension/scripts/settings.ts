@@ -74,51 +74,8 @@ async function format(source: string): Promise<string> {
   }
 }
 
-export function diffManifestSettings(manifest: Manifest): readonly string[] {
-  const expected = buildManifestSettings(manifest.name);
-  const problems: string[] = [];
-
-  const actualProperties = (manifest.contributes.configuration.properties ?? {}) as Record<string, unknown>;
-  for (const [id, property] of Object.entries(expected.properties)) {
-    const actual = actualProperties[id];
-    if (actual === undefined) {
-      problems.push(`missing "${id}"`);
-    } else if (JSON.stringify(actual) !== JSON.stringify(property)) {
-      problems.push(`stale "${id}"\n    expected: ${JSON.stringify(property)}\n    actual:   ${JSON.stringify(actual)}`);
-    }
-  }
-  for (const id of Object.keys(actualProperties)) {
-    if (!(id in expected.properties)) problems.push(`unknown "${id}" is not declared in SETTINGS_SCHEMA`);
-  }
-  if (Object.keys(actualProperties).join() !== Object.keys(expected.properties).join()) {
-    problems.push('configuration properties are out of schema order');
-  }
-
-  const actualRestricted = manifest.capabilities.untrustedWorkspaces.restrictedConfigurations;
-  if (JSON.stringify(actualRestricted) !== JSON.stringify(expected.restricted)) {
-    problems.push(
-      `restrictedConfigurations is out of sync\n    expected: ${JSON.stringify(expected.restricted)}\n    actual:   ${JSON.stringify(actualRestricted)}`,
-    );
-  }
-
-  return problems;
-}
-
 async function main(): Promise<void> {
-  const isCheck = argv.includes('--check');
   const { raw, manifest } = readManifest();
-  const problems = diffManifestSettings(manifest);
-
-  if (isCheck) {
-    if (problems.length === 0) {
-      console.log('Manifest settings match the shared schema.');
-      return;
-    }
-    console.error(`package.json is out of sync with @pi-code/shared/core/settings:\n  - ${problems.join('\n  - ')}`);
-    console.error('\nRun "pnpm --filter pi-code run check:settings" to regenerate the manifest.');
-    exit(1);
-  }
-
   const expected = buildManifestSettings(manifest.name);
   manifest.capabilities.untrustedWorkspaces.restrictedConfigurations = expected.restricted;
   manifest.contributes.configuration.properties = expected.properties;

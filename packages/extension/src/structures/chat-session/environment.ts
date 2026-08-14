@@ -1,6 +1,7 @@
 import { basename } from 'node:path';
 import { contentText } from '@earendil-works/pi-ai';
-import { RelativePattern, TabInputText, Uri, window, workspace } from 'vscode';
+import ignore from 'ignore';
+import { FileType, TabInputText, Uri, window, workspace } from 'vscode';
 
 import { readAppSettings } from '@pi-code/extension/core/settings';
 import { getGitRepository, getIgnoredPaths } from '@pi-code/extension/utilities/git';
@@ -16,12 +17,6 @@ const STATUS_MAP: Record<TodoItem['status'], string> = {
   completed: 'Completed',
 };
 
-const GITIGNORE_OVERSCAN = 2000;
-// Without gitignore filtering we still overscan by one so a directory that hits
-// the limit is distinguishable from one that merely contains exactly `limit` files.
-const UNFILTERED_OVERSCAN = 1;
-const DESKTOP_DIR_SUFFIX = '/desktop';
-
 const TODO_REMINDER_SECTION = '## Todo Reminders';
 
 export function formatTodoReminder(todoList?: TodoItem[]): string {
@@ -29,6 +24,7 @@ export function formatTodoReminder(todoList?: TodoItem[]): string {
 
   if (!todoList || todoList.length === 0) {
     lines.push('You have not created a todo list yet. Create one with `update_todo` if your task is complex or involves multiple steps.');
+    lines.push("You can safely zeroing this reminder if it's not needed yet, and don't cite it anywhere if it becomes noisy.");
     return lines.join('\n').trim();
   }
 
@@ -59,35 +55,200 @@ export function withTodoProgress(messages: readonly AgentMessage[], todoList?: T
   return [...filtered, injected];
 }
 
-async function listFiles(cwd: string, limit = 200, excludeIgnoredFiles = true): Promise<{ paths: string[]; hitLimit: boolean }> {
-  const maxResults = excludeIgnoredFiles ? limit + GITIGNORE_OVERSCAN : limit + UNFILTERED_OVERSCAN;
-  const found = await workspace.findFiles(new RelativePattern(cwd, '**/*'), undefined, maxResults);
-
-  let uris = found;
-  if (excludeIgnoredFiles) {
-    const repo = await getGitRepository(Uri.file(cwd));
-    if (repo) {
-      const ignored = await getIgnoredPaths(
-        repo,
-        found.map((uri) => uri.fsPath),
-      );
-      uris = found.filter((uri) => !ignored.has(uri.fsPath));
+export function getLatestTodoList(messages: readonly AgentMessage[]): TodoItem[] | undefined {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    if (msg.role === 'toolResult' && msg.toolName === 'update_todo') {
+      const details: { todos?: TodoItem[] } | undefined = msg.details;
+      if (details?.todos) return details.todos;
     }
   }
+  return undefined;
+}
 
-  const paths = uris.map((uri) => toRelativePath(uri));
-  paths.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
-  return { paths: paths.slice(0, limit), hitLimit: uris.length > limit };
+interface LocalIgnore {
+  readonly relativeDir: string;
+  readonly filter: ReturnType<typeof ignore>;
+}
+
+interface UriNode {
+  readonly uri: Uri;
+  readonly relative: string;
+  readonly depth: number;
+  readonly ignores: readonly LocalIgnore[];
+}
+
+const textDecoder = new TextDecoder();
+const pathCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
+async function loadGitignoreFilter(gitignoreUri: Uri): Promise<ReturnType<typeof ignore> | null> {
+  try {
+    const contentBytes = await workspace.fs.readFile(gitignoreUri);
+    const content = textDecoder.decode(contentBytes);
+    return ignore().add(content);
+  } catch {
+    return null;
+  }
+}
+
+function isIgnoredByLocalRules(childRelative: string, isDir: boolean, ignores: readonly LocalIgnore[]): boolean {
+  for (let i = 0; i < ignores.length; i++) {
+    const { relativeDir, filter } = ignores[i];
+    let testPath = childRelative;
+
+    if (relativeDir !== '') {
+      if (childRelative === relativeDir) {
+        testPath = '';
+      } else if (childRelative.startsWith(`${relativeDir}/`)) {
+        testPath = childRelative.slice(relativeDir.length + 1);
+      } else {
+        continue;
+      }
+    }
+
+    if (testPath === '') continue;
+
+    const pathToTest = isDir ? `${testPath}/` : testPath;
+    if (filter.ignores(pathToTest)) return true;
+  }
+  return false;
+}
+
+async function walkConcurrently<T>(seed: readonly T[], concurrency: number, process: (item: T) => Promise<T[]>): Promise<void> {
+  const queue: T[] = seed.slice();
+  let active = 0;
+
+  return new Promise<void>((resolve, reject) => {
+    let settled = false;
+
+    const fail = (err: unknown) => {
+      if (!settled) {
+        settled = true;
+        reject(err);
+      }
+    };
+
+    const pump = () => {
+      if (settled) return;
+      if (queue.length === 0 && active === 0) {
+        settled = true;
+        resolve();
+        return;
+      }
+      while (active < concurrency && queue.length > 0) {
+        const item = queue.pop()!;
+        active++;
+        process(item)
+          .then((children) => {
+            active--;
+            // Avoid `queue.push(...children)`: spreading a large array as call
+            // arguments risks a stack overflow and is slower than a plain loop.
+            for (let i = 0; i < children.length; i++) queue.push(children[i]);
+            pump();
+          })
+          .catch(fail);
+      }
+    };
+
+    pump();
+  });
+}
+
+export async function walkWorkspace(cwd: string, limit: number, excludeIgnoredFiles: boolean): Promise<{ paths: string[]; hitLimit: boolean }> {
+  const rootUri = Uri.file(cwd);
+  const repo = excludeIgnoredFiles ? await getGitRepository(rootUri).catch(() => null) : null;
+  const useLocalGitignore = excludeIgnoredFiles && !repo;
+
+  const fileResults: string[] = [];
+
+  const processNode = async (node: UriNode): Promise<UriNode[]> => {
+    const { uri, relative, depth, ignores } = node;
+
+    let entries: [string, FileType][];
+    try {
+      entries = await workspace.fs.readDirectory(uri);
+    } catch {
+      return [];
+    }
+
+    const entryCount = entries.length;
+    if (entryCount === 0) return [];
+
+    const names: string[] = [];
+    const types: FileType[] = [];
+    const childUris: Uri[] = [];
+    const fsPaths: string[] = [];
+
+    for (let i = 0; i < entryCount; i++) {
+      const [name, type] = entries[i];
+      if (name === '.git') continue;
+      const childUri = Uri.joinPath(uri, name);
+      names.push(name);
+      types.push(type);
+      childUris.push(childUri);
+      fsPaths.push(childUri.fsPath);
+    }
+
+    const childCount = names.length;
+    if (childCount === 0) return [];
+
+    let localIgnores = ignores;
+    if (useLocalGitignore) {
+      const gitignoreIndex = names.indexOf('.gitignore');
+      if (gitignoreIndex !== -1 && types[gitignoreIndex] & FileType.File) {
+        const filter = await loadGitignoreFilter(childUris[gitignoreIndex]);
+        if (filter) localIgnores = [...ignores, { relativeDir: relative, filter }];
+      }
+    }
+
+    const ignoredPaths = repo && fsPaths.length > 0 ? await getIgnoredPaths(repo, fsPaths) : null;
+
+    const nextNodes: UriNode[] = [];
+    const relativePrefix = relative === '' ? '' : `${relative}/`;
+    const canDescend = depth < 64;
+    const hasLocalIgnores = localIgnores.length > 0;
+
+    for (let i = 0; i < childCount; i++) {
+      const type = types[i];
+      const childUri = childUris[i];
+      const isDir = !!(type & FileType.Directory);
+      const childRelative = relativePrefix + names[i];
+
+      if (repo) {
+        if (ignoredPaths?.has(fsPaths[i])) continue;
+      } else if (excludeIgnoredFiles && hasLocalIgnores) {
+        if (isIgnoredByLocalRules(childRelative, isDir, localIgnores)) continue;
+      }
+
+      if (isDir) {
+        if (canDescend && !(type & FileType.SymbolicLink)) {
+          nextNodes.push({ uri: childUri, relative: childRelative, depth: depth + 1, ignores: localIgnores });
+        }
+        continue;
+      }
+
+      if (type & FileType.File) fileResults.push(childRelative);
+    }
+
+    return nextNodes;
+  };
+
+  await walkConcurrently<UriNode>([{ uri: rootUri, relative: '', depth: 0, ignores: [] }], 10, processNode);
+
+  fileResults.sort((a, b) => pathCollator.compare(a, b));
+
+  // More matches existed than we show; slicing to `limit` never under-delivers.
+  return { paths: fileResults.slice(0, limit), hitLimit: fileResults.length > limit };
 }
 
 interface FileTreeNode {
   readonly name: string;
-  isDir: boolean;
+  readonly isDir: boolean;
   readonly children: Map<string, FileTreeNode>;
 }
 
 export function buildFileTree(paths: readonly string[]): FileTreeNode {
-  const root: FileTreeNode = { name: '', isDir: true, children: new Map() };
+  const root = { name: '', isDir: true, children: new Map() } satisfies FileTreeNode;
   for (const raw of paths) {
     const isDir = raw.endsWith('/');
     const segments = raw.replace(/\/+$/, '').split('/');
@@ -126,7 +287,8 @@ export function renderFileTree(root: FileTreeNode, rootLabel: string): string {
     children.forEach((child, index) => {
       const isLast = index === children.length - 1;
       const connector = isLast ? '└─ ' : '├─ ';
-      lines.push(`${prefix}${connector}${child.name}${child.isDir ? '/' : ''}`);
+      const label = `${child.name}${child.isDir ? '/' : ''}`;
+      lines.push(`${prefix}${connector}${label}`);
       if (child.isDir) {
         walk(child, prefix + (isLast ? '   ' : '│  '));
       }
@@ -135,17 +297,6 @@ export function renderFileTree(root: FileTreeNode, rootLabel: string): string {
 
   walk(root, '');
   return lines.join('\n');
-}
-
-export function getLatestTodoList(messages: readonly AgentMessage[]): TodoItem[] | undefined {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const msg = messages[i];
-    if (msg.role === 'toolResult' && msg.toolName === 'update_todo') {
-      const details: { todos?: TodoItem[] } | undefined = msg.details;
-      if (details?.todos) return details.todos;
-    }
-  }
-  return undefined;
 }
 
 async function getGitStatusLines(cwd: string): Promise<string[]> {
@@ -229,15 +380,10 @@ export async function getEnvironmentDetails(cwd: string, includeFileDetails = fa
     const maxWorkspaceFiles = settings.maxWorkspaceFiles;
     if (maxWorkspaceFiles > 0) {
       details += `\n\n### Workspace Files (${cwd.replace(/\\/g, '/')})\n\n`;
-      const isDesktop = cwd.replace(/\\/g, '/').toLowerCase().endsWith(DESKTOP_DIR_SUFFIX);
-      if (isDesktop) {
-        details += 'Desktop files not shown automatically. Use `execute_command` to explore if needed.';
-      } else {
-        const { paths, hitLimit } = await listFiles(cwd, maxWorkspaceFiles, settings.excludeIgnoredFiles);
-        details += renderFileTree(buildFileTree(paths), basename(cwd));
-        if (hitLimit) {
-          details += '\n\n*(File list truncated. Use `execute_command` to list files in specific subdirectories if you need to explore further.)*';
-        }
+      const listing = await walkWorkspace(cwd, maxWorkspaceFiles, settings.excludeIgnoredFiles);
+      details += renderFileTree(buildFileTree(listing.paths), basename(cwd));
+      if (listing.hitLimit) {
+        details += '\n\n*(File list truncated. Use `execute_command` to list files in specific subdirectories if you need to explore further.)*';
       }
     }
   }
