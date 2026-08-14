@@ -2,62 +2,17 @@ import { useCallback, useMemo, useState } from 'react';
 
 import { ACTIVE_TASK_ID } from '@pi-code/shared/core/constants';
 import { createActiveTask } from '@pi-code/shared/utilities/common';
-import { patchLastAssistant, patchMessage } from '@pi-code/webview/components/chat/helpers/message';
+import {
+  appendOnce,
+  patchLastAssistant,
+  patchMessage,
+  settlePendingTurns,
+  upsertToolMessage,
+} from '@pi-code/webview/components/chat/helpers/message';
 import { findPendingQuestion } from '@pi-code/webview/components/chat/helpers/question';
 
 import type { ExtensionToWebviewMessage } from '@pi-code/shared/core/protocol';
 import type { ActiveTaskState, ChatMessage } from '@pi-code/shared/core/types';
-
-interface ApiRequestSettlePatch {
-  readonly cost?: number;
-  readonly error?: string;
-}
-
-function settlePendingTurns(messages: ChatMessage[], patch: ApiRequestSettlePatch = {}): ChatMessage[] {
-  let changed = false;
-  const next = messages.map((m) => {
-    if (m.toolStatus !== 'running') return m;
-    if (m.sender === 'api_request') {
-      changed = true;
-      return {
-        ...m,
-        toolStatus: patch.error ? ('denied' as const) : ('completed' as const),
-        cost: patch.cost ?? m.cost,
-        errorMessage: patch.error ?? m.errorMessage,
-      };
-    }
-    if (m.sender === 'assistant') {
-      changed = true;
-      return {
-        ...m,
-        toolStatus: 'completed' as const,
-      };
-    }
-    return m;
-  });
-  return changed ? next : messages;
-}
-
-// Approval and execution events for the same tool call arrive in either order,
-// so the row is created on first sight and patched afterwards.
-function upsertToolMessage(messages: ChatMessage[], id: string, patch: Partial<ChatMessage>): ChatMessage[] {
-  if (messages.some((m) => m.id === id)) {
-    return patchMessage(messages, id, patch);
-  }
-  return [...messages, { id, sender: 'tool', text: '', ts: Date.now(), ...patch }];
-}
-
-function appendOnce(messages: ChatMessage[], message: ChatMessage): ChatMessage[] {
-  if (messages.some((m) => m.id === message.id)) return messages;
-
-  // Consecutive identical notices are collapsed into the first one.
-  const last = messages[messages.length - 1];
-  if (last?.sender === message.sender && (last.errorMessage ?? last.text) === (message.errorMessage ?? message.text)) {
-    return messages;
-  }
-
-  return [...messages, message];
-}
 
 interface UseActiveTaskReturn {
   readonly activeTask: ActiveTaskState | null;
@@ -174,7 +129,7 @@ export const useActiveTask = (): UseActiveTaskReturn => {
           const { cost, stats } = msg.payload;
           updateTask((prev) => ({
             ...prev,
-            messages: patchLastAssistant(settlePendingTurns(prev.messages, { cost }), (message) => ({
+            messages: patchLastAssistant(prev.messages, (message) => ({
               toolStatus: 'running',
               cost: cost ?? message.cost,
             })),
@@ -186,7 +141,7 @@ export const useActiveTask = (): UseActiveTaskReturn => {
         case 'stream_delta': {
           const { text, thinking } = msg.payload;
           updateMessages((messages) =>
-            patchLastAssistant(settlePendingTurns(messages), (message) => ({
+            patchLastAssistant(messages, (message) => ({
               text: text ? message.text + text : message.text,
               reasoning: thinking ? (message.reasoning || '') + thinking : message.reasoning,
             })),

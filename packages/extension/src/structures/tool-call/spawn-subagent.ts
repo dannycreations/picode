@@ -47,7 +47,7 @@ const SUBAGENT_NAMES = SUBAGENTS.map((agent) => agent.name);
 export const spawnSubagentTool = defineTool({
   name: 'spawn_subagent' as ToolName,
   label: 'Spawn Sub-agent',
-  description: `Use this when your task requires extensive searching or file reading, and you do not need the intermediate results in your current conversation, only the final answer. This tool works best when you can fully specify the task in advance, with no back-and-forth required. The sub-agent runs in its own isolated context window, performs the work independently, and returns a final report to you.
+  description: `Delegate a self-contained, read-only task to a sub-agent that works independently and returns a final report, when you don't need its intermediate steps.
 
 ## Available Agents
 
@@ -66,7 +66,7 @@ ${describeSubagents()}
 4. **User Visibility**: The user cannot see the sub-agent's work in progress. You are responsible for summarizing any relevant findings or actions for the user afterward.
 5. **Sub-Agent Limitations**: A sub-agent cannot ask clarifying questions, edit files, or spawn further sub-agents. Treat each delegation as a one-purpose, fully self-contained instruction.`,
   parameters: Type.Object({
-    agent: StringEnum(SUBAGENT_NAMES, { description: 'The sub-agent capabilities.' }),
+    agent: StringEnum(SUBAGENT_NAMES, { description: 'Name of the sub-agent to delegate to.' }),
     description: Type.String({ description: 'A 3-5 word description of the delegated task, shown to the user.' }),
     task: Type.String({
       description: 'The complete brief for the sub-agent. It has no other context, so include the goal, relevant paths, and what to report back.',

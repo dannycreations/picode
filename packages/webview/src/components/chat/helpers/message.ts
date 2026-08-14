@@ -2,6 +2,17 @@ import { buildToolSections, GROUP_TOOLS } from '@pi-code/webview/components/chat
 
 import type { ChatMessage, ToolSection } from '@pi-code/shared/core/types';
 
+export const ESTIMATED_ROW_HEIGHT: Record<ChatMessage['sender'], number> = {
+  api_request: 44,
+  checkpoint: 44,
+  info: 44,
+  error: 96,
+  user: 96,
+  queue: 96,
+  tool: 120,
+  assistant: 200,
+};
+
 function hasContent(value: string | undefined): boolean {
   return value !== undefined && value.trim() !== '';
 }
@@ -62,6 +73,36 @@ export function isRenderableMessage(message: ChatMessage): boolean {
   return true;
 }
 
+interface RequestSettlePatch {
+  readonly cost?: number;
+  readonly error?: string;
+}
+
+export function settlePendingTurns(messages: ChatMessage[], patch: RequestSettlePatch = {}): ChatMessage[] {
+  let changed = false;
+  const next = messages.map((m) => {
+    if (m.toolStatus !== 'running') return m;
+    if (m.sender === 'api_request') {
+      changed = true;
+      return {
+        ...m,
+        toolStatus: patch.error ? ('denied' as const) : ('completed' as const),
+        cost: patch.cost ?? m.cost,
+        errorMessage: patch.error ?? m.errorMessage,
+      };
+    }
+    if (m.sender === 'assistant') {
+      changed = true;
+      return {
+        ...m,
+        toolStatus: 'completed' as const,
+      };
+    }
+    return m;
+  });
+  return changed ? next : messages;
+}
+
 export function patchMessage(messages: ChatMessage[], id: string, patch: Partial<ChatMessage>): ChatMessage[] {
   return messages.map((message) => (message.id === id ? { ...message, ...patch } : message));
 }
@@ -77,13 +118,21 @@ export function patchLastAssistant(messages: ChatMessage[], patch: (message: Cha
   return messages;
 }
 
-export const ESTIMATED_ROW_HEIGHT: Record<ChatMessage['sender'], number> = {
-  api_request: 44,
-  checkpoint: 44,
-  info: 44,
-  error: 96,
-  user: 96,
-  queue: 96,
-  tool: 120,
-  assistant: 200,
-};
+export function upsertToolMessage(messages: ChatMessage[], id: string, patch: Partial<ChatMessage>): ChatMessage[] {
+  if (messages.some((m) => m.id === id)) {
+    return patchMessage(messages, id, patch);
+  }
+  return [...messages, { id, sender: 'tool', text: '', ts: Date.now(), ...patch }];
+}
+
+export function appendOnce(messages: ChatMessage[], message: ChatMessage): ChatMessage[] {
+  if (messages.some((m) => m.id === message.id)) return messages;
+
+  // Consecutive identical notices are collapsed into the first one.
+  const last = messages[messages.length - 1];
+  if (last?.sender === message.sender && (last.errorMessage ?? last.text) === (message.errorMessage ?? message.text)) {
+    return messages;
+  }
+
+  return [...messages, message];
+}

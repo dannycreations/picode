@@ -32,7 +32,7 @@ export function formatTodoReminder(todoList?: TodoItem[]): string {
     return lines.join('\n').trim();
   }
 
-  lines.push('Below is your current list of reminders for this task. Keep them updated as you progress.', '');
+  lines.push('Below is a list of your current reminders for this task. Keep them update or expand as you progress.', '');
   lines.push('| # | Content | Status |');
   lines.push('|---|---------|--------|');
   todoList.forEach((item, idx) => {
@@ -41,7 +41,7 @@ export function formatTodoReminder(todoList?: TodoItem[]): string {
   });
   lines.push('');
 
-  lines.push('IMPORTANT: When task status changes, remember to call the `update_todo` tool to update your progress.');
+  lines.push('IMPORTANT: When task status changes, remember to call the `update_todo` tool to track your progress.');
   return lines.join('\n').trim();
 }
 

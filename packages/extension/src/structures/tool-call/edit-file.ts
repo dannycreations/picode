@@ -159,10 +159,10 @@ export const editFileTool = defineTool({
   label: 'Edit File',
   description: 'Replace a specified string within an existing file, or create the file when no existing string is provided.',
   parameters: Type.Object({
-    file_path: Type.String({ description: 'Workspace-relative path of the file to modify or create.' }),
-    old_string: Type.String({ description: 'Exact literal text to replace. Leave empty to create a new file.' }),
+    file_path: Type.String({ description: 'Workspace-relative path of the file.' }),
+    old_string: Type.String({ description: 'Exact literal text to replace; empty creates the file.' }),
     new_string: Type.String({ description: 'Replacement text for "old_string".' }),
-    expected: Type.Optional(Type.Integer({ minimum: 1, description: 'Expected number of replacements. Defaults to 1.' })),
+    expected: Type.Optional(Type.Integer({ minimum: 1, description: 'Optional expected number of replacements; defaults to 1.' })),
   }),
   async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
     const { file_path, old_string, new_string } = params;

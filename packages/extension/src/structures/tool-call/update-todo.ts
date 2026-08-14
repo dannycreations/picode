@@ -9,7 +9,7 @@ import type { TodoItem } from '@pi-code/shared/utilities/todo';
 export const updateTodoTool = defineTool({
   name: 'update_todo' as ToolName,
   label: 'Update Todo List',
-  description: 'Update the project task checklist in order to track complex progress.',
+  description: 'Replace the project task checklist to track progress.',
   parameters: Type.Object({
     todos: Type.Array(
       Type.Object({
@@ -18,7 +18,7 @@ export const updateTodoTool = defineTool({
           description: 'Current state of the task.',
         }),
       }),
-      { description: 'Provide the complete list every time (it replaces the previous one).' },
+      { description: 'Complete list; replaces the previous one.' },
     ),
   }),
   async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {

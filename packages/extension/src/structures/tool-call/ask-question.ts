@@ -11,10 +11,10 @@ export const askQuestionTool = defineTool({
   label: 'Ask Follow-up Question',
   description: 'Ask the user for clarification when you need input to finish the task.',
   parameters: Type.Object({
-    question: Type.String({ description: 'The question to ask the user.' }),
+    question: Type.String({ description: 'The question to ask.' }),
     follow_up: Type.Array(Type.Object({ text: Type.String({ description: 'A complete, self-contained option with no placeholders.' }) }), {
       minItems: 2,
-      description: '2-4 suggested answers shown as clickable options, ordered from most to least likely.',
+      description: '2-4 answer options, ordered from most to least likely.',
     }),
   }),
   async execute(toolCallId, params, signal, _onUpdate, _ctx) {

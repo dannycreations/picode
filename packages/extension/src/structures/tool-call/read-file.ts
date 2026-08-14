@@ -145,18 +145,18 @@ export const readFileTool = defineTool({
   parameters: Type.Object({
     files: Type.Array(
       Type.Object({
-        path: Type.String({ description: 'Workspace-relative path of the file to read.' }),
+        path: Type.String({ description: 'Workspace-relative path of the file.' }),
         line_ranges: Type.Optional(
           Type.Array(
             Type.Tuple([
               Type.Integer({ minimum: 1, description: '1-based start line.' }),
               Type.Integer({ minimum: 1, description: '1-based end line, inclusive.' }),
             ]),
-            { description: 'Optional ranges to read as [start, end] 1-based inclusive line numbers.' },
+            { description: 'Optional [start, end] ranges of 1-based inclusive line numbers.' },
           ),
         ),
       }),
-      { minItems: 1, description: 'List files to read, at least one.' },
+      { minItems: 1, description: 'One or more files to read.' },
     ),
   }),
   async execute(_toolCallId, params, signal, _onUpdate, ctx) {
