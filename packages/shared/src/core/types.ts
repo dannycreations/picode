@@ -41,6 +41,7 @@ export interface ChatMessage {
   readonly errorMessage?: string;
   readonly images?: string[];
   readonly subagent?: string;
+  readonly duration?: number;
   readonly files?: ReadonlyArray<ReadFileSection>;
   readonly toolSections?: ReadonlyArray<ToolSection>;
 }

@@ -93,7 +93,7 @@ function appendMessage(result: ChatMessage[], id: string, msg: SessionMessage, t
     // A tool result is not a row of its own: it completes the `tool` row that
     // the assistant's matching tool call already pushed.
     case 'toolResult':
-      patchToolCall(result, msg);
+      patchToolCall(result, msg, ts);
       break;
 
     case 'bashExecution':
@@ -105,6 +105,7 @@ function appendMessage(result: ChatMessage[], id: string, msg: SessionMessage, t
         toolArgs: `command: ${msg.command}`,
         toolStatus: msg.cancelled ? 'denied' : 'completed',
         diff: msg.output,
+        duration: 0,
         ts,
       });
       break;
@@ -152,7 +153,7 @@ function appendAssistantTurn(result: ChatMessage[], id: string, msg: Extract<Ses
   }
 }
 
-function patchToolCall(result: ChatMessage[], msg: Extract<SessionMessage, { role: 'toolResult' }>): void {
+function patchToolCall(result: ChatMessage[], msg: Extract<SessionMessage, { role: 'toolResult' }>, ts: number): void {
   const index = result.findIndex((r) => r.sender === 'tool' && r.id === msg.toolCallId);
   if (index === -1) return;
 
@@ -166,6 +167,7 @@ function patchToolCall(result: ChatMessage[], msg: Extract<SessionMessage, { rol
     diff: details?.diff || resultText,
     todos: details?.todos,
     files: details?.files,
+    duration: Math.max(0, Math.round((ts - existing.ts) / 1000)),
     errorMessage: msg.isError ? resultText : existing.errorMessage,
   };
 }

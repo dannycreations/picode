@@ -8,6 +8,8 @@ import { getFileToolMeta, getToolDiffMeta, getToolLanguage, GROUP_TOOLS } from '
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
 import { Spinner } from '@pi-code/webview/components/shared/Spinner';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
+import { useElapsedSeconds } from '@pi-code/webview/hooks/useElapsedSeconds';
+import { formatDuration } from '@pi-code/webview/utilities/common';
 import { vscode } from '@pi-code/webview/utilities/vscode';
 
 import type { FC } from 'react';
@@ -36,6 +38,9 @@ const StackedToolGroup: FC<ToolMessageProps> = ({ message, onApproveTool, onDeny
   const hiddenCount = sections.length - 1;
   const hasMore = hiddenCount > 0;
   const hasApproval = message.toolStatus === 'approval';
+  const isSubagent = message.toolName === 'spawn_subagent';
+  const isSubagentRunning = message.toolStatus === 'running';
+  const showSubagentTimer = isSubagent && (isSubagentRunning || message.toolStatus === 'completed');
   const visibleSections = isExpanded ? sections : sections.slice(0, 1);
 
   const openFile = (target: string, content?: string) => {
@@ -64,6 +69,10 @@ const StackedToolGroup: FC<ToolMessageProps> = ({ message, onApproveTool, onDeny
               defaultOpen={false}
               isFirst={index === 0}
               isLast={index === visibleSections.length - 1 && !hasMore && !hasApproval}
+              showTimer={showSubagentTimer}
+              isRunning={isSubagentRunning}
+              startTs={message.ts}
+              duration={message.duration}
               onOpenFile={openFile}
             />
           ))}
@@ -94,6 +103,10 @@ interface ToolSectionCardProps {
   readonly defaultOpen: boolean;
   readonly isFirst: boolean;
   readonly isLast: boolean;
+  readonly showTimer: boolean;
+  readonly isRunning: boolean;
+  readonly startTs: number;
+  readonly duration?: number;
   readonly onOpenFile: (path: string, content?: string) => void;
 }
 
@@ -113,6 +126,10 @@ const ToolSectionCard: FC<ToolSectionCardProps> = ({
   defaultOpen,
   isFirst,
   isLast,
+  showTimer,
+  isRunning,
+  startTs,
+  duration,
   onOpenFile,
 }) => {
   const [open, setOpen] = useState(defaultOpen);
@@ -149,7 +166,7 @@ const ToolSectionCard: FC<ToolSectionCardProps> = ({
           )}
           {subtitle && <div className="text-[10px] text-vscode-descriptionForeground truncate select-text">{subtitle}</div>}
         </div>
-        {openPath && (
+        {openPath ? (
           <div className="flex items-center shrink-0">
             {language === 'diff' && <DiffStat content={content} className="group-hover:hidden" />}
             <span className="hidden group-hover:inline-flex">
@@ -163,7 +180,9 @@ const ToolSectionCard: FC<ToolSectionCardProps> = ({
               </Tooltip>
             </span>
           </div>
-        )}
+        ) : showTimer ? (
+          <ElapsedTimer startTs={startTs} isRunning={isRunning} duration={duration} />
+        ) : null}
       </div>
 
       {open && content && (
@@ -172,6 +191,20 @@ const ToolSectionCard: FC<ToolSectionCardProps> = ({
         </div>
       )}
     </div>
+  );
+};
+
+const ElapsedTimer: FC<{ startTs: number; isRunning: boolean; duration?: number }> = ({ startTs, isRunning, duration }) => {
+  const elapsed = useElapsedSeconds(startTs, isRunning && duration === undefined);
+  const displaySeconds = duration !== undefined ? duration : elapsed;
+  return (
+    <span
+      className="flex items-center gap-1 text-xs font-mono text-vscode-descriptionForeground tabular-nums"
+      aria-label={isRunning ? 'Elapsed loading time' : 'Time taken'}
+    >
+      {isRunning && <Spinner className="text-vscode-focusBorder" />}
+      {formatDuration(displaySeconds)}
+    </span>
   );
 };
 

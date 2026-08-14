@@ -215,14 +215,17 @@ export const useActiveTask = (): UseActiveTaskReturn => {
 
         case 'tool_execution_end': {
           const { id, result, todos, files, is_error } = msg.payload;
-          updateMessages((messages) =>
-            patchMessage(messages, id, {
+          updateMessages((messages) => {
+            const existing = messages.find((m) => m.id === id);
+            const duration = existing ? Math.max(0, Math.round((Date.now() - existing.ts) / 1000)) : undefined;
+            return patchMessage(messages, id, {
               todos,
               files,
               toolStatus: is_error ? 'denied' : 'completed',
               diff: is_error ? undefined : result,
-            }),
-          );
+              duration,
+            });
+          });
           break;
         }
 
