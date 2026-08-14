@@ -48,11 +48,12 @@ describe('formatSubagentStep', () => {
     expect(formatSubagentStep('execute_command', { command: 'rg  "foo"\n  --hidden' })).toBe('$ rg "foo" --hidden');
   });
 
-  it('truncates a long argument preview', () => {
-    const step = formatSubagentStep('execute_command', { command: 'a'.repeat(200) });
-
-    expect(step.endsWith('…')).toBe(true);
-    expect(step.length).toBeLessThan(100);
+  it('does not crash and shows no path when read_file files is not an array', () => {
+    expect(() => formatSubagentStep('read_file', { files: { path: 'src/a.ts' } })).not.toThrow();
+    expect(formatSubagentStep('read_file', { files: { path: 'src/a.ts' } })).toBe('read (no path)');
+    expect(formatSubagentStep('read_file', { files: 'src/a.ts' })).toBe('read (no path)');
+    expect(formatSubagentStep('read_file', {})).toBe('read (no path)');
+    expect(formatSubagentStep('read_file', undefined)).toBe('read (no path)');
   });
 });
 

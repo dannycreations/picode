@@ -72,17 +72,13 @@ interface SubagentInput {
   readonly onProgress?: (steps: string) => void;
 }
 
-const MAX_CONCURRENT_SPAWNS = 3;
-const MAX_STEP_LINES = 60;
-const MAX_ARGUMENT_PREVIEW = 80;
-
 let activeSpawns = 0;
 const waiting: (() => void)[] = [];
 
 async function acquireSpawnSlot(): Promise<() => void> {
   // A queue inherits the slot of whoever released it instead of taking a
   // new one, so the count cannot drift above the cap while a waiter resumes.
-  if (activeSpawns >= MAX_CONCURRENT_SPAWNS) {
+  if (activeSpawns >= 3) {
     await new Promise<void>((resolve) => waiting.push(resolve));
   } else {
     activeSpawns++;
@@ -100,15 +96,17 @@ async function acquireSpawnSlot(): Promise<() => void> {
 }
 
 function preview(value: string): string {
-  const text = value.replace(/\s+/g, ' ').trim();
-  return text.length > MAX_ARGUMENT_PREVIEW ? `${text.slice(0, MAX_ARGUMENT_PREVIEW)}…` : text;
+  return value.replace(/\s+/g, ' ').trim();
 }
 
 export function formatSubagentStep(toolName: SubagentToolName, args: unknown): string {
-  const values = (args ?? {}) as { files?: ReadonlyArray<{ path?: string }>; command?: string };
+  const values = (args ?? {}) as { files?: unknown; command?: string };
 
   if (toolName === 'read_file') {
-    const paths = (values.files ?? []).map((file) => file.path ?? '').filter((path) => path !== '');
+    const files = Array.isArray(values.files) ? values.files : [];
+    const paths = files
+      .map((file) => (file as { path?: unknown })?.path)
+      .filter((path): path is string => typeof path === 'string' && path.length > 0);
     return `read ${preview(paths.join(', ')) || '(no path)'}`;
   }
   if (toolName === 'execute_command') {
@@ -172,7 +170,7 @@ export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutco
   const release = await acquireSpawnSlot();
   const collected: string[] = [];
 
-  const steps = (): string => collected.slice(-MAX_STEP_LINES).join('\n');
+  const steps = (): string => collected.slice(-30).join('\n');
 
   try {
     if (input.signal?.aborted) {

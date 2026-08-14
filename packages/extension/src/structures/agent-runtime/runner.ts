@@ -153,7 +153,7 @@ export class AgentRunner {
       return;
     }
 
-    window.showInformationMessage('Reloading skills, context files, and configuration…');
+    window.showInformationMessage('Reloading skills, context files, and configuration...');
 
     try {
       await this.session?.reload();
