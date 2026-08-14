@@ -99,7 +99,7 @@
 }
 
 .message-surface {
-  @apply ml-6 border border-vscode-editorGroup-border rounded bg-vscode-editor-background text-vscode-editor-foreground p-3 text-sm;
+  @apply ml-6 border border-vscode-editorGroup-border rounded bg-vscode-editor-background text-vscode-editor-foreground p-3 text-sm break-words;
 }
 
 .image-thumb {
