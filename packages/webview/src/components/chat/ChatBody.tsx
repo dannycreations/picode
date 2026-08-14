@@ -34,7 +34,7 @@ export const ChatBody = memo<ChatBodyProps>(({ message, commands, search, onAppr
         if (message.toolName === 'ask_question') {
           return <QuestionMessage message={message} search={search} onAnswerQuestion={onAnswerQuestion} onCopyToInput={onCopyToInput} />;
         }
-        return <ToolMessage message={message} search={search} onApproveTool={onApproveTool} onDenyTool={onDenyTool} />;
+        return <ToolMessage message={message} onApproveTool={onApproveTool} onDenyTool={onDenyTool} />;
       case 'api_request':
         return <ApiRequestMessage message={message} />;
       case 'error':

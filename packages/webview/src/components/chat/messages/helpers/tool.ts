@@ -142,10 +142,11 @@ function parseToolArgs(toolArgs?: string): Record<string, unknown> | undefined {
 }
 
 function commandSection(message: ChatMessage): ToolSection[] {
-  if (message.diff === undefined) return [];
-
   const args = parseToolArgs(message.toolArgs);
   const command = typeof args?.['command'] === 'string' ? args['command'] : undefined;
+
+  if (command === undefined && message.diff === undefined) return [];
+
   const title = command ?? (message.text !== message.toolName ? message.text : undefined) ?? 'Command';
 
   return [{ title, content: message.diff, language: 'shell' }];
@@ -185,6 +186,7 @@ export function buildToolSections(message: ChatMessage): ToolSection[] {
 
   return sections.map((section) => ({
     ...section,
+    id: message.id,
     ts: message.ts,
     duration: message.duration,
     status: message.toolStatus,

@@ -147,7 +147,7 @@ export const useActiveTask = (): UseActiveTaskReturn => {
         }
 
         case 'tool_approval_request': {
-          const { id, tool_name, arguments: toolArgs, subagent } = msg.payload;
+          const { id, tool_name, arguments: toolArgs, subagent, parentToolCallId } = msg.payload;
           updateMessages((messages) =>
             upsertToolMessage(settlePendingTurns(messages), id, {
               text: tool_name,
@@ -155,6 +155,7 @@ export const useActiveTask = (): UseActiveTaskReturn => {
               toolArgs,
               toolStatus: 'approval',
               subagent,
+              parentToolCallId,
             }),
           );
           break;

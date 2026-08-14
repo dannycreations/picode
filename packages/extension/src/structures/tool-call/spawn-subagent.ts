@@ -74,7 +74,7 @@ ${describeSubagents()}
       description: 'The complete brief for the sub-agent. It has no other context, so include the goal, relevant paths, and what to report back.',
     }),
   }),
-  async execute(_toolCallId, params, signal, onUpdate, ctx): Promise<CustomToolResult<SubagentDetails>> {
+  async execute(toolCallId, params, signal, onUpdate, ctx): Promise<CustomToolResult<SubagentDetails>> {
     const failure = (text: string, agentName: string): CustomToolResult<SubagentDetails> =>
       toolError(text, { agent: agentName, description: params.description, steps: '' });
 
@@ -94,6 +94,7 @@ ${describeSubagents()}
         cwd: ctx.cwd,
         model: ctx.model,
         signal,
+        parentToolCallId: toolCallId,
         onProgress: onUpdate
           ? (steps) =>
               onUpdate({

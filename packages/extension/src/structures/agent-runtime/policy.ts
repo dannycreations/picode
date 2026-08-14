@@ -60,10 +60,15 @@ function evaluateToolCall(toolName: ToolName, cwd: string, input: unknown): Appr
   return action === 'deny' ? { action, reason: denyReason } : { action };
 }
 
-const subagentBySession = new Map<string, string>();
+interface SubagentSessionInfo {
+  readonly name: string;
+  readonly parentToolCallId?: string;
+}
 
-export function registerSubagentSession(sessionId: string, name: string): void {
-  subagentBySession.set(sessionId, name);
+const subagentBySession = new Map<string, SubagentSessionInfo>();
+
+export function registerSubagentSession(sessionId: string, name: string, parentToolCallId?: string): void {
+  subagentBySession.set(sessionId, { name, parentToolCallId });
 }
 
 export function unregisterSubagentSession(sessionId: string): void {
@@ -71,7 +76,11 @@ export function unregisterSubagentSession(sessionId: string): void {
 }
 
 export function getSubagentSessionName(sessionId: string): string | undefined {
-  return subagentBySession.get(sessionId);
+  return subagentBySession.get(sessionId)?.name;
+}
+
+export function getSubagentSessionParentId(sessionId: string): string | undefined {
+  return subagentBySession.get(sessionId)?.parentToolCallId;
 }
 
 const ALLOW: ToolCallEventResult = { block: false };
@@ -92,8 +101,8 @@ export function createToolPolicyExtension(): InlineExtension {
           return { block: true, reason: decision.reason };
         }
 
-        const subagent = subagentBySession.get(ctx.sessionManager.getSessionId());
-        const approved = await requestApproval(toolName, event.toolCallId, event.input, subagent);
+        const sessionInfo = subagentBySession.get(ctx.sessionManager.getSessionId());
+        const approved = await requestApproval(toolName, event.toolCallId, event.input, sessionInfo?.name, sessionInfo?.parentToolCallId);
         return approved ? ALLOW : { block: true, reason: 'Action denied by user.' };
       });
     },

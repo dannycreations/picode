@@ -10,6 +10,7 @@ interface ApprovalRequest {
   readonly toolName: ToolName;
   readonly args: unknown;
   readonly subagent?: string;
+  readonly parentToolCallId?: string;
 }
 
 type ApprovalPresenter = (request: ApprovalRequest) => void;
@@ -43,7 +44,13 @@ export function setApprovalPresenter(next: ApprovalPresenter): () => void {
   };
 }
 
-export function requestApproval(toolName: ToolName, toolCallId: string | undefined, args: unknown, subagent?: string): Promise<boolean> {
+export function requestApproval(
+  toolName: ToolName,
+  toolCallId: string | undefined,
+  args: unknown,
+  subagent?: string,
+  parentToolCallId?: string,
+): Promise<boolean> {
   const currentPresenter = presenter;
   if (!currentPresenter) {
     return Promise.resolve(false);
@@ -52,7 +59,7 @@ export function requestApproval(toolName: ToolName, toolCallId: string | undefin
   const id = toolCallId || uuidv7();
   return new Promise<boolean>((resolve) => {
     approvals.register(id, resolve);
-    currentPresenter({ id, toolName, args, subagent });
+    currentPresenter({ id, toolName, args, subagent, parentToolCallId });
   });
 }
 

@@ -118,8 +118,8 @@ describe('groupToolMessages', () => {
     expect(result[0].id).toBe('r1');
     expect(result[0].toolName).toBe('read_file');
     expect(result[0].toolSections).toEqual([
-      { title: 'a.ts', content: 'a', language: 'text', openPath: 'a.ts', ts: 1, duration: undefined, status: 'completed' },
-      { title: 'b.ts', content: 'b', language: 'text', openPath: 'b.ts', ts: 1, duration: undefined, status: 'completed' },
+      { id: 'r1', title: 'a.ts', content: 'a', language: 'text', openPath: 'a.ts', ts: 1, duration: undefined, status: 'completed' },
+      { id: 'r2', title: 'b.ts', content: 'b', language: 'text', openPath: 'b.ts', ts: 1, duration: undefined, status: 'completed' },
     ]);
   });
 
@@ -156,8 +156,8 @@ describe('groupToolMessages', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].toolSections).toEqual([
-      { title: 'ls', content: 'a', language: 'shell', ts: 1, duration: undefined, status: 'completed' },
-      { title: 'pwd', content: 'b', language: 'shell', ts: 1, duration: undefined, status: 'completed' },
+      { id: 'c1', title: 'ls', content: 'a', language: 'shell', ts: 1, duration: undefined, status: 'completed' },
+      { id: 'c2', title: 'pwd', content: 'b', language: 'shell', ts: 1, duration: undefined, status: 'completed' },
     ]);
   });
 
@@ -171,7 +171,7 @@ describe('groupToolMessages', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].toolSections).toEqual([
-      { title: 'rg -n "foo"', content: 'output', language: 'shell', ts: 1, duration: undefined, status: 'completed' },
+      { id: 'c1', title: 'rg -n "foo"', content: 'output', language: 'shell', ts: 1, duration: undefined, status: 'completed' },
     ]);
   });
 
@@ -193,8 +193,26 @@ describe('groupToolMessages', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].toolSections).toEqual([
-      { title: 'find files', subtitle: 'explore', content: '<report-1>', language: 'text', ts: 1, duration: undefined, status: 'completed' },
-      { title: 'review code', subtitle: 'review', content: '<report-2>', language: 'text', ts: 1, duration: undefined, status: 'completed' },
+      {
+        id: 's1',
+        title: 'find files',
+        subtitle: 'explore',
+        content: '<report-1>',
+        language: 'text',
+        ts: 1,
+        duration: undefined,
+        status: 'completed',
+      },
+      {
+        id: 's2',
+        title: 'review code',
+        subtitle: 'review',
+        content: '<report-2>',
+        language: 'text',
+        ts: 1,
+        duration: undefined,
+        status: 'completed',
+      },
     ]);
   });
 });

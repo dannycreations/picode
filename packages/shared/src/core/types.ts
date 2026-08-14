@@ -18,6 +18,7 @@ export interface ReadFileSection {
 }
 
 export interface ToolSection {
+  readonly id?: string;
   readonly title: string;
   readonly subtitle?: string;
   readonly content?: string;
@@ -27,6 +28,7 @@ export interface ToolSection {
   readonly ts?: number;
   readonly duration?: number;
   readonly status?: string;
+  readonly approvalMessage?: ChatMessage;
 }
 
 export interface ChatMessage {
@@ -44,6 +46,7 @@ export interface ChatMessage {
   readonly errorMessage?: string;
   readonly images?: string[];
   readonly subagent?: string;
+  readonly parentToolCallId?: string;
   readonly duration?: number;
   readonly files?: ReadonlyArray<ReadFileSection>;
   readonly toolSections?: ReadonlyArray<ToolSection>;

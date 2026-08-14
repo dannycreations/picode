@@ -51,10 +51,47 @@ export function groupToolMessages(messages: ReadonlyArray<ChatMessage>): ChatMes
       group = [message];
     } else {
       flushGroup();
-      result.push(message);
+      result.push({ ...message }); // clone to allow safe inline mutations
     }
   }
   flushGroup();
+
+  const approvalIdsToRemove = new Set<string>();
+
+  for (const m of result) {
+    if (m.parentToolCallId !== undefined) {
+      const parentId = m.parentToolCallId;
+      const parentMsg = result.find((p) => p.toolSections?.some((section) => section.id === parentId));
+
+      if (parentMsg && parentMsg.toolSections) {
+        if (m.toolStatus === 'approval') {
+          const updatedMsg = {
+            ...parentMsg,
+            toolSections: parentMsg.toolSections.map((section) => {
+              if (section.id === parentId) {
+                return {
+                  ...section,
+                  status: 'approval',
+                  approvalMessage: m,
+                };
+              }
+              return section;
+            }),
+          };
+          const index = result.findIndex((r) => r.id === parentMsg.id);
+          if (index !== -1) {
+            result[index] = updatedMsg;
+          }
+        }
+        approvalIdsToRemove.add(m.id);
+      }
+    }
+  }
+
+  if (approvalIdsToRemove.size > 0) {
+    return result.filter((m) => !approvalIdsToRemove.has(m.id));
+  }
+
   return result;
 }
 

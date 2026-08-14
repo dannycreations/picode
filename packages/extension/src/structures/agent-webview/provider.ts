@@ -101,6 +101,7 @@ export class ChatViewProvider implements WebviewViewProvider {
           tool_name: request.toolName,
           arguments: JSON.stringify(request.args),
           subagent: request.subagent,
+          parentToolCallId: request.parentToolCallId,
         },
       });
     });
