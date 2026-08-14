@@ -4,6 +4,7 @@ import { ACTIVE_TASK_ID } from '@pi-code/shared/core/constants';
 import { createActiveTask } from '@pi-code/shared/utilities/common';
 import {
   appendOnce,
+  deliverQueuedReplies,
   patchLastAssistant,
   patchMessage,
   settlePendingTurns,
@@ -64,11 +65,7 @@ export const useActiveTask = (): UseActiveTaskReturn => {
         }
 
         case 'reply_queue_delivered': {
-          const delivered = msg.payload.messages;
-          updateMessages((messages) => {
-            const knownIds = new Set(messages.map((m) => m.id));
-            return [...messages, ...delivered.filter((m) => !knownIds.has(m.id))];
-          });
+          updateMessages((messages) => deliverQueuedReplies(messages, msg.payload.messages));
           break;
         }
 

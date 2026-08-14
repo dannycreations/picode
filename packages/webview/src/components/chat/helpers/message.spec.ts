@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { groupToolMessages, isRenderableMessage } from '@pi-code/webview/components/chat/helpers/message';
+import { deliverQueuedReplies, groupToolMessages, isRenderableMessage } from '@pi-code/webview/components/chat/helpers/message';
 
 import type { ChatMessage, ToolName } from '@pi-code/shared/core/types';
 
@@ -41,6 +41,37 @@ describe('isRenderableMessage', () => {
     for (const sender of SENDERS.filter((s) => s !== 'assistant')) {
       expect(isRenderableMessage(createMessage({ sender, text: '' }))).toBe(true);
     }
+  });
+});
+
+describe('deliverQueuedReplies', () => {
+  it('should convert a queued message into a user message sharing the same id', () => {
+    const queued = createMessage({ id: 'q1', sender: 'queue', text: 'hi' });
+    const delivered = createMessage({ id: 'q1', sender: 'user', text: 'hi' });
+
+    const result = deliverQueuedReplies([queued], [delivered]);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].sender).toBe('user');
+  });
+
+  it('should leave a failed reply queued while delivering the rest', () => {
+    const queued1 = createMessage({ id: 'q1', sender: 'queue', text: 'ok' });
+    const queued2 = createMessage({ id: 'q2', sender: 'queue', text: 'later' });
+    const delivered = createMessage({ id: 'q1', sender: 'user', text: 'ok' });
+
+    const result = deliverQueuedReplies([queued1, queued2], [delivered]);
+
+    expect(result.map((m) => [m.id, m.sender])).toEqual([
+      ['q1', 'user'],
+      ['q2', 'queue'],
+    ]);
+  });
+
+  it('should ignore an empty delivery without touching existing messages', () => {
+    const queued = createMessage({ id: 'q1', sender: 'queue', text: 'hi' });
+
+    expect(deliverQueuedReplies([queued], [])).toEqual([queued]);
   });
 });
 

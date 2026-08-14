@@ -125,6 +125,19 @@ export function upsertToolMessage(messages: ChatMessage[], id: string, patch: Pa
   return [...messages, { id, sender: 'tool', text: '', ts: Date.now(), ...patch }];
 }
 
+export function deliverQueuedReplies(messages: ChatMessage[], delivered: ChatMessage[]): ChatMessage[] {
+  if (delivered.length === 0) return messages;
+
+  // A delivered reply reuses the id of the queued message it replaces, so the
+  // queued variant must be swapped for the user variant instead of skipped as
+  // a duplicate. Messages without a queued twin are appended.
+  const deliveredById = new Map(delivered.map((message) => [message.id, message]));
+  const replaced = messages.map((message) => deliveredById.get(message.id) ?? message);
+  const appended = delivered.filter((deliveredMessage) => !messages.some((message) => message.id === deliveredMessage.id));
+
+  return [...replaced, ...appended];
+}
+
 export function appendOnce(messages: ChatMessage[], message: ChatMessage): ChatMessage[] {
   if (messages.some((m) => m.id === message.id)) return messages;
 
