@@ -1,6 +1,6 @@
 import { cn } from 'cnfast';
 import { Image as ImageIcon, Send } from 'lucide-react';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
 
 import { logger } from '@pi-code/shared/core/logger';
@@ -21,6 +21,7 @@ interface ChatInputProps {
   readonly placeholderText: string;
   readonly textareaRef: RefObject<HTMLTextAreaElement | null>;
   readonly commands: readonly CommandItem[];
+  readonly supportsImages: boolean;
 }
 
 const AttachedImagesPreview: FC<{
@@ -48,7 +49,16 @@ const AttachedImagesPreview: FC<{
   );
 };
 
-export const ChatInput: FC<ChatInputProps> = ({ inputValue, setInputValue, onSend, sendingDisabled, placeholderText, textareaRef, commands }) => {
+export const ChatInput: FC<ChatInputProps> = ({
+  inputValue,
+  setInputValue,
+  onSend,
+  sendingDisabled,
+  placeholderText,
+  textareaRef,
+  commands,
+  supportsImages,
+}) => {
   const [isFocused, setIsFocused] = useState(false);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -56,6 +66,12 @@ export const ChatInput: FC<ChatInputProps> = ({ inputValue, setInputValue, onSen
 
   const command = useChatCommand({ commands, value: inputValue, setValue: setInputValue, textareaRef });
   const match = useMemo(() => splitCommand(inputValue, commands), [inputValue, commands]);
+
+  // Drop any staged images when the active model cannot accept them, so the
+  // user cannot send attachments the model would reject.
+  useEffect(() => {
+    if (!supportsImages) setSelectedImages([]);
+  }, [supportsImages]);
 
   const handleSend = () => {
     if ((inputValue.trim() || selectedImages.length > 0) && !sendingDisabled) {
@@ -93,6 +109,7 @@ export const ChatInput: FC<ChatInputProps> = ({ inputValue, setInputValue, onSen
   };
 
   const handlePaste = async (e: ClipboardEvent<HTMLTextAreaElement>) => {
+    if (!supportsImages) return;
     const items = e.clipboardData?.items;
     if (!items) return;
 
@@ -184,8 +201,12 @@ export const ChatInput: FC<ChatInputProps> = ({ inputValue, setInputValue, onSen
         <div className="flex justify-between items-center px-2.5 pb-2 pt-1 z-20 pointer-events-auto">
           <div className="flex items-center gap-1.5 ml-auto">
             <input type="file" ref={fileInputRef} onChange={handleAttachImage} accept="image/*" className="hidden" />
-            <Tooltip content="Add image attachment">
-              <button onClick={() => fileInputRef.current?.click()} className="icon-button">
+            <Tooltip content={supportsImages ? 'Add image attachment' : 'Model does not support image attachments'}>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={!supportsImages}
+                className={cn('icon-button', supportsImages ? '' : 'opacity-40 cursor-not-allowed')}
+              >
                 <ImageIcon size={14} />
               </button>
             </Tooltip>

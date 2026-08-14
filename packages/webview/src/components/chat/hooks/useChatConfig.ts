@@ -19,6 +19,7 @@ interface UseChatConfigReturn {
   readonly thinkingLevels: readonly ModelThinkingLevel[];
   readonly selectedThinkingLevel: ModelThinkingLevel | null;
   readonly setSelectedThinkingLevel: (level: ModelThinkingLevel) => void;
+  readonly supportsImages: boolean;
   readonly onMessage: (msg: ExtensionToWebviewMessage) => void;
 }
 
@@ -83,6 +84,8 @@ export const useChatConfig = (): UseChatConfigReturn => {
     });
   }, [thinkingLevels]);
 
+  const supportsImages = useMemo<boolean>(() => models.find((model) => model.id === selectedModel)?.supportsImages ?? false, [models, selectedModel]);
+
   const setSelectedThinkingLevel = useCallback((level: ModelThinkingLevel): void => {
     setSelectedThinkingLevelState(level);
     vscode?.postMessage({ type: 'set_thinking_level', level });
@@ -98,6 +101,7 @@ export const useChatConfig = (): UseChatConfigReturn => {
     thinkingLevels,
     selectedThinkingLevel,
     setSelectedThinkingLevel,
+    supportsImages,
     onMessage,
   };
 };

@@ -73,6 +73,7 @@ export const ChatView: FC = () => {
     thinkingLevels,
     selectedThinkingLevel,
     setSelectedThinkingLevel,
+    supportsImages,
     commands,
   } = config;
   const { pastTasks, deleteSessions, scope, setScope } = history;
@@ -280,6 +281,7 @@ export const ChatView: FC = () => {
           handleSendPrompt(text, images);
         }}
         sendingDisabled={isInputDisabled}
+        supportsImages={supportsImages}
         placeholderText={pendingQuestion ? 'Type your answer...' : activeTask ? 'Reply something...' : 'Ask a question or type a command...'}
       />
 

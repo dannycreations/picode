@@ -31,6 +31,7 @@ async function listSelectableModels(modelRuntime: ModelRuntime): Promise<ModelIt
     id: model.id,
     name: model.name,
     provider: model.provider,
+    supportsImages: model.input.includes('image'),
     thinkingLevels: resolveThinkingLevels(model),
   }));
 }
