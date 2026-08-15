@@ -1,4 +1,17 @@
-import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, CloudDownload, CloudUpload, Coins, FoldVertical, Search, X } from 'lucide-react';
+import {
+  Archive,
+  ArchiveRestore,
+  ArrowDown,
+  ArrowUp,
+  ChevronDown,
+  ChevronRight,
+  CloudDownload,
+  CloudUpload,
+  Coins,
+  FoldVertical,
+  Search,
+  X,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { TodoView } from '@pi-code/webview/components/chat/TodoView';
@@ -16,6 +29,9 @@ interface ChatHeaderProps extends StatsData {
   readonly onExport?: () => void;
   readonly onDelete?: () => void;
   readonly onViewRaw?: () => void;
+  readonly onArchive?: () => void;
+  readonly isArchived?: boolean;
+  readonly archiveDisabled?: boolean;
   readonly isSearchOpen: boolean;
   readonly searchQuery: string;
   readonly matchCount: number;
@@ -114,6 +130,9 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
   onExport,
   onDelete,
   onViewRaw,
+  onArchive,
+  isArchived,
+  archiveDisabled,
   isSearchOpen,
   searchQuery,
   matchCount,
@@ -213,11 +232,13 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
                         {contextTokens.toLocaleString()} / {contextLimit.toLocaleString()} ({contextPercentage}%)
                       </span>
                       <ContextProgressBar percentage={contextPercentage} />
-                      <Tooltip content="Compact context">
-                        <button onClick={onCompact} className="icon-button">
-                          <FoldVertical size={14} />
-                        </button>
-                      </Tooltip>
+                      {!isArchived && (
+                        <Tooltip content="Compact context">
+                          <button onClick={onCompact} className="icon-button">
+                            <FoldVertical size={14} />
+                          </button>
+                        </Tooltip>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -272,15 +293,30 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
                         <span className="text-vscode-editorWarning-foreground font-bold">${(totalCost || 0).toFixed(4)}</span>
                         <span className="text-muted/60 font-normal">USD</span>
                       </div>
-                      <TaskActions
-                        iconSize={14}
-                        buttonClassName="icon-button opacity-80 hover:opacity-100 active:bg-vscode-list-hoverBackground/40 transition-opacity"
-                        wrapperClassName="select-none -my-1"
-                        copyText={title}
-                        onExport={onExport}
-                        onDelete={onDelete}
-                        onViewRaw={onViewRaw}
-                      />
+                      <div className="flex items-center gap-1.5">
+                        {onArchive && (
+                          <Tooltip content={isArchived ? 'Unarchive task' : 'Archive task'} side="bottom">
+                            <button
+                              onClick={onArchive}
+                              disabled={archiveDisabled}
+                              className="icon-button opacity-80 hover:opacity-100 active:bg-vscode-list-hoverBackground/40 transition-opacity disabled:opacity-40 disabled:cursor-default"
+                            >
+                              {isArchived ? <ArchiveRestore size={14} /> : <Archive size={14} />}
+                            </button>
+                          </Tooltip>
+                        )}
+                        {!isArchived && (
+                          <TaskActions
+                            iconSize={14}
+                            buttonClassName="icon-button opacity-80 hover:opacity-100 active:bg-vscode-list-hoverBackground/40 transition-opacity"
+                            wrapperClassName="select-none -my-1"
+                            copyText={title}
+                            onExport={onExport}
+                            onDelete={onDelete}
+                            onViewRaw={onViewRaw}
+                          />
+                        )}
+                      </div>
                     </div>
                   </td>
                 </tr>

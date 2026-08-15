@@ -32,7 +32,7 @@ export const TaskActions: FC<TaskActionsProps> = ({
   return (
     <div className={cn('flex flex-row items-center gap-1', wrapperClassName)} onClick={stop}>
       {onExport && (
-        <Tooltip content="Export task messages">
+        <Tooltip content="Export task">
           <button
             type="button"
             className={buttonClassName}

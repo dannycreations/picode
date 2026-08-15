@@ -240,6 +240,12 @@ export const useActiveTask = (): UseActiveTaskReturn => {
           setActiveTask((prev) => (prev ? { ...prev, messages: appendOnce(prev.messages, notice) } : prev));
           break;
         }
+
+        case 'archive_result': {
+          const { path, archived } = msg.payload;
+          updateTask((prev) => (prev ? { ...prev, path, isArchived: archived } : prev));
+          break;
+        }
       }
     },
     [updateMessages, updateTask],

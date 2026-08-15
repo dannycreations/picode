@@ -1,6 +1,8 @@
+import { existsSync } from 'node:fs';
+import { dirname, join, sep } from 'node:path';
 import { getSupportedThinkingLevels } from '@earendil-works/pi-ai';
-import { SessionManager } from '@earendil-works/pi-coding-agent';
-import { Uri, window, workspace } from 'vscode';
+import { getAgentDir, SessionManager } from '@earendil-works/pi-coding-agent';
+import { FileType, Uri, window, workspace } from 'vscode';
 
 import { getDefaultModelSelection, getSettingsManager } from '@pi-code/extension/core/settings';
 import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
@@ -55,6 +57,42 @@ function formatSessions(sessions: SessionInfo[]): HistoryItem[] {
     task: session.firstMessage || 'Untitled Task',
     ts: session.created ? new Date(session.created).getTime() : Date.now(),
   }));
+}
+
+const SESSIONS_DIR_NAME = 'sessions';
+const ARCHIVES_DIR_NAME = 'archives';
+
+export function isArchivedPath(path: string): boolean {
+  return path.split(sep).includes(ARCHIVES_DIR_NAME);
+}
+
+function getCounterpartPath(path: string): { target: string; archived: boolean } {
+  const segments = path.split(sep);
+  const sourceIdx = segments.findIndex((segment) => segment === SESSIONS_DIR_NAME || segment === ARCHIVES_DIR_NAME);
+  if (sourceIdx === -1) {
+    throw new Error(`Cannot archive a session outside the ${SESSIONS_DIR_NAME} directory: ${path}`);
+  }
+  const currentlyArchived = segments[sourceIdx] === ARCHIVES_DIR_NAME;
+  segments[sourceIdx] = currentlyArchived ? SESSIONS_DIR_NAME : ARCHIVES_DIR_NAME;
+  return { target: segments.join(sep), archived: !currentlyArchived };
+}
+
+export async function listArchives(): Promise<HistoryItem[]> {
+  const archivesRoot = join(getAgentDir(), ARCHIVES_DIR_NAME);
+  if (!existsSync(archivesRoot)) return [];
+  const entries = await workspace.fs.readDirectory(Uri.file(archivesRoot));
+  const subdirs = entries
+    .filter(([, type]) => type === FileType.Directory || (type & FileType.SymbolicLink) !== 0)
+    .map(([name]) => join(archivesRoot, name));
+  const lists = await Promise.all(subdirs.map((dir) => SessionManager.listAll(dir)));
+  return lists.flatMap((sessions) => formatSessions(sessions));
+}
+
+export async function archiveSession(sourcePath: string): Promise<{ path: string; archived: boolean }> {
+  const { target, archived } = getCounterpartPath(sourcePath);
+  await workspace.fs.createDirectory(Uri.file(dirname(target)));
+  await workspace.fs.rename(Uri.file(sourcePath), Uri.file(target), { overwrite: false });
+  return { path: target, archived };
 }
 
 export async function getInitData(cwd: string, resources?: AgentResources): Promise<SessionInitData> {
@@ -116,6 +154,7 @@ export async function loadSessionDetails(
 }
 
 export async function fetchHistory(cwd: string, scope: HistoryScope): Promise<HistoryItem[]> {
+  if (scope === 'archives') return listArchives();
   const sessions = scope === 'all' ? await SessionManager.listAll() : await SessionManager.list(cwd);
   return formatSessions(sessions);
 }

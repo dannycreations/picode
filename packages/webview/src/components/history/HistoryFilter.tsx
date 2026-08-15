@@ -8,6 +8,12 @@ import type { FC } from 'react';
 import type { HistoryScope } from '@pi-code/shared/core/protocol';
 import type { SortOption } from '@pi-code/webview/components/history/hooks/useHistoryFilter';
 
+const SCOPE_LABELS: Record<HistoryScope, string> = {
+  current: 'Current Workspace',
+  all: 'All Workspaces',
+  archives: 'Archives',
+};
+
 interface HistoryFilterProps {
   readonly searchQuery: string;
   readonly onSearchChange: (query: string) => void;
@@ -63,7 +69,7 @@ export const HistoryFilter: FC<HistoryFilterProps> = ({
                 : 'bg-transparent text-vscode-descriptionForeground hover:text-vscode-foreground',
             )}
           >
-            {s === 'current' ? 'Current Workspace' : 'All Workspaces'}
+            {SCOPE_LABELS[s]}
           </button>
         ))}
       </div>

@@ -12,6 +12,7 @@ interface ChatActionProps {
   readonly onCancelTask: () => void;
   readonly onCloseTask: () => void;
   readonly onContinueTask: () => void;
+  readonly isArchived?: boolean;
 }
 
 export const ChatAction: FC<ChatActionProps> = ({
@@ -22,7 +23,11 @@ export const ChatAction: FC<ChatActionProps> = ({
   onCancelTask,
   onCloseTask,
   onContinueTask,
+  isArchived,
 }) => {
+  // Archived tasks are read-only, so their action bar is hidden entirely.
+  if (isArchived) return null;
+
   const isToolApprovalPending = activeTask ? hasPendingApproval(activeTask.messages) : false;
   const showActionButtons = activeTask && (showScrollToBottom || isAgentRunning || !isToolApprovalPending);
 

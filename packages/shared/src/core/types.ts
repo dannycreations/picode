@@ -6,6 +6,7 @@ export interface ActiveTaskState extends StatsData {
   readonly title: string;
   readonly messages: ChatMessage[];
   readonly path?: string;
+  readonly isArchived?: boolean;
 }
 
 export type ToolName =

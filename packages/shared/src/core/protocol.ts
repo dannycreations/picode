@@ -43,6 +43,7 @@ export type WebviewToExtensionMessage =
   | { type: 'question_response'; question_id: string; text: string }
   | { type: 'view_raw_task'; path?: string }
   | { type: 'export_session'; path: string; id: string }
+  | { type: 'archive_session'; path: string; id: string; title: string }
   | { type: 'open_file'; text: string; values?: { line?: number; diff?: boolean } }
   | { type: 'open_image'; dataUrl: string }
   | { type: 'save_image'; dataUrl: string; filename: string }
@@ -72,6 +73,7 @@ export type ExtensionToWebviewMessage =
   | { type: 'models_data'; payload: { models: ModelItem[] } }
   | { type: 'settings_data'; payload: { settings: AppSettings } }
   | { type: 'session_loaded'; payload: ActiveTaskState }
+  | { type: 'archive_result'; payload: { path: string; archived: boolean; id: string; title: string } }
   | { type: 'agent_start'; payload: { path?: string; stats?: StatsData } }
   | { type: 'message_start'; payload: { timestamp: number } }
   | { type: 'message_end'; payload: { cost?: number; stats?: StatsData } }

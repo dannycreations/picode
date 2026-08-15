@@ -211,6 +211,11 @@ export const ChatView: FC = () => {
     if (path) vscode?.postMessage({ type: 'view_raw_task', path });
   }, []);
 
+  const handleArchive = useCallback((): void => {
+    if (!activeTask?.path) return;
+    vscode?.postMessage({ type: 'archive_session', path: activeTask.path, id: activeTask.id, title: activeTask.title });
+  }, [activeTask?.path, activeTask?.id, activeTask?.title]);
+
   if (view === 'settings') {
     return (
       <div className="view-container">
@@ -259,6 +264,9 @@ export const ChatView: FC = () => {
           onExport={activeTask.path ? () => exportSession(activeTask) : undefined}
           onDelete={!isAgentRunning && activeTask.path ? () => setShowDeleteActiveConfirm(true) : undefined}
           onViewRaw={() => viewRaw(activeTask.path)}
+          onArchive={handleArchive}
+          isArchived={activeTask?.isArchived}
+          archiveDisabled={isAgentRunning || !activeTask?.path}
           isSearchOpen={searchOpen}
           searchQuery={searchQuery}
           matchCount={totalMatches}
@@ -360,32 +368,37 @@ export const ChatView: FC = () => {
             model: modelSelection,
           });
         }}
+        isArchived={activeTask?.isArchived}
       />
 
       {/* Input Area */}
-      <ChatInput
-        textareaRef={textareaRef}
-        inputValue={inputValue}
-        setInputValue={setInputValue}
-        commands={commands}
-        onSend={(text, images) => {
-          scrollToBottom();
-          handleSendPrompt(text, images);
-        }}
-        sendingDisabled={isInputDisabled}
-        supportsImages={supportsImages}
-        placeholderText={pendingQuestion ? 'Type your answer...' : activeTask ? 'Reply something...' : 'Ask a question or type a command...'}
-      />
+      {!activeTask?.isArchived && (
+        <ChatInput
+          textareaRef={textareaRef}
+          inputValue={inputValue}
+          setInputValue={setInputValue}
+          commands={commands}
+          onSend={(text, images) => {
+            scrollToBottom();
+            handleSendPrompt(text, images);
+          }}
+          sendingDisabled={isInputDisabled}
+          supportsImages={supportsImages}
+          placeholderText={pendingQuestion ? 'Type your answer...' : activeTask ? 'Reply something...' : 'Ask a question or type a command...'}
+        />
+      )}
 
       {/* Footer */}
-      <ChatFooter
-        currentModel={selectedModel}
-        onChangeModel={setSelectedModel}
-        models={models}
-        thinkingLevels={thinkingLevels}
-        currentThinkingLevel={selectedThinkingLevel}
-        onChangeThinkingLevel={setSelectedThinkingLevel}
-      />
+      {!activeTask?.isArchived && (
+        <ChatFooter
+          currentModel={selectedModel}
+          onChangeModel={setSelectedModel}
+          models={models}
+          thinkingLevels={thinkingLevels}
+          currentThinkingLevel={selectedThinkingLevel}
+          onChangeThinkingLevel={setSelectedThinkingLevel}
+        />
+      )}
 
       {/* Delete Modal */}
       <ConfirmDialog

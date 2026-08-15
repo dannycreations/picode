@@ -6,10 +6,12 @@ import { approveApproval, denyApproval } from '@pi-code/extension/structures/age
 import { answerQuestion } from '@pi-code/extension/structures/agent-runtime/brokers/question';
 import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import {
+  archiveSession,
   deleteSessions,
   exportSession,
   fetchHistory,
   getInitData,
+  isArchivedPath,
   loadSessionDetails,
   refreshModelCatalog,
 } from '@pi-code/extension/structures/agent-webview/session';
@@ -42,9 +44,10 @@ async function postSession(
   path: string | undefined,
   details: TranscriptDetails,
 ): Promise<void> {
+  const isArchived = path ? isArchivedPath(path) : false;
   ctx.postMessage({
     type: 'session_loaded',
-    payload: { id: id || ACTIVE_TASK_ID, title: title || '', messages: details.messages, path, ...details.stats },
+    payload: { id: id || ACTIVE_TASK_ID, title: title || '', messages: details.messages, path, isArchived, ...details.stats },
   });
 }
 
@@ -121,6 +124,10 @@ const HANDLER_MAP: HandlerMap = {
   export_session: async (msg) => {
     const exported = await exportSession(msg.path, msg.id);
     if (exported) window.showInformationMessage('Task exported successfully!');
+  },
+  archive_session: async (msg, ctx) => {
+    const { path, archived } = await archiveSession(msg.path);
+    ctx.postMessage({ type: 'archive_result', payload: { path, archived, id: msg.id, title: msg.title } });
   },
   open_file: async (msg, ctx) => {
     if (msg.values?.diff) {
