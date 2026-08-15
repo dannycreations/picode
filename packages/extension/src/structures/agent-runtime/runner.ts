@@ -2,12 +2,13 @@ import { uuidv7 } from '@earendil-works/pi-ai';
 import { window } from 'vscode';
 
 import { getSettingsManager, readAppSettings } from '@pi-code/extension/core/settings';
-import { cancelAllApprovals } from '@pi-code/extension/structures/agent-runtime/brokers/policy';
+import { cancelAllApprovals } from '@pi-code/extension/structures/agent-runtime/brokers/approval';
 import { cancelAllQuestions } from '@pi-code/extension/structures/agent-runtime/brokers/question';
 import { mapEvent } from '@pi-code/extension/structures/agent-runtime/event';
+import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { createSession } from '@pi-code/extension/structures/agent-runtime/session';
 import { WebviewMessenger } from '@pi-code/extension/structures/agent-runtime/webview';
-import { listCommands } from '@pi-code/extension/structures/chat-command/command';
+import { collectCommands } from '@pi-code/extension/structures/chat-command/command';
 import { getEnvironmentDetails, getLatestTodoList, withTodoProgress } from '@pi-code/extension/structures/chat-session/environment';
 import { loadSessionTranscript } from '@pi-code/extension/structures/chat-session/session';
 import { parseBase64DataUrl } from '@pi-code/extension/utilities/codec';
@@ -159,7 +160,8 @@ export class AgentRunner {
       await this.session?.reload();
       window.showInformationMessage('Reloaded skills, context files, and configuration.');
 
-      const commands = await listCommands(getWorkspaceCwd());
+      const { services } = await createAgentResources(getWorkspaceCwd());
+      const commands = collectCommands(services.resourceLoader);
       this.messenger.post({ type: 'commands_data', payload: { commands } });
     } catch (err) {
       this.messenger.postError(err);

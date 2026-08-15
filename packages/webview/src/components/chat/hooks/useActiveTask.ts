@@ -186,6 +186,12 @@ export const useActiveTask = (): UseActiveTaskReturn => {
             if (subagent && !messages.some((m) => m.id === id)) {
               return messages;
             }
+            const target = messages.find((m) => m.id === id);
+            // Command output streams in chunks, so append each delta to the
+            // running preview instead of replacing it like the discrete tools.
+            if (target?.toolName === 'execute_command') {
+              return patchMessage(messages, id, { diff: `${target.diff ?? ''}${result}` });
+            }
             return patchMessage(messages, id, { diff: result });
           });
           break;
@@ -203,7 +209,7 @@ export const useActiveTask = (): UseActiveTaskReturn => {
               todos,
               files,
               toolStatus: is_error ? 'denied' : 'completed',
-              diff: is_error ? undefined : result,
+              diff: result,
               duration,
             });
           });

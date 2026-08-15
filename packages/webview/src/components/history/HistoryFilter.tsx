@@ -52,7 +52,7 @@ export const HistoryFilter: FC<HistoryFilterProps> = ({
     {/* Scope & Sort Controls */}
     <div className="flex items-center justify-between gap-2 mt-1">
       <div className="flex gap-1">
-        {HISTORY_SCOPES.map((s) => (
+        {Object.values(HISTORY_SCOPES).map((s) => (
           <button
             key={s}
             onClick={() => onScopeChange(s)}

@@ -8,7 +8,7 @@ import { ChatBody } from '@pi-code/webview/components/chat/ChatBody';
 import { ChatFooter } from '@pi-code/webview/components/chat/ChatFooter';
 import { ChatHeader } from '@pi-code/webview/components/chat/ChatHeader';
 import { ChatInput } from '@pi-code/webview/components/chat/ChatInput';
-import { ESTIMATED_ROW_HEIGHT, groupToolMessages, isRenderableMessage } from '@pi-code/webview/components/chat/helpers/message';
+import { ESTIMATED_ROW_HEIGHT, groupToolMessages, hasPendingApproval, isRenderableMessage } from '@pi-code/webview/components/chat/helpers/message';
 import { countOccurrences, getMessageSearchText } from '@pi-code/webview/components/chat/helpers/search';
 import { useActiveTask } from '@pi-code/webview/components/chat/hooks/useActiveTask';
 import { useChatActions } from '@pi-code/webview/components/chat/hooks/useChatActions';
@@ -244,7 +244,7 @@ export const ChatView: FC = () => {
 
   // A pending question keeps the composer usable so the user can answer with
   // free text instead of picking one of the suggestions.
-  const isAwaitingApproval = activeTask?.messages.some((m) => m.toolStatus === 'approval') ?? false;
+  const isAwaitingApproval = activeTask ? hasPendingApproval(activeTask.messages) : false;
   const isInputDisabled = !pendingQuestion && isAwaitingApproval;
 
   return (

@@ -1,4 +1,3 @@
-import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { BUILTIN_COMMANDS } from '@pi-code/shared/utilities/commands';
 
 import type { ResourceLoader } from '@earendil-works/pi-coding-agent';
@@ -25,9 +24,4 @@ export function collectCommands(loader: ResourceLoader): CommandItem[] {
   }));
 
   return [...builtins, ...skills, ...prompts].sort((a, b) => a.name.localeCompare(b.name));
-}
-
-export async function listCommands(cwd: string): Promise<CommandItem[]> {
-  const { services } = await createAgentResources(cwd);
-  return collectCommands(services.resourceLoader);
 }

@@ -3,7 +3,7 @@ import { calculateContextTokens, getLastAssistantUsage, parseSkillBlock } from '
 
 import { toBase64DataUrl } from '@pi-code/extension/utilities/codec';
 import { logger } from '@pi-code/shared/core/logger';
-import { EMPTY_STATS } from '@pi-code/shared/utilities/common';
+import { EMPTY_STATS, serializeToolArgs } from '@pi-code/shared/utilities/common';
 
 import type { ImageContent, TextContent, ThinkingContent, ToolCall, Usage } from '@earendil-works/pi-ai';
 import type { SessionEntry } from '@earendil-works/pi-coding-agent';
@@ -142,7 +142,7 @@ function appendAssistantTurn(result: ChatMessage[], id: string, msg: Extract<Ses
       sender: 'tool',
       text: toolCall.name,
       toolName: toolCall.name as ToolName,
-      toolArgs: typeof toolCall.arguments === 'string' ? toolCall.arguments : JSON.stringify(toolCall.arguments),
+      toolArgs: serializeToolArgs(toolCall.arguments),
       toolStatus: 'completed',
       ts,
     });

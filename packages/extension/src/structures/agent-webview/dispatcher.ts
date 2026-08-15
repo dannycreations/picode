@@ -2,8 +2,9 @@ import { formatThrownValue } from '@earendil-works/pi-ai';
 import { window } from 'vscode';
 
 import { writeAppSettings } from '@pi-code/extension/core/settings';
-import { approveApproval, denyApproval } from '@pi-code/extension/structures/agent-runtime/brokers/policy';
+import { approveApproval, denyApproval } from '@pi-code/extension/structures/agent-runtime/brokers/approval';
 import { answerQuestion } from '@pi-code/extension/structures/agent-runtime/brokers/question';
+import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import {
   deleteSessions,
   exportSession,
@@ -53,11 +54,13 @@ async function postHistory(ctx: MessageHandlerContext, scope: HistoryScope): Pro
 
 const HANDLER_MAP: HandlerMap = {
   init: async (_, ctx) => {
-    const data = await getInitData(ctx.cwd);
+    const resources = await createAgentResources(ctx.cwd);
+    const data = await getInitData(ctx.cwd, resources);
     ctx.postMessage({ type: 'init_data', payload: data });
     // The local catalog is enough to render the chat view, so refresh the
     // remote catalog in the background and push the merged models once it lands.
-    void refreshModelCatalog(ctx.cwd, (models) => {
+    // Reuse the runtime we just built instead of re-resolving resources.
+    void refreshModelCatalog(resources.services.modelRuntime, (models) => {
       ctx.postMessage({ type: 'models_data', payload: { models } });
     });
   },
@@ -106,7 +109,7 @@ const HANDLER_MAP: HandlerMap = {
     // Tasks list is still showing the stale init snapshot. Push the refreshed
     // current-scope history so the completed task renders without the user
     // first having to open the full History view.
-    await postHistory(ctx, HISTORY_SCOPES[0]);
+    await postHistory(ctx, HISTORY_SCOPES.current);
   },
   load_session: async (msg, ctx) => {
     const details = await loadSessionDetails(msg.path ?? '', ctx.cwd);

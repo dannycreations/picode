@@ -1,5 +1,5 @@
 import { readAppSettings } from '@pi-code/extension/core/settings';
-import { requestApproval } from '@pi-code/extension/structures/agent-runtime/brokers/policy';
+import { requestApproval } from '@pi-code/extension/structures/agent-runtime/brokers/approval';
 import { resolveCommandAction, resolvePathAction, resolveReadPath } from '@pi-code/extension/structures/agent-runtime/policy-action';
 
 import type { InlineExtension, ToolCallEventResult } from '@earendil-works/pi-coding-agent';
@@ -77,10 +77,6 @@ export function unregisterSubagentSession(sessionId: string): void {
 
 export function getSubagentSessionName(sessionId: string): string | undefined {
   return subagentBySession.get(sessionId)?.name;
-}
-
-export function getSubagentSessionParentId(sessionId: string): string | undefined {
-  return subagentBySession.get(sessionId)?.parentToolCallId;
 }
 
 const ALLOW: ToolCallEventResult = { block: false };

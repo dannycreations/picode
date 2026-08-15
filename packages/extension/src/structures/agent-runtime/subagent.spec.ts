@@ -45,7 +45,7 @@ describe('formatSubagentStep', () => {
   });
 
   it('summarises a command and collapses whitespace', () => {
-    expect(formatSubagentStep('execute_command', { command: 'rg  "foo"\n  --hidden' })).toBe('$ rg "foo" --hidden');
+    expect(formatSubagentStep('execute_command', { command: 'rg  "foo"\n  --hidden' })).toBe('execute rg "foo" --hidden');
   });
 
   it('does not crash and shows no path when read_file files is not an array', () => {

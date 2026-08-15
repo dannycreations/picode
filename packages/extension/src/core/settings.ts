@@ -2,8 +2,8 @@ import { getAgentDir, SettingsManager } from '@earendil-works/pi-coding-agent';
 import { ConfigurationTarget, workspace } from 'vscode';
 
 import { isProjectTrusted } from '@pi-code/extension/utilities/vscode';
+import { DEFAULT_APP_ID } from '@pi-code/shared/core/constants';
 import { coerceSetting, coerceSettings, SETTING_KEYS } from '@pi-code/shared/core/settings';
-import manifest from '../../package.json' with { type: 'json' };
 
 import type { WorkspaceConfiguration } from 'vscode';
 import type { ModelSelection } from '@pi-code/shared/core/protocol';
@@ -21,7 +21,7 @@ export function invalidateAppSettings(): void {
 export function readAppSettings(): AppSettings {
   if (cachedSettings) return cachedSettings;
 
-  const config = workspace.getConfiguration(manifest.name);
+  const config = workspace.getConfiguration(DEFAULT_APP_ID);
   const settings: Record<string, unknown> = {};
   for (const key of SETTING_KEYS) {
     settings[key] = coerceSetting(key, config.get(key));
@@ -38,7 +38,7 @@ function resolveConfigurationTarget(config: WorkspaceConfiguration, key: string)
 }
 
 export async function writeAppSettings(partial: Partial<AppSettings>): Promise<void> {
-  const config = workspace.getConfiguration(manifest.name);
+  const config = workspace.getConfiguration(DEFAULT_APP_ID);
   for (const [key, value] of Object.entries(coerceSettings(partial))) {
     await config.update(key, value, resolveConfigurationTarget(config, key));
   }

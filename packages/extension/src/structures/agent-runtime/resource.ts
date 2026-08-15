@@ -12,7 +12,7 @@ interface SkillsResult {
   readonly diagnostics: ResourceDiagnostic[];
 }
 
-interface AgentResources {
+export interface AgentResources {
   readonly settings: AppSettings;
   readonly services: AgentSessionServices;
 }

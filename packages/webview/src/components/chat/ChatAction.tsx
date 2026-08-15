@@ -1,3 +1,4 @@
+import { hasPendingApproval } from '@pi-code/webview/components/chat/helpers/message';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 
 import type { FC } from 'react';
@@ -22,7 +23,7 @@ export const ChatAction: FC<ChatActionProps> = ({
   onCloseTask,
   onContinueTask,
 }) => {
-  const isToolApprovalPending = activeTask?.messages.some((msg) => msg.toolStatus === 'approval');
+  const isToolApprovalPending = activeTask ? hasPendingApproval(activeTask.messages) : false;
   const showActionButtons = activeTask && (showScrollToBottom || isAgentRunning || !isToolApprovalPending);
 
   if (!showActionButtons) return null;

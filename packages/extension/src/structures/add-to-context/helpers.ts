@@ -1,11 +1,18 @@
 import { Range } from 'vscode';
 
-import type { Selection, TextDocument } from 'vscode';
+import { toRelativePath } from '@pi-code/extension/utilities/vscode';
+
+import type { Diagnostic, Selection, TextDocument } from 'vscode';
 
 export interface EffectiveSelection {
   readonly startLine: number;
   readonly endLine: number;
   readonly text: string;
+}
+
+export interface SelectionContext {
+  readonly filePath: string;
+  readonly selection: EffectiveSelection;
 }
 
 export function getEffectiveSelection(document: TextDocument, selection: Selection): EffectiveSelection | null {
@@ -28,4 +35,29 @@ export function getEffectiveSelection(document: TextDocument, selection: Selecti
     endLine: range.end.line,
     text: document.getText(range),
   };
+}
+
+export function getSelectionContext(document: TextDocument, selection: Selection): SelectionContext | null {
+  const effective = getEffectiveSelection(document, selection);
+  if (!effective) return null;
+  return { filePath: toRelativePath(document.uri), selection: effective };
+}
+
+export interface MappedDiagnostic {
+  readonly message: string;
+  readonly source: string | undefined;
+  readonly code: string | number | undefined;
+}
+
+export function mapDiagnostics(diagnostics: readonly Diagnostic[]): MappedDiagnostic[] {
+  return diagnostics.map((diagnostic) => ({
+    message: diagnostic.message,
+    source: diagnostic.source,
+    code:
+      diagnostic.code !== undefined && diagnostic.code !== null
+        ? typeof diagnostic.code === 'object'
+          ? diagnostic.code.value
+          : diagnostic.code
+        : undefined,
+  }));
 }

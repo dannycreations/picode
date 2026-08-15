@@ -2,12 +2,13 @@ import { uuidv7 } from '@earendil-works/pi-ai';
 import { Disposable, Uri, workspace } from 'vscode';
 
 import { invalidateAppSettings, readAppSettings } from '@pi-code/extension/core/settings';
-import { setApprovalPresenter, setSubagentEventCallback } from '@pi-code/extension/structures/agent-runtime/brokers/policy';
+import { setApprovalPresenter, setSubagentEventCallback } from '@pi-code/extension/structures/agent-runtime/brokers/approval';
 import { AgentRunner } from '@pi-code/extension/structures/agent-runtime/runner';
 import { dispatch } from '@pi-code/extension/structures/agent-webview/dispatcher';
 import { WorkspaceService } from '@pi-code/extension/structures/agent-webview/workspace';
 import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
-import manifest from '../../../package.json' with { type: 'json' };
+import { DEFAULT_APP_ID } from '@pi-code/shared/core/constants';
+import { serializeToolArgs } from '@pi-code/shared/utilities/common';
 
 import type { CancellationToken, ExtensionContext, Webview, WebviewView, WebviewViewProvider, WebviewViewResolveContext } from 'vscode';
 import type { MessageHandlerContext } from '@pi-code/extension/structures/agent-webview/types';
@@ -99,7 +100,7 @@ export class ChatViewProvider implements WebviewViewProvider {
         payload: {
           id: request.id,
           tool_name: request.toolName,
-          arguments: JSON.stringify(request.args),
+          arguments: serializeToolArgs(request.args),
           subagent: request.subagent,
           parentToolCallId: request.parentToolCallId,
         },
@@ -126,7 +127,7 @@ export class ChatViewProvider implements WebviewViewProvider {
       // Mirror configuration edits made anywhere (settings UI, settings.json,
       // profile sync) back into the chat view.
       workspace.onDidChangeConfiguration((event) => {
-        if (!event.affectsConfiguration(manifest.name)) return;
+        if (!event.affectsConfiguration(DEFAULT_APP_ID)) return;
         invalidateAppSettings();
         void webview.postMessage({ type: 'settings_data', payload: { settings: readAppSettings() } });
       }),

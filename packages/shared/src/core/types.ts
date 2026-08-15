@@ -1,3 +1,4 @@
+import type { THINKING_LEVEL_ORDER } from '@pi-code/shared/core/constants';
 import type { TodoItem } from '@pi-code/shared/utilities/todo';
 
 export interface ActiveTaskState extends StatsData {
@@ -8,9 +9,9 @@ export interface ActiveTaskState extends StatsData {
 }
 
 export type ToolName =
-  'ask_question' | 'write_file' | 'execute_command' | 'read_file' | 'update_todo' | 'edit_file' | 'delete_file' | 'spawn_subagent';
+  'ask_question' | 'delete_file' | 'edit_file' | 'execute_command' | 'read_file' | 'spawn_subagent' | 'update_todo' | 'write_file';
 
-export type ModelThinkingLevel = 'off' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+export type ModelThinkingLevel = (typeof THINKING_LEVEL_ORDER)[number];
 
 export interface ReadFileSection {
   readonly path: string;
@@ -33,12 +34,12 @@ export interface ToolSection {
 
 export interface ChatMessage {
   readonly id: string;
-  readonly sender: 'user' | 'assistant' | 'tool' | 'error' | 'checkpoint' | 'info' | 'api_request' | 'queue';
+  readonly sender: 'api_request' | 'assistant' | 'checkpoint' | 'error' | 'info' | 'queue' | 'tool' | 'user';
   readonly text: string;
   readonly ts: number;
   readonly toolName?: ToolName;
   readonly toolArgs?: string;
-  readonly toolStatus?: 'approval' | 'running' | 'completed' | 'denied';
+  readonly toolStatus?: 'approval' | 'completed' | 'denied' | 'running';
   readonly reasoning?: string;
   readonly cost?: number;
   readonly diff?: string;

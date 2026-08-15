@@ -3,7 +3,7 @@ import { uuidv7 } from '@earendil-works/pi-ai';
 import { getSubagentSessionName } from '@pi-code/extension/structures/agent-runtime/policy';
 import { takeSubagentUsage } from '@pi-code/extension/structures/agent-runtime/subagent';
 import { logger } from '@pi-code/shared/core/logger';
-import { EMPTY_STATS } from '@pi-code/shared/utilities/common';
+import { EMPTY_STATS, serializeToolArgs } from '@pi-code/shared/utilities/common';
 
 import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent';
 import type { ExtensionToWebviewMessage } from '@pi-code/shared/core/protocol';
@@ -116,7 +116,7 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
           payload: {
             id: event.toolCallId,
             tool_name: event.toolName as ToolName,
-            arguments: JSON.stringify(event.args),
+            arguments: serializeToolArgs(event.args),
             subagent,
           },
         },

@@ -1,6 +1,6 @@
 import { CodeAction, CodeActionKind, Selection } from 'vscode';
 
-import { getEffectiveSelection } from '@pi-code/extension/structures/add-to-context/helpers';
+import { getEffectiveSelection, mapDiagnostics } from '@pi-code/extension/structures/add-to-context/helpers';
 import { toRelativePath } from '@pi-code/extension/utilities/vscode';
 
 import type { CancellationToken, CodeActionContext, CodeActionProvider, CodeActionProviderMetadata, Range, TextDocument } from 'vscode';
@@ -37,11 +37,7 @@ export class PiCodeActionProvider implements CodeActionProvider {
     if (diagnostics.length > 0) {
       const fixAction = new CodeAction('Fix with Pi Code', CodeActionKind.QuickFix);
       // Map diagnostics to a clean JSON-serializable object format for the command
-      const mappedDiagnostics = diagnostics.map((d) => ({
-        message: d.message,
-        source: d.source,
-        code: d.code !== undefined && d.code !== null ? (typeof d.code === 'object' ? d.code.value : d.code) : undefined,
-      }));
+      const mappedDiagnostics = mapDiagnostics(diagnostics);
       fixAction.command = {
         command: 'pi-code.fixCode',
         title: 'Fix with Pi Code',

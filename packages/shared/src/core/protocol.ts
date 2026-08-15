@@ -10,12 +10,7 @@ export interface HistoryItem {
   readonly ts: number;
 }
 
-export interface QueueMessage {
-  readonly id: string;
-  readonly text: string;
-  readonly images?: string[];
-  readonly ts: number;
-}
+export type QueueMessage = Pick<ChatMessage, 'id' | 'text' | 'images' | 'ts'>;
 
 export interface ModelItem {
   readonly id: string;
@@ -34,7 +29,7 @@ export interface CommandItem {
   readonly detail?: string;
 }
 
-export type HistoryScope = (typeof HISTORY_SCOPES)[number];
+export type HistoryScope = keyof typeof HISTORY_SCOPES;
 
 export type WebviewToExtensionMessage =
   | { type: 'init' }

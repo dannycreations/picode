@@ -110,6 +110,10 @@ export function isRenderableMessage(message: ChatMessage): boolean {
   return true;
 }
 
+export function hasPendingApproval(messages: ReadonlyArray<ChatMessage>): boolean {
+  return messages.some((message) => message.toolStatus === 'approval');
+}
+
 interface RequestSettlePatch {
   readonly cost?: number;
   readonly error?: string;

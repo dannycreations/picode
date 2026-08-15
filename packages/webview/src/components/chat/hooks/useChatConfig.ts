@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { DEFAULT_MODEL_ID } from '@pi-code/shared/core/constants';
+import { DEFAULT_APP_ID } from '@pi-code/shared/core/constants';
 import { defaultThinkingLevel } from '@pi-code/shared/utilities/common';
 import { vscode } from '@pi-code/webview/utilities/vscode';
 
@@ -26,7 +26,7 @@ interface UseChatConfigReturn {
 export const useChatConfig = (): UseChatConfigReturn => {
   const [models, setModels] = useState<ModelItem[]>([]);
   const [settings, setSettings] = useState<AppSettings | null>(null);
-  const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL_ID);
+  const [selectedModel, setSelectedModel] = useState(DEFAULT_APP_ID);
   const [commands, setCommands] = useState<CommandItem[]>([]);
   const [selectedThinkingLevel, setSelectedThinkingLevelState] = useState<ModelThinkingLevel | null>(null);
 
@@ -43,7 +43,7 @@ export const useChatConfig = (): UseChatConfigReturn => {
         setModels(backendModels);
         setSettings(backendSettings ?? null);
         setCommands(backendCommands ?? []);
-        setSelectedModel(defaultModel || backendModels[0]?.id || DEFAULT_MODEL_ID);
+        setSelectedModel(defaultModel || backendModels[0]?.id || DEFAULT_APP_ID);
         setSelectedThinkingLevelState(defaultThinkingLevel ?? null);
         break;
       }

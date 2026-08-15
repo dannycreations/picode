@@ -19,12 +19,15 @@ const STATUS_MAP: Record<TodoItem['status'], string> = {
 
 const TODO_REMINDER_SECTION = '## Todo Reminders';
 
+const MAX_WALK_DEPTH = 64;
+const WALK_CONCURRENCY = 10;
+
 export function formatTodoReminder(todoList?: TodoItem[]): string {
   const lines: string[] = [TODO_REMINDER_SECTION, ''];
 
   if (!todoList || todoList.length === 0) {
     lines.push('You have not created a todo list yet. Create one with `update_todo` if your task is complex or involves multiple steps.');
-    lines.push("You can safely zeroing this reminder if it's not needed yet, and don't cite it anywhere if it becomes noisy.");
+    lines.push("You can safely ignore this reminder if it's not needed yet, and don't cite it anywhere if it becomes noisy.");
     return lines.join('\n').trim();
   }
 
@@ -205,7 +208,7 @@ export async function walkWorkspace(cwd: string, limit: number, excludeIgnoredFi
 
     const nextNodes: UriNode[] = [];
     const relativePrefix = relative === '' ? '' : `${relative}/`;
-    const canDescend = depth < 64;
+    const canDescend = depth < MAX_WALK_DEPTH;
     const hasLocalIgnores = localIgnores.length > 0;
 
     for (let i = 0; i < childCount; i++) {
@@ -233,7 +236,7 @@ export async function walkWorkspace(cwd: string, limit: number, excludeIgnoredFi
     return nextNodes;
   };
 
-  await walkConcurrently<UriNode>([{ uri: rootUri, relative: '', depth: 0, ignores: [] }], 10, processNode);
+  await walkConcurrently<UriNode>([{ uri: rootUri, relative: '', depth: 0, ignores: [] }], WALK_CONCURRENCY, processNode);
 
   fileResults.sort((a, b) => pathCollator.compare(a, b));
 

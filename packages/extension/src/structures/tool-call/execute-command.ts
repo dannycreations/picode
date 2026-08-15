@@ -14,6 +14,7 @@ const ANSI_PATTERN = /\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b\[[0-9;?]*[ -/]*[@-~
 const DEFAULT_TIMEOUT_MS = 120_000;
 const MAX_TIMEOUT_MS = 1_800_000;
 const KILL_GRACE_MS = 2_000;
+const STREAM_FLUSH_MS = 80;
 
 function resolveTimeout(requested: number | undefined): number {
   return Math.min(requested ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
@@ -25,7 +26,7 @@ export function cleanCommandOutput(raw: string): string {
   // Strip ANSI escape sequences and normalize Windows CRLF (\r\n) to LF (\n)
   const stripped = raw.replace(ANSI_PATTERN, '').replace(/\r\n/g, '\n');
 
-  // Resolve carriage return overwrites (\r) and trim trailing spaces without split array allocations
+  // Resolve carriage-return overwrites (\r) and trim trailing whitespace per line.
   const lines = stripped.split('\n');
   const len = lines.length;
 
@@ -61,7 +62,7 @@ export const executeCommandTool = defineTool({
     cwd: Type.Optional(Type.Union([Type.String(), Type.Null()], { description: 'Optional working directory; defaults to the workspace.' })),
     timeout: Type.Optional(Type.Integer({ minimum: 1, description: 'Optional timeout in milliseconds; defaults to 120000 ms (2 minutes).' })),
   }),
-  async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+  async execute(_toolCallId, params, signal, onUpdate, ctx) {
     const limits = getOutputLimits();
     const retainedBytes = limits.maxBytes * 2;
 
@@ -77,6 +78,42 @@ export const executeCommandTool = defineTool({
 
       const stdoutDecoder = new StringDecoder('utf8');
       const stderrDecoder = new StringDecoder('utf8');
+
+      // Live preview: accumulate raw output and push it to the UI in small,
+      // throttled deltas so the card's expandable content fills in during the
+      // run instead of staying empty until the process exits.
+      let streamBuffer = '';
+      let streamSent = 0;
+      let streamDirty = false;
+      let streamTimer: ReturnType<typeof setTimeout> | null = null;
+
+      const flushStream = () => {
+        if (streamTimer !== null) {
+          clearTimeout(streamTimer);
+          streamTimer = null;
+        }
+        if (!streamDirty || !onUpdate) return;
+        streamDirty = false;
+        if (streamBuffer.length <= streamSent) return;
+        const delta = streamBuffer.slice(streamSent);
+        streamSent = streamBuffer.length;
+        onUpdate({
+          content: [{ type: 'text', text: delta }],
+          details: { exitCode: null, signalCode: null, output: delta, timedOut: false },
+        });
+      };
+
+      const scheduleStream = () => {
+        if (streamTimer !== null) return;
+        streamTimer = setTimeout(flushStream, STREAM_FLUSH_MS);
+      };
+
+      const streamUpdate = (text: string) => {
+        if (!text) return;
+        streamBuffer += text.replace(ANSI_PATTERN, '').replace(/\r\n/g, '\n');
+        streamDirty = true;
+        scheduleStream();
+      };
 
       const appendOutput = (text: string) => {
         if (!text) return;
@@ -120,6 +157,10 @@ export const executeCommandTool = defineTool({
           clearTimeout(escalationTimer);
           escalationTimer = null;
         }
+        if (streamTimer) {
+          clearTimeout(streamTimer);
+          streamTimer = null;
+        }
       };
 
       const finish = (exitCode: number | null, signalCode: string | null) => {
@@ -129,8 +170,13 @@ export const executeCommandTool = defineTool({
         clearTimers();
 
         // Flush remaining bytes from stream decoders
-        appendOutput(stdoutDecoder.end());
-        appendOutput(stderrDecoder.end());
+        const stdoutTail = stdoutDecoder.end();
+        const stderrTail = stderrDecoder.end();
+        appendOutput(stdoutTail);
+        appendOutput(stderrTail);
+        streamUpdate(stdoutTail);
+        streamUpdate(stderrTail);
+        flushStream();
 
         const exitInfo = exitCode !== null ? `Exit code: ${exitCode}` : `Killed by signal: ${signalCode ?? 'UNKNOWN'}`;
         const rawOutput = output.join('');
@@ -174,11 +220,15 @@ export const executeCommandTool = defineTool({
       };
 
       cp.stdout?.on('data', (chunk: Buffer) => {
-        appendOutput(stdoutDecoder.write(chunk));
+        const text = stdoutDecoder.write(chunk);
+        appendOutput(text);
+        streamUpdate(text);
       });
 
       cp.stderr?.on('data', (chunk: Buffer) => {
-        appendOutput(stderrDecoder.write(chunk));
+        const text = stderrDecoder.write(chunk);
+        appendOutput(text);
+        streamUpdate(text);
       });
 
       cp.on('error', (err) => {

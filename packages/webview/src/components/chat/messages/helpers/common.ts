@@ -1,12 +1,3 @@
-export function safeJsonParse<T>(value?: string): T | undefined {
-  if (!value) return undefined;
-  try {
-    return JSON.parse(value) as T;
-  } catch {
-    return undefined;
-  }
-}
-
 // First changed line in the new (post-edit) file, from a unified diff's first
 // hunk header: `@@ -oldStart,oldCount +newStart,newCount @@`.
 export function getFirstDiffLine(diff?: string): number | undefined {

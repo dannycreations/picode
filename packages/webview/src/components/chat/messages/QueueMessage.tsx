@@ -76,7 +76,7 @@ export const QueueMessage: FC<QueueMessageProps> = ({ message, search }) => {
               ))}
             </div>
           )}
-          <div className="flex gap-3.5 mt-3 pt-2.5 border-t border-vscode-panel-border/50 text-xs select-none">
+          <div className="flex justify-end gap-3.5 mt-3 pt-2.5 border-t border-vscode-panel-border/50 text-xs select-none">
             <button
               onClick={() => {
                 setIsEditing(true);

@@ -1,4 +1,4 @@
-import { safeJsonParse } from '@pi-code/webview/components/chat/messages/helpers/common';
+import { safeJsonParse } from '@pi-code/shared/utilities/common';
 
 import type { ChatMessage, ToolName, ToolSection } from '@pi-code/shared/core/types';
 

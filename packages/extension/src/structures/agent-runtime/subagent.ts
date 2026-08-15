@@ -74,13 +74,15 @@ interface SubagentInput {
   readonly onEvent?: (event: AgentSessionEvent, session: AgentSession) => void;
 }
 
+const MAX_CONCURRENT_SUBAGENTS = 3;
+
 let activeSpawns = 0;
 const waiting: (() => void)[] = [];
 
 async function acquireSpawnSlot(): Promise<() => void> {
   // A queue inherits the slot of whoever released it instead of taking a
   // new one, so the count cannot drift above the cap while a waiter resumes.
-  if (activeSpawns >= 3) {
+  if (activeSpawns >= MAX_CONCURRENT_SUBAGENTS) {
     await new Promise<void>((resolve) => waiting.push(resolve));
   } else {
     activeSpawns++;
@@ -112,7 +114,7 @@ export function formatSubagentStep(toolName: SubagentToolName, args: unknown): s
     return `read ${preview(paths.join(', ')) || '(no path)'}`;
   }
   if (toolName === 'execute_command') {
-    return `$ ${preview(values.command ?? '')}`;
+    return `execute ${preview(values.command ?? '')}`;
   }
   return `${toolName} ${preview(JSON.stringify(args ?? {}))}`;
 }

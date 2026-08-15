@@ -26,7 +26,7 @@ export class WorkspaceService {
       return;
     }
 
-    const editor = await this.findEditorForUri(uri);
+    const editor = await this.findEditorForUri(uri, 10, 50);
     if (!editor) {
       // The diff didn't open (e.g. untracked file with no changes): fall back.
       await this.openFile(cwd, relativePath, line);
@@ -60,24 +60,29 @@ export class WorkspaceService {
     const target = Uri.joinPath(this.storageUri, 'images', `pi-code-img-${Date.now()}.${extensionForMimeType(parts.mimeType)}`);
 
     await workspace.fs.createDirectory(Uri.joinPath(this.storageUri, 'images'));
-    await workspace.fs.writeFile(target, Buffer.from(parts.data, 'base64'));
-    await commands.executeCommand('vscode.open', target);
+    if (await this.writeBase64DataUrl(target, dataUrl)) {
+      await commands.executeCommand('vscode.open', target);
+    }
   }
 
   public async saveImage(dataUrl: string, filename: string): Promise<void> {
-    const parts = parseBase64DataUrl(dataUrl);
-    if (!parts) return;
-
     const uri = await window.showSaveDialog({
       defaultUri: Uri.file(filename),
       filters: { 'PNG Images': ['png'] },
     });
     if (!uri) return;
 
-    await workspace.fs.writeFile(uri, Buffer.from(parts.data, 'base64'));
+    await this.writeBase64DataUrl(uri, dataUrl);
   }
 
-  private async findEditorForUri(uri: Uri, attempts = 10, delayMs = 50): Promise<TextEditor | undefined> {
+  private async writeBase64DataUrl(uri: Uri, dataUrl: string): Promise<boolean> {
+    const parts = parseBase64DataUrl(dataUrl);
+    if (!parts) return false;
+    await workspace.fs.writeFile(uri, Buffer.from(parts.data, 'base64'));
+    return true;
+  }
+
+  private async findEditorForUri(uri: Uri, attempts: number, delayMs: number): Promise<TextEditor | undefined> {
     const target = uri.toString();
     for (let attempt = 0; attempt < attempts; attempt++) {
       const editor = window.activeTextEditor;

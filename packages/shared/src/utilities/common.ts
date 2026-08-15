@@ -19,3 +19,16 @@ export function defaultThinkingLevel(levels: readonly ModelThinkingLevel[]): Mod
   if (levels.includes('medium')) return 'medium';
   return levels.find((level) => level !== 'off') ?? levels[0];
 }
+
+export function safeJsonParse<T>(value?: string): T | undefined {
+  if (!value) return undefined;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return undefined;
+  }
+}
+
+export function serializeToolArgs(args: unknown): string {
+  return typeof args === 'string' ? args : JSON.stringify(args ?? {});
+}

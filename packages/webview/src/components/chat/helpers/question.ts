@@ -1,4 +1,5 @@
-import { extractResultText, safeJsonParse } from '@pi-code/webview/components/chat/messages/helpers/common';
+import { safeJsonParse } from '@pi-code/shared/utilities/common';
+import { extractResultText } from '@pi-code/webview/components/chat/messages/helpers/common';
 
 import type { ChatMessage } from '@pi-code/shared/core/types';
 

@@ -12,10 +12,13 @@ import { EMPTY_STATS } from '@pi-code/shared/utilities/common';
 
 import type { Api, Model, ModelThinkingLevel } from '@earendil-works/pi-ai';
 import type { ModelRuntime, SessionInfo } from '@earendil-works/pi-coding-agent';
+import type { AgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import type { ExtensionToWebviewMessage, HistoryItem, HistoryScope, ModelItem } from '@pi-code/shared/core/protocol';
 import type { ChatMessage, StatsData } from '@pi-code/shared/core/types';
 
 type SessionInitData = Extract<ExtensionToWebviewMessage, { type: 'init_data' }>['payload'];
+
+const CATALOG_TIMEOUT_MS = 60_000;
 
 function resolveThinkingLevels(model: Model<Api>): ModelThinkingLevel[] {
   if (!model.reasoning) return [];
@@ -54,10 +57,11 @@ function formatSessions(sessions: SessionInfo[]): HistoryItem[] {
   }));
 }
 
-export async function getInitData(cwd: string): Promise<SessionInitData> {
-  const [sessions, resources] = await Promise.all([SessionManager.list(cwd), createAgentResources(cwd)]);
+export async function getInitData(cwd: string, resources?: AgentResources): Promise<SessionInitData> {
+  const resolved = resources ?? (await createAgentResources(cwd));
+  const sessions = await SessionManager.list(cwd);
 
-  const [models, defaultModel] = await Promise.all([listSelectableModels(resources.services.modelRuntime), getDefaultModelSelection(cwd)]);
+  const [models, defaultModel] = await Promise.all([listSelectableModels(resolved.services.modelRuntime), getDefaultModelSelection(cwd)]);
 
   const thinkingLevel = getSettingsManager(cwd).getDefaultThinkingLevel() ?? undefined;
 
@@ -66,19 +70,18 @@ export async function getInitData(cwd: string): Promise<SessionInitData> {
     history: formatSessions(sessions),
     default_model: resolveDefaultModelId(models, defaultModel),
     default_thinking_level: thinkingLevel,
-    settings: resources.settings,
-    commands: collectCommands(resources.services.resourceLoader),
+    settings: resolved.settings,
+    commands: collectCommands(resolved.services.resourceLoader),
   };
 }
 
-export async function refreshModelCatalog(cwd: string, onModels: (models: ModelItem[]) => void): Promise<void> {
-  const resources = await createAgentResources(cwd);
+export async function refreshModelCatalog(modelRuntime: ModelRuntime, onModels: (models: ModelItem[]) => void): Promise<void> {
   try {
-    await resources.services.modelRuntime.refresh({
+    await modelRuntime.refresh({
       allowNetwork: true,
-      signal: AbortSignal.timeout(60_000),
+      signal: AbortSignal.timeout(CATALOG_TIMEOUT_MS),
     });
-    onModels(await listSelectableModels(resources.services.modelRuntime));
+    onModels(await listSelectableModels(modelRuntime));
   } catch (error) {
     logger.warn('Dynamic model refresh failed; the model list stays on the local catalog.', error);
   }

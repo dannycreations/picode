@@ -1,8 +1,7 @@
 import { commands, languages, Range, window } from 'vscode';
 
-import { getEffectiveSelection } from '@pi-code/extension/structures/add-to-context/helpers';
+import { getSelectionContext, mapDiagnostics } from '@pi-code/extension/structures/add-to-context/helpers';
 import { ChatViewProvider } from '@pi-code/extension/structures/agent-webview/provider';
-import { toRelativePath } from '@pi-code/extension/utilities/vscode';
 
 import type { Disposable } from 'vscode';
 
@@ -21,15 +20,14 @@ export function registerAddToContextCommand(chatViewProvider: ChatViewProvider):
       if (!editor) {
         return;
       }
-      const document = editor.document;
-      const effectiveContext = getEffectiveSelection(document, editor.selection);
-      if (!effectiveContext) {
+      const context = getSelectionContext(editor.document, editor.selection);
+      if (!context) {
         return;
       }
-      filePath = toRelativePath(document.uri);
-      startLine = effectiveContext.startLine + 1;
-      endLine = effectiveContext.endLine + 1;
-      selectedText = effectiveContext.text;
+      filePath = context.filePath;
+      startLine = context.selection.startLine + 1;
+      endLine = context.selection.endLine + 1;
+      selectedText = context.selection.text;
     }
 
     await commands.executeCommand('pi-code.chatView.focus');
@@ -55,24 +53,23 @@ export function registerFixCodeCommand(chatViewProvider: ChatViewProvider): Disp
       if (!editor) {
         return;
       }
-      const document = editor.document;
-      const effectiveContext = getEffectiveSelection(document, editor.selection);
-      if (!effectiveContext) {
+      const context = getSelectionContext(editor.document, editor.selection);
+      if (!context) {
         return;
       }
-      filePath = toRelativePath(document.uri);
-      startLine = effectiveContext.startLine + 1;
-      endLine = effectiveContext.endLine + 1;
-      selectedText = effectiveContext.text;
+      filePath = context.filePath;
+      startLine = context.selection.startLine + 1;
+      endLine = context.selection.endLine + 1;
+      selectedText = context.selection.text;
 
       const selectionRange = new Range(
-        effectiveContext.startLine,
+        context.selection.startLine,
         0,
-        effectiveContext.endLine,
-        document.lineAt(effectiveContext.endLine).text.length,
+        context.selection.endLine,
+        editor.document.lineAt(context.selection.endLine).text.length,
       );
 
-      const allDiagnostics = languages.getDiagnostics(document.uri);
+      const allDiagnostics = languages.getDiagnostics(editor.document.uri);
       const intersecting = allDiagnostics.filter((d) => {
         const r1 = selectionRange;
         const r2 = d.range;
@@ -85,11 +82,7 @@ export function registerFixCodeCommand(chatViewProvider: ChatViewProvider): Disp
         return true;
       });
 
-      diagnostics = intersecting.map((d) => ({
-        message: d.message,
-        source: d.source,
-        code: d.code !== undefined && d.code !== null ? (typeof d.code === 'object' ? d.code.value : d.code) : undefined,
-      }));
+      diagnostics = mapDiagnostics(intersecting);
     }
 
     let diagnosticText = '';

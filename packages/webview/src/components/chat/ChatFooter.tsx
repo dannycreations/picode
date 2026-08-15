@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { useClickOutside } from '@pi-code/webview/hooks/useClickOutside';
 
-import type { FC, Ref } from 'react';
+import type { FC, ReactNode, Ref } from 'react';
 import type { ModelItem } from '@pi-code/shared/core/protocol';
 import type { ModelThinkingLevel } from '@pi-code/shared/core/types';
 
@@ -48,6 +48,24 @@ const DropdownMenuItem: FC<DropdownMenuItemProps> = ({ label, selected, onSelect
   </button>
 );
 
+interface DropdownMenuProps {
+  readonly side: 'left' | 'right';
+  readonly widthClass: string;
+  readonly children: ReactNode;
+}
+
+const DropdownMenu: FC<DropdownMenuProps> = ({ side, widthClass, children }) => (
+  <div
+    className={cn(
+      'absolute bottom-full mb-1 bg-vscode-dropdown-background border border-vscode-panel-border/50 rounded-md shadow-lg overflow-hidden flex flex-col z-50',
+      side === 'left' ? 'left-0' : 'right-0',
+      widthClass,
+    )}
+  >
+    {children}
+  </div>
+);
+
 const ModelDropdownMenu: FC<ModelDropdownMenuProps> = ({ models, currentModel, onSelectModel }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const filteredModels = models.filter(
@@ -60,7 +78,7 @@ const ModelDropdownMenu: FC<ModelDropdownMenuProps> = ({ models, currentModel, o
   }, []);
 
   return (
-    <div className="absolute bottom-full left-0 mb-1 w-64 bg-vscode-dropdown-background border border-vscode-panel-border/50 rounded-md shadow-lg overflow-hidden flex flex-col z-50 max-h-60">
+    <DropdownMenu side="left" widthClass="w-64 max-h-60">
       <div className="p-2 border-b border-vscode-panel-border/50 shrink-0">
         <input
           type="text"
@@ -89,7 +107,7 @@ const ModelDropdownMenu: FC<ModelDropdownMenuProps> = ({ models, currentModel, o
           <div className="px-3 py-2 text-muted text-center">No models found</div>
         )}
       </div>
-    </div>
+    </DropdownMenu>
   );
 };
 
@@ -101,12 +119,12 @@ interface ThinkingLevelMenuProps {
 
 const ThinkingLevelMenu: FC<ThinkingLevelMenuProps> = ({ levels, currentLevel, onSelectLevel }) => {
   return (
-    <div className="absolute bottom-full right-0 mb-1 w-32 bg-vscode-dropdown-background border border-vscode-panel-border/50 rounded-md shadow-lg overflow-hidden flex flex-col z-50 py-1">
+    <DropdownMenu side="right" widthClass="w-32 py-1">
       {levels.map((level) => {
         const isSelected = currentLevel === level;
         return <DropdownMenuItem key={level} label={level} selected={isSelected} onSelect={() => onSelectLevel(level)} className="capitalize" />;
       })}
-    </div>
+    </DropdownMenu>
   );
 };
 
