@@ -184,13 +184,28 @@ export function buildToolSections(message: ChatMessage): ToolSection[] {
     return fileToolSections(message);
   })();
 
-  return sections.map((section) => ({
+  const withMeta = sections.map((section) => ({
     ...section,
     id: message.id,
     ts: message.ts,
     duration: message.duration,
     status: message.toolStatus,
   }));
+
+  if (message.toolStatus !== 'approval') return withMeta;
+  if (withMeta.length > 0) {
+    return withMeta.map((section) => ({ ...section, approvalMessage: message }));
+  }
+  return [
+    {
+      title: message.toolName ?? 'Tool',
+      id: message.id,
+      ts: message.ts,
+      duration: message.duration,
+      status: 'approval',
+      approvalMessage: message,
+    },
+  ];
 }
 
 export function getFileToolMeta(toolName: string | undefined, status?: string): { title: string; icon: string; language: string } {

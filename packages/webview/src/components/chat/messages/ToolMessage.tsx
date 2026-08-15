@@ -35,23 +35,6 @@ const ElapsedTimer: FC<{ startTs: number; isRunning: boolean; duration?: number 
   );
 };
 
-const ApprovalControls: FC<ToolMessageProps> = ({ message, onApproveTool, onDenyTool }) => {
-  if (message.toolStatus !== 'approval') return null;
-
-  return (
-    <div className="p-3 bg-vscode-editorWarning-background/10 flex flex-col gap-2">
-      <div className="flex items-center gap-2 select-none">
-        <button onClick={() => onApproveTool(message.id)} className="action-button flex-1">
-          <Play size={12} fill="currentColor" /> Approve
-        </button>
-        <button onClick={() => onDenyTool(message.id)} className="action-button action-button-secondary flex-1">
-          <X size={12} /> Deny
-        </button>
-      </div>
-    </div>
-  );
-};
-
 const DiffStat: FC<{ content?: string; className?: string }> = ({ content, className }) => {
   const stat = getDiffStat(content);
   if (!stat) return null;
@@ -104,6 +87,8 @@ const ToolSection: FC<ToolSectionProps> = ({
               open ? 'codicon-chevron-up' : 'codicon-chevron-down',
             )}
           />
+        ) : isRunning ? (
+          <Spinner className="text-vscode-focusBorder" />
         ) : (
           <div className="w-4 shrink-0" />
         )}
@@ -157,9 +142,8 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
   const sections: ReadonlyArray<ToolSection> = message.toolSections ?? buildToolSections(message);
   const hiddenCount = sections.length > 0 ? sections.length - 1 : 0;
   const hasMore = hiddenCount > 0;
-  const hasApproval = message.toolStatus === 'approval';
   const approvalIndex = sections.findIndex((s) => s.approvalMessage !== undefined);
-  const shouldExpandForApproval = hasMore && (approvalIndex > 0 || (hasApproval && approvalIndex === -1));
+  const shouldExpandForApproval = hasMore && approvalIndex > 0;
   const [isExpanded, setIsExpanded] = useState(shouldExpandForApproval);
 
   useEffect(() => {
@@ -193,8 +177,9 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
           {visibleSections.map((section, index) => {
             const sectionStatus = section.status ?? message.toolStatus;
             const isSecSubagentRunning = sectionStatus === 'running';
-            const showSecSubagentTimer = isSubagent && (isSecSubagentRunning || sectionStatus === 'completed');
-            const hasSecApproval = section.approvalMessage !== undefined;
+            const showSecSubagentTimer = isSubagent && (message.toolStatus === 'running' || message.toolStatus === 'completed');
+            const approvalMessage = section.approvalMessage;
+            const hasSecApproval = approvalMessage !== undefined;
 
             return (
               <Fragment key={index}>
@@ -202,21 +187,28 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
                   section={section}
                   defaultOpen={false}
                   isFirst={index === 0}
-                  isLast={index === visibleSections.length - 1 && !hasMore && !hasApproval && !hasSecApproval}
+                  isLast={index === visibleSections.length - 1 && !hasMore && !hasSecApproval}
                   showTimer={showSecSubagentTimer}
                   isRunning={isSecSubagentRunning}
                   startTs={section.ts ?? message.ts}
                   duration={section.duration}
                   onOpenFile={openFile}
                 />
-                {hasSecApproval && section.approvalMessage && (
-                  <ApprovalControls message={section.approvalMessage} onApproveTool={onApproveTool} onDenyTool={onDenyTool} />
+                {approvalMessage && (
+                  <div className="p-2 bg-vscode-editorWarning-background/10 flex flex-col gap-2">
+                    <div className="flex items-center gap-2 select-none">
+                      <button onClick={() => onApproveTool(approvalMessage.id)} className="action-button flex-1">
+                        <Play size={12} fill="currentColor" /> Approve
+                      </button>
+                      <button onClick={() => onDenyTool(approvalMessage.id)} className="action-button action-button-secondary flex-1">
+                        <X size={12} /> Deny
+                      </button>
+                    </div>
+                  </div>
                 )}
               </Fragment>
             );
           })}
-
-          {hasApproval && <ApprovalControls message={message} onApproveTool={onApproveTool} onDenyTool={onDenyTool} />}
 
           {hasMore && (
             <Tooltip content={isExpanded ? 'Collapse' : `Show ${hiddenCount} more item${hiddenCount === 1 ? '' : 's'}`}>

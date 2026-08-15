@@ -174,7 +174,7 @@ export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutco
   const release = await acquireSpawnSlot();
   const collected: string[] = [];
 
-  const steps = (): string => collected.slice(-30).join('\n');
+  const steps = (): string => collected.slice(-10).join('\n');
 
   try {
     if (input.signal?.aborted) {
