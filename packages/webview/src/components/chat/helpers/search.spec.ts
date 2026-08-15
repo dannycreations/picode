@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { countOccurrences, getMessageSearchText } from '@pi-code/webview/components/chat/helpers/search';
+import { countOccurrences } from '@pi-code/shared/utilities/common';
+import { getMessageSearchText } from '@pi-code/webview/components/chat/helpers/search';
 
 import type { ChatMessage } from '@pi-code/shared/core/types';
 

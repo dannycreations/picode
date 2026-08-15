@@ -37,6 +37,7 @@ export type WebviewToExtensionMessage =
   | { type: 'load_session'; id: string; path: string; title: string }
   | { type: 'delete_sessions'; paths: string[] }
   | { type: 'send_message'; text: string; path?: string; model?: ModelSelection; images?: string[] }
+  | { type: 'search_files'; query: string; requestId: string }
   | { type: 'continue_task'; path?: string; model?: ModelSelection }
   | { type: 'tool_response'; approval_id: string; approved: boolean }
   | { type: 'question_response'; question_id: string; text: string }
@@ -89,6 +90,7 @@ export type ExtensionToWebviewMessage =
   | { type: 'info'; payload: { text: string } }
   | { type: 'show_settings' }
   | { type: 'set_chat_input'; payload: { text: string } }
+  | { type: 'search_results'; payload: { requestId: string; paths: string[] } }
   | { type: 'reply_queue_data'; payload: { queue: QueueMessage[] } }
   | { type: 'reply_queue_delivered'; payload: { messages: ChatMessage[] } }
   | { type: 'stream_delta'; payload: { text?: string; thinking?: string } };

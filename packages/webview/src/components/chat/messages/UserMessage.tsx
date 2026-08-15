@@ -1,7 +1,8 @@
 import { User } from 'lucide-react';
 
+import { countOccurrences } from '@pi-code/shared/utilities/common';
 import { splitCommand } from '@pi-code/webview/components/chat/helpers/command';
-import { countOccurrences, localActiveIndex } from '@pi-code/webview/components/chat/helpers/search';
+import { localActiveIndex } from '@pi-code/webview/components/chat/helpers/search';
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
 import { Highlight } from '@pi-code/webview/components/shared/Highlight';
 import { ImageThumb } from '@pi-code/webview/components/shared/ImageThumb';

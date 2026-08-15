@@ -5,22 +5,6 @@ import { parseQuestionAnswer, parseQuestionData } from '@pi-code/webview/compone
 import type { ChatMessage } from '@pi-code/shared/core/types';
 import type { SearchContext } from '@pi-code/webview/components/shared/Highlight';
 
-export function countOccurrences(text: string, query: string): number {
-  if (!query) return 0;
-
-  const haystack = text.toLowerCase();
-  const needle = query.toLowerCase();
-  let count = 0;
-  let from = 0;
-  let index = haystack.indexOf(needle, from);
-  while (index !== -1) {
-    count++;
-    from = index + needle.length;
-    index = haystack.indexOf(needle, from);
-  }
-  return count;
-}
-
 export function localActiveIndex(base: number, count: number, activeIndex: number): number {
   if (activeIndex < base || activeIndex >= base + count) return -1;
   return activeIndex - base;

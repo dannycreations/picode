@@ -2,8 +2,7 @@ import { formatThrownValue, StringEnum } from '@earendil-works/pi-ai';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
-import { notifySubagentEvent } from '@pi-code/extension/structures/agent-runtime/brokers/approval';
-import { mapEvent } from '@pi-code/extension/structures/agent-runtime/event';
+import { mapEvent, notifySubagentEvent } from '@pi-code/extension/structures/agent-runtime/event';
 import { describeSubagents, getSubagent, recordSubagentUsage, spawnSubagent, SUBAGENTS } from '@pi-code/extension/structures/agent-runtime/subagent';
 import { toolError, toolResult } from '@pi-code/extension/structures/tool-call/helpers/result';
 import { getOutputLimits, truncateOutput } from '@pi-code/extension/utilities/truncate';

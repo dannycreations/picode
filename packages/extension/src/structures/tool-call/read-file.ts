@@ -14,11 +14,11 @@ import { shareOutputLimits, toOutputLimits, truncateOutput } from '@pi-code/exte
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
 import type { ToolName } from '@pi-code/shared/core/types';
 
-const MEGABYTE = 1024 * 1024;
-const MAX_FILE_SIZE_BYTES = 10 * MEGABYTE;
+export const MEGABYTE = 1024 * 1024;
+export const MAX_FILE_SIZE_BYTES = 10 * MEGABYTE;
 const DEFAULT_MAX_CONCURRENT_READS = 5;
 
-async function readLines(filePath: string, maxLines?: number): Promise<string[]> {
+export async function readLines(filePath: string, maxLines?: number): Promise<string[]> {
   const stream = createReadStream(filePath, { encoding: 'utf8' });
   const rl = createInterface({ input: stream, crlfDelay: Infinity });
 
@@ -57,7 +57,7 @@ interface FileSection {
   readonly hasError: boolean;
 }
 
-function numberLines(lines: readonly string[], ranges: FileRequest['line_ranges']): string {
+export function numberLines(lines: readonly string[], ranges: FileRequest['line_ranges']): string {
   if (!ranges || ranges.length === 0) {
     return lines.map((line, index) => `${index + 1}|${line}`).join('\n');
   }

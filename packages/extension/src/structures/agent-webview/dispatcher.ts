@@ -13,6 +13,7 @@ import {
   loadSessionDetails,
   refreshModelCatalog,
 } from '@pi-code/extension/structures/agent-webview/session';
+import { searchWorkspaceFiles } from '@pi-code/extension/utilities/fs';
 import { ACTIVE_TASK_ID, HISTORY_SCOPES } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
 
@@ -66,6 +67,10 @@ const HANDLER_MAP: HandlerMap = {
   },
   send_message: (msg, ctx) => {
     void ctx.agent.startTask(msg.text, msg.model, msg.images, msg.path);
+  },
+  search_files: async (msg, ctx) => {
+    const paths = await searchWorkspaceFiles(msg.query, ctx.cwd);
+    ctx.postMessage({ type: 'search_results', payload: { requestId: msg.requestId, paths } });
   },
   add_to_reply_queue: (msg, ctx) => {
     ctx.agent.addToReplyQueue(msg.text, msg.images);

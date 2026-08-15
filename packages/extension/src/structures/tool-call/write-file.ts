@@ -3,7 +3,7 @@ import { dirname, resolve } from 'node:path';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
-import { fileMutex } from '@pi-code/extension/structures/tool-call/helpers/mutex';
+import { acquireFileLock } from '@pi-code/extension/structures/tool-call/helpers/mutex';
 import { toolErrorFrom } from '@pi-code/extension/structures/tool-call/helpers/result';
 import { stripCodeFence } from '@pi-code/extension/utilities/markdown';
 import { buildFileChangeResult } from '@pi-code/extension/utilities/truncate';
@@ -20,7 +20,7 @@ export const writeFileTool = defineTool({
   }),
   async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
     const resolvedPath = resolve(ctx.cwd, params.path);
-    const release = await fileMutex.acquire(resolvedPath);
+    const release = await acquireFileLock(resolvedPath);
     try {
       // Clean content from code block markers if present
       const finalContent = stripCodeFence(params.content);

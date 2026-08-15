@@ -1,7 +1,8 @@
 import { Pencil, Trash2, User } from 'lucide-react';
 import { useState } from 'react';
 
-import { countOccurrences, localActiveIndex } from '@pi-code/webview/components/chat/helpers/search';
+import { countOccurrences } from '@pi-code/shared/utilities/common';
+import { localActiveIndex } from '@pi-code/webview/components/chat/helpers/search';
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
 import { Highlight } from '@pi-code/webview/components/shared/Highlight';
 import { ImageThumb } from '@pi-code/webview/components/shared/ImageThumb';

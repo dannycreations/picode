@@ -1,8 +1,9 @@
 import { cn } from 'cnfast';
 import { ClipboardCopy, CornerDownRight, MessageCircleQuestionMark, ShieldAlert } from 'lucide-react';
 
+import { countOccurrences } from '@pi-code/shared/utilities/common';
 import { parseQuestionAnswer, parseQuestionData } from '@pi-code/webview/components/chat/helpers/question';
-import { countOccurrences, localActiveIndex } from '@pi-code/webview/components/chat/helpers/search';
+import { localActiveIndex } from '@pi-code/webview/components/chat/helpers/search';
 import { Markdown } from '@pi-code/webview/components/chat/markdown/Markdown';
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
 import { Highlight } from '@pi-code/webview/components/shared/Highlight';

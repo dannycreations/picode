@@ -7,6 +7,8 @@ import { logger } from '@pi-code/shared/core/logger';
 import { CommandMenu } from '@pi-code/webview/components/chat/CommandMenu';
 import { splitCommand } from '@pi-code/webview/components/chat/helpers/command';
 import { useChatCommand } from '@pi-code/webview/components/chat/hooks/useChatCommand';
+import { useChatMention } from '@pi-code/webview/components/chat/hooks/useChatMention';
+import { MentionMenu } from '@pi-code/webview/components/chat/MentionMenu';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { readFileAsDataUrl } from '@pi-code/webview/utilities/common';
 
@@ -65,6 +67,7 @@ export const ChatInput: FC<ChatInputProps> = ({
   const matchRef = useRef<HTMLDivElement>(null);
 
   const command = useChatCommand({ commands, value: inputValue, setValue: setInputValue, textareaRef });
+  const mention = useChatMention({ value: inputValue, setValue: setInputValue, textareaRef });
   const match = useMemo(() => splitCommand(inputValue, commands), [inputValue, commands]);
 
   // Drop any staged images when the active model cannot accept them, so the
@@ -83,6 +86,7 @@ export const ChatInput: FC<ChatInputProps> = ({
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     // The picker owns navigation and acceptance keys while it is open.
+    if (mention.handleKeyDown(e)) return;
     if (command.handleKeyDown(e)) return;
 
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -94,6 +98,7 @@ export const ChatInput: FC<ChatInputProps> = ({
   const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     setInputValue(e.target.value);
     command.handleChange(e);
+    mention.handleChange(e);
   };
 
   const handleAttachImage = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -149,6 +154,9 @@ export const ChatInput: FC<ChatInputProps> = ({
             onHover={command.setSelectedIndex}
           />
         )}
+        {mention.isOpen && (
+          <MentionMenu results={mention.results} selectedIndex={mention.selectedIndex} onSelect={mention.select} onHover={mention.setSelectedIndex} />
+        )}
         <div className="relative flex">
           <div
             ref={matchRef}
@@ -182,7 +190,10 @@ export const ChatInput: FC<ChatInputProps> = ({
               command.close();
             }}
             onKeyDown={handleKeyDown}
-            onSelect={command.syncCaret}
+            onSelect={() => {
+              command.syncCaret();
+              mention.syncCaret();
+            }}
             onPaste={handlePaste}
             onScroll={(e) => {
               if (matchRef.current) matchRef.current.scrollTop = e.currentTarget.scrollTop;

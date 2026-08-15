@@ -2,12 +2,13 @@ import { uuidv7 } from '@earendil-works/pi-ai';
 import { Disposable, Uri, workspace } from 'vscode';
 
 import { invalidateAppSettings, readAppSettings } from '@pi-code/extension/core/settings';
-import { setApprovalPresenter, setSubagentEventCallback } from '@pi-code/extension/structures/agent-runtime/brokers/approval';
+import { setApprovalPresenter } from '@pi-code/extension/structures/agent-runtime/brokers/approval';
+import { setSubagentEventCallback } from '@pi-code/extension/structures/agent-runtime/event';
 import { AgentRunner } from '@pi-code/extension/structures/agent-runtime/runner';
 import { dispatch } from '@pi-code/extension/structures/agent-webview/dispatcher';
 import { WorkspaceService } from '@pi-code/extension/structures/agent-webview/workspace';
 import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
-import { DEFAULT_APP_ID } from '@pi-code/shared/core/constants';
+import { CHAT_VIEW_TYPE, DEFAULT_APP_ID } from '@pi-code/shared/core/constants';
 import { serializeToolArgs } from '@pi-code/shared/utilities/common';
 
 import type { CancellationToken, ExtensionContext, Webview, WebviewView, WebviewViewProvider, WebviewViewResolveContext } from 'vscode';
@@ -61,7 +62,7 @@ function buildChatViewHtml(webview: Webview, extensionUri: Uri): string {
 }
 
 export class ChatViewProvider implements WebviewViewProvider {
-  public static readonly viewType = 'pi-code.chatView';
+  public static readonly viewType = CHAT_VIEW_TYPE;
 
   private readonly workspace: WorkspaceService;
   private agent: AgentRunner | null = null;

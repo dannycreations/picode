@@ -3,13 +3,14 @@ import { cn } from 'cnfast';
 import { Pi } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { countOccurrences } from '@pi-code/shared/utilities/common';
 import { ChatAction } from '@pi-code/webview/components/chat/ChatAction';
 import { ChatBody } from '@pi-code/webview/components/chat/ChatBody';
 import { ChatFooter } from '@pi-code/webview/components/chat/ChatFooter';
 import { ChatHeader } from '@pi-code/webview/components/chat/ChatHeader';
 import { ChatInput } from '@pi-code/webview/components/chat/ChatInput';
 import { ESTIMATED_ROW_HEIGHT, groupToolMessages, hasPendingApproval, isRenderableMessage } from '@pi-code/webview/components/chat/helpers/message';
-import { countOccurrences, getMessageSearchText } from '@pi-code/webview/components/chat/helpers/search';
+import { getMessageSearchText } from '@pi-code/webview/components/chat/helpers/search';
 import { useActiveTask } from '@pi-code/webview/components/chat/hooks/useActiveTask';
 import { useChatActions } from '@pi-code/webview/components/chat/hooks/useChatActions';
 import { useChatComposer } from '@pi-code/webview/components/chat/hooks/useChatComposer';

@@ -4,24 +4,14 @@ import { formatThrownValue } from '@earendil-works/pi-ai';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
-import { fileMutex } from '@pi-code/extension/structures/tool-call/helpers/mutex';
+import { acquireFileLock } from '@pi-code/extension/structures/tool-call/helpers/mutex';
 import { toolError, toolErrorFrom } from '@pi-code/extension/structures/tool-call/helpers/result';
 import { buildFileChangeResult } from '@pi-code/extension/utilities/truncate';
+import { countOccurrences } from '@pi-code/shared/utilities/common';
 
 import type { ToolName } from '@pi-code/shared/core/types';
 
 type LineEnding = '\r\n' | '\n';
-
-function countOccurrences(str: string, substr: string): number {
-  if (substr === '') return 0;
-  let count = 0;
-  let pos = str.indexOf(substr);
-  while (pos !== -1) {
-    count++;
-    pos = str.indexOf(substr, pos + substr.length);
-  }
-  return count;
-}
 
 function safeLiteralReplace(str: string, oldString: string, newString: string): string {
   if (oldString === '' || !str.includes(oldString)) {
@@ -124,12 +114,8 @@ function countRegexMatches(content: string, regex: RegExp): number {
 
 type ReplacementOutcome = { readonly content: string; readonly error?: undefined } | { readonly content?: undefined; readonly error: string };
 
-// Three matching strategies, tried in order of strictness and evaluated lazily
-// so an exact hit never pays for the regex passes. The first strategy whose
-// match count equals `expected` wins; otherwise all counts are reported so the
-// model can see how close each one got.
 function replaceExpected(originalLF: string, oldLF: string, newLF: string, expected: number, filePath: string): ReplacementOutcome {
-  const exact = countOccurrences(originalLF, oldLF);
+  const exact = countOccurrences(originalLF, oldLF, true);
   if (exact === expected) {
     return { content: safeLiteralReplace(originalLF, oldLF, newLF) };
   }
@@ -167,7 +153,7 @@ export const editFileTool = defineTool({
   async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
     const { file_path, old_string, new_string } = params;
     const resolvedPath = resolve(ctx.cwd, file_path);
-    const release = await fileMutex.acquire(resolvedPath);
+    const release = await acquireFileLock(resolvedPath);
     try {
       let fileExists = false;
       let originalContent = '';

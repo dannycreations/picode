@@ -2,7 +2,8 @@ import { cn } from 'cnfast';
 import { ChevronUp, Lightbulb, MessageCircle } from 'lucide-react';
 import { useState } from 'react';
 
-import { countOccurrences, localActiveIndex } from '@pi-code/webview/components/chat/helpers/search';
+import { countOccurrences } from '@pi-code/shared/utilities/common';
+import { localActiveIndex } from '@pi-code/webview/components/chat/helpers/search';
 import { Markdown } from '@pi-code/webview/components/chat/markdown/Markdown';
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
 import { Highlight } from '@pi-code/webview/components/shared/Highlight';

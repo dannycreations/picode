@@ -9,6 +9,7 @@ import { createAgentResources } from '@pi-code/extension/structures/agent-runtim
 import { createSession } from '@pi-code/extension/structures/agent-runtime/session';
 import { WebviewMessenger } from '@pi-code/extension/structures/agent-runtime/webview';
 import { collectCommands } from '@pi-code/extension/structures/chat-command/command';
+import { expandMentions } from '@pi-code/extension/structures/chat-command/mention';
 import { getEnvironmentDetails, getLatestTodoList, withTodoProgress } from '@pi-code/extension/structures/chat-session/environment';
 import { loadSessionTranscript } from '@pi-code/extension/structures/chat-session/session';
 import { parseBase64DataUrl } from '@pi-code/extension/utilities/codec';
@@ -95,8 +96,9 @@ export class AgentRunner {
       await session.sendCustomMessage({ customType: 'environment_details', content: envDetails, display: false }, { deliverAs: 'nextTurn' });
 
       const attachments = parseImageAttachments(images);
+      const expandedText = await expandMentions(promptText, getWorkspaceCwd());
 
-      void session.prompt(promptText, { images: attachments }).catch((err) => {
+      void session.prompt(expandedText, { images: attachments }).catch((err) => {
         this.messenger.postError(err);
       });
     } catch (err) {
@@ -289,6 +291,7 @@ export class AgentRunner {
     const basePrepareContext = session.agent.prepareNextTurnWithContext;
     session.agent.prepareNextTurnWithContext = async (context, signal) => {
       const snapshot = await basePrepareContext?.(context, signal);
+      const cwd = getWorkspaceCwd();
 
       if (this.replyQueue.length > 0) {
         const undelivered: QueueMessage[] = [];
@@ -296,7 +299,8 @@ export class AgentRunner {
 
         for (const msg of this.replyQueue) {
           const attachments = parseImageAttachments(msg.images);
-          const content: (TextContent | ImageContent)[] = [{ type: 'text', text: msg.text }];
+          const text = await expandMentions(msg.text, cwd);
+          const content: (TextContent | ImageContent)[] = [{ type: 'text', text }];
           if (attachments) {
             content.push(...attachments);
           }

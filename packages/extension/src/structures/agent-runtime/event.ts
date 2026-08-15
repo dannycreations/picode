@@ -10,6 +10,22 @@ import type { ExtensionToWebviewMessage } from '@pi-code/shared/core/protocol';
 import type { ReadFileSection, StatsData, ToolName } from '@pi-code/shared/core/types';
 import type { TodoItem } from '@pi-code/shared/utilities/todo';
 
+type SubagentEventCallback = (event: ExtensionToWebviewMessage) => void;
+let subagentEventCallback: SubagentEventCallback | null = null;
+
+export function setSubagentEventCallback(callback: SubagentEventCallback): () => void {
+  subagentEventCallback = callback;
+  return () => {
+    if (subagentEventCallback === callback) {
+      subagentEventCallback = null;
+    }
+  };
+}
+
+export function notifySubagentEvent(event: ExtensionToWebviewMessage): void {
+  subagentEventCallback?.(event);
+}
+
 interface ToolResultPart {
   readonly type: string;
   readonly text?: string;

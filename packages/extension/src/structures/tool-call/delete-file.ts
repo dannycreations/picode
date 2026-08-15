@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
-import { fileMutex } from '@pi-code/extension/structures/tool-call/helpers/mutex';
+import { acquireFileLock } from '@pi-code/extension/structures/tool-call/helpers/mutex';
 import { toolError, toolErrorFrom, toolResult } from '@pi-code/extension/structures/tool-call/helpers/result';
 
 import type { ToolName } from '@pi-code/shared/core/types';
@@ -17,7 +17,7 @@ export const deleteFileTool = defineTool({
   }),
   async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
     const resolvedPath = resolve(ctx.cwd, params.path);
-    const release = await fileMutex.acquire(resolvedPath);
+    const release = await acquireFileLock(resolvedPath);
     try {
       try {
         await access(resolvedPath);

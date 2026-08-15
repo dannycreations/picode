@@ -1,7 +1,8 @@
 import { cn } from 'cnfast';
 import { AlertTriangle, Info, RefreshCw } from 'lucide-react';
 
-import { countOccurrences, localActiveIndex } from '@pi-code/webview/components/chat/helpers/search';
+import { countOccurrences } from '@pi-code/shared/utilities/common';
+import { localActiveIndex } from '@pi-code/webview/components/chat/helpers/search';
 import { Highlight } from '@pi-code/webview/components/shared/Highlight';
 import { Spinner } from '@pi-code/webview/components/shared/Spinner';
 import { formatTime } from '@pi-code/webview/utilities/common';
