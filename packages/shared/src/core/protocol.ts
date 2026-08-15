@@ -45,7 +45,6 @@ export type WebviewToExtensionMessage =
   | { type: 'open_file'; text: string; values?: { line?: number; diff?: boolean } }
   | { type: 'open_image'; dataUrl: string }
   | { type: 'save_image'; dataUrl: string; filename: string }
-  | { type: 'close_task' }
   | { type: 'cancel_task' }
   | { type: 'compact'; id: string; path?: string; title: string }
   | { type: 'set_thinking_level'; level: ModelThinkingLevel }

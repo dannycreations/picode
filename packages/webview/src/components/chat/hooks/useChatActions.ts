@@ -25,6 +25,7 @@ interface UseChatActionsReturn {
   readonly handleToolResponse: (msgId: string, approved: boolean) => void;
   readonly handleAnswerQuestion: (questionId: string, text: string) => void;
   readonly handleCloseTask: () => void;
+  readonly handleCancelTask: () => void;
   readonly handleDeleteActiveTask: () => void;
 }
 
@@ -109,11 +110,15 @@ export const useChatActions = (params: UseChatActionsProps): UseChatActionsRetur
     [setActiveTask, setIsAgentRunning],
   );
 
+  const handleCancelTask = useCallback((): void => {
+    vscode?.postMessage({ type: 'cancel_task' });
+  }, []);
+
   const handleCloseTask = useCallback((): void => {
-    vscode?.postMessage({ type: 'close_task' });
+    handleCancelTask();
     setActiveTask(null);
     setIsAgentRunning(false);
-  }, [setActiveTask, setIsAgentRunning]);
+  }, [handleCancelTask, setActiveTask, setIsAgentRunning]);
 
   const handleDeleteActiveTask = useCallback((): void => {
     if (activeTask?.path) {
@@ -122,5 +127,5 @@ export const useChatActions = (params: UseChatActionsProps): UseChatActionsRetur
     handleCloseTask();
   }, [activeTask, deleteSessions, handleCloseTask]);
 
-  return { handleSendPrompt, handleToolResponse, handleAnswerQuestion, handleCloseTask, handleDeleteActiveTask };
+  return { handleSendPrompt, handleToolResponse, handleAnswerQuestion, handleCloseTask, handleCancelTask, handleDeleteActiveTask };
 };

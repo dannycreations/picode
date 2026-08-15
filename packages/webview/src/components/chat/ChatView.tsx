@@ -81,7 +81,7 @@ export const ChatView: FC = () => {
   const { pastTasks, deleteSessions, scope, setScope } = history;
   const { view, setView, inputValue, setInputValue, textareaRef } = composer;
 
-  const { handleSendPrompt, handleToolResponse, handleAnswerQuestion, handleCloseTask, handleDeleteActiveTask } = useChatActions({
+  const { handleSendPrompt, handleToolResponse, handleAnswerQuestion, handleCloseTask, handleCancelTask, handleDeleteActiveTask } = useChatActions({
     activeTask,
     modelSelection,
     pendingQuestion,
@@ -348,7 +348,7 @@ export const ChatView: FC = () => {
         isAgentRunning={isAgentRunning}
         activeTask={activeTask}
         onScrollToBottom={scrollToBottom}
-        onCancelTask={() => vscode?.postMessage({ type: 'cancel_task' })}
+        onCancelTask={handleCancelTask}
         onCloseTask={handleCloseTask}
         onContinueTask={() => {
           if (!activeTask) return;

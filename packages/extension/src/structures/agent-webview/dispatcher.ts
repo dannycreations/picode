@@ -84,7 +84,10 @@ const HANDLER_MAP: HandlerMap = {
     else denyApproval(msg.approval_id);
   },
   question_response: (msg) => answerQuestion(msg.question_id, msg.text),
-  cancel_task: (_, ctx) => ctx.agent.cancelTask(),
+  cancel_task: async (_, ctx) => {
+    await ctx.agent.cancelTask();
+    await postHistory(ctx, HISTORY_SCOPES.current);
+  },
   reload: (_, ctx) => {
     void ctx.agent.reload();
   },
@@ -101,15 +104,6 @@ const HANDLER_MAP: HandlerMap = {
     // Refresh the webview from the in-memory session we just compacted instead
     // of re-opening and re-parsing the same session file a second time.
     await postSession(ctx, msg.id || ACTIVE_TASK_ID, msg.title || '', path, details);
-  },
-  close_task: async (_, ctx) => {
-    ctx.agent.reset();
-
-    // The just-closed task is now persisted on disk but the webview's Recent
-    // Tasks list is still showing the stale init snapshot. Push the refreshed
-    // current-scope history so the completed task renders without the user
-    // first having to open the full History view.
-    await postHistory(ctx, HISTORY_SCOPES.current);
   },
   load_session: async (msg, ctx) => {
     const details = await loadSessionDetails(msg.path ?? '', ctx.cwd);

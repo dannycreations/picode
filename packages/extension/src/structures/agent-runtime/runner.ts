@@ -37,7 +37,6 @@ export class AgentRunner {
   private session: AgentSession | null = null;
   private unsubscribeSessionEvents: (() => void) | null = null;
   private replyQueue: QueueMessage[] = [];
-  private cancelRequested = false;
   private pendingThinkingLevel?: ModelThinkingLevel;
   private apiRequestId: string | null = null;
   private compacting = false;
@@ -98,10 +97,6 @@ export class AgentRunner {
       const attachments = parseImageAttachments(images);
 
       void session.prompt(promptText, { images: attachments }).catch((err) => {
-        if (this.cancelRequested) {
-          this.messenger.post({ type: 'info', payload: { text: 'Task cancelled.' } });
-          return;
-        }
         this.messenger.postError(err);
       });
     } catch (err) {
@@ -116,10 +111,6 @@ export class AgentRunner {
       void session
         .sendCustomMessage({ customType: 'environment_details', content: envDetails, display: false }, { triggerTurn: true })
         .catch((err) => {
-          if (this.cancelRequested) {
-            this.messenger.post({ type: 'info', payload: { text: 'Task cancelled.' } });
-            return;
-          }
           this.messenger.postError(err);
         });
     } catch (err) {
@@ -184,17 +175,23 @@ export class AgentRunner {
     }
   }
 
-  public reset(): void {
-    this.cleanupSession();
+  public async cancelTask(): Promise<void> {
     this.cleanupPending();
     this.clearReplyQueue();
-  }
+    if (!this.session) return;
 
-  public cancelTask(): void {
-    this.cancelRequested = true;
-    this.cleanupPending();
-    this.clearReplyQueue();
-    void this.session?.abort().catch((err) => logger.warn('Failed to abort session on cancel:', err));
+    const session = this.session;
+    this.session = null;
+
+    try {
+      await session.abort();
+    } catch (err) {
+      logger.warn('Failed to abort session on cancel:', err);
+    } finally {
+      this.unsubscribeSessionEvents?.();
+      this.unsubscribeSessionEvents = null;
+      session.dispose();
+    }
   }
 
   public dispose(): void {
@@ -211,7 +208,6 @@ export class AgentRunner {
 
   private prepareRun(): void {
     this.cleanupPending();
-    this.cancelRequested = false;
     this.apiRequestId = null;
   }
 
@@ -274,9 +270,19 @@ export class AgentRunner {
   }
 
   private setupSessionHook(session: AgentSession): void {
+    const sessionManager = session.sessionManager;
+    const baseAppendMessage = sessionManager.appendMessage.bind(sessionManager);
+    sessionManager.appendMessage = (message): string => {
+      // Ignore "Request aborted" message trigger by cancelTask() > abort()
+      if (!this.session && message.role === 'assistant' && message.stopReason === 'aborted') {
+        return uuidv7();
+      }
+      return baseAppendMessage(message);
+    };
+
     const baseShouldStop = session.agent.shouldStopAfterTurn;
-    session.agent.shouldStopAfterTurn = (context): boolean | Promise<boolean> => {
-      if (this.cancelRequested) return true;
+    session.agent.shouldStopAfterTurn = (context, signal): boolean | Promise<boolean> => {
+      if (!this.session || signal?.aborted) return true;
       return baseShouldStop?.(context) ?? false;
     };
 

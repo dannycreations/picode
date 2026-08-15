@@ -10,11 +10,14 @@ function makeFakeWebview(): Webview {
   return { postMessage: vi.fn() } as unknown as Webview;
 }
 
-function makeFakeSession(steer: () => void): AgentSession {
+function makeFakeSession(steer: () => void, appendMessage: ReturnType<typeof vi.fn> = vi.fn(() => 'persisted-id')): AgentSession {
   return {
     agent: {
       prepareNextTurnWithContext: undefined,
       steer,
+    },
+    sessionManager: {
+      appendMessage,
     },
   } as unknown as AgentSession;
 }
@@ -95,5 +98,35 @@ describe('AgentRunner reply queue', () => {
     expect(steer).toHaveBeenCalledTimes(1);
     expect(runner['replyQueue'].map((m) => m.text)).toEqual(['Stays']);
     expect(logError).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not persist an assistant message aborted by a task cancel', () => {
+    const appendMessage = vi.fn(() => 'persisted-id');
+    const session = makeFakeSession(vi.fn(), appendMessage);
+    const runner = new AgentRunner(makeFakeWebview());
+
+    runner['setupSessionHook'](session);
+
+    // After cancelTask, AgentRunner.session is null.
+    runner['session'] = null;
+    session.sessionManager.appendMessage!({
+      role: 'assistant',
+      stopReason: 'aborted',
+    } as never);
+
+    // The wrapper short-circuits and never calls the real appendMessage.
+    expect(appendMessage).toHaveBeenCalledTimes(0);
+  });
+
+  it('persists non-aborted messages through the real appendMessage', () => {
+    const appendMessage = vi.fn(() => 'persisted-id');
+    const session = makeFakeSession(vi.fn(), appendMessage);
+    const runner = new AgentRunner(makeFakeWebview());
+
+    runner['setupSessionHook'](session);
+
+    session.sessionManager.appendMessage!({ role: 'user', content: 'hi' } as never);
+
+    expect(appendMessage).toHaveBeenCalledTimes(1);
   });
 });

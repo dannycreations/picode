@@ -1,7 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
 
-import { ACTIVE_TASK_ID } from '@pi-code/shared/core/constants';
-import { createActiveTask } from '@pi-code/shared/utilities/common';
 import {
   appendOnce,
   deliverQueuedReplies,
@@ -239,9 +237,7 @@ export const useActiveTask = (): UseActiveTaskReturn => {
         case 'info': {
           const { text } = msg.payload;
           const notice: ChatMessage = { id: crypto.randomUUID(), sender: 'info', text, ts: Date.now() };
-          setActiveTask((prev) =>
-            prev ? { ...prev, messages: appendOnce(prev.messages, notice) } : createActiveTask(ACTIVE_TASK_ID, 'Pi', [notice]),
-          );
+          setActiveTask((prev) => (prev ? { ...prev, messages: appendOnce(prev.messages, notice) } : prev));
           break;
         }
       }
