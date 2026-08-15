@@ -2,15 +2,6 @@ import { safeJsonParse } from '@pi-code/shared/utilities/common';
 
 import type { ChatMessage, ToolName, ToolSection } from '@pi-code/shared/core/types';
 
-export const GROUP_TOOLS: ReadonlySet<ToolName> = new Set([
-  'read_file',
-  'write_file',
-  'edit_file',
-  'delete_file',
-  'execute_command',
-  'spawn_subagent',
-]);
-
 interface ToolMeta {
   readonly diffLabel: string;
   readonly diffIcon: string;
@@ -29,7 +20,12 @@ const DEFAULT_TOOL_META: ToolMeta = {
   diffIcon: 'diff',
   fileIcon: 'file',
   language: 'text',
-  fileTitle: { running: 'File operation', approval: 'File operation', denied: 'File operation', done: 'File operation' },
+  fileTitle: {
+    running: 'File operation',
+    approval: 'File operation',
+    denied: 'File operation',
+    done: 'File operation',
+  },
 };
 
 const TOOL_META: Readonly<Record<string, ToolMeta>> = {
@@ -106,6 +102,8 @@ const TOOL_META: Readonly<Record<string, ToolMeta>> = {
     },
   },
 };
+
+export const GROUP_TOOLS: ReadonlySet<ToolName> = new Set(Object.keys(TOOL_META) as ToolName[]);
 
 function toolMeta(toolName?: string): ToolMeta {
   return (toolName && TOOL_META[toolName]) || DEFAULT_TOOL_META;

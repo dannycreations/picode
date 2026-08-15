@@ -21,8 +21,13 @@ interface ToolMessageProps {
   readonly onDenyTool: (msgId: string) => void;
 }
 
-const ElapsedTimer: FC<{ startTs: number; isRunning: boolean; duration?: number }> = ({ startTs, isRunning, duration }) => {
-  const elapsed = useElapsedSeconds(startTs, isRunning && duration === undefined);
+const ElapsedTimer: FC<{ startTs: number; isRunning: boolean; isActive: boolean; duration?: number }> = ({
+  startTs,
+  isRunning,
+  isActive,
+  duration,
+}) => {
+  const elapsed = useElapsedSeconds(startTs, isActive && duration === undefined);
   const displaySeconds = duration !== undefined ? duration : elapsed;
   return (
     <span
@@ -53,6 +58,7 @@ interface ToolSectionProps {
   readonly isLast: boolean;
   readonly showTimer: boolean;
   readonly isRunning: boolean;
+  readonly isActive?: boolean;
   readonly startTs: number;
   readonly duration?: number;
   readonly onOpenFile: (path: string, content?: string) => void;
@@ -65,6 +71,7 @@ const ToolSection: FC<ToolSectionProps> = ({
   isLast,
   showTimer,
   isRunning,
+  isActive,
   startTs,
   duration,
   onOpenFile,
@@ -87,10 +94,8 @@ const ToolSection: FC<ToolSectionProps> = ({
               open ? 'codicon-chevron-up' : 'codicon-chevron-down',
             )}
           />
-        ) : isRunning ? (
-          <Spinner className="text-vscode-focusBorder" />
         ) : (
-          <div className="w-4 shrink-0" />
+          <Spinner className="text-vscode-focusBorder" />
         )}
         <div className="min-w-0 flex-1">
           <Tooltip content={openPath ?? title}>
@@ -124,7 +129,7 @@ const ToolSection: FC<ToolSectionProps> = ({
             </span>
           </div>
         ) : showTimer ? (
-          <ElapsedTimer startTs={startTs} isRunning={isRunning} duration={duration} />
+          <ElapsedTimer startTs={startTs} isRunning={isRunning} isActive={isActive ?? isRunning} duration={duration} />
         ) : null}
       </div>
 
@@ -152,7 +157,6 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
     }
   }, [shouldExpandForApproval, isExpanded]);
 
-  const isSubagent = message.toolName === 'spawn_subagent';
   const visibleSections = isExpanded ? sections : sections.slice(0, 1);
 
   const openFile = (target: string, content?: string) => {
@@ -176,8 +180,6 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
         <div className="border border-vscode-editorGroup-border rounded-md overflow-hidden bg-vscode-input-background">
           {visibleSections.map((section, index) => {
             const sectionStatus = section.status ?? message.toolStatus;
-            const isSecSubagentRunning = sectionStatus === 'running';
-            const showSecSubagentTimer = isSubagent && (message.toolStatus === 'running' || message.toolStatus === 'completed');
             const approvalMessage = section.approvalMessage;
             const hasSecApproval = approvalMessage !== undefined;
 
@@ -188,8 +190,9 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
                   defaultOpen={false}
                   isFirst={index === 0}
                   isLast={index === visibleSections.length - 1 && !hasMore && !hasSecApproval}
-                  showTimer={showSecSubagentTimer}
-                  isRunning={isSecSubagentRunning}
+                  showTimer={message.toolName === 'execute_command' || message.toolName === 'spawn_subagent'}
+                  isRunning={sectionStatus === 'running'}
+                  isActive={sectionStatus === 'running' || sectionStatus === 'approval'}
                   startTs={section.ts ?? message.ts}
                   duration={section.duration}
                   onOpenFile={openFile}

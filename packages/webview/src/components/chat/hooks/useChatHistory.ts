@@ -1,9 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { HISTORY_SCOPES } from '@pi-code/shared/core/constants';
 import { vscode } from '@pi-code/webview/utilities/vscode';
 
 import type { Dispatch, SetStateAction } from 'react';
 import type { ExtensionToWebviewMessage, HistoryItem, HistoryScope } from '@pi-code/shared/core/protocol';
+
+const HISTORY_SCOPE_KEYS = Object.keys(HISTORY_SCOPES) as HistoryScope[];
+
+function emptyHistoryByScope(): Record<HistoryScope, HistoryItem[]> {
+  const record = {} as Record<HistoryScope, HistoryItem[]>;
+  for (const scope of HISTORY_SCOPE_KEYS) {
+    record[scope] = [];
+  }
+  return record;
+}
 
 interface UseChatHistoryProps {
   readonly view: 'chat' | 'history' | 'settings';
@@ -19,7 +30,7 @@ interface UseChatHistoryReturn {
 
 export const useChatHistory = ({ view }: UseChatHistoryProps): UseChatHistoryReturn => {
   const [scope, setScope] = useState<HistoryScope>('current');
-  const [historyByScope, setHistoryByScope] = useState<Record<HistoryScope, HistoryItem[]>>({ current: [], all: [], archives: [] });
+  const [historyByScope, setHistoryByScope] = useState<Record<HistoryScope, HistoryItem[]>>(emptyHistoryByScope());
   const fetchedScopes = useRef<Set<HistoryScope>>(new Set());
 
   const pastTasks = historyByScope[scope];
@@ -43,11 +54,13 @@ export const useChatHistory = ({ view }: UseChatHistoryProps): UseChatHistoryRet
   // stale entries, then ask the host to remove the files.
   const deleteSessions = useCallback((paths: string[]): void => {
     const removed = new Set(paths);
-    setHistoryByScope((prev) => ({
-      current: prev.current.filter((item) => !removed.has(item.path)),
-      all: prev.all.filter((item) => !removed.has(item.path)),
-      archives: prev.archives.filter((item) => !removed.has(item.path)),
-    }));
+    setHistoryByScope((prev) => {
+      const next = { ...prev };
+      for (const scope of HISTORY_SCOPE_KEYS) {
+        next[scope] = prev[scope].filter((item) => !removed.has(item.path));
+      }
+      return next;
+    });
     vscode?.postMessage({ type: 'delete_sessions', paths });
   }, []);
 
