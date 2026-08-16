@@ -11,6 +11,10 @@ import type { ToolName } from '@pi-code/shared/core/types';
 
 const ANSI_PATTERN = /\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b[=>c()#%*+]/g;
 
+function stripAnsiAndNormalize(raw: string): string {
+  return raw.replace(ANSI_PATTERN, '').replace(/\r\n/g, '\n');
+}
+
 const DEFAULT_TIMEOUT_MS = 120_000;
 const MAX_TIMEOUT_MS = 1_800_000;
 const KILL_GRACE_MS = 2_000;
@@ -24,7 +28,7 @@ export function cleanCommandOutput(raw: string): string {
   if (!raw) return '';
 
   // Strip ANSI escape sequences and normalize Windows CRLF (\r\n) to LF (\n)
-  const stripped = raw.replace(ANSI_PATTERN, '').replace(/\r\n/g, '\n');
+  const stripped = stripAnsiAndNormalize(raw);
 
   // Resolve carriage-return overwrites (\r) and trim trailing whitespace per line.
   const lines = stripped.split('\n');
@@ -110,7 +114,7 @@ export const executeCommandTool = defineTool({
 
       const streamUpdate = (text: string) => {
         if (!text) return;
-        streamBuffer += text.replace(ANSI_PATTERN, '').replace(/\r\n/g, '\n');
+        streamBuffer += stripAnsiAndNormalize(text);
         streamDirty = true;
         scheduleStream();
       };

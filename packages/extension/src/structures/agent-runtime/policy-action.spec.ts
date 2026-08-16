@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import * as shellQuote from 'shell-quote';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   containsDangerousSubstitution,
@@ -9,6 +10,15 @@ import {
   resolveReadPath,
 } from '@pi-code/extension/structures/agent-runtime/policy-action';
 import { DEFAULT_SETTINGS } from '@pi-code/shared/core/settings';
+
+vi.mock('shell-quote', async () => {
+  const actual = await vi.importActual<typeof import('shell-quote')>('shell-quote');
+  return { ...actual, parse: vi.fn(actual.parse) };
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe('resolveReadPath', () => {
   it('should auto-approve skill reads only when both autoApproveSkillReads and its parent autoApproveRead are enabled', () => {
@@ -255,6 +265,22 @@ describe('parseCommand', () => {
   it('should handle empty or whitespace-only inputs', () => {
     expect(parseCommand('')).toEqual([]);
     expect(parseCommand('   ')).toEqual([]);
+  });
+
+  it('should throw when the command cannot be parsed into tokens', () => {
+    vi.mocked(shellQuote.parse).mockImplementation(() => {
+      throw new Error('boom');
+    });
+    expect(() => parseCommand('echo hi')).toThrow();
+  });
+});
+
+describe('resolveCommandAction unparseable command', () => {
+  it('should defer to the user instead of auto-approving a command it cannot tokenize', () => {
+    vi.mocked(shellQuote.parse).mockImplementation(() => {
+      throw new Error('boom');
+    });
+    expect(resolveCommandAction('echo hi', true, [], [])).toBe('confirm');
   });
 });
 

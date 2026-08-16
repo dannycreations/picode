@@ -1,7 +1,7 @@
 import { cn } from 'cnfast';
 import { ClipboardCopy, CornerDownRight, MessageCircleQuestionMark, ShieldAlert } from 'lucide-react';
 
-import { countOccurrences } from '@pi-code/shared/utilities/common';
+import { findOccurrences } from '@pi-code/shared/utilities/common';
 import { parseQuestionAnswer, parseQuestionData } from '@pi-code/webview/components/chat/helpers/question';
 import { localActiveIndex } from '@pi-code/webview/components/chat/helpers/search';
 import { Markdown } from '@pi-code/webview/components/chat/markdown/Markdown';
@@ -32,8 +32,8 @@ export const QuestionMessage: FC<QuestionMessageProps> = ({ message, search, onA
   const answer = isCancelled ? '' : parseQuestionAnswer(message.diff);
 
   const query = search?.query ?? '';
-  const questionCount = countOccurrences(question, query);
-  const answerCount = countOccurrences(answer, query);
+  const questionCount = findOccurrences(question, query).length;
+  const answerCount = findOccurrences(answer, query).length;
   const answerActive = search ? localActiveIndex(search.globalOffset + questionCount, answerCount, search.activeIndex) : -1;
 
   const handleSuggestionClick = (event: MouseEvent<HTMLButtonElement>, suggestion: string) => {

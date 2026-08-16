@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 import {
   appendOnce,
   deliverQueuedReplies,
+  ignoreUnknownSubagent,
   patchLastAssistant,
   patchMessage,
   settlePendingTurns,
@@ -163,10 +164,7 @@ export const useActiveTask = (): UseActiveTaskReturn => {
           const { id, tool_name, arguments: toolArgs, subagent } = msg.payload;
           setIsAgentRunning(true);
           updateMessages((messages) => {
-            const exists = messages.some((m) => m.id === id);
-            if (subagent && !exists) {
-              return messages;
-            }
+            if (ignoreUnknownSubagent(messages, subagent, id)) return messages;
             return upsertToolMessage(settlePendingTurns(messages), id, {
               text: tool_name,
               toolName: tool_name,
@@ -181,9 +179,7 @@ export const useActiveTask = (): UseActiveTaskReturn => {
         case 'tool_execution_update': {
           const { id, result, subagent } = msg.payload;
           updateMessages((messages) => {
-            if (subagent && !messages.some((m) => m.id === id)) {
-              return messages;
-            }
+            if (ignoreUnknownSubagent(messages, subagent, id)) return messages;
             const target = messages.find((m) => m.id === id);
             // Command output streams in chunks, so append each delta to the
             // running preview instead of replacing it like the discrete tools.
@@ -198,10 +194,10 @@ export const useActiveTask = (): UseActiveTaskReturn => {
         case 'tool_execution_end': {
           const { id, result, todos, files, is_error, subagent } = msg.payload;
           updateMessages((messages) => {
-            const existing = messages.find((m) => m.id === id);
-            if (subagent && !existing) {
+            if (ignoreUnknownSubagent(messages, subagent, id)) {
               return messages;
             }
+            const existing = messages.find((m) => m.id === id);
             const duration = existing ? Math.max(0, Math.round((Date.now() - existing.ts) / 1000)) : undefined;
             return patchMessage(messages, id, {
               todos,
@@ -234,16 +230,10 @@ export const useActiveTask = (): UseActiveTaskReturn => {
           updateTask((prev) => ({ ...prev, messages: settlePendingTurns(prev.messages), ...msg.payload }));
           break;
 
-        case 'info': {
-          const { text } = msg.payload;
-          const notice: ChatMessage = { id: crypto.randomUUID(), sender: 'info', text, ts: Date.now() };
-          setActiveTask((prev) => (prev ? { ...prev, messages: appendOnce(prev.messages, notice) } : prev));
-          break;
-        }
-
         case 'archive_result': {
           const { path, archived } = msg.payload;
-          updateTask((prev) => (prev ? { ...prev, path, isArchived: archived } : prev));
+          // updateTask already no-ops when there is no active task.
+          updateTask((prev) => ({ ...prev, path, isArchived: archived }));
           break;
         }
       }

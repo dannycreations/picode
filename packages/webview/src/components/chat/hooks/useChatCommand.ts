@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { applyCommand, matchCommands, readCommandQuery } from '@pi-code/webview/components/chat/helpers/command';
+import { useSuggestionNav } from '@pi-code/webview/components/chat/hooks/useSuggestionNav';
 
 import type { ChangeEvent, KeyboardEvent, RefObject } from 'react';
 import type { CommandItem } from '@pi-code/shared/core/protocol';
@@ -56,19 +57,6 @@ export const useChatCommand = ({ commands, value, setValue, textareaRef }: UseCo
     textarea.setSelectionRange(target, target);
   }, [caretRequest, textareaRef]);
 
-  const close = useCallback(() => setIsDismissed(true), []);
-
-  const syncCaret = useCallback(() => {
-    const textarea = textareaRef.current;
-    if (textarea) setCaret(textarea.selectionStart ?? 0);
-  }, [textareaRef]);
-
-  const handleChange = useCallback((event: ChangeEvent<HTMLTextAreaElement>) => {
-    // Typing always revives a picker the user dismissed with Escape.
-    setIsDismissed(false);
-    setCaret(event.target.selectionStart ?? event.target.value.length);
-  }, []);
-
   const select = useCallback(
     (command: CommandItem) => {
       const insertion = applyCommand(value, command.name);
@@ -81,42 +69,16 @@ export const useChatCommand = ({ commands, value, setValue, textareaRef }: UseCo
     [value, setValue],
   );
 
-  const handleKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLTextAreaElement>): boolean => {
-      if (!isOpen) return false;
-
-      switch (event.key) {
-        case 'Escape': {
-          event.preventDefault();
-          event.stopPropagation();
-          close();
-          return true;
-        }
-        case 'ArrowUp':
-        case 'ArrowDown': {
-          event.preventDefault();
-          const direction = event.key === 'ArrowDown' ? 1 : -1;
-          setSelectedIndex((previous) => (previous + direction + matches.length) % matches.length);
-          return true;
-        }
-        case 'Enter':
-        case 'Tab': {
-          // Shift+Enter inserts a newline and Shift+Tab moves focus.
-          if (event.shiftKey) return false;
-
-          const command = matches[selectedIndex];
-          if (!command) return false;
-
-          event.preventDefault();
-          select(command);
-          return true;
-        }
-        default:
-          return false;
-      }
-    },
-    [isOpen, matches, selectedIndex, close, select],
-  );
+  const { close, syncCaret, handleChange, handleKeyDown } = useSuggestionNav<CommandItem>({
+    isOpen,
+    items: matches,
+    selectedIndex,
+    setSelectedIndex,
+    select,
+    setDismissed: setIsDismissed,
+    textareaRef,
+    setCaret,
+  });
 
   return { isOpen, matches, selectedIndex, setSelectedIndex, select, close, handleKeyDown, handleChange, syncCaret };
 };

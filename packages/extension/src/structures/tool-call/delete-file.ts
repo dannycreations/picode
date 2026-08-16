@@ -1,4 +1,4 @@
-import { access, rm, stat, unlink } from 'node:fs/promises';
+import { rm, stat, unlink } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
@@ -6,6 +6,7 @@ import { Type } from 'typebox';
 import { acquireFileLock } from '@pi-code/extension/structures/tool-call/helpers/mutex';
 import { toolError, toolErrorFrom, toolResult } from '@pi-code/extension/structures/tool-call/helpers/result';
 
+import type { Stats } from 'node:fs';
 import type { ToolName } from '@pi-code/shared/core/types';
 
 export const deleteFileTool = defineTool({
@@ -19,13 +20,16 @@ export const deleteFileTool = defineTool({
     const resolvedPath = resolve(ctx.cwd, params.path);
     const release = await acquireFileLock(resolvedPath);
     try {
+      let stats: Stats;
       try {
-        await access(resolvedPath);
-      } catch {
-        return toolError(`Error: "path" does not exist: ${params.path}`);
+        stats = await stat(resolvedPath);
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+          return toolError(`Error: "path" does not exist: ${params.path}`);
+        }
+        throw err;
       }
 
-      const stats = await stat(resolvedPath);
       if (stats.isDirectory()) {
         await rm(resolvedPath, { recursive: true, force: true });
         return toolResult(`Deleted directory: ${params.path}`);

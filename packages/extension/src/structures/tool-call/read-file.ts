@@ -7,7 +7,7 @@ import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
 import { readAppSettings } from '@pi-code/extension/core/settings';
-import { toolError, toolResult } from '@pi-code/extension/structures/tool-call/helpers/result';
+import { toolError, toolErrorFrom, toolResult } from '@pi-code/extension/structures/tool-call/helpers/result';
 import { isBinaryFile } from '@pi-code/extension/utilities/codec';
 import { shareOutputLimits, toOutputLimits, truncateOutput } from '@pi-code/extension/utilities/truncate';
 
@@ -17,6 +17,37 @@ import type { ToolName } from '@pi-code/shared/core/types';
 export const MEGABYTE = 1024 * 1024;
 export const MAX_FILE_SIZE_BYTES = 10 * MEGABYTE;
 const DEFAULT_MAX_CONCURRENT_READS = 5;
+
+export function buildSizeLimitMessage(filePath: string, sizeBytes: number): string {
+  return `Error: ${filePath} exceeds the 10 MB size limit (${(sizeBytes / MEGABYTE).toFixed(2)} MB).`;
+}
+
+async function checkReadableFile(path: string): Promise<{ ok: true } | { ok: false; body: string }> {
+  const fileStat = await stat(path);
+  if (!fileStat.isFile()) {
+    return { ok: false, body: `Error: "${path}" is not a regular file.` };
+  }
+  if (fileStat.size > MAX_FILE_SIZE_BYTES) {
+    return { ok: false, body: buildSizeLimitMessage(path, fileStat.size) };
+  }
+  if (await isBinaryFile(path)) {
+    return { ok: false, body: `Error: ${path} is binary and cannot be read as text.` };
+  }
+  return { ok: true };
+}
+
+export async function readFileTextContent(resolvedPath: string, limits: OutputLimits): Promise<string> {
+  const path = resolve(resolvedPath);
+
+  const check = await checkReadableFile(path);
+  if (!check.ok) {
+    throw new Error(check.body);
+  }
+
+  const lines = await readLines(path);
+  const { text } = truncateOutput(numberLines(lines, undefined), { limits, keep: 'head' });
+  return text;
+}
 
 export async function readLines(filePath: string, maxLines?: number): Promise<string[]> {
   const stream = createReadStream(filePath, { encoding: 'utf8' });
@@ -83,20 +114,9 @@ async function readFileSection(cwd: string, file: FileRequest, limits: OutputLim
   try {
     const resolvedPath = resolve(cwd, file.path);
 
-    const fileStat = await stat(resolvedPath);
-    if (!fileStat.isFile()) {
-      return { path: file.path, header: '', body: `Error: "path" is not a regular file: ${file.path}`, hasError: true };
-    }
-    if (fileStat.size > MAX_FILE_SIZE_BYTES) {
-      return {
-        path: file.path,
-        header: '',
-        body: `Error: ${file.path} exceeds the 10 MB size limit (${(fileStat.size / MEGABYTE).toFixed(2)} MB).`,
-        hasError: true,
-      };
-    }
-    if (await isBinaryFile(resolvedPath)) {
-      return { path: file.path, header: '', body: `Error: ${file.path} is binary and cannot be read as text.`, hasError: true };
+    const check = await checkReadableFile(resolvedPath);
+    if (!check.ok) {
+      return { path: file.path, header: '', body: check.body, hasError: true };
     }
 
     const ranges = file.line_ranges;
@@ -186,7 +206,7 @@ export const readFileTool = defineTool({
       const allFailed = safeSections.length > 0 && safeSections.every((section) => section.hasError);
       return allFailed ? toolError(text, { files }) : toolResult(text, { files });
     } catch (err) {
-      return toolError(`Error: ${formatThrownValue(err)}`);
+      return toolErrorFrom(err, 'reading file');
     }
   },
 });

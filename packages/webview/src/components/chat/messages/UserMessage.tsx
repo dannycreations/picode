@@ -1,6 +1,6 @@
 import { User } from 'lucide-react';
 
-import { countOccurrences } from '@pi-code/shared/utilities/common';
+import { findOccurrences } from '@pi-code/shared/utilities/common';
 import { splitCommand } from '@pi-code/webview/components/chat/helpers/command';
 import { localActiveIndex } from '@pi-code/webview/components/chat/helpers/search';
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
@@ -23,7 +23,7 @@ export const UserMessage: FC<UserMessageProps> = ({ message, commands, search })
   const text = message.text.trim();
   const highlight = splitCommand(text, commands);
   const query = search?.query ?? '';
-  const textCount = countOccurrences(text, query);
+  const textCount = findOccurrences(text, query).length;
   const active = search ? localActiveIndex(search.globalOffset, textCount, search.activeIndex) : -1;
 
   return (

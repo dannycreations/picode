@@ -51,7 +51,7 @@ export function groupToolMessages(messages: ReadonlyArray<ChatMessage>): ChatMes
       group = [message];
     } else {
       flushGroup();
-      result.push({ ...message }); // clone to allow safe inline mutations
+      result.push(message);
     }
   }
   flushGroup();
@@ -112,6 +112,12 @@ export function isRenderableMessage(message: ChatMessage): boolean {
 
 export function hasPendingApproval(messages: ReadonlyArray<ChatMessage>): boolean {
   return messages.some((message) => message.toolStatus === 'approval');
+}
+
+// Sub-agent events can arrive before the webview has rendered the parent tool
+// row. Callers use this to skip such updates instead of creating orphan rows.
+export function ignoreUnknownSubagent(messages: ReadonlyArray<ChatMessage>, subagent: string | undefined, id: string): boolean {
+  return subagent !== undefined && !messages.some((message) => message.id === id);
 }
 
 interface RequestSettlePatch {

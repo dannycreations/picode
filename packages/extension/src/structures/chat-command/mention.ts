@@ -3,10 +3,9 @@ import { resolve } from 'node:path';
 import { formatThrownValue } from '@earendil-works/pi-ai';
 
 import { readAppSettings } from '@pi-code/extension/core/settings';
-import { MAX_FILE_SIZE_BYTES, MEGABYTE, numberLines, readLines } from '@pi-code/extension/structures/tool-call/read-file';
-import { isBinaryFile } from '@pi-code/extension/utilities/codec';
+import { readFileTextContent } from '@pi-code/extension/structures/tool-call/read-file';
 import { toPosixPath, walkDirectory } from '@pi-code/extension/utilities/fs';
-import { toOutputLimits, truncateOutput } from '@pi-code/extension/utilities/truncate';
+import { toOutputLimits } from '@pi-code/extension/utilities/truncate';
 
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
 
@@ -76,25 +75,12 @@ async function resolveMention(raw: string, cwd: string, limits: OutputLimits): P
   }
   if (info.isFile()) {
     try {
-      return { kind: 'file', content: await readFileText(target, limits) };
+      return { kind: 'file', content: await readFileTextContent(target, limits) };
     } catch (err) {
-      return { kind: 'file', content: `Error reading file: ${formatThrownValue(err)}` };
+      return { kind: 'file', content: formatThrownValue(err) };
     }
   }
   return null;
-}
-
-async function readFileText(resolvedPath: string, limits: OutputLimits): Promise<string> {
-  const fileStat = await stat(resolvedPath);
-  if (!fileStat.isFile()) throw new Error(`"${resolvedPath}" is not a regular file`);
-  if (fileStat.size > MAX_FILE_SIZE_BYTES) {
-    throw new Error(`exceeds the 10 MB size limit (${(fileStat.size / MEGABYTE).toFixed(2)} MB)`);
-  }
-  if (await isBinaryFile(resolvedPath)) throw new Error(`is binary and cannot be read as text`);
-
-  const lines = await readLines(resolvedPath);
-  const { text } = truncateOutput(numberLines(lines, undefined), { limits, keep: 'head' });
-  return text;
 }
 
 async function readFolderContent(dir: string, cwd: string, limits: OutputLimits): Promise<string> {
@@ -107,7 +93,7 @@ async function readFolderContent(dir: string, cwd: string, limits: OutputLimits)
     if (!dirent.isFile()) continue;
 
     try {
-      const body = await readFileText(abs, limits);
+      const body = await readFileTextContent(abs, limits);
       const block = `<file path="${toPosixPath(abs, cwd)}">\n${body}\n</file>`;
       if (totalChars + block.length > FOLDER_CHAR_CAP) {
         blocks.push(`... folder truncated: ${fileCount} files included ...`);

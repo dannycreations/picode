@@ -89,7 +89,6 @@ export type ExtensionToWebviewMessage =
   | { type: 'agent_error'; payload: { message: string } }
   | { type: 'agent_settled'; payload?: StatsData }
   | { type: 'compaction_end'; payload: StatsData }
-  | { type: 'info'; payload: { text: string } }
   | { type: 'show_settings' }
   | { type: 'set_chat_input'; payload: { text: string } }
   | { type: 'search_results'; payload: { requestId: string; paths: string[] } }

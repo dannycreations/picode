@@ -1,4 +1,3 @@
-import { hasPendingApproval } from '@pi-code/webview/components/chat/helpers/message';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 
 import type { FC } from 'react';
@@ -8,6 +7,7 @@ interface ChatActionProps {
   readonly showScrollToBottom: boolean;
   readonly isAgentRunning: boolean;
   readonly activeTask: ActiveTaskState | null;
+  readonly isAwaitingApproval: boolean;
   readonly onScrollToBottom: () => void;
   readonly onCancelTask: () => void;
   readonly onCloseTask: () => void;
@@ -19,6 +19,7 @@ export const ChatAction: FC<ChatActionProps> = ({
   showScrollToBottom,
   isAgentRunning,
   activeTask,
+  isAwaitingApproval,
   onScrollToBottom,
   onCancelTask,
   onCloseTask,
@@ -28,8 +29,7 @@ export const ChatAction: FC<ChatActionProps> = ({
   // Archived tasks are read-only, so their action bar is hidden entirely.
   if (isArchived) return null;
 
-  const isToolApprovalPending = activeTask ? hasPendingApproval(activeTask.messages) : false;
-  const showActionButtons = activeTask && (showScrollToBottom || isAgentRunning || !isToolApprovalPending);
+  const showActionButtons = activeTask && (showScrollToBottom || isAgentRunning || !isAwaitingApproval);
 
   if (!showActionButtons) return null;
 

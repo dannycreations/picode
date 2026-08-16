@@ -3,7 +3,7 @@ import { relative, resolve } from 'node:path';
 
 import type { Dirent } from 'node:fs';
 
-export interface DirectoryEntry {
+interface DirectoryEntry {
   readonly abs: string;
   readonly rel: string;
   readonly dirent: Dirent;

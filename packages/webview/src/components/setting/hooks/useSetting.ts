@@ -31,7 +31,7 @@ export const useSetting = (settings: AppSettings): UseSettingReturn => {
   const isChangeDetected = SETTING_KEYS.some((key) => !areSettingsValuesEqual(draftSettings[key], settings[key]));
 
   const handleFieldChange = <K extends SettingKey>(key: K, value: AppSettings[K]): void => {
-    setDraftSettings({ ...draftSettings, [key]: value });
+    setDraftSettings((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleSave = (): void => {

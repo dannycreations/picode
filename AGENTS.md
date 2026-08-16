@@ -32,11 +32,3 @@ pnpm --filter pi-code run check
 
 - `packages/shared` must stay free of `vscode`, Node, and DOM APIs so both runtimes can consume it.
 - Anything touching the editor belongs in `packages/extension`, anything touching the browser belongs in `packages/webview`.
-
-## Reference
-
-Inspect local context repositories to align design, logic, and integration patterns:
-
-- **Kilocode** (`./context/kilocode/AGENTS.md`): Primary reference for product design, user experience, system workflows, and feature implementations.
-- **Pi Agent** (`./context/pi/AGENTS.md`): Primary reference for backend architecture, core agent logic, and `@earendil-works/*` dependencies.
-- **Visual Studio Code** (`./context/vscode/`): Reference for extension architecture, editor UI components, and VS Code API integrations.

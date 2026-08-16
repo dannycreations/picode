@@ -1,13 +1,12 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
-import { formatThrownValue } from '@earendil-works/pi-ai';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
 import { acquireFileLock } from '@pi-code/extension/structures/tool-call/helpers/mutex';
 import { toolError, toolErrorFrom } from '@pi-code/extension/structures/tool-call/helpers/result';
 import { buildFileChangeResult } from '@pi-code/extension/utilities/truncate';
-import { countOccurrences } from '@pi-code/shared/utilities/common';
+import { findOccurrences } from '@pi-code/shared/utilities/common';
 
 import type { ToolName } from '@pi-code/shared/core/types';
 
@@ -115,7 +114,7 @@ function countRegexMatches(content: string, regex: RegExp): number {
 type ReplacementOutcome = { readonly content: string; readonly error?: undefined } | { readonly content?: undefined; readonly error: string };
 
 function replaceExpected(originalLF: string, oldLF: string, newLF: string, expected: number, filePath: string): ReplacementOutcome {
-  const exact = countOccurrences(originalLF, oldLF, true);
+  const exact = findOccurrences(originalLF, oldLF, true).length;
   if (exact === expected) {
     return { content: safeLiteralReplace(originalLF, oldLF, newLF) };
   }
@@ -163,7 +162,7 @@ export const editFileTool = defineTool({
       } catch (err: unknown) {
         const isEnoent = err && typeof err === 'object' && 'code' in err && (err as { code?: string }).code === 'ENOENT';
         if (!isEnoent) {
-          return toolError(`Error reading file ${file_path}: ${formatThrownValue(err)}`);
+          return toolErrorFrom(err, `reading file ${file_path}`);
         }
       }
 

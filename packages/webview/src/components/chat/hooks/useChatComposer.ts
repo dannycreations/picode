@@ -30,7 +30,6 @@ export const useChatComposer = (): UseChatComposerReturn => {
           setView('settings');
           break;
 
-        case 'info':
         case 'session_loaded':
           setView('chat');
           break;

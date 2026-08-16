@@ -2,7 +2,7 @@ import { cn } from 'cnfast';
 import { ChevronUp, Lightbulb, MessageCircle } from 'lucide-react';
 import { useState } from 'react';
 
-import { countOccurrences } from '@pi-code/shared/utilities/common';
+import { findOccurrences } from '@pi-code/shared/utilities/common';
 import { localActiveIndex } from '@pi-code/webview/components/chat/helpers/search';
 import { Markdown } from '@pi-code/webview/components/chat/markdown/Markdown';
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
@@ -25,7 +25,7 @@ export const AssistantMessage: FC<AssistantMessageProps> = ({ message, search })
   const hasReasoning = reasoning !== '';
   const hasText = message.text.trim() !== '';
   const query = search?.query ?? '';
-  const reasoningCount = countOccurrences(reasoning, query);
+  const reasoningCount = findOccurrences(reasoning, query).length;
   const reasoningActive = search ? localActiveIndex(search.globalOffset, reasoningCount, search.activeIndex) : -1;
   // Reveal the reasoning block when the active match lives inside it, so the
   // highlight is visible; collapse it again once the match moves elsewhere

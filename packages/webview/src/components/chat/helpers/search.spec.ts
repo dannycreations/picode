@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { countOccurrences } from '@pi-code/shared/utilities/common';
+import { findOccurrences } from '@pi-code/shared/utilities/common';
 import { getMessageSearchText } from '@pi-code/webview/components/chat/helpers/search';
 
 import type { ChatMessage } from '@pi-code/shared/core/types';
@@ -9,18 +9,18 @@ function makeMessage(overrides: Partial<ChatMessage> = {}): ChatMessage {
   return { id: 'm1', sender: 'assistant', text: '', ts: 0, ...overrides };
 }
 
-describe('countOccurrences', () => {
+describe('findOccurrences', () => {
   it('returns 0 for an empty query without error', () => {
-    expect(countOccurrences('anything', '')).toBe(0);
+    expect(findOccurrences('anything', '').length).toBe(0);
   });
 
   it('counts case-insensitively and non-overlapping', () => {
-    expect(countOccurrences('Foo foo FOO', 'foo')).toBe(3);
-    expect(countOccurrences('aaa', 'aa')).toBe(1);
+    expect(findOccurrences('Foo foo FOO', 'foo').length).toBe(3);
+    expect(findOccurrences('aaa', 'aa').length).toBe(1);
   });
 
   it('returns 0 when there is no match', () => {
-    expect(countOccurrences('hello world', 'xyz')).toBe(0);
+    expect(findOccurrences('hello world', 'xyz').length).toBe(0);
   });
 });
 

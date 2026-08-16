@@ -55,10 +55,18 @@ export const SettingControl: FC<SettingControlProps> = ({ settingKey, draftSetti
     }
 
     case 'number': {
-      const childKeys = getChildFieldKeys(settingKey).filter((childKey) => isFieldVisible(childKey, searchQuery));
+      const currentMatched = parentMatched || (searchQuery.trim() ? matchesQuery(settingKey, searchQuery) : false);
+      const childKeys = getChildFieldKeys(settingKey).filter((childKey) => isFieldVisible(childKey, searchQuery, currentMatched));
       const children = childKeys.length
         ? childKeys.map((childKey) => (
-            <SettingControl key={childKey} settingKey={childKey} draftSettings={draftSettings} onChange={onChange} searchQuery={searchQuery} />
+            <SettingControl
+              key={childKey}
+              settingKey={childKey}
+              draftSettings={draftSettings}
+              onChange={onChange}
+              searchQuery={searchQuery}
+              parentMatched={currentMatched}
+            />
           ))
         : undefined;
 

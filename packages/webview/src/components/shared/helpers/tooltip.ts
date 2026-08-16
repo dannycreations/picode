@@ -10,7 +10,7 @@ export interface TooltipRect extends TooltipSize {
   readonly top: number;
 }
 
-export interface TooltipPlacementInput {
+interface TooltipPlacementInput {
   readonly anchor: TooltipRect;
   readonly tooltip: TooltipSize;
   readonly viewport: TooltipSize;

@@ -3,8 +3,6 @@ import { safeJsonParse } from '@pi-code/shared/utilities/common';
 import type { ChatMessage, ToolName, ToolSection } from '@pi-code/shared/core/types';
 
 interface ToolMeta {
-  readonly diffLabel: string;
-  readonly diffIcon: string;
   readonly fileIcon: string;
   readonly language: string;
   readonly fileTitle: {
@@ -16,8 +14,6 @@ interface ToolMeta {
 }
 
 const DEFAULT_TOOL_META: ToolMeta = {
-  diffLabel: 'File Changes',
-  diffIcon: 'diff',
   fileIcon: 'file',
   language: 'text',
   fileTitle: {
@@ -31,8 +27,6 @@ const DEFAULT_TOOL_META: ToolMeta = {
 const TOOL_META: Readonly<Record<string, ToolMeta>> = {
   execute_command: {
     ...DEFAULT_TOOL_META,
-    diffLabel: 'Command Output',
-    diffIcon: 'terminal',
     fileIcon: 'terminal',
     language: 'shell',
     fileTitle: {
@@ -44,8 +38,6 @@ const TOOL_META: Readonly<Record<string, ToolMeta>> = {
   },
   read_file: {
     ...DEFAULT_TOOL_META,
-    diffLabel: 'File Contents',
-    diffIcon: 'file',
     fileTitle: {
       running: 'Reading file',
       approval: 'Wants to read file',
@@ -55,7 +47,6 @@ const TOOL_META: Readonly<Record<string, ToolMeta>> = {
   },
   write_file: {
     ...DEFAULT_TOOL_META,
-    diffIcon: 'diff',
     fileIcon: 'new-file',
     language: 'diff',
     fileTitle: {
@@ -67,7 +58,6 @@ const TOOL_META: Readonly<Record<string, ToolMeta>> = {
   },
   edit_file: {
     ...DEFAULT_TOOL_META,
-    diffIcon: 'diff',
     fileIcon: 'edit',
     language: 'diff',
     fileTitle: {
@@ -79,8 +69,6 @@ const TOOL_META: Readonly<Record<string, ToolMeta>> = {
   },
   delete_file: {
     ...DEFAULT_TOOL_META,
-    diffLabel: 'Execution Output',
-    diffIcon: 'trash',
     fileIcon: 'trash',
     fileTitle: {
       running: 'Deleting file',
@@ -91,8 +79,6 @@ const TOOL_META: Readonly<Record<string, ToolMeta>> = {
   },
   spawn_subagent: {
     ...DEFAULT_TOOL_META,
-    diffLabel: 'Sub-agent Report',
-    diffIcon: 'organization',
     fileIcon: 'organization',
     fileTitle: {
       running: 'Spawning sub-agent',
@@ -109,16 +95,11 @@ function toolMeta(toolName?: string): ToolMeta {
   return (toolName && TOOL_META[toolName]) || DEFAULT_TOOL_META;
 }
 
-export function getToolLanguage(toolName?: string): string {
+function getToolLanguage(toolName?: string): string {
   return toolMeta(toolName).language;
 }
 
-export function getToolDiffMeta(toolName?: string): { label: string; icon: string } {
-  const meta = toolMeta(toolName);
-  return { label: meta.diffLabel, icon: meta.diffIcon };
-}
-
-export function getToolFilePath(toolArgs?: string): string | undefined {
+function getToolFilePath(toolArgs?: string): string | undefined {
   const parsed = safeJsonParse<Record<string, unknown>>(toolArgs);
   if (!parsed || typeof parsed !== 'object') return undefined;
 
@@ -206,7 +187,7 @@ export function buildToolSections(message: ChatMessage): ToolSection[] {
   ];
 }
 
-export function getFileToolMeta(toolName: string | undefined, status?: string): { title: string; icon: string; language: string } {
+export function getFileToolMeta(toolName: string | undefined, status?: string): { title: string; icon: string } {
   const meta = toolMeta(toolName);
   const title =
     status === 'running'
@@ -217,5 +198,5 @@ export function getFileToolMeta(toolName: string | undefined, status?: string): 
           ? meta.fileTitle.denied
           : meta.fileTitle.done;
 
-  return { title, icon: meta.fileIcon, language: meta.language };
+  return { title, icon: meta.fileIcon };
 }

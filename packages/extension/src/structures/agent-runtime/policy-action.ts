@@ -109,7 +109,13 @@ export function resolveCommandAction(
     return 'confirm';
   }
 
-  const subCommands = parseCommand(command);
+  let subCommands: string[];
+  try {
+    subCommands = parseCommand(command);
+  } catch {
+    return 'confirm';
+  }
+
   if (subCommands.length === 0) {
     return 'approve';
   }
@@ -150,11 +156,11 @@ export function parseCommand(command: string): string[] {
   try {
     tokens = parse(command);
   } catch {
-    return fallbackSplitCommand(command);
+    throw new Error('Command could not be parsed into tokens.');
   }
 
   if (!Array.isArray(tokens)) {
-    return fallbackSplitCommand(command);
+    throw new Error('Command could not be parsed into tokens.');
   }
 
   const subCommands: string[] = [];
@@ -197,13 +203,6 @@ export function parseCommand(command: string): string[] {
   }
 
   return subCommands;
-}
-
-function fallbackSplitCommand(command: string): string[] {
-  return command
-    .split(/(?:&&|\|\||;|\||&|\r?\n)/)
-    .map((cmd) => cmd.trim())
-    .filter((cmd) => cmd.length > 0);
 }
 
 export function containsDangerousSubstitution(source: string): boolean {

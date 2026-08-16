@@ -8,7 +8,7 @@ export function getFirstDiffLine(diff?: string): number | undefined {
   return Number.isFinite(line) && line > 0 ? line : undefined;
 }
 
-export interface DiffStat {
+interface DiffStat {
   readonly added: number;
   readonly removed: number;
 }

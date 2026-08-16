@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { applyMention, readMentionQuery } from '@pi-code/webview/components/chat/helpers/mention';
+import { useSuggestionNav } from '@pi-code/webview/components/chat/hooks/useSuggestionNav';
 import { vscode } from '@pi-code/webview/utilities/vscode';
 
 import type { ChangeEvent, KeyboardEvent, RefObject } from 'react';
@@ -62,18 +63,6 @@ export const useChatMention = ({ value, setValue, textareaRef }: UseMentionProps
     return () => clearTimeout(handle);
   }, [query]);
 
-  const close = useCallback(() => setIsDismissed(true), []);
-
-  const syncCaret = useCallback(() => {
-    const textarea = textareaRef.current;
-    if (textarea) setCaret(textarea.selectionStart ?? 0);
-  }, [textareaRef]);
-
-  const handleChange = useCallback((event: ChangeEvent<HTMLTextAreaElement>) => {
-    setIsDismissed(false);
-    setCaret(event.target.selectionStart ?? event.target.value.length);
-  }, []);
-
   const select = useCallback(
     (path: string) => {
       const insertion = applyMention(value, caret, path);
@@ -90,42 +79,16 @@ export const useChatMention = ({ value, setValue, textareaRef }: UseMentionProps
     [value, caret, setValue, textareaRef],
   );
 
-  const handleKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLTextAreaElement>): boolean => {
-      if (!isOpen) return false;
-
-      switch (event.key) {
-        case 'Escape': {
-          event.preventDefault();
-          event.stopPropagation();
-          close();
-          return true;
-        }
-        case 'ArrowUp':
-        case 'ArrowDown': {
-          event.preventDefault();
-          const direction = event.key === 'ArrowDown' ? 1 : -1;
-          setSelectedIndex((prev) => (prev + direction + results.length) % results.length);
-          return true;
-        }
-        case 'Enter':
-        case 'Tab': {
-          // Shift+Enter inserts a newline and Shift+Tab moves focus.
-          if (event.shiftKey) return false;
-
-          const path = results[selectedIndex];
-          if (!path) return false;
-
-          event.preventDefault();
-          select(path);
-          return true;
-        }
-        default:
-          return false;
-      }
-    },
-    [isOpen, results, selectedIndex, close, select],
-  );
+  const { close, syncCaret, handleChange, handleKeyDown } = useSuggestionNav<string>({
+    isOpen,
+    items: results,
+    selectedIndex,
+    setSelectedIndex,
+    select,
+    setDismissed: setIsDismissed,
+    textareaRef,
+    setCaret,
+  });
 
   return { isOpen, results, selectedIndex, setSelectedIndex, select, close, handleKeyDown, handleChange, syncCaret };
 };

@@ -4,7 +4,9 @@ import { Type } from 'typebox';
 import { toolResult } from '@pi-code/extension/structures/tool-call/helpers/result';
 
 import type { ToolName } from '@pi-code/shared/core/types';
-import type { TodoItem } from '@pi-code/shared/utilities/todo';
+import type { TodoItem, TodoStatus } from '@pi-code/shared/utilities/todo';
+
+const TODO_STATUSES = ['pending', 'progress', 'completed'] as const satisfies readonly TodoStatus[];
 
 export const updateTodoTool = defineTool({
   name: 'update_todo' as ToolName,
@@ -14,9 +16,10 @@ export const updateTodoTool = defineTool({
     todos: Type.Array(
       Type.Object({
         content: Type.String({ description: 'The task description.' }),
-        status: Type.Union([Type.Literal('pending'), Type.Literal('progress'), Type.Literal('completed')], {
-          description: 'Current state (pending|progress|completed) of the task.',
-        }),
+        status: Type.Union(
+          TODO_STATUSES.map((status) => Type.Literal(status)),
+          { description: 'Current state (pending|progress|completed) of the task.' },
+        ),
       }),
       { description: 'Complete list; replaces the previous one.' },
     ),

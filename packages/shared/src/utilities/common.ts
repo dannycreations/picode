@@ -33,17 +33,17 @@ export function serializeToolArgs(args: unknown): string {
   return typeof args === 'string' ? args : JSON.stringify(args ?? {});
 }
 
-export function countOccurrences(haystack: string, needle: string, caseSensitive?: boolean): number {
-  if (needle === '') return 0;
+export function findOccurrences(haystack: string, needle: string, caseSensitive = false): number[] {
+  if (needle === '') return [];
   const source = caseSensitive ? haystack : haystack.toLowerCase();
   const target = caseSensitive ? needle : needle.toLowerCase();
-  let count = 0;
+  const positions: number[] = [];
   let from = 0;
   let index = source.indexOf(target, from);
   while (index !== -1) {
-    count++;
+    positions.push(index);
     from = index + target.length;
     index = source.indexOf(target, from);
   }
-  return count;
+  return positions;
 }

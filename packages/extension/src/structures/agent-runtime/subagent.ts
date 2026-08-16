@@ -18,7 +18,7 @@ const SUBAGENT_TOOLS = {
 
 type SubagentToolName = keyof typeof SUBAGENT_TOOLS;
 
-export interface SubagentDefinition {
+interface SubagentDefinition {
   readonly name: string;
   readonly summary: string;
   readonly tools: readonly SubagentToolName[];

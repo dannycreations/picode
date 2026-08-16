@@ -1,7 +1,7 @@
 import { cn } from 'cnfast';
 import { AlertTriangle, Info, RefreshCw } from 'lucide-react';
 
-import { countOccurrences } from '@pi-code/shared/utilities/common';
+import { findOccurrences } from '@pi-code/shared/utilities/common';
 import { localActiveIndex } from '@pi-code/webview/components/chat/helpers/search';
 import { Highlight } from '@pi-code/webview/components/shared/Highlight';
 import { Spinner } from '@pi-code/webview/components/shared/Spinner';
@@ -49,7 +49,7 @@ export const ApiRequestMessage: FC<{ readonly message: ChatMessage }> = ({ messa
 export const ErrorMessage: FC<{ readonly message: ChatMessage; readonly search?: SearchContext }> = ({ message, search }) => {
   const text = message.errorMessage || message.text;
   const query = search?.query ?? '';
-  const textCount = countOccurrences(text, query);
+  const textCount = findOccurrences(text, query).length;
   const active = search ? localActiveIndex(search.globalOffset, textCount, search.activeIndex) : -1;
 
   return (
@@ -67,7 +67,7 @@ export const ErrorMessage: FC<{ readonly message: ChatMessage; readonly search?:
 
 export const InfoMessage: FC<{ readonly message: ChatMessage; readonly search?: SearchContext }> = ({ message, search }) => {
   const query = search?.query ?? '';
-  const textCount = countOccurrences(message.text, query);
+  const textCount = findOccurrences(message.text, query).length;
   const active = search ? localActiveIndex(search.globalOffset, textCount, search.activeIndex) : -1;
 
   return (

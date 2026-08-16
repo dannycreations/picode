@@ -36,7 +36,7 @@ export const useChatConfig = (): UseChatConfigReturn => {
         const {
           models: backendModels,
           default_model: defaultModel,
-          default_thinking_level: defaultThinkingLevel,
+          default_thinking_level: initialThinkingLevel,
           settings: backendSettings,
           commands: backendCommands,
         } = msg.payload;
@@ -44,7 +44,7 @@ export const useChatConfig = (): UseChatConfigReturn => {
         setSettings(backendSettings ?? null);
         setCommands(backendCommands ?? []);
         setSelectedModel(defaultModel || backendModels[0]?.id || DEFAULT_APP_ID);
-        setSelectedThinkingLevelState(defaultThinkingLevel ?? null);
+        setSelectedThinkingLevelState(initialThinkingLevel ?? null);
         break;
       }
 

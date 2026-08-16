@@ -1,5 +1,6 @@
 import { visit } from 'unist-util-visit';
 
+import { findOccurrences } from '@pi-code/shared/utilities/common';
 import { parseQuestionAnswer, parseQuestionData } from '@pi-code/webview/components/chat/helpers/question';
 
 import type { ChatMessage } from '@pi-code/shared/core/types';
@@ -19,15 +20,13 @@ export function getMessageSearchText(message: ChatMessage): string {
       return parts.join('\n');
     }
     case 'tool': {
-      if (message.toolName === 'ask_question') {
-        const question = parseQuestionData(message.toolArgs)?.question ?? message.text;
-        const answer = message.toolStatus === 'denied' ? '' : parseQuestionAnswer(message.diff);
-        return [question, answer].filter(Boolean).join('\n');
-      }
-      const parts: string[] = [];
-      if (message.text) parts.push(message.text);
-      if (message.toolArgs) parts.push(message.toolArgs);
-      return parts.join('\n');
+      // Only ask_question tool rows receive search highlighting (every other
+      // tool renders through ToolMessage, which gets no search context), so
+      // counting the others would send navigation to unhighlighted rows.
+      if (message.toolName !== 'ask_question') return '';
+      const question = parseQuestionData(message.toolArgs)?.question ?? message.text;
+      const answer = message.toolStatus === 'denied' ? '' : parseQuestionAnswer(message.diff);
+      return [question, answer].filter(Boolean).join('\n');
     }
     case 'error':
       return message.errorMessage || message.text || '';
@@ -48,15 +47,7 @@ export function createSearchHighlightPlugin(search: SearchContext | undefined): 
       const parentNode = parent as { children: Array<Record<string, unknown>> } | undefined;
       if (!parentNode) return;
 
-      const haystack = text.toLowerCase();
-      const positions: number[] = [];
-      let from = 0;
-      let index = haystack.indexOf(query, from);
-      while (index !== -1) {
-        positions.push(index);
-        from = index + query.length;
-        index = haystack.indexOf(query, from);
-      }
+      const positions = findOccurrences(text, query);
       if (positions.length === 0) return;
 
       const newNodes: Array<Record<string, unknown>> = [];

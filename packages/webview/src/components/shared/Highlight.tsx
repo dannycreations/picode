@@ -1,3 +1,5 @@
+import { findOccurrences } from '@pi-code/shared/utilities/common';
+
 import type { FC, ReactNode } from 'react';
 
 export interface SearchContext {
@@ -15,16 +17,8 @@ interface HighlightProps {
 export const Highlight: FC<HighlightProps> = ({ text, query, activeOccurrence }) => {
   if (!query) return <>{text}</>;
 
-  const haystack = text.toLowerCase();
   const needle = query.toLowerCase();
-  const positions: number[] = [];
-  let from = 0;
-  let index = haystack.indexOf(needle, from);
-  while (index !== -1) {
-    positions.push(index);
-    from = index + needle.length;
-    index = haystack.indexOf(needle, from);
-  }
+  const positions = findOccurrences(text, needle);
 
   if (positions.length === 0) return <>{text}</>;
 

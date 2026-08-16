@@ -47,6 +47,8 @@ interface MappedEvent {
 }
 
 export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiRequestId: string | null): MappedEvent {
+  const subagent = getSubagentSessionName(session.sessionId);
+
   switch (event.type) {
     case 'agent_start':
       return {
@@ -125,7 +127,6 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
       };
 
     case 'tool_execution_start': {
-      const subagent = getSubagentSessionName(session.sessionId);
       return {
         message: {
           type: 'tool_execution_start',
@@ -141,7 +142,6 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
     }
 
     case 'tool_execution_update': {
-      const subagent = getSubagentSessionName(session.sessionId);
       return {
         message: {
           type: 'tool_execution_update',
@@ -152,7 +152,6 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
     }
 
     case 'tool_execution_end': {
-      const subagent = getSubagentSessionName(session.sessionId);
       const toolResult = event.result as
         | {
             details?: {

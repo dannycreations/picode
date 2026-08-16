@@ -3,7 +3,7 @@ import { cn } from 'cnfast';
 import { Pi } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { countOccurrences } from '@pi-code/shared/utilities/common';
+import { findOccurrences } from '@pi-code/shared/utilities/common';
 import { ChatAction } from '@pi-code/webview/components/chat/ChatAction';
 import { ChatBody } from '@pi-code/webview/components/chat/ChatBody';
 import { ChatFooter } from '@pi-code/webview/components/chat/ChatFooter';
@@ -107,7 +107,7 @@ export const ChatView: FC = () => {
   const [activeMatch, setActiveMatch] = useState(-1);
 
   const matchCounts = useMemo(
-    () => (searchQuery ? renderItems.map((message) => countOccurrences(getMessageSearchText(message), searchQuery)) : []),
+    () => (searchQuery ? renderItems.map((message) => findOccurrences(getMessageSearchText(message), searchQuery).length) : []),
     [renderItems, searchQuery],
   );
   const totalMatches = matchCounts.reduce((sum, count) => sum + count, 0);
@@ -126,7 +126,6 @@ export const ChatView: FC = () => {
     setActiveMatch(searchQuery ? (totalMatches > 0 ? 0 : -1) : -1);
     // totalMatches is derived from searchQuery + renderItems; re-running only on
     // the query keeps navigation stable when messages stream in during a search.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery]);
 
   const goToMatch = useCallback(
@@ -369,6 +368,7 @@ export const ChatView: FC = () => {
           });
         }}
         isArchived={activeTask?.isArchived}
+        isAwaitingApproval={isAwaitingApproval}
       />
 
       {/* Input Area */}
