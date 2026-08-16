@@ -69,7 +69,7 @@ const HANDLER_MAP: HandlerMap = {
     });
   },
   send_message: (msg, ctx) => {
-    void ctx.agent.startTask(msg.text, msg.model, msg.images, msg.path);
+    void ctx.agent.startTask(msg.text, msg.images, msg.path);
   },
   search_files: async (msg, ctx) => {
     const paths = await searchWorkspaceFiles(msg.query, ctx.cwd);
@@ -85,7 +85,7 @@ const HANDLER_MAP: HandlerMap = {
     ctx.agent.removeFromReplyQueue(msg.id);
   },
   continue_task: (msg, ctx) => {
-    void ctx.agent.continueTask(msg.path || '', msg.model);
+    void ctx.agent.continueTask(msg.path || '');
   },
   tool_response: (msg) => {
     if (msg.approved) approveApproval(msg.approval_id);
@@ -153,8 +153,8 @@ const HANDLER_MAP: HandlerMap = {
     // settings back to the webview; no need to read them back here.
     await writeAppSettings(msg.settings);
   },
-  set_thinking_level: (msg, ctx) => {
-    ctx.agent.setThinkingLevel(msg.level);
+  set_model: (msg, ctx) => {
+    ctx.agent.applyModelAndThinking(msg.model, msg.thinkingLevel);
   },
 };
 

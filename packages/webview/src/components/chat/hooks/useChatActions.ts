@@ -7,12 +7,10 @@ import { patchMessage } from '@pi-code/webview/components/chat/helpers/message';
 import { postCompactMessage, vscode } from '@pi-code/webview/utilities/vscode';
 
 import type { Dispatch, SetStateAction } from 'react';
-import type { ModelSelection } from '@pi-code/shared/core/protocol';
 import type { ActiveTaskState, ChatMessage } from '@pi-code/shared/core/types';
 
 interface UseChatActionsProps {
   readonly activeTask: ActiveTaskState | null;
-  readonly modelSelection: ModelSelection;
   readonly pendingQuestion: ChatMessage | undefined;
   readonly isAgentRunning: boolean;
   readonly setActiveTask: Dispatch<SetStateAction<ActiveTaskState | null>>;
@@ -30,7 +28,7 @@ interface UseChatActionsReturn {
 }
 
 export const useChatActions = (params: UseChatActionsProps): UseChatActionsReturn => {
-  const { activeTask, modelSelection, pendingQuestion, isAgentRunning, setActiveTask, setIsAgentRunning, deleteSessions } = params;
+  const { activeTask, pendingQuestion, isAgentRunning, setActiveTask, setIsAgentRunning, deleteSessions } = params;
 
   const handleAnswerQuestion = useCallback(
     (questionId: string, text: string): void => {
@@ -92,11 +90,10 @@ export const useChatActions = (params: UseChatActionsProps): UseChatActionsRetur
         type: 'send_message',
         text,
         path: activeTask?.path,
-        model: modelSelection,
         images,
       });
     },
-    [pendingQuestion, handleAnswerQuestion, modelSelection, activeTask, setActiveTask, setIsAgentRunning, isAgentRunning],
+    [pendingQuestion, handleAnswerQuestion, activeTask, setActiveTask, setIsAgentRunning, isAgentRunning],
   );
 
   const handleToolResponse = useCallback(

@@ -4,7 +4,6 @@ import { DEFAULT_APP_ID } from '@pi-code/shared/core/constants';
 import { defaultThinkingLevel } from '@pi-code/shared/utilities/common';
 import { vscode } from '@pi-code/webview/utilities/vscode';
 
-import type { Dispatch, SetStateAction } from 'react';
 import type { CommandItem, ExtensionToWebviewMessage, ModelItem, ModelSelection } from '@pi-code/shared/core/protocol';
 import type { AppSettings } from '@pi-code/shared/core/settings';
 import type { ModelThinkingLevel } from '@pi-code/shared/core/types';
@@ -15,7 +14,7 @@ interface UseChatConfigReturn {
   readonly commands: CommandItem[];
   readonly selectedModel: string;
   readonly modelSelection: ModelSelection;
-  readonly setSelectedModel: Dispatch<SetStateAction<string>>;
+  readonly setSelectedModel: (modelId: string) => void;
   readonly thinkingLevels: readonly ModelThinkingLevel[];
   readonly selectedThinkingLevel: ModelThinkingLevel | null;
   readonly setSelectedThinkingLevel: (level: ModelThinkingLevel) => void;
@@ -26,7 +25,7 @@ interface UseChatConfigReturn {
 export const useChatConfig = (): UseChatConfigReturn => {
   const [models, setModels] = useState<ModelItem[]>([]);
   const [settings, setSettings] = useState<AppSettings | null>(null);
-  const [selectedModel, setSelectedModel] = useState(DEFAULT_APP_ID);
+  const [selectedModel, setSelectedModelState] = useState(DEFAULT_APP_ID);
   const [commands, setCommands] = useState<CommandItem[]>([]);
   const [selectedThinkingLevel, setSelectedThinkingLevelState] = useState<ModelThinkingLevel | null>(null);
 
@@ -43,7 +42,7 @@ export const useChatConfig = (): UseChatConfigReturn => {
         setModels(backendModels);
         setSettings(backendSettings ?? null);
         setCommands(backendCommands ?? []);
-        setSelectedModel(defaultModel || backendModels[0]?.id || DEFAULT_APP_ID);
+        setSelectedModelState(defaultModel || backendModels[0]?.id || DEFAULT_APP_ID);
         setSelectedThinkingLevelState(initialThinkingLevel ?? null);
         break;
       }
@@ -86,10 +85,28 @@ export const useChatConfig = (): UseChatConfigReturn => {
 
   const supportsImages = useMemo<boolean>(() => models.find((model) => model.id === selectedModel)?.supportsImages ?? false, [models, selectedModel]);
 
-  const setSelectedThinkingLevel = useCallback((level: ModelThinkingLevel): void => {
-    setSelectedThinkingLevelState(level);
-    vscode?.postMessage({ type: 'set_thinking_level', level });
-  }, []);
+  // Picking a model also re-publishes the current thinking level (clamped to what
+  // the new model supports) so the persisted pair always matches the footer.
+  const setSelectedModel = useCallback(
+    (modelId: string): void => {
+      const model = models.find((m) => m.id === modelId);
+      if (!model) return;
+      const levels = model.thinkingLevels ?? [];
+      const level = selectedThinkingLevel && levels.includes(selectedThinkingLevel) ? selectedThinkingLevel : defaultThinkingLevel(levels);
+      setSelectedModelState(modelId);
+      setSelectedThinkingLevelState(level);
+      vscode?.postMessage({ type: 'set_model', model: { id: model.id, provider: model.provider }, thinkingLevel: level ?? undefined });
+    },
+    [models, selectedThinkingLevel],
+  );
+
+  const setSelectedThinkingLevel = useCallback(
+    (level: ModelThinkingLevel): void => {
+      setSelectedThinkingLevelState(level);
+      vscode?.postMessage({ type: 'set_model', model: modelSelection, thinkingLevel: level });
+    },
+    [modelSelection],
+  );
 
   return {
     models,

@@ -44,9 +44,9 @@ export type WebviewToExtensionMessage =
   | { type: 'get_history'; scope: HistoryScope }
   | { type: 'load_session'; id: string; path: string; title: string }
   | { type: 'delete_sessions'; paths: string[] }
-  | { type: 'send_message'; text: string; path?: string; model?: ModelSelection; images?: string[] }
+  | { type: 'send_message'; text: string; path?: string; images?: string[] }
   | { type: 'search_files'; query: string; requestId: string }
-  | { type: 'continue_task'; path?: string; model?: ModelSelection }
+  | { type: 'continue_task'; path?: string }
   | { type: 'tool_response'; approval_id: string; approved: boolean }
   | { type: 'question_response'; question_id: string; text: string }
   | { type: 'view_raw_task'; path?: string }
@@ -57,8 +57,8 @@ export type WebviewToExtensionMessage =
   | { type: 'save_image'; dataUrl: string; filename: string }
   | { type: 'cancel_task' }
   | { type: 'compact'; id: string; path?: string; title: string }
-  | { type: 'set_thinking_level'; level: ModelThinkingLevel }
   | { type: 'reload' }
+  | { type: 'set_model'; model: ModelSelection; thinkingLevel?: ModelThinkingLevel }
   | { type: 'update_settings'; settings: Partial<AppSettings> }
   | { type: 'add_to_reply_queue'; text: string; images?: string[] }
   | { type: 'edit_reply_queue'; id: string; text: string }

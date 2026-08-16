@@ -38,7 +38,6 @@ export class AgentRunner {
   private session: AgentSession | null = null;
   private unsubscribeSessionEvents: (() => void) | null = null;
   private replyQueue: QueueMessage[] = [];
-  private pendingThinkingLevel?: ModelThinkingLevel;
   private apiRequestId: string | null = null;
   private compacting = false;
 
@@ -85,11 +84,11 @@ export class AgentRunner {
     });
   }
 
-  public async startTask(promptText: string, selectedModel: ModelSelection | undefined, images?: string[], path?: string): Promise<void> {
+  public async startTask(promptText: string, images?: string[], path?: string): Promise<void> {
     this.clearReplyQueue();
 
     try {
-      const { session, envDetails } = await this.prepareSession(path, selectedModel);
+      const { session, envDetails } = await this.prepareSession(path);
 
       // `nextTurn` makes pi attach the details to the upcoming user message, so
       // they reach the model and get persisted with the turn that used them.
@@ -106,9 +105,9 @@ export class AgentRunner {
     }
   }
 
-  public async continueTask(path: string, selectedModel?: ModelSelection): Promise<void> {
+  public async continueTask(path: string): Promise<void> {
     try {
-      const { session, envDetails } = await this.prepareSession(path, selectedModel);
+      const { session, envDetails } = await this.prepareSession(path);
 
       void session
         .sendCustomMessage({ customType: 'environment_details', content: envDetails, display: false }, { triggerTurn: true })
@@ -161,19 +160,13 @@ export class AgentRunner {
     }
   }
 
-  public setThinkingLevel(level: ModelThinkingLevel): void {
-    this.pendingThinkingLevel = level;
-    try {
-      getSettingsManager(getWorkspaceCwd()).setDefaultThinkingLevel(level);
-    } catch (err) {
-      logger.warn(`Could not persist thinking level ${level}:`, err);
+  public applyModelAndThinking(selection: ModelSelection, level?: ModelThinkingLevel): void {
+    const manager = getSettingsManager(getWorkspaceCwd());
+    if (selection.id && selection.provider) {
+      manager.setDefaultModelAndProvider(selection.provider, selection.id);
     }
-    if (this.session) {
-      try {
-        this.session.setThinkingLevel(level);
-      } catch (err) {
-        logger.warn(`Could not apply thinking level ${level}:`, err);
-      }
+    if (level) {
+      manager.setDefaultThinkingLevel(level);
     }
   }
 
@@ -217,23 +210,35 @@ export class AgentRunner {
     return this.session?.sessionFile;
   }
 
-  private async prepareSession(
-    path: string | undefined,
-    selectedModel: ModelSelection | undefined,
-  ): Promise<{ session: AgentSession; envDetails: string }> {
+  private async prepareSession(path: string | undefined): Promise<{ session: AgentSession; envDetails: string }> {
     this.prepareRun();
     const cwd = getWorkspaceCwd();
 
     const session = await this.getOrCreateSession(path, cwd);
 
-    // Apply and persist the model chosen in the footer before prompting.
-    await this.applySelectedModel(session, selectedModel);
+    // Honor whatever the footer shows rather than a transient selection: read
+    // the persisted model and thinking level and apply them to the session.
+    const manager = getSettingsManager(getWorkspaceCwd());
 
-    if (this.pendingThinkingLevel) {
+    const provider = manager.getDefaultProvider();
+    const modelId = manager.getDefaultModel();
+    if (provider && modelId && (session.model?.id !== modelId || session.model?.provider !== provider)) {
+      const model = session.modelRuntime.getModel(provider, modelId);
+      if (model) {
+        try {
+          await session.setModel(model);
+        } catch (err) {
+          logger.warn(`Could not apply persisted model ${provider}/${modelId}:`, err);
+        }
+      }
+    }
+
+    const level = manager.getDefaultThinkingLevel();
+    if (level && session.thinkingLevel !== level) {
       try {
-        session.setThinkingLevel(this.pendingThinkingLevel);
+        session.setThinkingLevel(level);
       } catch (err) {
-        logger.warn(`Could not apply thinking level ${this.pendingThinkingLevel}:`, err);
+        logger.warn(`Could not apply persisted thinking level ${level}:`, err);
       }
     }
 
@@ -256,19 +261,6 @@ export class AgentRunner {
     this.subscribeToSessionEvents(session);
 
     return session;
-  }
-
-  private async applySelectedModel(session: AgentSession, selectedModel: ModelSelection | undefined): Promise<void> {
-    if (!selectedModel || !selectedModel.id || !selectedModel.provider) return;
-
-    const model = session.modelRuntime.getModel(selectedModel.provider, selectedModel.id);
-    if (!model) return;
-
-    try {
-      await session.setModel(model);
-    } catch (err) {
-      logger.warn(`Could not apply selected model ${selectedModel.provider}/${selectedModel.id}:`, err);
-    }
   }
 
   private setupSessionHook(session: AgentSession): void {

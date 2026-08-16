@@ -194,7 +194,7 @@ export const Tooltip: FC<TooltipProps> = ({ content, side = 'top', disabled = fa
               visibility: placement ? 'visible' : 'hidden',
             }}
             className={cn(
-              'fixed z-[2000] w-max max-w-[280px] rounded px-2 py-1 text-xs leading-snug text-balance shadow-md pointer-events-none select-none',
+              'fixed z-[2000] w-max max-w-[280px] break-words rounded px-2 py-1 text-xs leading-snug text-balance shadow-md pointer-events-none select-none',
               'border border-vscode-editorHoverWidget-border bg-vscode-editorHoverWidget-background text-vscode-editorHoverWidget-foreground',
               placement && 'animate-tooltip-in',
             )}

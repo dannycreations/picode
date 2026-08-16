@@ -71,7 +71,6 @@ export const ChatView: FC = () => {
     models,
     settings,
     selectedModel,
-    modelSelection,
     setSelectedModel,
     thinkingLevels,
     selectedThinkingLevel,
@@ -84,7 +83,6 @@ export const ChatView: FC = () => {
 
   const { handleSendPrompt, handleToolResponse, handleAnswerQuestion, handleCloseTask, handleCancelTask, handleDeleteActiveTask } = useChatActions({
     activeTask,
-    modelSelection,
     pendingQuestion,
     isAgentRunning,
     setActiveTask: task.setActiveTask,
@@ -364,7 +362,6 @@ export const ChatView: FC = () => {
           vscode?.postMessage({
             type: 'continue_task',
             path: activeTask.path,
-            model: modelSelection,
           });
         }}
         isArchived={activeTask?.isArchived}
