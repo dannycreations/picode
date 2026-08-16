@@ -4,13 +4,13 @@ import { toRelativePath } from '@pi-code/extension/utilities/vscode';
 
 import type { Diagnostic, Selection, TextDocument } from 'vscode';
 
-export interface EffectiveSelection {
+interface EffectiveSelection {
   readonly startLine: number;
   readonly endLine: number;
   readonly text: string;
 }
 
-export interface SelectionContext {
+interface SelectionContext {
   readonly filePath: string;
   readonly selection: EffectiveSelection;
 }

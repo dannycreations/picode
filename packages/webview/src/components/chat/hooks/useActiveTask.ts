@@ -52,14 +52,7 @@ export const useActiveTask = (): UseActiveTaskReturn => {
         }
 
         case 'reply_queue_data': {
-          const queued: ChatMessage[] = msg.payload.queue.map((q) => ({
-            id: q.id,
-            sender: 'queue',
-            text: q.text,
-            images: q.images,
-            ts: q.ts,
-          }));
-          updateMessages((messages) => [...messages.filter((m) => m.sender !== 'queue'), ...queued]);
+          updateMessages((messages) => [...messages.filter((m) => m.sender !== 'queue'), ...msg.payload.queue]);
           break;
         }
 

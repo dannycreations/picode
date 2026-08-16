@@ -62,13 +62,13 @@ function evaluateToolCall(toolName: ToolName, cwd: string, input: unknown): Appr
 
 interface SubagentSessionInfo {
   readonly name: string;
-  readonly parentToolCallId?: string;
+  readonly toolCallId?: string;
 }
 
 const subagentBySession = new Map<string, SubagentSessionInfo>();
 
-export function registerSubagentSession(sessionId: string, name: string, parentToolCallId?: string): void {
-  subagentBySession.set(sessionId, { name, parentToolCallId });
+export function registerSubagentSession(sessionId: string, name: string, toolCallId?: string): void {
+  subagentBySession.set(sessionId, { name, toolCallId });
 }
 
 export function unregisterSubagentSession(sessionId: string): void {
@@ -109,7 +109,7 @@ export function createToolPolicyExtension(): InlineExtension {
 
         const sessionInfo = subagentBySession.get(ctx.sessionManager.getSessionId());
         const approvalStart = Date.now();
-        const approved = await requestApproval(toolName, event.toolCallId, event.input, sessionInfo?.name, sessionInfo?.parentToolCallId);
+        const approved = await requestApproval(toolName, event.toolCallId, event.input, sessionInfo?.name, sessionInfo?.toolCallId);
         const approvalDuration = Date.now() - approvalStart;
         if (event.toolCallId) {
           recordApprovalDuration(event.toolCallId, approvalDuration);

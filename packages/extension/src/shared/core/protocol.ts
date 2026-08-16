@@ -18,8 +18,6 @@ export interface HistoryItem {
   readonly ts: number;
 }
 
-export type QueueMessage = Pick<ChatMessage, 'id' | 'text' | 'images' | 'ts'>;
-
 export interface ModelItem {
   readonly id: string;
   readonly name: string;
@@ -103,6 +101,6 @@ export type ExtensionToWebviewMessage =
   | { type: 'show_settings' }
   | { type: 'set_chat_input'; payload: { text: string } }
   | { type: 'search_results'; payload: { requestId: string; paths: string[] } }
-  | { type: 'reply_queue_data'; payload: { queue: QueueMessage[] } }
+  | { type: 'reply_queue_data'; payload: { queue: ChatMessage[] } }
   | { type: 'reply_queue_delivered'; payload: { messages: ChatMessage[] } }
   | { type: 'stream_delta'; payload: { text?: string; thinking?: string } };

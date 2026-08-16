@@ -1,8 +1,9 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { builtinModules } from 'node:module';
-import { relative, resolve } from 'node:path';
+import { join, relative, resolve } from 'node:path';
 
-const sharedDir = resolve(import.meta.dirname, '..', 'src', 'shared');
+const packageDir = resolve(import.meta.dirname, '..');
+const sharedDir = join(packageDir, 'src', 'shared');
 
 const NODE_BUILTINS = new Set(builtinModules);
 

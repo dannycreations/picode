@@ -20,7 +20,7 @@ import { EMPTY_STATS } from '@pi-code/shared/utilities/common';
 import type { ImageContent, ModelThinkingLevel, TextContent } from '@earendil-works/pi-ai';
 import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent';
 import type { Webview } from 'vscode';
-import type { ExtensionToWebviewMessage, ModelSelection, QueueMessage } from '@pi-code/shared/core/protocol';
+import type { ExtensionToWebviewMessage, ModelSelection } from '@pi-code/shared/core/protocol';
 import type { ChatMessage, StatsData } from '@pi-code/shared/core/types';
 
 function parseImageAttachments(images?: string[]): ImageContent[] | undefined {
@@ -37,7 +37,7 @@ function parseImageAttachments(images?: string[]): ImageContent[] | undefined {
 export class AgentRunner {
   private session: AgentSession | null = null;
   private unsubscribeSessionEvents: (() => void) | null = null;
-  private replyQueue: QueueMessage[] = [];
+  private replyQueue: ChatMessage[] = [];
   private apiRequestId: string | null = null;
   private compacting = false;
 
@@ -52,8 +52,9 @@ export class AgentRunner {
   }
 
   public addToReplyQueue(text: string, images?: string[]): void {
-    const msg: QueueMessage = {
+    const msg: ChatMessage = {
       id: uuidv7(),
+      sender: 'queue',
       text,
       images,
       ts: Date.now(),
@@ -286,7 +287,7 @@ export class AgentRunner {
       const cwd = getWorkspaceCwd();
 
       if (this.replyQueue.length > 0) {
-        const undelivered: QueueMessage[] = [];
+        const undelivered: ChatMessage[] = [];
         const delivered: ChatMessage[] = [];
 
         for (const msg of this.replyQueue) {

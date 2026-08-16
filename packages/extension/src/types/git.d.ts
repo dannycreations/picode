@@ -5,7 +5,7 @@ export interface Change {
   readonly status: number;
 }
 
-export interface RepositoryState {
+interface RepositoryState {
   readonly HEAD: { readonly name?: string } | undefined;
   readonly indexChanges: readonly Change[];
   readonly mergeChanges: readonly Change[];

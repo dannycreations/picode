@@ -9,7 +9,7 @@ interface ApprovalRequest {
   readonly toolName: ToolName;
   readonly args: unknown;
   readonly subagent?: string;
-  readonly parentToolCallId?: string;
+  readonly toolCallId?: string;
 }
 
 type ApprovalPresenter = (request: ApprovalRequest) => void;
@@ -42,7 +42,7 @@ export function requestApproval(
   const id = toolCallId || uuidv7();
   return new Promise<boolean>((resolve) => {
     approvals.register(id, resolve);
-    currentPresenter({ id, toolName, args, subagent, parentToolCallId });
+    currentPresenter({ id, toolName, args, subagent, toolCallId: parentToolCallId });
   });
 }
 

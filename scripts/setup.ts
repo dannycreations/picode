@@ -1,10 +1,8 @@
 import { execSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join, resolve } from 'node:path';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const rootDir = resolve(__dirname, '..');
+const rootDir = resolve(import.meta.url, '..');
 const contextDir = join(rootDir, 'context');
 
 interface Repo {
@@ -13,8 +11,9 @@ interface Repo {
 }
 
 const REPOS: Repo[] = [
-  { name: 'kilocode', url: 'https://github.com/Kilo-Org/kilocode-legacy' },
-  { name: 'pi', url: 'https://github.com/earendil-works/pi' },
+  { name: 'kilocode', url: 'https://github.com/Kilo-Org/kilocode' },
+  { name: 'kilocode-legacy', url: 'https://github.com/Kilo-Org/kilocode-legacy' },
+  { name: 'pi-agent', url: 'https://github.com/earendil-works/pi' },
   { name: 'vscode', url: 'https://github.com/microsoft/vscode' },
 ];
 
