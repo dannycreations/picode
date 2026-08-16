@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { deliverQueuedReplies, groupToolMessages, isRenderableMessage, upsertToolMessage } from '@pi-code/webview/components/chat/helpers/message';
+import {
+  deliverQueuedReplies,
+  groupToolMessages,
+  isRenderableMessage,
+  resolveApproval,
+  upsertToolMessage,
+} from '@pi-code/webview/components/chat/helpers/message';
 
 import type { ChatMessage, ToolName } from '@pi-code/shared/core/types';
 
@@ -105,6 +111,41 @@ describe('upsertToolMessage', () => {
   });
 });
 
+describe('resolveApproval', () => {
+  it('resumes an approved tool as running and continues its clock past the wait', () => {
+    // Tool started at ts=1000, approval requested immediately (pausedAt=1000), so
+    // the elapsed clock should restart from ~0 rather than jump by the wait.
+    const messages = [createToolMessage('t1', 'execute_command', { toolStatus: 'approval', ts: 1000, pausedAt: 1000 })];
+
+    const result = resolveApproval(messages, 't1', true);
+
+    expect(result[0].toolStatus).toBe('running');
+    expect(result[0].ts).toBeGreaterThan(1000);
+    expect(result[0].pausedAt).toBeUndefined();
+  });
+
+  it('resumes the clock from where it paused when execution had already run', () => {
+    // Tool ran 5s (ts=1000) before the approval was requested at pausedAt=6000,
+    // so approving should continue from ~5s, not restart at zero or include the wait.
+    const messages = [createToolMessage('t1', 'execute_command', { toolStatus: 'approval', ts: 1000, pausedAt: 6000 })];
+
+    const result = resolveApproval(messages, 't1', true);
+
+    const elapsedAtResume = Date.now() - result[0].ts;
+    expect(elapsedAtResume).toBeGreaterThanOrEqual(4900);
+    expect(elapsedAtResume).toBeLessThanOrEqual(5100);
+  });
+
+  it('marks a rejected tool as denied', () => {
+    const messages = [createToolMessage('t1', 'execute_command', { toolStatus: 'approval', ts: 1000, pausedAt: 1000 })];
+
+    const result = resolveApproval(messages, 't1', false);
+
+    expect(result[0].toolStatus).toBe('denied');
+    expect(result[0].pausedAt).toBeUndefined();
+  });
+});
+
 describe('groupToolMessages', () => {
   it('should collapse consecutive same-tool file calls into one merged message', () => {
     const messages = [
@@ -135,7 +176,20 @@ describe('groupToolMessages', () => {
     expect(result.map((m) => m.toolName)).toEqual(['read_file', 'write_file']);
   });
 
-  it('should not merge calls waiting for approval', () => {
+  it('should stack a pending approval beneath its completed tool sibling', () => {
+    const messages = [
+      createToolMessage('r1', 'read_file', { toolStatus: 'completed', files: [{ path: 'a.ts', content: 'a' }] }),
+      createToolMessage('r2', 'read_file', { toolStatus: 'approval', files: [{ path: 'b.ts', content: 'b' }] }),
+    ];
+
+    const result = groupToolMessages(messages);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].toolSections).toHaveLength(2);
+    expect(result[0].toolSections?.[1].approvalMessage?.id).toBe('r2');
+  });
+
+  it('should stack consecutive tool calls that are both awaiting approval', () => {
     const messages = [
       createToolMessage('r1', 'read_file', { toolStatus: 'approval', files: [{ path: 'a.ts', content: 'a' }] }),
       createToolMessage('r2', 'read_file', { toolStatus: 'approval', files: [{ path: 'b.ts', content: 'b' }] }),
@@ -143,7 +197,22 @@ describe('groupToolMessages', () => {
 
     const result = groupToolMessages(messages);
 
-    expect(result).toHaveLength(2);
+    expect(result).toHaveLength(1);
+    expect(result[0].toolSections).toHaveLength(2);
+  });
+
+  it('should stack a later approval with earlier completed calls of the same tool', () => {
+    const messages = [
+      createToolMessage('r1', 'read_file', { toolStatus: 'completed', files: [{ path: 'a.ts', content: 'a' }] }),
+      createToolMessage('r2', 'read_file', { toolStatus: 'completed', files: [{ path: 'b.ts', content: 'b' }] }),
+      createToolMessage('r3', 'read_file', { toolStatus: 'approval', files: [{ path: 'c.ts', content: 'c' }] }),
+    ];
+
+    const result = groupToolMessages(messages);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].toolSections).toHaveLength(3);
+    expect(result[0].toolSections?.[2].approvalMessage?.id).toBe('r3');
   });
 
   it('should stack and group consecutive execute_command calls', () => {

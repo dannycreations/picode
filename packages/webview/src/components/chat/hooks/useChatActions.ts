@@ -3,7 +3,7 @@ import { useCallback } from 'react';
 import { ACTIVE_TASK_ID } from '@pi-code/shared/core/constants';
 import { parseBuiltinCommand } from '@pi-code/shared/utilities/commands';
 import { createActiveTask } from '@pi-code/shared/utilities/common';
-import { patchMessage } from '@pi-code/webview/components/chat/helpers/message';
+import { patchMessage, resolveApproval } from '@pi-code/webview/components/chat/helpers/message';
 import { postCompactMessage, vscode } from '@pi-code/webview/utilities/vscode';
 
 import type { Dispatch, SetStateAction } from 'react';
@@ -99,9 +99,7 @@ export const useChatActions = (params: UseChatActionsProps): UseChatActionsRetur
   const handleToolResponse = useCallback(
     (msgId: string, approved: boolean): void => {
       setIsAgentRunning(true);
-      setActiveTask((prev) =>
-        prev ? { ...prev, messages: patchMessage(prev.messages, msgId, { toolStatus: approved ? 'running' : 'denied' }) } : null,
-      );
+      setActiveTask((prev) => (prev ? { ...prev, messages: resolveApproval(prev.messages, msgId, approved) } : null));
       vscode?.postMessage({ type: 'tool_response', approval_id: msgId, approved });
     },
     [setActiveTask, setIsAgentRunning],

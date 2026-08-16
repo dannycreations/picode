@@ -155,6 +155,7 @@ export const useActiveTask = (): UseActiveTaskReturn => {
               toolStatus: 'approval',
               subagent,
               toolCallId,
+              pausedAt: Date.now(),
             }),
           );
           break;

@@ -68,6 +68,7 @@ export interface ChatMessage {
   readonly subagent?: string;
   readonly toolCallId?: string;
   readonly duration?: number;
+  readonly pausedAt?: number;
   readonly files?: ReadonlyArray<ReadFileSection>;
   readonly toolSections?: ReadonlyArray<ToolSection>;
 }

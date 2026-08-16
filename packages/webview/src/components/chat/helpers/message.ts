@@ -18,7 +18,17 @@ function hasContent(value: string | undefined): boolean {
 }
 
 function canGroupTool(message: ChatMessage): boolean {
-  return message.sender === 'tool' && message.toolName !== undefined && GROUP_TOOLS.has(message.toolName) && message.toolStatus !== 'approval';
+  if (message.sender !== 'tool' || message.toolName === undefined || !GROUP_TOOLS.has(message.toolName)) {
+    return false;
+  }
+  // Sub-agent approvals carry a parent link and are nested under that parent
+  // tool later in this function, so they stay out of the top-level group.
+  // Top-level approvals join their tool group so the approve/deny UI renders
+  // beneath the tool that triggered it instead of as a separate message.
+  if (message.toolStatus === 'approval') {
+    return message.toolCallId === undefined;
+  }
+  return true;
 }
 
 function collectToolSections(messages: ReadonlyArray<ChatMessage>): ToolSection[] {
@@ -152,6 +162,16 @@ export function settlePendingTurns(messages: ChatMessage[], patch: RequestSettle
 
 export function patchMessage(messages: ChatMessage[], id: string, patch: Partial<ChatMessage>): ChatMessage[] {
   return messages.map((message) => (message.id === id ? { ...message, ...patch } : message));
+}
+
+export function resolveApproval(messages: ChatMessage[], msgId: string, approved: boolean): ChatMessage[] {
+  if (!approved) {
+    return patchMessage(messages, msgId, { toolStatus: 'denied', pausedAt: undefined });
+  }
+
+  const target = messages.find((message) => message.id === msgId);
+  const ts = target?.pausedAt ? target.ts + (Date.now() - target.pausedAt) : Date.now();
+  return patchMessage(messages, msgId, { toolStatus: 'running', ts, pausedAt: undefined });
 }
 
 export function patchLastAssistant(messages: ChatMessage[], patch: (message: ChatMessage) => Partial<ChatMessage>): ChatMessage[] {
