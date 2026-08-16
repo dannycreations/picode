@@ -41,6 +41,21 @@ export function toolResultText(result: unknown): string {
   return parts.map((part) => part.text).join('\n');
 }
 
+function extractLatestSubagentStep(text: string): string | undefined {
+  if (!text) return undefined;
+  const splitIndex = text.indexOf('\n\n');
+  const stepsPart = splitIndex !== -1 ? text.slice(splitIndex + 2) : text;
+  const lines = stepsPart
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean);
+  const lastLine = lines[lines.length - 1];
+  if (lastLine && !lastLine.startsWith('Running the ')) {
+    return lastLine;
+  }
+  return undefined;
+}
+
 interface MappedEvent {
   readonly message: ExtensionToWebviewMessage | null;
   readonly apiRequestId: string | null;
@@ -142,10 +157,12 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
     }
 
     case 'tool_execution_update': {
+      const result = toolResultText(event.partialResult);
+      const subtitle = event.toolName === 'spawn_subagent' ? extractLatestSubagentStep(result) : undefined;
       return {
         message: {
           type: 'tool_execution_update',
-          payload: { id: event.toolCallId, result: toolResultText(event.partialResult), subagent },
+          payload: { id: event.toolCallId, result, subagent, subtitle },
         },
         apiRequestId,
       };
@@ -157,6 +174,7 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
             details?: {
               todos?: TodoItem[];
               files?: ReadonlyArray<ReadFileSection>;
+              subtitle?: string;
             };
           }
         | undefined;
@@ -168,6 +186,7 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
             result: toolResultText(event.result),
             todos: toolResult?.details?.todos,
             files: toolResult?.details?.files,
+            subtitle: toolResult?.details?.subtitle,
             is_error: event.isError,
             subagent,
           },

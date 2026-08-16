@@ -133,7 +133,8 @@ function subagentSection(message: ChatMessage): ToolSection[] {
   const args = parseToolArgs(message.toolArgs);
   const agent = typeof args?.['agent'] === 'string' ? args['agent'] : message.subagent;
   const description = typeof args?.['description'] === 'string' ? args['description'] : undefined;
-  return [{ title: description ?? agent ?? 'Sub-agent', subtitle: agent, content: message.diff, language: 'text' }];
+  const title = agent ? (description ? `${agent}: ${description}` : agent) : (description ?? 'Sub-agent');
+  return [{ title, subtitle: message.subtitle, content: message.diff, language: 'text' }];
 }
 
 function fileToolSections(message: ChatMessage): ToolSection[] {

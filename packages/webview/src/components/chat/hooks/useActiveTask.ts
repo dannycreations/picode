@@ -171,26 +171,22 @@ export const useActiveTask = (): UseActiveTaskReturn => {
         }
 
         case 'tool_execution_update': {
-          const { id, result, subagent } = msg.payload;
+          const { id, result, subagent, subtitle } = msg.payload;
           updateMessages((messages) => {
             if (ignoreUnknownSubagent(messages, subagent, id)) return messages;
             const target = messages.find((m) => m.id === id);
-            const patch: Partial<ChatMessage> = {
-              diff: result,
-              ...(target?.toolName === 'spawn_subagent' && target.diff === undefined ? { ts: Date.now() } : {}),
-            };
             // Command output streams in chunks, so append each delta to the
             // running preview instead of replacing it like the discrete tools.
             if (target?.toolName === 'execute_command') {
-              return patchMessage(messages, id, { diff: `${target.diff ?? ''}${result}` });
+              return patchMessage(messages, id, { diff: `${target.diff ?? ''}${result}`, subtitle });
             }
-            return patchMessage(messages, id, patch);
+            return patchMessage(messages, id, { diff: result, subtitle });
           });
           break;
         }
 
         case 'tool_execution_end': {
-          const { id, result, todos, files, is_error, subagent } = msg.payload;
+          const { id, result, todos, files, is_error, subagent, subtitle } = msg.payload;
           updateMessages((messages) => {
             if (ignoreUnknownSubagent(messages, subagent, id)) {
               return messages;
@@ -203,6 +199,7 @@ export const useActiveTask = (): UseActiveTaskReturn => {
               toolStatus: is_error ? 'denied' : 'completed',
               diff: result,
               duration,
+              subtitle,
             });
           });
           break;

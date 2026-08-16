@@ -7,6 +7,7 @@ import {
   resolveApproval,
   upsertToolMessage,
 } from '@pi-code/webview/components/chat/helpers/message';
+import { buildToolSections } from '@pi-code/webview/components/chat/messages/helpers/tool';
 
 import type { ChatMessage, ToolName } from '@pi-code/shared/core/types';
 
@@ -264,8 +265,8 @@ describe('groupToolMessages', () => {
     expect(result[0].toolSections).toEqual([
       {
         id: 's1',
-        title: 'find files',
-        subtitle: 'explore',
+        title: 'explore: find files',
+        subtitle: undefined,
         content: '<report-1>',
         language: 'text',
         ts: 1,
@@ -274,8 +275,8 @@ describe('groupToolMessages', () => {
       },
       {
         id: 's2',
-        title: 'review code',
-        subtitle: 'review',
+        title: 'review: review code',
+        subtitle: undefined,
         content: '<report-2>',
         language: 'text',
         ts: 1,
@@ -283,5 +284,19 @@ describe('groupToolMessages', () => {
         status: 'completed',
       },
     ]);
+  });
+});
+
+describe('buildToolSections subagent', () => {
+  it('should render the subtitle directly as ToolSection.subtitle', () => {
+    const msg = createToolMessage('t1', 'spawn_subagent', {
+      toolArgs: { agent: 'explore', description: 'find files', task: 'x' },
+      subtitle: '5 turns, 74050 in / 14399 out, $0.0000',
+    });
+
+    const [section] = buildToolSections(msg);
+
+    expect(section.title).toBe('explore: find files');
+    expect(section.subtitle).toBe('5 turns, 74050 in / 14399 out, $0.0000');
   });
 });

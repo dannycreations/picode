@@ -16,6 +16,7 @@ interface SubagentDetails {
   readonly description: string;
   readonly steps: string;
   readonly usage?: SubagentUsage;
+  readonly subtitle?: string;
   readonly duration?: number;
 }
 
@@ -131,6 +132,7 @@ ${describeSubagents()}
         description: params.description,
         steps: outcome.steps,
         usage: outcome.usage,
+        subtitle: outcome.usage ? formatUsage(outcome.usage) : undefined,
         duration: outcome.duration,
       };
 

@@ -112,7 +112,11 @@ const ToolSection: FC<ToolSectionProps> = ({
               <span className="font-mono text-xs text-vscode-foreground truncate select-text block max-w-full text-left">{title}</span>
             )}
           </Tooltip>
-          {subtitle && <div className="text-[10px] text-vscode-descriptionForeground truncate select-text">{subtitle}</div>}
+          {subtitle && (
+            <Tooltip content={subtitle}>
+              <span className="block max-w-full truncate text-[10px] text-vscode-descriptionForeground select-text cursor-pointer">{subtitle}</span>
+            </Tooltip>
+          )}
         </div>
         {openPath ? (
           <div className="flex items-center shrink-0">

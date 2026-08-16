@@ -18,6 +18,7 @@ interface ToolResultDetails {
   readonly todos?: TodoItem[];
   readonly files?: ReadonlyArray<ReadFileSection>;
   readonly duration?: number;
+  readonly subtitle?: string;
 }
 
 function toContentParts(content: string | readonly MessageContentPart[]): readonly MessageContentPart[] {
@@ -175,6 +176,7 @@ function patchToolCall(result: ChatMessage[], msg: Extract<SessionMessage, { rol
     files: details?.files,
     duration: details?.duration !== undefined ? details.duration : netDuration,
     errorMessage: msg.isError ? resultText : existing.errorMessage,
+    subtitle: details?.subtitle,
   };
 }
 

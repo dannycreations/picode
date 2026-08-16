@@ -90,10 +90,18 @@ export type ExtensionToWebviewMessage =
       payload: { id: string; tool_name: ToolName; arguments: ToolArguments; subagent?: string; toolCallId?: string };
     }
   | { type: 'tool_execution_start'; payload: { id: string; tool_name: ToolName; arguments: ToolArguments; subagent?: string } }
-  | { type: 'tool_execution_update'; payload: { id: string; result: string; subagent?: string } }
+  | { type: 'tool_execution_update'; payload: { id: string; result: string; subagent?: string; subtitle?: string } }
   | {
       type: 'tool_execution_end';
-      payload: { id: string; result?: string; todos?: TodoItem[]; is_error?: boolean; files?: ReadonlyArray<ReadFileSection>; subagent?: string };
+      payload: {
+        id: string;
+        result?: string;
+        todos?: TodoItem[];
+        is_error?: boolean;
+        files?: ReadonlyArray<ReadFileSection>;
+        subagent?: string;
+        subtitle?: string;
+      };
     }
   | { type: 'agent_error'; payload: { message: string } }
   | { type: 'agent_settled'; payload?: StatsData }

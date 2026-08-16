@@ -66,6 +66,7 @@ export interface ChatMessage {
   readonly errorMessage?: string;
   readonly images?: string[];
   readonly subagent?: string;
+  readonly subtitle?: string;
   readonly toolCallId?: string;
   readonly duration?: number;
   readonly pausedAt?: number;
