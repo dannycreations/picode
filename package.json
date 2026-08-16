@@ -22,9 +22,10 @@
     "@types/node": "24.13.3",
     "husky": "^9.1.7",
     "npm-check-updates": "^23.0.2",
+    "npm-run-all2": "^9.0.3",
     "prettier": "^3.9.6",
     "tsx": "^4.23.12",
     "typescript": "^7.0.2"
   },
-  "packageManager": "pnpm@11.21.0"
+  "packageManager": "pnpm@11.22.0"
 }

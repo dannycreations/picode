@@ -10,7 +10,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@pi-code/shared": "workspace:*",
     "@tanstack/react-virtual": "^3.14.9",
     "cnfast": "^0.1.0",
     "hast-util-to-jsx-runtime": "^2.3.6",

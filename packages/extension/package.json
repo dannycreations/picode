@@ -284,8 +284,9 @@
     }
   },
   "scripts": {
-    "build": "pnpm run check:settings && vite build && tsx scripts/build.ts",
-    "check": "pnpm run check:settings && tsc --noEmit",
+    "build": "vite build && tsx scripts/build.ts",
+    "check": "run-p check:* && tsc --noEmit",
+    "check:platform": "tsx scripts/platform.ts",
     "check:settings": "tsx scripts/settings.ts",
     "test": "vitest run"
   },
@@ -293,7 +294,6 @@
     "@earendil-works/pi-agent-core": "^0.84.2",
     "@earendil-works/pi-ai": "^0.84.2",
     "@earendil-works/pi-coding-agent": "^0.84.2",
-    "@pi-code/shared": "workspace:*",
     "ignore": "^7.0.6",
     "minimatch": "^10.2.6",
     "shell-quote": "^1.10.0",

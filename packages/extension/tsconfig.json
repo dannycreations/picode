@@ -4,7 +4,8 @@
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "types": ["node"],
     "paths": {
-      "@pi-code/extension/*": ["./src/*"]
+      "@pi-code/extension/*": ["./src/*"],
+      "@pi-code/shared/*": ["./src/shared/*"]
     }
   },
   "include": ["src", "scripts", "vite.config.ts"]

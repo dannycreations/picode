@@ -37,6 +37,7 @@ export default defineConfig(({ command }) => {
     resolve: {
       alias: {
         '@pi-code/webview': srcDir,
+        '@pi-code/shared': resolve(import.meta.dirname, '../extension/src/shared'),
       },
     },
     define: isBuild ? { 'process.env.NODE_ENV': '"production"' } : {},

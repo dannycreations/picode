@@ -75,6 +75,7 @@ const __importMetaResolve = (specifier, parentUrl) =>
       ...(isBuild ? { conditions: ['node', 'import', 'require'] } : {}),
       alias: {
         '@pi-code/extension': srcDir,
+        '@pi-code/shared': resolve(srcDir, 'shared'),
       },
     },
     test: {
