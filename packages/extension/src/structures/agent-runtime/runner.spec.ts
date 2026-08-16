@@ -6,6 +6,15 @@ import { logger } from '@pi-code/shared/core/logger';
 import type { AgentSession } from '@earendil-works/pi-coding-agent';
 import type { Webview } from 'vscode';
 
+vi.mock('@pi-code/extension/core/settings', () => ({
+  getSettingsManager: () => ({
+    getDefaultProvider: () => undefined,
+    getDefaultModel: () => undefined,
+    getDefaultThinkingLevel: () => undefined,
+  }),
+  readAppSettings: () => ({ enableTodoTool: false }),
+}));
+
 function makeFakeWebview(): Webview {
   return { postMessage: vi.fn() } as unknown as Webview;
 }

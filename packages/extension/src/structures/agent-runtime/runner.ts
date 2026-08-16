@@ -18,7 +18,7 @@ import { logger } from '@pi-code/shared/core/logger';
 import { EMPTY_STATS } from '@pi-code/shared/utilities/common';
 
 import type { ImageContent, ModelThinkingLevel, TextContent } from '@earendil-works/pi-ai';
-import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent';
+import type { AgentSession } from '@earendil-works/pi-coding-agent';
 import type { Webview } from 'vscode';
 import type { ExtensionToWebviewMessage, ModelSelection } from '@pi-code/shared/core/protocol';
 import type { ChatMessage, StatsData } from '@pi-code/shared/core/types';
@@ -197,11 +197,6 @@ export class AgentRunner {
     this.clearReplyQueue();
   }
 
-  private cleanupPending(): void {
-    cancelAllQuestions();
-    cancelAllApprovals();
-  }
-
   private prepareRun(): void {
     this.cleanupPending();
     this.apiRequestId = null;
@@ -217,31 +212,7 @@ export class AgentRunner {
 
     const session = await this.getOrCreateSession(path, cwd);
 
-    // Honor whatever the footer shows rather than a transient selection: read
-    // the persisted model and thinking level and apply them to the session.
-    const manager = getSettingsManager(getWorkspaceCwd());
-
-    const provider = manager.getDefaultProvider();
-    const modelId = manager.getDefaultModel();
-    if (provider && modelId && (session.model?.id !== modelId || session.model?.provider !== provider)) {
-      const model = session.modelRuntime.getModel(provider, modelId);
-      if (model) {
-        try {
-          await session.setModel(model);
-        } catch (err) {
-          logger.warn(`Could not apply persisted model ${provider}/${modelId}:`, err);
-        }
-      }
-    }
-
-    const level = manager.getDefaultThinkingLevel();
-    if (level && session.thinkingLevel !== level) {
-      try {
-        session.setThinkingLevel(level);
-      } catch (err) {
-        logger.warn(`Could not apply persisted thinking level ${level}:`, err);
-      }
-    }
+    await this.setModelAndThinking(session);
 
     const isNewSession = session.agent.state.messages.length === 0;
     const envDetails = await getEnvironmentDetails(cwd, isNewSession);
@@ -259,7 +230,22 @@ export class AgentRunner {
     this.session = session;
 
     this.setupSessionHook(session);
-    this.subscribeToSessionEvents(session);
+    this.unsubscribeSessionEvents = session.subscribe((event) => {
+      if (event.type === 'agent_settled' || event.type === 'agent_end') {
+        this.clearReplyQueue();
+      }
+
+      if (this.compacting && (event.type === 'compaction_start' || event.type === 'compaction_end')) {
+        return;
+      }
+
+      const { message, apiRequestId } = mapEvent(event, session, this.apiRequestId);
+      this.apiRequestId = apiRequestId;
+
+      if (message) {
+        this.messenger.post(message);
+      }
+    });
 
     return session;
   }
@@ -283,6 +269,8 @@ export class AgentRunner {
 
     const basePrepareContext = session.agent.prepareNextTurnWithContext;
     session.agent.prepareNextTurnWithContext = async (context, signal) => {
+      await this.setModelAndThinking(session);
+
       const snapshot = await basePrepareContext?.(context, signal);
       const cwd = getWorkspaceCwd();
 
@@ -334,26 +322,31 @@ export class AgentRunner {
     };
   }
 
-  private subscribeToSessionEvents(session: AgentSession): void {
-    this.unsubscribeSessionEvents = session.subscribe((event) => {
-      this.handleSessionEvent(event, session);
-    });
-  }
+  private async setModelAndThinking(session: AgentSession): Promise<void> {
+    // Honor whatever the footer shows rather than a transient selection: read
+    // the persisted model and thinking level and apply them to the session.
+    const manager = getSettingsManager(getWorkspaceCwd());
 
-  private handleSessionEvent(event: AgentSessionEvent, session: AgentSession): void {
-    if (event.type === 'agent_settled' || event.type === 'agent_end') {
-      this.clearReplyQueue();
+    const provider = manager.getDefaultProvider();
+    const modelId = manager.getDefaultModel();
+    if (provider && modelId && (session.model?.id !== modelId || session.model?.provider !== provider)) {
+      const model = session.modelRuntime.getModel(provider, modelId);
+      if (model) {
+        try {
+          await session.setModel(model);
+        } catch (err) {
+          logger.warn(`Could not apply persisted model ${provider}/${modelId}:`, err);
+        }
+      }
     }
 
-    if (this.compacting && (event.type === 'compaction_start' || event.type === 'compaction_end')) {
-      return;
-    }
-
-    const { message, apiRequestId } = mapEvent(event, session, this.apiRequestId);
-    this.apiRequestId = apiRequestId;
-
-    if (message) {
-      this.messenger.post(message);
+    const level = manager.getDefaultThinkingLevel();
+    if (level && session.thinkingLevel !== level) {
+      try {
+        session.setThinkingLevel(level);
+      } catch (err) {
+        logger.warn(`Could not apply persisted thinking level ${level}:`, err);
+      }
     }
   }
 
@@ -375,5 +368,10 @@ export class AgentRunner {
       }
       this.session = null;
     }
+  }
+
+  private cleanupPending(): void {
+    cancelAllQuestions();
+    cancelAllApprovals();
   }
 }
