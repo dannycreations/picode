@@ -35,7 +35,7 @@ describe('getMessageSearchText', () => {
       makeMessage({
         sender: 'tool',
         toolName: 'ask_question',
-        toolArgs: JSON.stringify({ question: 'Pick one', suggestions: [] }),
+        toolArgs: { question: 'Pick one', follow_up: [] },
         diff: JSON.stringify({ details: { response: 'answer' } }),
       }),
     );

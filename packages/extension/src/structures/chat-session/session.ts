@@ -3,11 +3,11 @@ import { calculateContextTokens, getLastAssistantUsage, parseSkillBlock } from '
 
 import { toBase64DataUrl } from '@pi-code/extension/utilities/codec';
 import { logger } from '@pi-code/shared/core/logger';
-import { EMPTY_STATS, serializeToolArgs } from '@pi-code/shared/utilities/common';
+import { EMPTY_STATS } from '@pi-code/shared/utilities/common';
 
 import type { ImageContent, TextContent, ThinkingContent, ToolCall, Usage } from '@earendil-works/pi-ai';
 import type { SessionEntry } from '@earendil-works/pi-coding-agent';
-import type { ChatMessage, ReadFileSection, StatsData, ToolName } from '@pi-code/shared/core/types';
+import type { ChatMessage, ReadFileSection, StatsData, ToolArguments, ToolName } from '@pi-code/shared/core/types';
 import type { TodoItem } from '@pi-code/shared/utilities/todo';
 
 type MessageContentPart = TextContent | ThinkingContent | ToolCall | ImageContent;
@@ -102,7 +102,7 @@ function appendMessage(result: ChatMessage[], id: string, msg: SessionMessage, t
         sender: 'tool',
         text: msg.command,
         toolName: 'execute_command',
-        toolArgs: `command: ${msg.command}`,
+        toolArgs: { command: msg.command },
         toolStatus: msg.cancelled ? 'denied' : 'completed',
         diff: msg.output,
         duration: 0,
@@ -142,7 +142,7 @@ function appendAssistantTurn(result: ChatMessage[], id: string, msg: Extract<Ses
       sender: 'tool',
       text: toolCall.name,
       toolName: toolCall.name as ToolName,
-      toolArgs: serializeToolArgs(toolCall.arguments),
+      toolArgs: toolCall.arguments as ToolArguments,
       toolStatus: 'completed',
       ts,
     });

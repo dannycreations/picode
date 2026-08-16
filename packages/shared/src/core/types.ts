@@ -12,6 +12,24 @@ export interface ActiveTaskState extends StatsData {
 export type ToolName =
   'ask_question' | 'delete_file' | 'edit_file' | 'execute_command' | 'read_file' | 'spawn_subagent' | 'update_todo' | 'write_file';
 
+export type ToolArguments =
+  // ask_question
+  | { question: string; follow_up: Array<{ text: string }> }
+  // delete_file
+  | { path: string }
+  // edit_file
+  | { file_path: string; old_string: string; new_string: string; expected?: number }
+  // execute_command
+  | { command: string; cwd?: string | null; timeout?: number }
+  // read_file
+  | { files: Array<{ path: string; line_ranges?: Array<[number, number]> }> }
+  // spawn_subagent
+  | { agent: string; description: string; task: string }
+  // update_todo
+  | { todos: Array<TodoItem> }
+  // write_file
+  | { path: string; content: string };
+
 export type ModelThinkingLevel = (typeof THINKING_LEVEL_ORDER)[number];
 
 export interface ReadFileSection {
@@ -39,7 +57,7 @@ export interface ChatMessage {
   readonly text: string;
   readonly ts: number;
   readonly toolName?: ToolName;
-  readonly toolArgs?: string;
+  readonly toolArgs?: ToolArguments;
   readonly toolStatus?: 'approval' | 'completed' | 'denied' | 'running';
   readonly reasoning?: string;
   readonly cost?: number;

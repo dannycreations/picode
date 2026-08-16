@@ -126,7 +126,7 @@ describe('groupToolMessages', () => {
   it('should keep separate headers when the tool name changes', () => {
     const messages = [
       createToolMessage('r1', 'read_file', { files: [{ path: 'a.ts', content: 'a' }] }),
-      createToolMessage('w1', 'write_file', { toolArgs: JSON.stringify({ path: 'b.ts' }), diff: '+ b' }),
+      createToolMessage('w1', 'write_file', { toolArgs: { path: 'b.ts', content: '' }, diff: '+ b' }),
     ];
 
     const result = groupToolMessages(messages);
@@ -164,7 +164,7 @@ describe('groupToolMessages', () => {
   it('should drop the tool-call placeholder and extract command from toolArgs JSON', () => {
     const messages = [
       createToolMessage('c0', 'execute_command', { text: 'execute_command' }),
-      createToolMessage('c1', 'execute_command', { text: 'execute_command', toolArgs: JSON.stringify({ command: 'rg -n "foo"' }), diff: 'output' }),
+      createToolMessage('c1', 'execute_command', { text: 'execute_command', toolArgs: { command: 'rg -n "foo"' }, diff: 'output' }),
     ];
 
     const result = groupToolMessages(messages);
@@ -178,12 +178,12 @@ describe('groupToolMessages', () => {
   it('should stack and group consecutive spawn_subagent calls', () => {
     const messages = [
       createToolMessage('s1', 'spawn_subagent', {
-        toolArgs: JSON.stringify({ agent: 'explore', description: 'find files', task: 'x' }),
+        toolArgs: { agent: 'explore', description: 'find files', task: 'x' },
         subagent: 'explore',
         diff: '<report-1>',
       }),
       createToolMessage('s2', 'spawn_subagent', {
-        toolArgs: JSON.stringify({ agent: 'review', description: 'review code', task: 'y' }),
+        toolArgs: { agent: 'review', description: 'review code', task: 'y' },
         subagent: 'review',
         diff: '<report-2>',
       }),

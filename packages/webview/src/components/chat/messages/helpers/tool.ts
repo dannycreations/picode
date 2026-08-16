@@ -1,6 +1,4 @@
-import { safeJsonParse } from '@pi-code/shared/utilities/common';
-
-import type { ChatMessage, ToolName, ToolSection } from '@pi-code/shared/core/types';
+import type { ChatMessage, ToolArguments, ToolName, ToolSection } from '@pi-code/shared/core/types';
 
 interface ToolMeta {
   readonly fileIcon: string;
@@ -99,25 +97,25 @@ function getToolLanguage(toolName?: string): string {
   return toolMeta(toolName).language;
 }
 
-function getToolFilePath(toolArgs?: string): string | undefined {
-  const parsed = safeJsonParse<Record<string, unknown>>(toolArgs);
-  if (!parsed || typeof parsed !== 'object') return undefined;
+function getToolFilePath(toolArgs?: ToolArguments): string | undefined {
+  if (!toolArgs || typeof toolArgs !== 'object') return undefined;
 
+  const record = toolArgs as Record<string, unknown>;
   for (const key of ['path', 'file_path']) {
-    if (typeof parsed[key] === 'string') return parsed[key];
+    if (typeof record[key] === 'string') return record[key];
   }
 
-  const files = parsed['files'];
-  if (Array.isArray(files) && typeof files[0]?.path === 'string') {
-    return files[0].path;
+  const files = record['files'];
+  if (Array.isArray(files)) {
+    const first = files[0] as { path?: unknown } | undefined;
+    if (first && typeof first.path === 'string') return first.path;
   }
 
   return undefined;
 }
 
-function parseToolArgs(toolArgs?: string): Record<string, unknown> | undefined {
-  const parsed = safeJsonParse<Record<string, unknown>>(toolArgs);
-  return parsed && typeof parsed === 'object' ? parsed : undefined;
+function parseToolArgs(toolArgs?: ToolArguments): Record<string, unknown> | undefined {
+  return toolArgs && typeof toolArgs === 'object' ? (toolArgs as Record<string, unknown>) : undefined;
 }
 
 function commandSection(message: ChatMessage): ToolSection[] {

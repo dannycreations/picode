@@ -29,10 +29,6 @@ export function safeJsonParse<T>(value?: string): T | undefined {
   }
 }
 
-export function serializeToolArgs(args: unknown): string {
-  return typeof args === 'string' ? args : JSON.stringify(args ?? {});
-}
-
 export function findOccurrences(haystack: string, needle: string, caseSensitive = false): number[] {
   if (needle === '') return [];
   const source = caseSensitive ? haystack : haystack.toLowerCase();

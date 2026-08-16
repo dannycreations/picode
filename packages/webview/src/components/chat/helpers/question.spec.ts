@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { findPendingQuestion, parseQuestionAnswer, parseQuestionData } from '@pi-code/webview/components/chat/helpers/question';
 
-import type { ChatMessage } from '@pi-code/shared/core/types';
+import type { ChatMessage, ToolArguments } from '@pi-code/shared/core/types';
 
 function createMessage(overrides: Partial<ChatMessage> = {}): ChatMessage {
   return {
@@ -17,10 +17,10 @@ function createMessage(overrides: Partial<ChatMessage> = {}): ChatMessage {
 
 describe('parseQuestionData', () => {
   it('should extract the question and suggestion texts', () => {
-    const args = JSON.stringify({
+    const args: ToolArguments = {
       question: 'Which package manager should I use?',
       follow_up: [{ text: 'Use pnpm' }, { text: 'Use npm' }],
-    });
+    };
 
     expect(parseQuestionData(args)).toEqual({
       question: 'Which package manager should I use?',
@@ -28,16 +28,15 @@ describe('parseQuestionData', () => {
     });
   });
 
-  it('should tolerate missing, blank, and plain string suggestions', () => {
-    const args = JSON.stringify({ question: 'Continue?', follow_up: ['Yes', { text: '  ' }, {}] });
+  it('should drop blank and empty suggestions', () => {
+    const args: ToolArguments = { question: 'Continue?', follow_up: [{ text: 'Yes' }, { text: '  ' }, { text: '' }] };
 
     expect(parseQuestionData(args)).toEqual({ question: 'Continue?', suggestions: ['Yes'] });
   });
 
-  it('should return undefined for malformed or unrelated arguments', () => {
+  it('should return undefined for missing or unrelated arguments', () => {
     expect(parseQuestionData(undefined)).toBeUndefined();
-    expect(parseQuestionData('not json')).toBeUndefined();
-    expect(parseQuestionData(JSON.stringify({ follow_up: [] }))).toBeUndefined();
+    expect(parseQuestionData({ path: 'unrelated.ts' })).toBeUndefined();
   });
 });
 

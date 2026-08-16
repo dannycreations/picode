@@ -1,6 +1,14 @@
 import type { HISTORY_SCOPES } from '@pi-code/shared/core/constants';
 import type { AppSettings } from '@pi-code/shared/core/settings';
-import type { ActiveTaskState, ChatMessage, ModelThinkingLevel, ReadFileSection, StatsData, ToolName } from '@pi-code/shared/core/types';
+import type {
+  ActiveTaskState,
+  ChatMessage,
+  ModelThinkingLevel,
+  ReadFileSection,
+  StatsData,
+  ToolArguments,
+  ToolName,
+} from '@pi-code/shared/core/types';
 import type { TodoItem } from '@pi-code/shared/utilities/todo';
 
 export interface HistoryItem {
@@ -79,8 +87,11 @@ export type ExtensionToWebviewMessage =
   | { type: 'message_end'; payload: { cost?: number; stats?: StatsData } }
   | { type: 'api_request_start'; payload: { id: string; timestamp: number } }
   | { type: 'api_request_end'; payload: { id: string; cost?: number; error?: string; stats?: StatsData } }
-  | { type: 'tool_approval_request'; payload: { id: string; tool_name: ToolName; arguments: string; subagent?: string; parentToolCallId?: string } }
-  | { type: 'tool_execution_start'; payload: { id: string; tool_name: ToolName; arguments: string; subagent?: string } }
+  | {
+      type: 'tool_approval_request';
+      payload: { id: string; tool_name: ToolName; arguments: ToolArguments; subagent?: string; parentToolCallId?: string };
+    }
+  | { type: 'tool_execution_start'; payload: { id: string; tool_name: ToolName; arguments: ToolArguments; subagent?: string } }
   | { type: 'tool_execution_update'; payload: { id: string; result: string; subagent?: string } }
   | {
       type: 'tool_execution_end';

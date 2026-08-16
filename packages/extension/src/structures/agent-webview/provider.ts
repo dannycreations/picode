@@ -9,7 +9,6 @@ import { dispatch } from '@pi-code/extension/structures/agent-webview/dispatcher
 import { WorkspaceService } from '@pi-code/extension/structures/agent-webview/workspace';
 import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
 import { CHAT_VIEW_TYPE, DEFAULT_APP_ID } from '@pi-code/shared/core/constants';
-import { serializeToolArgs } from '@pi-code/shared/utilities/common';
 
 import type { CancellationToken, ExtensionContext, Webview, WebviewView, WebviewViewProvider, WebviewViewResolveContext } from 'vscode';
 import type { MessageHandlerContext } from '@pi-code/extension/structures/agent-webview/types';
@@ -101,7 +100,7 @@ export class ChatViewProvider implements WebviewViewProvider {
         payload: {
           id: request.id,
           tool_name: request.toolName,
-          arguments: serializeToolArgs(request.args),
+          arguments: request.args,
           subagent: request.subagent,
           parentToolCallId: request.parentToolCallId,
         },

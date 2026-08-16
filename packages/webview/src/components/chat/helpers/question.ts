@@ -1,7 +1,7 @@
 import { safeJsonParse } from '@pi-code/shared/utilities/common';
 import { extractResultText } from '@pi-code/webview/components/chat/messages/helpers/common';
 
-import type { ChatMessage } from '@pi-code/shared/core/types';
+import type { ChatMessage, ToolArguments } from '@pi-code/shared/core/types';
 
 interface QuestionData {
   readonly question: string;
@@ -18,8 +18,8 @@ interface RawQuestionResult {
   readonly content?: Array<{ text?: unknown }>;
 }
 
-export function parseQuestionData(toolArgs?: string): QuestionData | undefined {
-  const parsed = safeJsonParse<RawQuestionArgs>(toolArgs);
+export function parseQuestionData(toolArgs?: ToolArguments): QuestionData | undefined {
+  const parsed = toolArgs as RawQuestionArgs | undefined;
   if (!parsed || typeof parsed.question !== 'string') return undefined;
 
   const followUp = Array.isArray(parsed.follow_up) ? parsed.follow_up : [];

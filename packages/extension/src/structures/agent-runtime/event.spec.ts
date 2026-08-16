@@ -63,7 +63,7 @@ describe('mapEvent', () => {
     expect((result1.message as any).payload).toEqual({
       id: 'call-1',
       tool_name: 'read_file',
-      arguments: '{"path":"file.ts"}',
+      arguments: { path: 'file.ts' },
       subagent: undefined,
     });
 
@@ -75,7 +75,7 @@ describe('mapEvent', () => {
       expect((result2.message as any).payload).toEqual({
         id: 'call-1',
         tool_name: 'read_file',
-        arguments: '{"path":"file.ts"}',
+        arguments: { path: 'file.ts' },
         subagent: 'explore',
       });
     } finally {
