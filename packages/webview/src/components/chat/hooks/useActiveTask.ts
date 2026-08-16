@@ -146,7 +146,7 @@ export const useActiveTask = (): UseActiveTaskReturn => {
         }
 
         case 'tool_approval_request': {
-          const { id, tool_name, arguments: toolArgs, subagent, parentToolCallId } = msg.payload;
+          const { id, tool_name, arguments: toolArgs, subagent, toolCallId } = msg.payload;
           updateMessages((messages) =>
             upsertToolMessage(settlePendingTurns(messages), id, {
               text: tool_name,
@@ -154,7 +154,7 @@ export const useActiveTask = (): UseActiveTaskReturn => {
               toolArgs,
               toolStatus: 'approval',
               subagent,
-              parentToolCallId,
+              toolCallId,
             }),
           );
           break;
@@ -181,12 +181,16 @@ export const useActiveTask = (): UseActiveTaskReturn => {
           updateMessages((messages) => {
             if (ignoreUnknownSubagent(messages, subagent, id)) return messages;
             const target = messages.find((m) => m.id === id);
+            const patch: Partial<ChatMessage> = {
+              diff: result,
+              ...(target?.toolName === 'spawn_subagent' && target.diff === undefined ? { ts: Date.now() } : {}),
+            };
             // Command output streams in chunks, so append each delta to the
             // running preview instead of replacing it like the discrete tools.
             if (target?.toolName === 'execute_command') {
               return patchMessage(messages, id, { diff: `${target.diff ?? ''}${result}` });
             }
-            return patchMessage(messages, id, { diff: result });
+            return patchMessage(messages, id, patch);
           });
           break;
         }

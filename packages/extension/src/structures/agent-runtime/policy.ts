@@ -79,6 +79,16 @@ export function getSubagentSessionName(sessionId: string): string | undefined {
   return subagentBySession.get(sessionId)?.name;
 }
 
+const approvalDurations = new Map<string, number>();
+
+export function getApprovalDuration(toolCallId: string): number | undefined {
+  return approvalDurations.get(toolCallId);
+}
+
+export function recordApprovalDuration(toolCallId: string, durationMs: number): void {
+  approvalDurations.set(toolCallId, durationMs);
+}
+
 const ALLOW: ToolCallEventResult = { block: false };
 
 export function createToolPolicyExtension(): InlineExtension {
@@ -98,7 +108,12 @@ export function createToolPolicyExtension(): InlineExtension {
         }
 
         const sessionInfo = subagentBySession.get(ctx.sessionManager.getSessionId());
+        const approvalStart = Date.now();
         const approved = await requestApproval(toolName, event.toolCallId, event.input, sessionInfo?.name, sessionInfo?.parentToolCallId);
+        const approvalDuration = Date.now() - approvalStart;
+        if (event.toolCallId) {
+          recordApprovalDuration(event.toolCallId, approvalDuration);
+        }
         return approved ? ALLOW : { block: true, reason: 'Action denied by user.' };
       });
     },

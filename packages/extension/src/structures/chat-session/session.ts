@@ -1,6 +1,7 @@
 import { contentText, uuidv7 } from '@earendil-works/pi-ai';
 import { calculateContextTokens, getLastAssistantUsage, parseSkillBlock } from '@earendil-works/pi-coding-agent';
 
+import { getApprovalDuration } from '@pi-code/extension/structures/agent-runtime/policy';
 import { toBase64DataUrl } from '@pi-code/extension/utilities/codec';
 import { logger } from '@pi-code/shared/core/logger';
 import { EMPTY_STATS } from '@pi-code/shared/utilities/common';
@@ -16,6 +17,7 @@ interface ToolResultDetails {
   readonly diff?: string;
   readonly todos?: TodoItem[];
   readonly files?: ReadonlyArray<ReadFileSection>;
+  readonly duration?: number;
 }
 
 function toContentParts(content: string | readonly MessageContentPart[]): readonly MessageContentPart[] {
@@ -161,13 +163,17 @@ function patchToolCall(result: ChatMessage[], msg: Extract<SessionMessage, { rol
   const resultText = contentText(msg.content);
   const details: ToolResultDetails | undefined = msg.details;
 
+  const rawDuration = Math.max(0, Math.round((ts - existing.ts) / 1000));
+  const approvalMs = msg.toolCallId ? getApprovalDuration(msg.toolCallId) : undefined;
+  const netDuration = approvalMs !== undefined ? Math.max(0, Math.round((ts - existing.ts - approvalMs) / 1000)) : rawDuration;
+
   result[index] = {
     ...existing,
     toolStatus: msg.isError ? 'denied' : 'completed',
     diff: details?.diff || resultText,
     todos: details?.todos,
     files: details?.files,
-    duration: Math.max(0, Math.round((ts - existing.ts) / 1000)),
+    duration: details?.duration !== undefined ? details.duration : netDuration,
     errorMessage: msg.isError ? resultText : existing.errorMessage,
   };
 }

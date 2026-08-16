@@ -89,7 +89,7 @@ export type ExtensionToWebviewMessage =
   | { type: 'api_request_end'; payload: { id: string; cost?: number; error?: string; stats?: StatsData } }
   | {
       type: 'tool_approval_request';
-      payload: { id: string; tool_name: ToolName; arguments: ToolArguments; subagent?: string; parentToolCallId?: string };
+      payload: { id: string; tool_name: ToolName; arguments: ToolArguments; subagent?: string; toolCallId?: string };
     }
   | { type: 'tool_execution_start'; payload: { id: string; tool_name: ToolName; arguments: ToolArguments; subagent?: string } }
   | { type: 'tool_execution_update'; payload: { id: string; result: string; subagent?: string } }

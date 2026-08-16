@@ -61,6 +61,7 @@ export interface SubagentOutcome {
   readonly steps: string;
   readonly usage: SubagentUsage;
   readonly error?: string;
+  readonly duration?: number;
 }
 
 interface SubagentInput {
@@ -69,7 +70,8 @@ interface SubagentInput {
   readonly cwd: string;
   readonly model?: Model<Api>;
   readonly signal?: AbortSignal;
-  readonly parentToolCallId?: string;
+  readonly toolCallId?: string;
+  readonly onStart?: () => void;
   readonly onProgress?: (steps: string) => void;
   readonly onEvent?: (event: AgentSessionEvent, session: AgentSession) => void;
 }
@@ -148,7 +150,7 @@ function collectUsage(session: AgentSession): SubagentUsage {
   return { turns, tokensIn, tokensOut, cost };
 }
 
-async function createChildSession(cwd: string, agent: SubagentDefinition, parentToolCallId?: string): Promise<AgentSession> {
+async function createChildSession(cwd: string, agent: SubagentDefinition, toolCallId?: string): Promise<AgentSession> {
   // Services are cached per workspace, so a child session reuses the parent's
   // model runtime, credentials, and tool policy extension instead of rebuilding
   // them. Only the transcript is separate, which is the point of delegation.
@@ -165,23 +167,32 @@ async function createChildSession(cwd: string, agent: SubagentDefinition, parent
 
   // Tag this child session so the shared tool policy can label any
   // confirmation prompts it raises with the sub-agent name.
-  registerSubagentSession(session.sessionId, agent.name, parentToolCallId);
+  registerSubagentSession(session.sessionId, agent.name, toolCallId);
 
   return session;
 }
 
 export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutcome> {
   const release = await acquireSpawnSlot();
+  const startTime = Date.now();
+  input.onStart?.();
   const collected: string[] = [];
 
   const steps = (): string => collected.slice(-10).join('\n');
 
   try {
     if (input.signal?.aborted) {
-      return { agent: input.agent.name, text: '', steps: '', usage: emptyUsage(), error: 'Sub-agent was cancelled.' };
+      return {
+        agent: input.agent.name,
+        text: '',
+        steps: '',
+        usage: emptyUsage(),
+        error: 'Sub-agent was cancelled.',
+        duration: Math.max(0, Math.round((Date.now() - startTime) / 1000)),
+      };
     }
 
-    const session = await createChildSession(input.cwd, input.agent, input.parentToolCallId);
+    const session = await createChildSession(input.cwd, input.agent, input.toolCallId);
     const onAbort = (): void => {
       void session.abort().catch((err) => logger.error('Failed to abort sub-agent session:', err));
     };
@@ -218,6 +229,7 @@ export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutco
         steps: steps(),
         usage: collectUsage(session),
         error: aborted ? 'Sub-agent was cancelled.' : error,
+        duration: Math.max(0, Math.round((Date.now() - startTime) / 1000)),
       };
     } finally {
       input.signal?.removeEventListener('abort', onAbort);

@@ -1,13 +1,22 @@
 import { useEffect, useState } from 'react';
 
 export function useElapsedSeconds(startTs: number, isActive: boolean): number {
-  const [now, setNow] = useState(() => Date.now());
+  const [elapsedMs, setElapsedMs] = useState(() => {
+    return isActive ? Date.now() - startTs : 0;
+  });
+
+  useEffect(() => {
+    setElapsedMs(isActive ? Date.now() - startTs : 0);
+  }, [startTs]);
 
   useEffect(() => {
     if (!isActive) return;
-    const timer = setInterval(() => setNow(Date.now()), 1000);
+    const runStart = Date.now() - elapsedMs;
+    const timer = setInterval(() => {
+      setElapsedMs(Date.now() - runStart);
+    }, 200);
     return () => clearInterval(timer);
   }, [isActive]);
 
-  return Math.max(0, Math.floor((now - startTs) / 1000));
+  return Math.max(0, Math.floor(elapsedMs / 1000));
 }

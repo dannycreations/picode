@@ -190,9 +190,9 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
                   defaultOpen={false}
                   isFirst={index === 0}
                   isLast={index === visibleSections.length - 1 && !hasMore && !hasSecApproval}
-                  showTimer={message.toolName === 'execute_command' || message.toolName === 'spawn_subagent'}
+                  showTimer={message.toolName === 'execute_command' || (message.toolName === 'spawn_subagent' && section.content !== undefined)}
                   isRunning={sectionStatus === 'running'}
-                  isActive={sectionStatus === 'running' || sectionStatus === 'approval'}
+                  isActive={sectionStatus === 'running'}
                   startTs={section.ts ?? message.ts}
                   duration={section.duration}
                   onOpenFile={openFile}

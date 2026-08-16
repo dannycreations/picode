@@ -16,6 +16,7 @@ interface SubagentDetails {
   readonly description: string;
   readonly steps: string;
   readonly usage?: SubagentUsage;
+  readonly duration?: number;
 }
 
 function formatUsage(usage: SubagentUsage): string {
@@ -93,7 +94,14 @@ ${describeSubagents()}
         cwd: ctx.cwd,
         model: ctx.model,
         signal,
-        parentToolCallId: toolCallId,
+        toolCallId,
+        onStart: onUpdate
+          ? () =>
+              onUpdate({
+                content: [{ type: 'text', text: `Running the ${agent.name} sub-agent...` }],
+                details: { agent: agent.name, description: params.description, steps: '' },
+              })
+          : undefined,
         onProgress: onUpdate
           ? (steps) =>
               onUpdate({
@@ -123,6 +131,7 @@ ${describeSubagents()}
         description: params.description,
         steps: outcome.steps,
         usage: outcome.usage,
+        duration: outcome.duration,
       };
 
       const report = renderOutcome(outcome, failed ? 'error' : 'completed');

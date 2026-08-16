@@ -59,8 +59,8 @@ export function groupToolMessages(messages: ReadonlyArray<ChatMessage>): ChatMes
   const approvalIdsToRemove = new Set<string>();
 
   for (const m of result) {
-    if (m.parentToolCallId !== undefined) {
-      const parentId = m.parentToolCallId;
+    if (m.toolCallId !== undefined) {
+      const parentId = m.toolCallId;
       const parentMsg = result.find((p) => p.toolSections?.some((section) => section.id === parentId));
 
       if (parentMsg && parentMsg.toolSections) {

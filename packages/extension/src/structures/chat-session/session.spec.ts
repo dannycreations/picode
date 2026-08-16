@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { recordApprovalDuration } from '@pi-code/extension/structures/agent-runtime/policy';
 import { collapseSkillBlock, convertSessionEntries } from '@pi-code/extension/structures/chat-session/session';
 
 import type { AssistantMessage, ToolResultMessage, UserMessage } from '@earendil-works/pi-ai';
@@ -80,5 +81,42 @@ describe('convertSessionEntries todo parsing', () => {
     const todoMsg = messages.find((m) => m.toolName === 'update_todo');
 
     expect(todoMsg?.todos).toEqual(todos);
+  });
+});
+
+describe('convertSessionEntries tool duration with approval pause', () => {
+  it('should subtract approval duration from tool call duration', () => {
+    const toolCallId = 'tc-paused-1';
+
+    // Record that the approval took 5000 milliseconds (5 seconds)
+    recordApprovalDuration(toolCallId, 5000);
+
+    const callTime = new Date('2026-08-16T08:00:00.000Z');
+    const resultTime = new Date('2026-08-16T08:00:08.000Z'); // 8 seconds total wall time
+
+    const entries: SessionEntry[] = [
+      {
+        id: 'm1',
+        type: 'message',
+        parentId: null,
+        timestamp: callTime.toISOString(),
+        message: assistantMessage([{ type: 'toolCall', id: toolCallId, name: 'execute_command', arguments: { command: 'npm run test' } }]),
+      },
+      {
+        id: 'm2',
+        type: 'message',
+        parentId: null,
+        timestamp: resultTime.toISOString(),
+        message: toolResultMessage(toolCallId, 'execute_command', 'success', {}),
+      },
+    ];
+
+    const messages = convertSessionEntries(entries);
+    const toolMsg = messages.find((m) => m.id === toolCallId);
+
+    // Total wall time: 8 seconds
+    // Approval duration: 5 seconds
+    // Net execution duration: 8 - 5 = 3 seconds
+    expect(toolMsg?.duration).toBe(3);
   });
 });
