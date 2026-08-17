@@ -10,7 +10,7 @@ interface UseInViewportReturn<T extends Element> {
   readonly hasBeenVisible: boolean;
 }
 
-export function useInViewport<T extends Element>(): UseInViewportReturn<T> {
+export const useInViewport = <T extends Element>(): UseInViewportReturn<T> => {
   const ref = useRef<T>(null);
   const [hasBeenVisible, setHasBeenVisible] = useState(false);
 
@@ -39,4 +39,4 @@ export function useInViewport<T extends Element>(): UseInViewportReturn<T> {
   }, [hasBeenVisible]);
 
   return { ref, hasBeenVisible };
-}
+};

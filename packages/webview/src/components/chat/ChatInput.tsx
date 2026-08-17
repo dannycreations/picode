@@ -1,14 +1,12 @@
 import { cn } from 'cnfast';
 import { Image as ImageIcon, Send } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
 
 import { logger } from '@pi-code/shared/core/logger';
-import { CommandMenu } from '@pi-code/webview/components/chat/CommandMenu';
-import { splitCommand } from '@pi-code/webview/components/chat/helpers/command';
-import { useChatCommand } from '@pi-code/webview/components/chat/hooks/useChatCommand';
-import { useChatMention } from '@pi-code/webview/components/chat/hooks/useChatMention';
-import { MentionMenu } from '@pi-code/webview/components/chat/MentionMenu';
+import { splitInputSegments } from '@pi-code/webview/components/chat/helpers/highlight';
+import { useChatCommand, useChatMention } from '@pi-code/webview/components/chat/hooks/useSuggestion';
+import { CommandMenu, MentionMenu } from '@pi-code/webview/components/chat/SuggestionMenu';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { readFileAsDataUrl } from '@pi-code/webview/utilities/common';
 
@@ -68,7 +66,7 @@ export const ChatInput: FC<ChatInputProps> = ({
 
   const command = useChatCommand({ commands, value: inputValue, setValue: setInputValue, textareaRef });
   const mention = useChatMention({ value: inputValue, setValue: setInputValue, textareaRef });
-  const match = useMemo(() => splitCommand(inputValue, commands), [inputValue, commands]);
+  const segments = useMemo(() => splitInputSegments(inputValue, commands), [inputValue, commands]);
 
   // Drop any staged images when the active model cannot accept them, so the
   // user cannot send attachments the model would reject.
@@ -166,13 +164,14 @@ export const ChatInput: FC<ChatInputProps> = ({
               'absolute inset-0 overflow-hidden whitespace-pre-wrap break-words text-transparent pointer-events-none select-none',
             )}
           >
-            {match ? (
-              <>
-                <mark className="command-match">{match.command}</mark>
-                {match.rest}
-              </>
-            ) : (
-              inputValue
+            {segments.map((segment, index) =>
+              segment.highlighted ? (
+                <mark key={index} className="command-match">
+                  {segment.text}
+                </mark>
+              ) : (
+                <Fragment key={index}>{segment.text}</Fragment>
+              ),
             )}
             {/* A block box collapses its trailing newline; pad it so the mirror keeps the textarea's height. */}
             {inputValue.endsWith('\n') ? '\n' : ''}

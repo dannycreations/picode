@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-export function useElapsedSeconds(startTs: number, isActive: boolean): number {
+export const useElapsedSeconds = (startTs: number, isActive: boolean): number => {
   const [elapsedMs, setElapsedMs] = useState(() => {
     return isActive ? Date.now() - startTs : 0;
   });
@@ -19,4 +19,4 @@ export function useElapsedSeconds(startTs: number, isActive: boolean): number {
   }, [isActive]);
 
   return Math.max(0, Math.floor(elapsedMs / 1000));
-}
+};
