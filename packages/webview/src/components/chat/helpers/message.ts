@@ -1,4 +1,4 @@
-import { buildToolSections, GROUP_TOOLS } from '@pi-code/webview/components/chat/messages/helpers/tool';
+import { buildToolSections, GROUP_TOOLS } from '@pi-code/shared/utilities/tool';
 
 import type { ChatMessage, ToolSection } from '@pi-code/shared/core/types';
 
@@ -34,9 +34,19 @@ function canGroupTool(message: ChatMessage): boolean {
 function collectToolSections(messages: ReadonlyArray<ChatMessage>): ToolSection[] {
   const sections: ToolSection[] = [];
   for (const message of messages) {
-    sections.push(...buildToolSections(message));
+    sections.push(...(message.toolSections ?? buildToolSections(message)));
   }
   return sections;
+}
+
+export function rebuildToolSections(messages: ChatMessage[], id: string): ChatMessage[] {
+  let changed = false;
+  const next = messages.map((message) => {
+    if (message.id !== id || message.sender !== 'tool') return message;
+    changed = true;
+    return { ...message, toolSections: buildToolSections(message) };
+  });
+  return changed ? next : messages;
 }
 
 export function groupToolMessages(messages: ReadonlyArray<ChatMessage>): ChatMessage[] {

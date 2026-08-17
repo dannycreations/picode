@@ -2,9 +2,8 @@ import { cn } from 'cnfast';
 import { Play, X } from 'lucide-react';
 import { Fragment, useEffect, useState } from 'react';
 
+import { buildToolSections, getDiffStat, getFileToolMeta, getFirstDiffLine } from '@pi-code/shared/utilities/tool';
 import { CodeBlock } from '@pi-code/webview/components/chat/CodeBlock';
-import { getDiffStat, getFirstDiffLine } from '@pi-code/webview/components/chat/messages/helpers/common';
-import { buildToolSections, getFileToolMeta } from '@pi-code/webview/components/chat/messages/helpers/tool';
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
 import { Spinner } from '@pi-code/webview/components/shared/Spinner';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';

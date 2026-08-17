@@ -1,6 +1,7 @@
 import { contentText, uuidv7 } from '@earendil-works/pi-ai';
 import { calculateContextTokens, getLastAssistantUsage, parseSkillBlock } from '@earendil-works/pi-coding-agent';
 
+import { buildToolSections } from '@pi-code/extension/shared/utilities/tool';
 import { getApprovalDuration } from '@pi-code/extension/structures/agent-runtime/policy';
 import { toBase64DataUrl } from '@pi-code/extension/utilities/codec';
 import { logger } from '@pi-code/shared/core/logger';
@@ -226,7 +227,9 @@ function calculateSessionStats(entries: readonly SessionEntry[], contextLimit: n
 }
 
 export function loadSessionTranscript(entries: readonly SessionEntry[], contextLimit: number): { messages: ChatMessage[]; stats: StatsData } {
-  const messages = convertSessionEntries(entries);
+  const messages = convertSessionEntries(entries).map((message) =>
+    message.sender === 'tool' ? { ...message, toolSections: buildToolSections(message) } : message,
+  );
   const stats = calculateSessionStats(entries, contextLimit);
   return { messages, stats };
 }

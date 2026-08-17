@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { buildToolSections } from '@pi-code/shared/utilities/tool';
 import {
   deliverQueuedReplies,
   groupToolMessages,
@@ -7,7 +8,6 @@ import {
   resolveApproval,
   upsertToolMessage,
 } from '@pi-code/webview/components/chat/helpers/message';
-import { buildToolSections } from '@pi-code/webview/components/chat/messages/helpers/tool';
 
 import type { ChatMessage, ToolName } from '@pi-code/shared/core/types';
 

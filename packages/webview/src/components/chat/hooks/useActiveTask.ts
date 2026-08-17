@@ -6,6 +6,7 @@ import {
   ignoreUnknownSubagent,
   patchLastAssistant,
   patchMessage,
+  rebuildToolSections,
   settlePendingTurns,
   upsertToolMessage,
 } from '@pi-code/webview/components/chat/helpers/message';
@@ -141,15 +142,18 @@ export const useActiveTask = (): UseActiveTaskReturn => {
         case 'tool_approval_request': {
           const { id, tool_name, arguments: toolArgs, subagent, toolCallId } = msg.payload;
           updateMessages((messages) =>
-            upsertToolMessage(settlePendingTurns(messages), id, {
-              text: tool_name,
-              toolName: tool_name,
-              toolArgs,
-              toolStatus: 'approval',
-              subagent,
-              toolCallId,
-              pausedAt: Date.now(),
-            }),
+            rebuildToolSections(
+              upsertToolMessage(settlePendingTurns(messages), id, {
+                text: tool_name,
+                toolName: tool_name,
+                toolArgs,
+                toolStatus: 'approval',
+                subagent,
+                toolCallId,
+                pausedAt: Date.now(),
+              }),
+              id,
+            ),
           );
           break;
         }
@@ -159,13 +163,16 @@ export const useActiveTask = (): UseActiveTaskReturn => {
           setIsAgentRunning(true);
           updateMessages((messages) => {
             if (ignoreUnknownSubagent(messages, subagent, id)) return messages;
-            return upsertToolMessage(settlePendingTurns(messages), id, {
-              text: tool_name,
-              toolName: tool_name,
-              toolArgs,
-              toolStatus: 'running',
-              subagent,
-            });
+            return rebuildToolSections(
+              upsertToolMessage(settlePendingTurns(messages), id, {
+                text: tool_name,
+                toolName: tool_name,
+                toolArgs,
+                toolStatus: 'running',
+                subagent,
+              }),
+              id,
+            );
           });
           break;
         }
@@ -178,9 +185,9 @@ export const useActiveTask = (): UseActiveTaskReturn => {
             // Command output streams in chunks, so append each delta to the
             // running preview instead of replacing it like the discrete tools.
             if (target?.toolName === 'execute_command') {
-              return patchMessage(messages, id, { diff: `${target.diff ?? ''}${result}`, subtitle });
+              return rebuildToolSections(patchMessage(messages, id, { diff: `${target.diff ?? ''}${result}`, subtitle }), id);
             }
-            return patchMessage(messages, id, { diff: result, subtitle });
+            return rebuildToolSections(patchMessage(messages, id, { diff: result, subtitle }), id);
           });
           break;
         }
@@ -193,14 +200,17 @@ export const useActiveTask = (): UseActiveTaskReturn => {
             }
             const existing = messages.find((m) => m.id === id);
             const duration = existing ? Math.max(0, Math.round((Date.now() - existing.ts) / 1000)) : undefined;
-            return patchMessage(messages, id, {
-              todos,
-              files,
-              toolStatus: is_error ? 'denied' : 'completed',
-              diff: result,
-              duration,
-              subtitle,
-            });
+            return rebuildToolSections(
+              patchMessage(messages, id, {
+                todos,
+                files,
+                toolStatus: is_error ? 'denied' : 'completed',
+                diff: result,
+                duration,
+                subtitle,
+              }),
+              id,
+            );
           });
           break;
         }

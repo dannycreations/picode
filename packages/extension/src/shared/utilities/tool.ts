@@ -199,3 +199,29 @@ export function getFileToolMeta(toolName: string | undefined, status?: string): 
 
   return { title, icon: meta.fileIcon };
 }
+
+interface DiffStat {
+  readonly added: number;
+  readonly removed: number;
+}
+
+export function getFirstDiffLine(diff?: string): number | undefined {
+  if (!diff) return undefined;
+  const match = diff.match(/^@@ -\d+(?:,\d+)? \+(\d+)/m);
+  if (!match) return undefined;
+  const line = Number.parseInt(match[1], 10);
+  return Number.isFinite(line) && line > 0 ? line : undefined;
+}
+
+export function getDiffStat(diff?: string): DiffStat | undefined {
+  if (!diff) return undefined;
+  let added = 0;
+  let removed = 0;
+  for (const line of diff.split('\n')) {
+    if (/^\+\+\+ /.test(line) || /^--- /.test(line)) continue;
+    if (line.startsWith('+')) added++;
+    else if (line.startsWith('-')) removed++;
+  }
+  if (added === 0 && removed === 0) return undefined;
+  return { added, removed };
+}
