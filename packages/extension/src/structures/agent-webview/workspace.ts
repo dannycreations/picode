@@ -60,9 +60,8 @@ export class WorkspaceService {
     const target = Uri.joinPath(this.storageUri, 'images', `pi-code-img-${Date.now()}.${extensionForMimeType(parts.mimeType)}`);
 
     await workspace.fs.createDirectory(Uri.joinPath(this.storageUri, 'images'));
-    if (await this.writeBase64DataUrl(target, parts.data)) {
-      await commands.executeCommand('vscode.open', target);
-    }
+    await this.writeBase64DataUrl(target, parts.data);
+    await commands.executeCommand('vscode.open', target);
   }
 
   public async saveImage(dataUrl: string, filename: string): Promise<void> {
@@ -77,9 +76,8 @@ export class WorkspaceService {
     await this.writeBase64DataUrl(uri, parts.data);
   }
 
-  private async writeBase64DataUrl(uri: Uri, data: string): Promise<boolean> {
+  private async writeBase64DataUrl(uri: Uri, data: string): Promise<void> {
     await workspace.fs.writeFile(uri, Buffer.from(data, 'base64'));
-    return true;
   }
 
   private async findEditorForUri(uri: Uri, attempts: number, delayMs: number): Promise<TextEditor | undefined> {

@@ -350,9 +350,9 @@ export const ChatView: FC = () => {
 
       {/* Action Buttons */}
       <ChatAction
+        activeTask={activeTask}
         showScrollToBottom={showScrollToBottom}
         isAgentRunning={isAgentRunning}
-        activeTask={activeTask}
         onScrollToBottom={scrollToBottom}
         onCancelTask={handleCancelTask}
         onCloseTask={handleCloseTask}
@@ -364,7 +364,6 @@ export const ChatView: FC = () => {
             path: activeTask.path,
           });
         }}
-        isArchived={activeTask?.isArchived}
         isAwaitingApproval={isAwaitingApproval}
       />
 

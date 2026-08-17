@@ -26,7 +26,7 @@ export async function* walkDirectory(start: string, maxDepth: number, root: stri
 
     for (const dirent of entries) {
       const abs = resolve(dir, dirent.name);
-      yield { abs, rel: relative(root, abs).split('\\').join('/'), dirent };
+      yield { abs, rel: toPosixPath(abs, root), dirent };
       if (dirent.isDirectory() && depth < maxDepth) {
         yield* walk(abs, depth + 1);
       }
@@ -71,11 +71,9 @@ export async function searchWorkspaceFiles(query: string, cwd: string): Promise<
       stopped = true;
       break;
     }
-    if (dirent.isFile() || dirent.isDirectory()) {
-      if (rel.toLowerCase().includes(needle)) {
-        results.push(rel);
-      }
-    }
+    if (!dirent.isFile() && !dirent.isDirectory()) continue;
+    if (!rel.toLowerCase().includes(needle)) continue;
+    results.push(rel);
   }
 
   return results.slice(0, MAX_RESULTS);

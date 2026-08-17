@@ -24,23 +24,23 @@ export const SettingControl: FC<SettingControlProps> = ({ settingKey, draftSetti
   const Icon = field.icon;
   const icon = Icon ? <Icon size={14} className="text-vscode-descriptionForeground shrink-0" /> : undefined;
 
+  const currentMatched = parentMatched || (searchQuery.trim() ? matchesQuery(settingKey, searchQuery) : false);
+  const childKeys = getChildFieldKeys(settingKey).filter((childKey) => isFieldVisible(childKey, searchQuery, currentMatched));
+  const children = childKeys.length
+    ? childKeys.map((childKey) => (
+        <SettingControl
+          key={childKey}
+          settingKey={childKey}
+          draftSettings={draftSettings}
+          onChange={onChange}
+          searchQuery={searchQuery}
+          parentMatched={currentMatched}
+        />
+      ))
+    : undefined;
+
   switch (spec.type) {
     case 'boolean': {
-      const currentMatched = parentMatched || (searchQuery.trim() ? matchesQuery(settingKey, searchQuery) : false);
-      const childKeys = getChildFieldKeys(settingKey).filter((childKey) => isFieldVisible(childKey, searchQuery, currentMatched));
-      const children = childKeys.length
-        ? childKeys.map((childKey) => (
-            <SettingControl
-              key={childKey}
-              settingKey={childKey}
-              draftSettings={draftSettings}
-              onChange={onChange}
-              searchQuery={searchQuery}
-              parentMatched={currentMatched}
-            />
-          ))
-        : undefined;
-
       return (
         <SettingCheckbox
           label={field.label}
@@ -55,21 +55,6 @@ export const SettingControl: FC<SettingControlProps> = ({ settingKey, draftSetti
     }
 
     case 'number': {
-      const currentMatched = parentMatched || (searchQuery.trim() ? matchesQuery(settingKey, searchQuery) : false);
-      const childKeys = getChildFieldKeys(settingKey).filter((childKey) => isFieldVisible(childKey, searchQuery, currentMatched));
-      const children = childKeys.length
-        ? childKeys.map((childKey) => (
-            <SettingControl
-              key={childKey}
-              settingKey={childKey}
-              draftSettings={draftSettings}
-              onChange={onChange}
-              searchQuery={searchQuery}
-              parentMatched={currentMatched}
-            />
-          ))
-        : undefined;
-
       return (
         <div className="flex flex-col gap-4">
           <SettingSlider

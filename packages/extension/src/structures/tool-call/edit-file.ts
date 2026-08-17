@@ -48,9 +48,7 @@ function buildWhitespaceTolerantRegex(oldLF: string): RegExp {
     if (/\s/.test(oldLF[i])) {
       let hasNewline = false;
       while (i < len && /\s/.test(oldLF[i])) {
-        if (oldLF[i] === '\n') {
-          hasNewline = true;
-        }
+        hasNewline = hasNewline || oldLF[i] === '\n';
         i++;
       }
       pattern += hasNewline ? '\\s+' : '[\\t ]+';

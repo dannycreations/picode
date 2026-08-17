@@ -79,7 +79,13 @@ export function applyCommand(text: string, name: string): CommandInsertion {
   const token = readCommandToken(text);
   const rest = token ? text.slice(token.end) : text;
   const command = `/${name}`;
-  const body = /^\s/.test(rest) ? rest : ` ${rest}`;
+
+  let body: string;
+  if (/^\s/.test(rest)) {
+    body = rest;
+  } else {
+    body = ` ${rest}`;
+  }
 
   return { text: `${command}${body}`, caret: command.length + 1 };
 }

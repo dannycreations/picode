@@ -60,8 +60,6 @@ export interface ToolSection {
   readonly approvalMessage?: ChatMessage;
 }
 
-export type ChatSender = 'api_request' | 'assistant' | 'checkpoint' | 'error' | 'info' | 'queue' | 'tool' | 'user';
-
 interface ChatMessageBase {
   readonly id: string;
   readonly text: string;

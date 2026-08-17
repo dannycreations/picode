@@ -3,7 +3,7 @@ import { commands, languages, Range, window } from 'vscode';
 import { getSelectionContext, mapDiagnostics } from '@pi-code/extension/structures/add-to-context/helpers';
 import { ChatViewProvider } from '@pi-code/extension/structures/agent-webview/provider';
 
-import type { Disposable } from 'vscode';
+import type { Diagnostic, Disposable } from 'vscode';
 import type { MappedDiagnostic } from '@pi-code/extension/structures/add-to-context/helpers';
 
 interface ResolvedSelection {
@@ -45,49 +45,44 @@ export function registerAddToContextCommand(chatViewProvider: ChatViewProvider):
   });
 }
 
+function formatDiagnosticBlock(diagnostics: readonly MappedDiagnostic[]): string {
+  const lines = diagnostics.map((d) => `- [${d.source || 'Error'}] ${d.message}${d.code ? ` (${d.code})` : ''}`).join('\n');
+  return `Current problems:\n${lines}`;
+}
+
+function intersectsSelection(selectionRange: Range, diagnostic: Diagnostic): boolean {
+  const r1 = selectionRange;
+  const r2 = diagnostic.range;
+  if (r1.end.line < r2.start.line || (r1.end.line === r2.start.line && r1.end.character <= r2.start.character)) {
+    return false;
+  }
+  if (r2.end.line < r1.start.line || (r2.end.line === r1.start.line && r2.end.character <= r1.start.character)) {
+    return false;
+  }
+  return true;
+}
+
+function collectSelectionDiagnostics(selection: ResolvedSelection): string {
+  const editor = window.activeTextEditor;
+  if (!editor) return '';
+
+  const selectionRange = new Range(selection.startLine - 1, 0, selection.endLine - 1, editor.document.lineAt(selection.endLine - 1).text.length);
+
+  const intersecting = languages.getDiagnostics(editor.document.uri).filter((d) => intersectsSelection(selectionRange, d));
+  const diagnostics = mapDiagnostics(intersecting);
+  return diagnostics.length > 0 ? formatDiagnosticBlock(diagnostics) : '';
+}
+
 export function registerFixCodeCommand(chatViewProvider: ChatViewProvider): Disposable {
   return commands.registerCommand('pi-code.fixCode', async (...args: any[]) => {
     const selection = resolveSelection(args);
     if (!selection) return;
 
-    let diagnosticText = '';
     const passedDiagnostics = args[4] as MappedDiagnostic[] | undefined;
-
-    if (Array.isArray(passedDiagnostics) && passedDiagnostics.length > 0) {
-      diagnosticText = `Current problems:\n${passedDiagnostics
-        .map((d) => `- [${d.source || 'Error'}] ${d.message}${d.code ? ` (${d.code})` : ''}`)
-        .join('\n')}`;
-    } else {
-      // Fallback when invoked without pre-computed diagnostics (e.g. from a keybinding).
-      const editor = window.activeTextEditor;
-      if (editor) {
-        const selectionRange = new Range(
-          selection.startLine - 1,
-          0,
-          selection.endLine - 1,
-          editor.document.lineAt(selection.endLine - 1).text.length,
-        );
-
-        const intersecting = languages.getDiagnostics(editor.document.uri).filter((d) => {
-          const r1 = selectionRange;
-          const r2 = d.range;
-          if (r1.end.line < r2.start.line || (r1.end.line === r2.start.line && r1.end.character <= r2.start.character)) {
-            return false;
-          }
-          if (r2.end.line < r1.start.line || (r2.end.line === r1.start.line && r2.end.character <= r1.start.character)) {
-            return false;
-          }
-          return true;
-        });
-
-        const diagnostics = mapDiagnostics(intersecting);
-        if (diagnostics.length > 0) {
-          diagnosticText = `Current problems:\n${diagnostics
-            .map((d) => `- [${d.source || 'Error'}] ${d.message}${d.code ? ` (${d.code})` : ''}`)
-            .join('\n')}`;
-        }
-      }
-    }
+    const diagnosticText =
+      Array.isArray(passedDiagnostics) && passedDiagnostics.length > 0
+        ? formatDiagnosticBlock(passedDiagnostics)
+        : collectSelectionDiagnostics(selection);
 
     await commands.executeCommand('pi-code.chatView.focus');
 

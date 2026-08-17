@@ -124,7 +124,14 @@ function commandSection(message: ToolChatMessage): ToolSection[] {
 
   if (command === undefined && message.diff === undefined) return [];
 
-  const title = command ?? (message.text !== message.toolName ? message.text : undefined) ?? 'Command';
+  let title: string;
+  if (command !== undefined) {
+    title = command;
+  } else if (message.text !== message.toolName) {
+    title = message.text;
+  } else {
+    title = 'Command';
+  }
 
   return [{ title, content: message.diff, language: 'shell' }];
 }
@@ -133,7 +140,16 @@ function subagentSection(message: ToolChatMessage): ToolSection[] {
   const args = parseToolArgs(message.toolArgs);
   const agent = typeof args?.['agent'] === 'string' ? args['agent'] : message.subagent;
   const description = typeof args?.['description'] === 'string' ? args['description'] : undefined;
-  const title = agent ? (description ? `${agent}: ${description}` : agent) : (description ?? 'Sub-agent');
+  let title: string;
+  if (agent && description) {
+    title = `${agent}: ${description}`;
+  } else if (agent) {
+    title = agent;
+  } else if (description) {
+    title = description;
+  } else {
+    title = 'Sub-agent';
+  }
   return [{ title, subtitle: message.subtitle, content: message.diff, language: 'text' }];
 }
 
@@ -189,14 +205,17 @@ export function buildToolSections(message: ChatMessage): ToolSection[] {
 
 export function getFileToolMeta(toolName: string | undefined, status?: string): { title: string; icon: string } {
   const meta = toolMeta(toolName);
-  const title =
-    status === 'running'
-      ? meta.fileTitle.running
-      : status === 'approval'
-        ? meta.fileTitle.approval
-        : status === 'denied'
-          ? meta.fileTitle.denied
-          : meta.fileTitle.done;
+
+  let title: string;
+  if (status === 'running') {
+    title = meta.fileTitle.running;
+  } else if (status === 'approval') {
+    title = meta.fileTitle.approval;
+  } else if (status === 'denied') {
+    title = meta.fileTitle.denied;
+  } else {
+    title = meta.fileTitle.done;
+  }
 
   return { title, icon: meta.fileIcon };
 }

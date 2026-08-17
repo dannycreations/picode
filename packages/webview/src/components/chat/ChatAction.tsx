@@ -4,30 +4,28 @@ import type { FC } from 'react';
 import type { ActiveTaskState } from '@pi-code/shared/core/types';
 
 interface ChatActionProps {
+  readonly activeTask: ActiveTaskState | null;
   readonly showScrollToBottom: boolean;
   readonly isAgentRunning: boolean;
-  readonly activeTask: ActiveTaskState | null;
   readonly isAwaitingApproval: boolean;
   readonly onScrollToBottom: () => void;
   readonly onCancelTask: () => void;
   readonly onCloseTask: () => void;
   readonly onContinueTask: () => void;
-  readonly isArchived?: boolean;
 }
 
 export const ChatAction: FC<ChatActionProps> = ({
+  activeTask,
   showScrollToBottom,
   isAgentRunning,
-  activeTask,
   isAwaitingApproval,
   onScrollToBottom,
   onCancelTask,
   onCloseTask,
   onContinueTask,
-  isArchived,
 }) => {
   // Archived tasks are read-only, so their action bar is hidden entirely.
-  if (isArchived) return null;
+  if (activeTask?.isArchived) return null;
 
   const showActionButtons = activeTask && (showScrollToBottom || isAgentRunning || !isAwaitingApproval);
 

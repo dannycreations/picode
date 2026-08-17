@@ -11,6 +11,7 @@ import { getWorkspaceUri } from '@pi-code/extension/utilities/vscode';
 import { logger } from '@pi-code/shared/core/logger';
 
 import type { Disposable, Uri } from 'vscode';
+import type { Repository } from '@pi-code/extension/types/git';
 
 interface ScmRequest {
   readonly rootUri?: Uri;
@@ -54,6 +55,59 @@ function buildPrompt(gitContext: string, userInstruction: string, rejectedMessag
   return sections.join('\n\n').trim();
 }
 
+function resolveRegeneration(cwd: string, userMessage: string): { userInstruction: string; rejectedMessage: string } {
+  const previousGenerated = lastGeneratedMessages.get(cwd);
+  const isRegeneration = Boolean(previousGenerated && userMessage.trim() === previousGenerated.trim());
+
+  if (!isRegeneration) {
+    lastUserInstructions.set(cwd, userMessage);
+    lastGeneratedMessages.delete(cwd);
+    return { userInstruction: userMessage, rejectedMessage: '' };
+  }
+
+  // Re-running while the input box still holds the previous suggestion means the
+  // user rejected it, so feed it back as a negative example with the instruction.
+  logger.info('Input box value matches previously generated message. Treating as a re-generation.');
+  return {
+    userInstruction: lastUserInstructions.get(cwd) ?? '',
+    rejectedMessage: previousGenerated ?? '',
+  };
+}
+
+type ResolvedGitChanges = Awaited<ReturnType<typeof getGitChanges>>['changes'];
+
+async function generateAndApply(
+  repo: Repository,
+  cwd: string,
+  changes: ResolvedGitChanges,
+  useStaged: boolean,
+  userInstruction: string,
+  rejectedMessage: string,
+): Promise<void> {
+  logger.info('Generating diff and repo context...');
+  const [diff, { branch, recentCommits }] = await Promise.all([getGitDiffContext(repo, changes, useStaged), getRepoContext(repo)]);
+  logger.info(`Generated diff context (character length: ${diff.length})`);
+  logger.info(`Current Branch: ${branch}`);
+  logger.info(`Recent Commits count: ${recentCommits.split('\n').filter(Boolean).length}`);
+
+  const gitContext = buildGitContext(changes, diff, branch, recentCommits, useStaged);
+  const prompt = buildPrompt(gitContext, userInstruction, rejectedMessage);
+  logger.info(`Fully assembled prompt (character length: ${prompt.length})`);
+
+  const rawMessage = await completePrompt(cwd, prompt);
+  logger.info(`Raw LLM response: ${rawMessage}`);
+
+  const cleanMessage = extractCodeFenceMessage(rawMessage);
+  logger.info(`Extracted commit message: ${cleanMessage}`);
+  if (!cleanMessage) {
+    throw new Error('Empty response received from model.');
+  }
+
+  repo.inputBox.value = cleanMessage;
+  lastGeneratedMessages.set(cwd, cleanMessage);
+  logger.info('Updated inputBox value successfully.');
+}
+
 async function completePrompt(cwd: string, prompt: string): Promise<string> {
   const runtime = (await createAgentResources(cwd)).services.modelRuntime;
   const { id, provider } = await getDefaultModelSelection(cwd);
@@ -69,13 +123,15 @@ async function completePrompt(cwd: string, prompt: string): Promise<string> {
   });
   logger.info('Completion response received successfully.');
 
-  return (
-    contentText(response.content).trim() ||
-    response.content
-      .filter((block) => block.type === 'thinking')
-      .map((block) => block.thinking)
-      .join('\n')
-  );
+  const primaryText = contentText(response.content).trim();
+  if (primaryText) {
+    return primaryText;
+  }
+
+  return response.content
+    .filter((block) => block.type === 'thinking')
+    .map((block) => block.thinking)
+    .join('\n');
 }
 
 export function registerCommitMessageCommand(): Disposable {
@@ -112,21 +168,7 @@ export function registerCommitMessageCommand(): Disposable {
         // suggestion means the user rejected it, so feed it back as a negative
         // example along with the instruction that produced it.
         const userMessage = repo.inputBox.value;
-        const previousGenerated = lastGeneratedMessages.get(cwd);
-        const isRegeneration = Boolean(previousGenerated && userMessage.trim() === previousGenerated.trim());
-
-        let userInstruction = userMessage;
-        let rejectedMessage = '';
-
-        if (isRegeneration) {
-          logger.info('Input box value matches previously generated message. Treating as a re-generation.');
-          userInstruction = lastUserInstructions.get(cwd) || '';
-          rejectedMessage = previousGenerated ?? '';
-        } else {
-          logger.info(`Gathered new user instruction from input box: ${userMessage}`);
-          lastUserInstructions.set(cwd, userMessage);
-          lastGeneratedMessages.delete(cwd);
-        }
+        const { userInstruction, rejectedMessage } = resolveRegeneration(cwd, userMessage);
 
         await window.withProgress(
           {
@@ -135,28 +177,7 @@ export function registerCommitMessageCommand(): Disposable {
             cancellable: false,
           },
           async () => {
-            logger.info('Generating diff and repo context...');
-            const [diff, { branch, recentCommits }] = await Promise.all([getGitDiffContext(repo, changes, useStaged), getRepoContext(repo)]);
-            logger.info(`Generated diff context (character length: ${diff.length})`);
-            logger.info(`Current Branch: ${branch}`);
-            logger.info(`Recent Commits count: ${recentCommits.split('\n').filter(Boolean).length}`);
-
-            const gitContext = buildGitContext(changes, diff, branch, recentCommits, useStaged);
-            const prompt = buildPrompt(gitContext, userInstruction, rejectedMessage);
-            logger.info(`Fully assembled prompt (character length: ${prompt.length})`);
-
-            const rawMessage = await completePrompt(cwd, prompt);
-            logger.info(`Raw LLM response: ${rawMessage}`);
-
-            const cleanMessage = extractCodeFenceMessage(rawMessage);
-            logger.info(`Extracted commit message: ${cleanMessage}`);
-            if (!cleanMessage) {
-              throw new Error('Empty response received from model.');
-            }
-
-            repo.inputBox.value = cleanMessage;
-            lastGeneratedMessages.set(cwd, cleanMessage);
-            logger.info('Updated inputBox value successfully.');
+            await generateAndApply(repo, cwd, changes, useStaged, userInstruction, rejectedMessage);
           },
         );
       } finally {

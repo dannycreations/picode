@@ -99,8 +99,11 @@ export function buildGitContext(changes: ResolvedGitChange[], diff: string, bran
     const summaryLines = changes.map((c) => {
       const scope = c.isStaged ? 'staged' : 'unstaged';
       let statusName = 'Modified';
-      if (c.isUntracked) statusName = 'Added';
-      else if (c.isDeleted) statusName = 'Deleted';
+      if (c.isUntracked) {
+        statusName = 'Added';
+      } else if (c.isDeleted) {
+        statusName = 'Deleted';
+      }
       return `${statusName} (${scope}): ${c.relativePath}`;
     });
     context += '### Change Summary\n\n```\n' + summaryLines.join('\n') + '\n```\n\n';

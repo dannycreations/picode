@@ -143,11 +143,12 @@ export async function loadSessionDetails(
   const sessionModelId = sessionContextModel?.modelId ?? (await getDefaultModelSelection(cwd)).id;
   const sessionProvider = sessionContextModel?.provider;
 
-  const model = sessionModelId
-    ? sessionProvider
-      ? modelRuntime.getModel(sessionProvider, sessionModelId)
-      : modelRuntime.getModels().find((candidate) => candidate.id === sessionModelId)
-    : undefined;
+  let model: Model<Api> | undefined;
+  if (sessionModelId && sessionProvider) {
+    model = modelRuntime.getModel(sessionProvider, sessionModelId);
+  } else if (sessionModelId) {
+    model = modelRuntime.getModels().find((candidate) => candidate.id === sessionModelId);
+  }
 
   return loadSessionTranscript(entries, model?.contextWindow ?? EMPTY_STATS.contextLimit);
 }

@@ -18,7 +18,7 @@ import { logger } from '@pi-code/shared/core/logger';
 import { EMPTY_STATS } from '@pi-code/shared/utilities/common';
 
 import type { ImageContent, ModelThinkingLevel, TextContent } from '@earendil-works/pi-ai';
-import type { AgentSession } from '@earendil-works/pi-coding-agent';
+import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent';
 import type { Webview } from 'vscode';
 import type { ExtensionToWebviewMessage, ModelSelection } from '@pi-code/shared/core/protocol';
 import type { ChatMessage, StatsData } from '@pi-code/shared/core/types';
@@ -230,24 +230,26 @@ export class AgentRunner {
     this.session = session;
 
     this.setupSessionHook(session);
-    this.unsubscribeSessionEvents = session.subscribe((event) => {
-      if (event.type === 'agent_settled' || event.type === 'agent_end') {
-        this.clearReplyQueue();
-      }
-
-      if (this.compacting && (event.type === 'compaction_start' || event.type === 'compaction_end')) {
-        return;
-      }
-
-      const { message, apiRequestId } = mapEvent(event, session, this.apiRequestId);
-      this.apiRequestId = apiRequestId;
-
-      if (message) {
-        this.messenger.post(message);
-      }
-    });
+    this.unsubscribeSessionEvents = session.subscribe((event) => this.handleSessionEvent(event, session));
 
     return session;
+  }
+
+  private handleSessionEvent(event: AgentSessionEvent, session: AgentSession): void {
+    if (event.type === 'agent_settled' || event.type === 'agent_end') {
+      this.clearReplyQueue();
+    }
+
+    if (this.compacting && (event.type === 'compaction_start' || event.type === 'compaction_end')) {
+      return;
+    }
+
+    const { message, apiRequestId } = mapEvent(event, session, this.apiRequestId);
+    this.apiRequestId = apiRequestId;
+
+    if (message) {
+      this.messenger.post(message);
+    }
   }
 
   private setupSessionHook(session: AgentSession): void {
@@ -284,18 +286,9 @@ export class AgentRunner {
             continue;
           }
 
-          const attachments = parseImageAttachments(msg.images);
-          const text = await expandMentions(msg.text, cwd);
-          const content: (TextContent | ImageContent)[] = [{ type: 'text', text }];
-          if (attachments) {
-            content.push(...attachments);
-          }
-
-          try {
-            session.agent.steer({ role: 'user', content, timestamp: msg.ts });
+          if (await this.steerQueuedReply(msg, cwd, session, msg.images)) {
             delivered.push({ id: msg.id, sender: 'user', text: msg.text, images: msg.images, ts: msg.ts });
-          } catch (err) {
-            logger.error('Failed to steer queued reply, keeping it for later:', err);
+          } else {
             undelivered.push(msg);
           }
         }
@@ -325,6 +318,22 @@ export class AgentRunner {
 
       return snapshot;
     };
+  }
+
+  private async steerQueuedReply(msg: ChatMessage, cwd: string, session: AgentSession, images: string[] | undefined): Promise<boolean> {
+    try {
+      const attachments = parseImageAttachments(images);
+      const text = await expandMentions(msg.text, cwd);
+      const content: (TextContent | ImageContent)[] = [{ type: 'text', text }];
+      if (attachments) {
+        content.push(...attachments);
+      }
+      session.agent.steer({ role: 'user', content, timestamp: msg.ts });
+      return true;
+    } catch (err) {
+      logger.error('Failed to steer queued reply, keeping it for later:', err);
+      return false;
+    }
   }
 
   private async setModelAndThinking(session: AgentSession): Promise<void> {

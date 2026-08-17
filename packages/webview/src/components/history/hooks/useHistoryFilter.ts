@@ -40,13 +40,20 @@ export const useHistoryFilter = (history: HistoryItem[], itemsPerPage: number): 
     return result;
   }, [history, searchQuery, sortBy]);
 
-  // Reset page when search or sort changes
+  // Reset to the first page when the query or sort order changes.
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, sortBy]);
 
   // Pagination bounds logic
   const totalPages = Math.max(1, Math.ceil(filteredHistory.length / itemsPerPage));
+
+  // After deletion shrinks the list, keep the current page within range so a
+  // now-empty page does not replace a populated one.
+  useEffect(() => {
+    setCurrentPage((prev) => Math.min(prev, totalPages));
+  }, [totalPages]);
+
   const paginatedItems = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     return filteredHistory.slice(startIndex, startIndex + itemsPerPage);

@@ -83,19 +83,20 @@ export function resolvePathAction(
     return action;
   }
 
-  if (cwd) {
-    try {
-      const absoluteCwd = resolve(cwd);
-      const absoluteFile = resolve(cwd, filePath);
-      const relativePath = relative(absoluteCwd, absoluteFile);
+  if (!cwd) {
+    return 'confirm';
+  }
 
-      const isInside = !relativePath.startsWith('..') && !isAbsolute(relativePath);
-      if (isInside) {
-        return 'approve';
-      }
-    } catch {
-      return 'confirm';
+  try {
+    const absoluteCwd = resolve(cwd);
+    const absoluteFile = resolve(cwd, filePath);
+    const relativePath = relative(absoluteCwd, absoluteFile);
+    const isInside = !relativePath.startsWith('..') && !isAbsolute(relativePath);
+    if (isInside) {
+      return 'approve';
     }
+  } catch {
+    return 'confirm';
   }
 
   return 'confirm';
@@ -128,29 +129,31 @@ export function resolveCommandAction(
 
   let hasConfirm = false;
 
-  for (let i = 0; i < subCommands.length; i++) {
-    const subCmd = subCommands[i];
-    const cmdWithoutRedirection = subCmd.replace(/\d*>&\d*/g, '').trim();
-
-    const decisionWithRedirection = getSingleCommandDecision(subCmd, allowedPatterns, deniedPatterns);
-
-    if (decisionWithRedirection === 'deny') {
+  for (const subCmd of subCommands) {
+    const decision = evaluateSubCommand(subCmd, allowedPatterns, deniedPatterns);
+    if (decision === 'deny') {
       return 'deny';
     }
-
-    const decisionWithoutRedirection =
-      cmdWithoutRedirection === subCmd ? decisionWithRedirection : getSingleCommandDecision(cmdWithoutRedirection, allowedPatterns, deniedPatterns);
-
-    if (decisionWithoutRedirection === 'deny') {
-      return 'deny';
-    }
-
-    if (decisionWithRedirection === 'confirm' || decisionWithoutRedirection === 'confirm') {
+    if (decision === 'confirm') {
       hasConfirm = true;
     }
   }
 
   return hasConfirm ? 'confirm' : 'approve';
+}
+
+function evaluateSubCommand(subCmd: string, allowedPatterns: readonly string[], deniedPatterns: readonly string[]): ApprovalDecision['action'] {
+  const decisionWithRedirection = getSingleCommandDecision(subCmd, allowedPatterns, deniedPatterns);
+  if (decisionWithRedirection === 'deny') {
+    return 'deny';
+  }
+
+  const cmdWithoutRedirection = subCmd.replace(/\d*>&\d*/g, '').trim();
+  if (cmdWithoutRedirection === subCmd) {
+    return decisionWithRedirection;
+  }
+
+  return getSingleCommandDecision(cmdWithoutRedirection, allowedPatterns, deniedPatterns);
 }
 
 export function parseCommand(command: string): string[] {
@@ -175,33 +178,45 @@ export function parseCommand(command: string): string[] {
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
 
-    if (typeof token === 'object' && token !== null) {
-      const tok = token as Readonly<{
-        op: string;
-        pattern: string;
-      }>;
-
-      if ('comment' in tok) {
-        continue;
+    if (typeof token !== 'object' || token === null) {
+      if (typeof token === 'string') {
+        currentCommand.push(token);
       }
+      continue;
+    }
 
-      if ('op' in tok && typeof tok.op === 'string') {
-        if (tok.op === 'glob' && 'pattern' in tok && typeof tok.pattern === 'string') {
-          currentCommand.push(tok.pattern);
-        } else if (['&&', '||', ';', '|', '&', '\n'].includes(tok.op)) {
-          if (currentCommand.length > 0) {
-            subCommands.push(currentCommand.join(' '));
-            currentCommand = [];
-          }
-        } else {
-          currentCommand.push(tok.op);
-        }
-      } else if ('pattern' in tok && typeof tok.pattern === 'string') {
+    const tok = token as Readonly<{
+      op: string;
+      pattern: string;
+    }>;
+
+    if ('comment' in tok) {
+      continue;
+    }
+
+    const isOp = 'op' in tok && typeof tok.op === 'string';
+    if (!isOp) {
+      if ('pattern' in tok && typeof tok.pattern === 'string') {
         currentCommand.push(tok.pattern);
       }
-    } else if (typeof token === 'string') {
-      currentCommand.push(token);
+      continue;
     }
+
+    if (tok.op === 'glob' && 'pattern' in tok && typeof tok.pattern === 'string') {
+      currentCommand.push(tok.pattern);
+      continue;
+    }
+
+    const SEPARATOR_OPS = ['&&', '||', ';', '|', '&', '\n'];
+    if (SEPARATOR_OPS.includes(tok.op)) {
+      if (currentCommand.length > 0) {
+        subCommands.push(currentCommand.join(' '));
+        currentCommand = [];
+      }
+      continue;
+    }
+
+    currentCommand.push(tok.op);
   }
 
   if (currentCommand.length > 0) {

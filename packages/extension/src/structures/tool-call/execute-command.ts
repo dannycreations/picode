@@ -36,18 +36,10 @@ export function cleanCommandOutput(raw: string): string {
 
   for (let i = 0; i < len; i++) {
     let line = lines[i];
-
     if (line.includes('\r')) {
-      let idx = line.lastIndexOf('\r');
-      // Strip trailing carriage returns if any exist at the end of the line
-      while (idx === line.length - 1 && idx > 0) {
-        line = line.slice(0, -1);
-        idx = line.lastIndexOf('\r');
-      }
-      line = idx === -1 ? line : line.slice(idx + 1);
+      line = collapseCarriageReturns(line);
     }
-
-    lines[i] = line.replace(/[ \t]+$/g, '');
+    lines[i] = line.replace(/[ \t]+$/, '');
   }
 
   // Rejoin lines and collapse 3+ consecutive newlines to maximum 2 (\n\n)
@@ -55,6 +47,15 @@ export function cleanCommandOutput(raw: string): string {
     .join('\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
+}
+
+function collapseCarriageReturns(line: string): string {
+  let idx = line.lastIndexOf('\r');
+  while (idx === line.length - 1 && idx > 0) {
+    line = line.slice(0, -1);
+    idx = line.lastIndexOf('\r');
+  }
+  return idx === -1 ? line : line.slice(idx + 1);
 }
 
 export const executeCommandTool = defineTool({

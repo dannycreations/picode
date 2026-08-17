@@ -252,14 +252,24 @@ export function coerceSetting<K extends SettingKey>(key: K, value: unknown): App
   const fallback = defaultValue(key) as AppSettings[K];
 
   switch (spec.type) {
-    case 'boolean':
-      return (typeof value === 'boolean' ? value : fallback) as AppSettings[K];
+    case 'boolean': {
+      if (typeof value === 'boolean') {
+        return value as AppSettings[K];
+      }
+      return fallback;
+    }
     case 'number': {
-      if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
+      if (typeof value !== 'number' || !Number.isFinite(value)) {
+        return fallback;
+      }
       return Math.min(Math.max(value, spec.minimum), spec.maximum) as AppSettings[K];
     }
-    case 'string[]':
-      return (Array.isArray(value) ? value.filter((item) => typeof item === 'string') : fallback) as AppSettings[K];
+    case 'string[]': {
+      if (Array.isArray(value)) {
+        return value.filter((item) => typeof item === 'string') as unknown as AppSettings[K];
+      }
+      return fallback;
+    }
   }
 }
 

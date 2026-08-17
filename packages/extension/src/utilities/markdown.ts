@@ -16,11 +16,6 @@ function readOpeningFence(line: string): Fence | null {
   return { char: marker[0], length: marker.length };
 }
 
-function isClosingFence(line: string, fence: Fence): boolean {
-  const closing = new RegExp(`^ {0,3}${fence.char === '`' ? '`' : '~'}{${fence.length},}[ \\t\\r]*$`);
-  return closing.test(line);
-}
-
 function readFencedBody(raw: string, anchored: boolean): string | null {
   const lines = raw.split('\n');
 
@@ -30,9 +25,13 @@ function readFencedBody(raw: string, anchored: boolean): string | null {
   const fence = readOpeningFence(lines[start]);
   if (!fence) return null;
 
+  // The closing pattern depends only on the opening fence, so compile it once
+  // rather than recompiling it for every line scanned from the bottom.
+  const closing = new RegExp(`^ {0,3}${fence.char === '`' ? '`' : '~'}{${fence.length},}[ \\t\\r]*$`);
+
   // Scan from the bottom so nested fences inside a markdown block stay intact.
   for (let end = lines.length - 1; end > start; end--) {
-    if (isClosingFence(lines[end], fence)) {
+    if (closing.test(lines[end])) {
       return lines.slice(start + 1, end).join('\n');
     }
   }
