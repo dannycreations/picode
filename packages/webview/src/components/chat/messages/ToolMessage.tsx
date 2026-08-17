@@ -20,17 +20,21 @@ interface ToolMessageProps {
   readonly onDenyTool: (msgId: string) => void;
 }
 
-const ElapsedTimer: FC<{ startTs: number; isRunning: boolean; isActive: boolean; duration?: number }> = ({
+const ElapsedTimer: FC<{ startTs: number; isRunning: boolean; isActive: boolean; duration?: number; revealOnHover?: boolean }> = ({
   startTs,
   isRunning,
   isActive,
   duration,
+  revealOnHover,
 }) => {
   const elapsed = useElapsedSeconds(startTs, isActive && duration === undefined);
   const displaySeconds = duration !== undefined ? duration : elapsed;
   return (
     <span
-      className="flex items-center gap-1 text-xs font-mono text-vscode-descriptionForeground tabular-nums"
+      className={cn(
+        'flex items-center gap-1 text-xs font-mono text-vscode-descriptionForeground tabular-nums',
+        revealOnHover && 'hidden group-hover:inline-flex',
+      )}
       aria-label={isRunning ? 'Elapsed loading time' : 'Time taken'}
     >
       {isRunning && <Spinner className="text-vscode-focusBorder" />}
@@ -60,6 +64,7 @@ interface ToolSectionProps {
   readonly isActive?: boolean;
   readonly startTs: number;
   readonly duration?: number;
+  readonly revealTimerOnHover?: boolean;
   readonly onOpenFile: (path: string, content?: string) => void;
 }
 
@@ -73,6 +78,7 @@ const ToolSection: FC<ToolSectionProps> = ({
   isActive,
   startTs,
   duration,
+  revealTimerOnHover,
   onOpenFile,
 }) => {
   const [open, setOpen] = useState(defaultOpen);
@@ -132,7 +138,13 @@ const ToolSection: FC<ToolSectionProps> = ({
             </span>
           </div>
         ) : showTimer ? (
-          <ElapsedTimer startTs={startTs} isRunning={isRunning} isActive={isActive ?? isRunning} duration={duration} />
+          <ElapsedTimer
+            startTs={startTs}
+            isRunning={isRunning}
+            isActive={isActive ?? isRunning}
+            duration={duration}
+            revealOnHover={revealTimerOnHover}
+          />
         ) : null}
       </div>
 
@@ -144,6 +156,11 @@ const ToolSection: FC<ToolSectionProps> = ({
     </div>
   );
 };
+
+function appendElapsed(subtitle: string | undefined, duration: number): string {
+  const elapsed = formatDuration(duration);
+  return subtitle ? `${subtitle} · ${elapsed}` : elapsed;
+}
 
 export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDenyTool }) => {
   if (message.sender !== 'tool') return null;
@@ -188,18 +205,26 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
             const approvalMessage = section.approvalMessage;
             const hasSecApproval = approvalMessage !== undefined;
 
+            const isRunning = sectionStatus === 'running';
+            const isSubagent = message.toolName === 'spawn_subagent';
+            const isDone = !isRunning && section.duration !== undefined;
+            const subagentDone = isSubagent && isDone;
+            const showTimer = message.toolName === 'execute_command' || (isSubagent && section.content !== undefined);
+            const displaySection = subagentDone ? { ...section, subtitle: appendElapsed(section.subtitle, section.duration) } : section;
+
             return (
               <Fragment key={index}>
                 <ToolSection
-                  section={section}
+                  section={displaySection}
                   defaultOpen={false}
                   isFirst={index === 0}
                   isLast={index === visibleSections.length - 1 && !hasMore && !hasSecApproval}
-                  showTimer={message.toolName === 'execute_command' || (message.toolName === 'spawn_subagent' && section.content !== undefined)}
-                  isRunning={sectionStatus === 'running'}
-                  isActive={sectionStatus === 'running'}
+                  showTimer={showTimer && !subagentDone}
+                  isRunning={isRunning}
+                  isActive={isRunning}
                   startTs={section.ts ?? message.ts}
                   duration={section.duration}
+                  revealTimerOnHover={showTimer && isDone}
                   onOpenFile={openFile}
                 />
                 {approvalMessage && (
