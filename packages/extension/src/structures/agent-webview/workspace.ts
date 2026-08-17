@@ -60,7 +60,7 @@ export class WorkspaceService {
     const target = Uri.joinPath(this.storageUri, 'images', `pi-code-img-${Date.now()}.${extensionForMimeType(parts.mimeType)}`);
 
     await workspace.fs.createDirectory(Uri.joinPath(this.storageUri, 'images'));
-    if (await this.writeBase64DataUrl(target, dataUrl)) {
+    if (await this.writeBase64DataUrl(target, parts.data)) {
       await commands.executeCommand('vscode.open', target);
     }
   }
@@ -72,13 +72,13 @@ export class WorkspaceService {
     });
     if (!uri) return;
 
-    await this.writeBase64DataUrl(uri, dataUrl);
+    const parts = parseBase64DataUrl(dataUrl);
+    if (!parts) return;
+    await this.writeBase64DataUrl(uri, parts.data);
   }
 
-  private async writeBase64DataUrl(uri: Uri, dataUrl: string): Promise<boolean> {
-    const parts = parseBase64DataUrl(dataUrl);
-    if (!parts) return false;
-    await workspace.fs.writeFile(uri, Buffer.from(parts.data, 'base64'));
+  private async writeBase64DataUrl(uri: Uri, data: string): Promise<boolean> {
+    await workspace.fs.writeFile(uri, Buffer.from(data, 'base64'));
     return true;
   }
 

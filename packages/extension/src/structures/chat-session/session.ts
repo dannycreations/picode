@@ -5,7 +5,7 @@ import { buildToolSections } from '@pi-code/extension/shared/utilities/tool';
 import { getApprovalDuration } from '@pi-code/extension/structures/agent-runtime/policy';
 import { toBase64DataUrl } from '@pi-code/extension/utilities/codec';
 import { logger } from '@pi-code/shared/core/logger';
-import { EMPTY_STATS } from '@pi-code/shared/utilities/common';
+import { elapsedSeconds, EMPTY_STATS } from '@pi-code/shared/utilities/common';
 
 import type { ImageContent, TextContent, ThinkingContent, ToolCall, Usage } from '@earendil-works/pi-ai';
 import type { SessionEntry } from '@earendil-works/pi-coding-agent';
@@ -165,7 +165,7 @@ function patchToolCall(result: ChatMessage[], msg: Extract<SessionMessage, { rol
   const resultText = contentText(msg.content);
   const details: ToolResultDetails | undefined = msg.details;
 
-  const rawDuration = Math.max(0, Math.round((ts - existing.ts) / 1000));
+  const rawDuration = elapsedSeconds(existing.ts, ts);
   const approvalMs = msg.toolCallId ? getApprovalDuration(msg.toolCallId) : undefined;
   const netDuration = approvalMs !== undefined ? Math.max(0, Math.round((ts - existing.ts - approvalMs) / 1000)) : rawDuration;
 

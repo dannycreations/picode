@@ -34,3 +34,7 @@ export function findOccurrences(haystack: string, needle: string, caseSensitive 
   }
   return positions;
 }
+
+export function elapsedSeconds(start: number, end: number = Date.now()): number {
+  return Math.max(0, Math.round((end - start) / 1000));
+}

@@ -98,9 +98,9 @@ function getToolLanguage(toolName?: string): string {
 }
 
 function getToolFilePath(toolArgs?: ToolArguments): string | undefined {
-  if (!toolArgs || typeof toolArgs !== 'object') return undefined;
+  const record = parseToolArgs(toolArgs);
+  if (!record) return undefined;
 
-  const record = toolArgs as Record<string, unknown>;
   for (const key of ['path', 'file_path']) {
     if (typeof record[key] === 'string') return record[key];
   }
@@ -156,11 +156,10 @@ function fileToolSections(message: ChatMessage): ToolSection[] {
 }
 
 export function buildToolSections(message: ChatMessage): ToolSection[] {
-  const sections = (() => {
-    if (message.toolName === 'execute_command') return commandSection(message);
-    if (message.toolName === 'spawn_subagent') return subagentSection(message);
-    return fileToolSections(message);
-  })();
+  let sections: ToolSection[];
+  if (message.toolName === 'execute_command') sections = commandSection(message);
+  else if (message.toolName === 'spawn_subagent') sections = subagentSection(message);
+  else sections = fileToolSections(message);
 
   const withMeta = sections.map((section) => ({
     ...section,

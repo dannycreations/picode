@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 
+import { elapsedSeconds } from '@pi-code/shared/utilities/common';
 import {
   appendOnce,
   deliverQueuedReplies,
@@ -199,7 +200,7 @@ export const useActiveTask = (): UseActiveTaskReturn => {
               return messages;
             }
             const existing = messages.find((m) => m.id === id);
-            const duration = existing ? Math.max(0, Math.round((Date.now() - existing.ts) / 1000)) : undefined;
+            const duration = existing ? elapsedSeconds(existing.ts) : undefined;
             return rebuildToolSections(
               patchMessage(messages, id, {
                 todos,

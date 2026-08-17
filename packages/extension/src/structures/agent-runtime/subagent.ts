@@ -7,6 +7,7 @@ import { createAgentResources } from '@pi-code/extension/structures/agent-runtim
 import { executeCommandTool } from '@pi-code/extension/structures/tool-call/execute-command';
 import { readFileTool } from '@pi-code/extension/structures/tool-call/read-file';
 import { logger } from '@pi-code/shared/core/logger';
+import { elapsedSeconds } from '@pi-code/shared/utilities/common';
 
 import type { Api, Model } from '@earendil-works/pi-ai';
 import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent';
@@ -188,7 +189,7 @@ export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutco
         steps: '',
         usage: emptyUsage(),
         error: 'Sub-agent was cancelled.',
-        duration: Math.max(0, Math.round((Date.now() - startTime) / 1000)),
+        duration: elapsedSeconds(startTime),
       };
     }
 
@@ -229,7 +230,7 @@ export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutco
         steps: steps(),
         usage: collectUsage(session),
         error: aborted ? 'Sub-agent was cancelled.' : error,
-        duration: Math.max(0, Math.round((Date.now() - startTime) / 1000)),
+        duration: elapsedSeconds(startTime),
       };
     } finally {
       input.signal?.removeEventListener('abort', onAbort);
