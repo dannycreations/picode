@@ -71,7 +71,7 @@ async function resolveMention(raw: string, cwd: string, limits: OutputLimits): P
   }
 
   if (info.isDirectory()) {
-    return { kind: 'folder', content: await readFolderContent(target, cwd, limits) };
+    return { kind: 'folder', content: await listFolderEntries(target, cwd) };
   }
   if (info.isFile()) {
     try {
@@ -83,27 +83,24 @@ async function resolveMention(raw: string, cwd: string, limits: OutputLimits): P
   return null;
 }
 
-async function readFolderContent(dir: string, cwd: string, limits: OutputLimits): Promise<string> {
-  const blocks: string[] = [];
-  let fileCount = 0;
+async function listFolderEntries(dir: string, cwd: string): Promise<string> {
+  const lines: string[] = [];
+  let entryCount = 0;
   let totalChars = 0;
 
   for await (const { abs, dirent } of walkDirectory(dir, FOLDER_MAX_DEPTH)) {
-    if (fileCount >= FOLDER_MAX_FILES) break;
-    if (!dirent.isFile()) continue;
+    if (entryCount >= FOLDER_MAX_FILES) break;
 
-    try {
-      const body = await readFileTextContent(abs, limits);
-      const block = `<file path="${toPosixPath(abs, cwd)}">\n${body}\n</file>`;
-      if (totalChars + block.length > FOLDER_CHAR_CAP) {
-        blocks.push(`... folder truncated: ${fileCount} files included ...`);
-        break;
-      }
-      blocks.push(block);
-      totalChars += block.length;
-      fileCount++;
-    } catch {}
+    const label = dirent.isDirectory() ? `${toPosixPath(abs, cwd)}/` : toPosixPath(abs, cwd);
+    if (totalChars + label.length > FOLDER_CHAR_CAP) {
+      lines.push(`... folder truncated: ${entryCount} entries listed ...`);
+      break;
+    }
+
+    lines.push(label);
+    totalChars += label.length;
+    entryCount++;
   }
 
-  return blocks.join('\n\n');
+  return lines.join('\n');
 }

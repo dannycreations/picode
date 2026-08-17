@@ -52,15 +52,18 @@ describe('expandMentions', () => {
     expect(result).not.toContain('@secret.txt');
   });
 
-  it('expands an existing folder into a folder_content block', async () => {
+  it('expands an existing folder into a folder_content block listing only entry names', async () => {
     await write('src/index.ts', 'console.log(1)');
     await write('src/util.ts', 'export const x = 2');
 
     const result = await expandMentions('Look at @src', cwd);
 
     expect(result).toContain('<folder_content path="src">');
-    expect(result).toContain('<file path="src/index.ts">');
-    expect(result).toContain('<file path="src/util.ts">');
+    expect(result).toContain('src/index.ts');
+    expect(result).toContain('src/util.ts');
+    // File contents are not inlined; only the entry names are listed.
+    expect(result).not.toContain('console.log(1)');
+    expect(result).not.toContain('export const x = 2');
   });
 
   it('deduplicates repeated mentions into a single block', async () => {

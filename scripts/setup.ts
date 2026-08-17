@@ -1,8 +1,10 @@
 import { execSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const rootDir = resolve(import.meta.url, '..');
+const scriptDir = dirname(fileURLToPath(import.meta.url));
+const rootDir = resolve(scriptDir, '..');
 const contextDir = join(rootDir, 'context');
 
 interface Repo {

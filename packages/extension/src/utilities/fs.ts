@@ -13,7 +13,7 @@ export function toPosixPath(abs: string, cwd: string): string {
   return relative(cwd, abs).split('\\').join('/');
 }
 
-export async function* walkDirectory(cwd: string, maxDepth: number): AsyncGenerator<DirectoryEntry> {
+export async function* walkDirectory(start: string, maxDepth: number, root: string = start): AsyncGenerator<DirectoryEntry> {
   const walk = async function* (dir: string, depth: number): AsyncGenerator<DirectoryEntry> {
     if (depth > maxDepth) return;
 
@@ -26,30 +26,34 @@ export async function* walkDirectory(cwd: string, maxDepth: number): AsyncGenera
 
     for (const dirent of entries) {
       const abs = resolve(dir, dirent.name);
-      yield { abs, rel: toPosixPath(abs, cwd), dirent };
+      yield { abs, rel: relative(root, abs).split('\\').join('/'), dirent };
       if (dirent.isDirectory() && depth < maxDepth) {
         yield* walk(abs, depth + 1);
       }
     }
   };
 
-  yield* walk(cwd, 0);
+  yield* walk(start, 0);
 }
 
 const MAX_RESULTS = 50;
-const MAX_DEPTH = 8;
 const MAX_SCANNED = 8000;
+const SEARCH_MAX_DEPTH = 2;
 
 export async function searchWorkspaceFiles(query: string, cwd: string): Promise<string[]> {
-  const needle = query.toLowerCase();
+  const segments = query.split('/');
+  const namePart = segments[segments.length - 1];
+  const dirPart = segments.slice(0, -1).join('/');
+  const needle = namePart.toLowerCase();
+  const start = dirPart ? resolve(cwd, dirPart) : cwd;
 
-  // With no query, show the immediate children of the workspace root.
+  // With no name fragment, list the immediate children of the anchor directory.
   if (needle === '') {
     try {
-      const entries = await readdir(cwd, { withFileTypes: true });
+      const entries = await readdir(start, { withFileTypes: true });
       return entries
         .filter((entry) => entry.isFile() || entry.isDirectory())
-        .map((entry) => entry.name)
+        .map((entry) => toPosixPath(resolve(start, entry.name), cwd))
         .slice(0, MAX_RESULTS);
     } catch {
       return [];
@@ -60,7 +64,7 @@ export async function searchWorkspaceFiles(query: string, cwd: string): Promise<
   let scanned = 0;
   let stopped = false;
 
-  for await (const { rel, dirent } of walkDirectory(cwd, MAX_DEPTH)) {
+  for await (const { rel, dirent } of walkDirectory(start, SEARCH_MAX_DEPTH, cwd)) {
     if (stopped || results.length >= MAX_RESULTS) break;
     scanned++;
     if (scanned > MAX_SCANNED) {
