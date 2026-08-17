@@ -21,6 +21,8 @@ interface QuestionMessageProps {
 }
 
 export const QuestionMessage: FC<QuestionMessageProps> = ({ message, search, onAnswerQuestion, onCopyToInput }) => {
+  if (message.sender !== 'tool') return null;
+
   const data = parseQuestionData(message.toolArgs);
   const question = data?.question ?? message.text;
   const suggestions = data?.suggestions ?? [];

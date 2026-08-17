@@ -1,4 +1,4 @@
-import type { ChatMessage, ToolArguments, ToolName, ToolSection } from '@pi-code/shared/core/types';
+import type { ChatMessage, ToolArguments, ToolChatMessage, ToolName, ToolSection } from '@pi-code/shared/core/types';
 
 interface ToolMeta {
   readonly fileIcon: string;
@@ -118,7 +118,7 @@ function parseToolArgs(toolArgs?: ToolArguments): Record<string, unknown> | unde
   return toolArgs && typeof toolArgs === 'object' ? (toolArgs as Record<string, unknown>) : undefined;
 }
 
-function commandSection(message: ChatMessage): ToolSection[] {
+function commandSection(message: ToolChatMessage): ToolSection[] {
   const args = parseToolArgs(message.toolArgs);
   const command = typeof args?.['command'] === 'string' ? args['command'] : undefined;
 
@@ -129,7 +129,7 @@ function commandSection(message: ChatMessage): ToolSection[] {
   return [{ title, content: message.diff, language: 'shell' }];
 }
 
-function subagentSection(message: ChatMessage): ToolSection[] {
+function subagentSection(message: ToolChatMessage): ToolSection[] {
   const args = parseToolArgs(message.toolArgs);
   const agent = typeof args?.['agent'] === 'string' ? args['agent'] : message.subagent;
   const description = typeof args?.['description'] === 'string' ? args['description'] : undefined;
@@ -137,7 +137,7 @@ function subagentSection(message: ChatMessage): ToolSection[] {
   return [{ title, subtitle: message.subtitle, content: message.diff, language: 'text' }];
 }
 
-function fileToolSections(message: ChatMessage): ToolSection[] {
+function fileToolSections(message: ToolChatMessage): ToolSection[] {
   if (message.files && message.files.length > 0) {
     return message.files.map((file) => ({
       title: file.path,
@@ -156,6 +156,8 @@ function fileToolSections(message: ChatMessage): ToolSection[] {
 }
 
 export function buildToolSections(message: ChatMessage): ToolSection[] {
+  if (message.sender !== 'tool') return [];
+
   let sections: ToolSection[];
   if (message.toolName === 'execute_command') sections = commandSection(message);
   else if (message.toolName === 'spawn_subagent') sections = subagentSection(message);

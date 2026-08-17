@@ -19,7 +19,7 @@ import { TaskActions } from '@pi-code/webview/components/shared/TaskActions';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 
 import type { FC, KeyboardEvent, MouseEvent } from 'react';
-import type { ChatMessage, StatsData } from '@pi-code/shared/core/types';
+import type { ChatMessage, StatsData, ToolChatMessage } from '@pi-code/shared/core/types';
 
 interface ChatHeaderProps extends StatsData {
   readonly title: string;
@@ -152,7 +152,8 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
     setIsExpanded(!isExpanded);
   };
 
-  const todos = messages.findLast((msg) => msg.toolName === 'update_todo' && msg.todos)?.todos;
+  const todos = (messages.findLast((msg) => msg.sender === 'tool' && msg.toolName === 'update_todo' && msg.todos) as ToolChatMessage | undefined)
+    ?.todos;
 
   if (isSearchOpen) {
     return (

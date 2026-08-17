@@ -6,7 +6,7 @@ import { getMessageSearchText } from '@pi-code/webview/components/chat/helpers/s
 import type { ChatMessage } from '@pi-code/shared/core/types';
 
 function makeMessage(overrides: Partial<ChatMessage> = {}): ChatMessage {
-  return { id: 'm1', sender: 'assistant', text: '', ts: 0, ...overrides };
+  return { id: 'm1', sender: 'assistant', text: '', ts: 0, ...overrides } as ChatMessage;
 }
 
 describe('findOccurrences', () => {

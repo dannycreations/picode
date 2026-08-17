@@ -8,7 +8,6 @@ import { getDefaultModelSelection, getSettingsManager } from '@pi-code/extension
 import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { collectCommands } from '@pi-code/extension/structures/chat-command/command';
 import { convertSessionEntries, loadSessionTranscript } from '@pi-code/extension/structures/chat-session/session';
-import { THINKING_LEVEL_ORDER } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
 import { EMPTY_STATS } from '@pi-code/shared/utilities/common';
 
@@ -24,9 +23,9 @@ const CATALOG_TIMEOUT_MS = 60_000;
 
 function resolveThinkingLevels(model: Model<Api>): ModelThinkingLevel[] {
   if (!model.reasoning) return [];
+
   const map = model.thinkingLevelMap;
-  const levels = map ? (Object.keys(map) as ModelThinkingLevel[]).filter((level) => map[level] !== null) : getSupportedThinkingLevels(model);
-  return THINKING_LEVEL_ORDER.filter((level) => levels.includes(level));
+  return map ? (Object.keys(map) as ModelThinkingLevel[]).filter((level) => map[level] !== null) : getSupportedThinkingLevels(model);
 }
 
 async function listSelectableModels(modelRuntime: ModelRuntime): Promise<ModelItem[]> {

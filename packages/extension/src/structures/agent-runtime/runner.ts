@@ -279,6 +279,11 @@ export class AgentRunner {
         const delivered: ChatMessage[] = [];
 
         for (const msg of this.replyQueue) {
+          if (msg.sender !== 'queue') {
+            undelivered.push(msg);
+            continue;
+          }
+
           const attachments = parseImageAttachments(msg.images);
           const text = await expandMentions(msg.text, cwd);
           const content: (TextContent | ImageContent)[] = [{ type: 'text', text }];

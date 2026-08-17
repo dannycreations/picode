@@ -162,6 +162,8 @@ function patchToolCall(result: ChatMessage[], msg: Extract<SessionMessage, { rol
   if (index === -1) return;
 
   const existing = result[index];
+  if (existing.sender !== 'tool') return;
+
   const resultText = contentText(msg.content);
   const details: ToolResultDetails | undefined = msg.details;
 

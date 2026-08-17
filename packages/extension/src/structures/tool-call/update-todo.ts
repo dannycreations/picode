@@ -6,7 +6,7 @@ import { toolResult } from '@pi-code/extension/structures/tool-call/helpers/resu
 import type { ToolName } from '@pi-code/shared/core/types';
 import type { TodoItem, TodoStatus } from '@pi-code/shared/utilities/todo';
 
-const TODO_STATUSES = ['pending', 'progress', 'completed'] as const satisfies readonly TodoStatus[];
+const TODO_STATUSES = ['pending', 'progress', 'completed'] as TodoStatus[];
 
 export const updateTodoTool = defineTool({
   name: 'update_todo' as ToolName,
@@ -21,7 +21,7 @@ export const updateTodoTool = defineTool({
           { description: 'Current state (pending|progress|completed) of the task.' },
         ),
       }),
-      { description: 'Complete list; replaces the previous one.' },
+      { description: 'Complete list in order; replaces the previous one.' },
     ),
   }),
   async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {

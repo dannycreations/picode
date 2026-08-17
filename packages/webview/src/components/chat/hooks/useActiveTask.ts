@@ -14,7 +14,7 @@ import {
 import { findPendingQuestion } from '@pi-code/webview/components/chat/helpers/question';
 
 import type { ExtensionToWebviewMessage } from '@pi-code/shared/core/protocol';
-import type { ActiveTaskState, ChatMessage } from '@pi-code/shared/core/types';
+import type { ActiveTaskState, ApiRequestChatMessage, ChatMessage } from '@pi-code/shared/core/types';
 
 interface UseActiveTaskReturn {
   readonly activeTask: ActiveTaskState | null;
@@ -98,7 +98,7 @@ export const useActiveTask = (): UseActiveTaskReturn => {
         case 'api_request_end': {
           const { id, cost, error, stats } = msg.payload;
           updateTask((prev) => {
-            const target = prev.messages.find((m) => m.id === id && m.sender === 'api_request');
+            const target = prev.messages.find((m) => m.id === id && m.sender === 'api_request') as ApiRequestChatMessage | undefined;
             let messages = target
               ? patchMessage(prev.messages, id, {
                   toolStatus: error ? 'denied' : 'running',
@@ -185,7 +185,7 @@ export const useActiveTask = (): UseActiveTaskReturn => {
             const target = messages.find((m) => m.id === id);
             // Command output streams in chunks, so append each delta to the
             // running preview instead of replacing it like the discrete tools.
-            if (target?.toolName === 'execute_command') {
+            if (target?.sender === 'tool' && target.toolName === 'execute_command') {
               return rebuildToolSections(patchMessage(messages, id, { diff: `${target.diff ?? ''}${result}`, subtitle }), id);
             }
             return rebuildToolSections(patchMessage(messages, id, { diff: result, subtitle }), id);

@@ -18,6 +18,8 @@ interface QueueMessageProps {
 }
 
 export const QueueMessage: FC<QueueMessageProps> = ({ message, search }) => {
+  if (message.sender !== 'queue') return null;
+
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(message.text);
 

@@ -1,6 +1,6 @@
 import { buildToolSections, GROUP_TOOLS } from '@pi-code/shared/utilities/tool';
 
-import type { ChatMessage, ToolSection } from '@pi-code/shared/core/types';
+import type { AssistantChatMessage, ChatMessage, ToolChatMessage, ToolSection } from '@pi-code/shared/core/types';
 
 export const ESTIMATED_ROW_HEIGHT: Record<ChatMessage['sender'], number> = {
   api_request: 44,
@@ -17,7 +17,7 @@ function hasContent(value: string | undefined): boolean {
   return value !== undefined && value.trim() !== '';
 }
 
-function canGroupTool(message: ChatMessage): boolean {
+function canGroupTool(message: ChatMessage): message is ToolChatMessage {
   if (message.sender !== 'tool' || message.toolName === undefined || !GROUP_TOOLS.has(message.toolName)) {
     return false;
   }
@@ -34,7 +34,9 @@ function canGroupTool(message: ChatMessage): boolean {
 function collectToolSections(messages: ReadonlyArray<ChatMessage>): ToolSection[] {
   const sections: ToolSection[] = [];
   for (const message of messages) {
-    sections.push(...(message.toolSections ?? buildToolSections(message)));
+    if (message.sender === 'tool') {
+      sections.push(...(message.toolSections ?? buildToolSections(message)));
+    }
   }
   return sections;
 }
@@ -51,7 +53,7 @@ export function rebuildToolSections(messages: ChatMessage[], id: string): ChatMe
 
 export function groupToolMessages(messages: ReadonlyArray<ChatMessage>): ChatMessage[] {
   const result: ChatMessage[] = [];
-  let group: ChatMessage[] = [];
+  let group: ToolChatMessage[] = [];
 
   const flushGroup = (): void => {
     if (group.length === 0) return;
@@ -79,32 +81,31 @@ export function groupToolMessages(messages: ReadonlyArray<ChatMessage>): ChatMes
   const approvalIdsToRemove = new Set<string>();
 
   for (const m of result) {
-    if (m.toolCallId !== undefined) {
-      const parentId = m.toolCallId;
-      const parentMsg = result.find((p) => p.toolSections?.some((section) => section.id === parentId));
+    if (m.sender !== 'tool' || m.toolCallId === undefined) continue;
+    const parentId = m.toolCallId;
+    const parentMsg = result.find((p) => p.sender === 'tool' && p.toolSections?.some((section) => section.id === parentId));
 
-      if (parentMsg && parentMsg.toolSections) {
-        if (m.toolStatus === 'approval') {
-          const updatedMsg = {
-            ...parentMsg,
-            toolSections: parentMsg.toolSections.map((section) => {
-              if (section.id === parentId) {
-                return {
-                  ...section,
-                  status: 'approval',
-                  approvalMessage: m,
-                };
-              }
-              return section;
-            }),
-          };
-          const index = result.findIndex((r) => r.id === parentMsg.id);
-          if (index !== -1) {
-            result[index] = updatedMsg;
-          }
+    if (parentMsg && parentMsg.sender === 'tool' && parentMsg.toolSections) {
+      if (m.toolStatus === 'approval') {
+        const updatedMsg = {
+          ...parentMsg,
+          toolSections: parentMsg.toolSections.map((section) => {
+            if (section.id === parentId) {
+              return {
+                ...section,
+                status: 'approval',
+                approvalMessage: m,
+              };
+            }
+            return section;
+          }),
+        };
+        const index = result.findIndex((r) => r.id === parentMsg.id);
+        if (index !== -1) {
+          result[index] = updatedMsg;
         }
-        approvalIdsToRemove.add(m.id);
       }
+      approvalIdsToRemove.add(m.id);
     }
   }
 
@@ -117,7 +118,7 @@ export function groupToolMessages(messages: ReadonlyArray<ChatMessage>): ChatMes
 
 export function isRenderableMessage(message: ChatMessage): boolean {
   // Tool calls surfaced by dedicated UI instead of a message row.
-  if (message.toolName === 'update_todo') {
+  if (message.sender === 'tool' && message.toolName === 'update_todo') {
     return false;
   }
 
@@ -131,7 +132,10 @@ export function isRenderableMessage(message: ChatMessage): boolean {
 }
 
 export function hasPendingApproval(messages: ReadonlyArray<ChatMessage>): boolean {
-  return messages.some((message) => message.toolStatus === 'approval');
+  return messages.some(
+    (message) =>
+      (message.sender === 'tool' || message.sender === 'assistant' || message.sender === 'api_request') && message.toolStatus === 'approval',
+  );
 }
 
 // Sub-agent events can arrive before the webview has rendered the parent tool
@@ -148,6 +152,7 @@ interface RequestSettlePatch {
 export function settlePendingTurns(messages: ChatMessage[], patch: RequestSettlePatch = {}): ChatMessage[] {
   let changed = false;
   const next = messages.map((m) => {
+    if (m.sender !== 'api_request' && m.sender !== 'assistant' && m.sender !== 'tool') return m;
     if (m.toolStatus !== 'running') return m;
     if (m.sender === 'api_request') {
       changed = true;
@@ -180,22 +185,23 @@ export function resolveApproval(messages: ChatMessage[], msgId: string, approved
   }
 
   const target = messages.find((message) => message.id === msgId);
-  const ts = target?.pausedAt ? target.ts + (Date.now() - target.pausedAt) : Date.now();
+  const ts = target?.sender === 'tool' && target.pausedAt !== undefined ? target.ts + (Date.now() - target.pausedAt) : Date.now();
   return patchMessage(messages, msgId, { toolStatus: 'running', ts, pausedAt: undefined });
 }
 
-export function patchLastAssistant(messages: ChatMessage[], patch: (message: ChatMessage) => Partial<ChatMessage>): ChatMessage[] {
+export function patchLastAssistant(messages: ChatMessage[], patch: (message: AssistantChatMessage) => Partial<AssistantChatMessage>): ChatMessage[] {
   for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i].sender !== 'assistant') continue;
+    const message = messages[i];
+    if (message.sender !== 'assistant') continue;
 
     const next = [...messages];
-    next[i] = { ...messages[i], ...patch(messages[i]) };
+    next[i] = { ...message, ...patch(message) };
     return next;
   }
   return messages;
 }
 
-export function upsertToolMessage(messages: ChatMessage[], id: string, patch: Partial<ChatMessage>): ChatMessage[] {
+export function upsertToolMessage(messages: ChatMessage[], id: string, patch: Partial<ToolChatMessage>): ChatMessage[] {
   if (messages.some((m) => m.id === id)) {
     return patchMessage(messages, id, patch);
   }
@@ -221,12 +227,17 @@ export function deliverQueuedReplies(messages: ChatMessage[], delivered: ChatMes
   return [...replaced, ...appended];
 }
 
+function noticeKey(message: ChatMessage): string {
+  const errorNotice = message.sender === 'tool' || message.sender === 'api_request' || message.sender === 'error' ? message.errorMessage : undefined;
+  return errorNotice ?? message.text;
+}
+
 export function appendOnce(messages: ChatMessage[], message: ChatMessage): ChatMessage[] {
   if (messages.some((m) => m.id === message.id)) return messages;
 
   // Consecutive identical notices are collapsed into the first one.
   const last = messages[messages.length - 1];
-  if (last?.sender === message.sender && (last.errorMessage ?? last.text) === (message.errorMessage ?? message.text)) {
+  if (last?.sender === message.sender && noticeKey(last) === noticeKey(message)) {
     return messages;
   }
 

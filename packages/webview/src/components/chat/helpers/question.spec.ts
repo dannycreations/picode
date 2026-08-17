@@ -12,7 +12,7 @@ function createMessage(overrides: Partial<ChatMessage> = {}): ChatMessage {
     ts: 1,
     toolName: 'ask_question',
     ...overrides,
-  };
+  } as ChatMessage;
 }
 
 describe('parseQuestionData', () => {

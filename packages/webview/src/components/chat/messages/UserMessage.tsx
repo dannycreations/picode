@@ -20,6 +20,8 @@ interface UserMessageProps {
 }
 
 export const UserMessage: FC<UserMessageProps> = ({ message, commands, search }) => {
+  if (message.sender !== 'user') return null;
+
   const text = message.text.trim();
   const highlight = splitCommand(text, commands);
   const query = search?.query ?? '';

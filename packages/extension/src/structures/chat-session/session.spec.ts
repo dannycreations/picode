@@ -5,6 +5,7 @@ import { collapseSkillBlock, convertSessionEntries } from '@pi-code/extension/st
 
 import type { AssistantMessage, ToolResultMessage, UserMessage } from '@earendil-works/pi-ai';
 import type { SessionEntry } from '@earendil-works/pi-coding-agent';
+import type { ToolChatMessage } from '@pi-code/shared/core/types';
 
 function messageEntry(id: string, message: UserMessage | AssistantMessage | ToolResultMessage): SessionEntry {
   return { id, type: 'message', parentId: null, timestamp: new Date().toISOString(), message };
@@ -78,9 +79,9 @@ describe('convertSessionEntries todo parsing', () => {
     ];
 
     const messages = convertSessionEntries(entries);
-    const todoMsg = messages.find((m) => m.toolName === 'update_todo');
+    const todoMsg = messages.find((m) => m.sender === 'tool' && m.toolName === 'update_todo');
 
-    expect(todoMsg?.todos).toEqual(todos);
+    expect((todoMsg as ToolChatMessage | undefined)?.todos).toEqual(todos);
   });
 });
 
@@ -117,6 +118,6 @@ describe('convertSessionEntries tool duration with approval pause', () => {
     // Total wall time: 8 seconds
     // Approval duration: 5 seconds
     // Net execution duration: 8 - 5 = 3 seconds
-    expect(toolMsg?.duration).toBe(3);
+    expect((toolMsg as ToolChatMessage | undefined)?.duration).toBe(3);
   });
 });

@@ -9,9 +9,11 @@ import {
   upsertToolMessage,
 } from '@pi-code/webview/components/chat/helpers/message';
 
-import type { ChatMessage, ToolName } from '@pi-code/shared/core/types';
+import type { ChatMessage, ToolChatMessage, ToolName } from '@pi-code/shared/core/types';
 
 const SENDERS = ['user', 'assistant', 'tool', 'error', 'checkpoint', 'info', 'api_request'] as const;
+
+const asTool = (message: ChatMessage): ToolChatMessage => message as ToolChatMessage;
 
 function createMessage(overrides: Partial<ChatMessage> = {}): ChatMessage {
   return {
@@ -20,7 +22,7 @@ function createMessage(overrides: Partial<ChatMessage> = {}): ChatMessage {
     text: '',
     ts: 1,
     ...overrides,
-  };
+  } as ChatMessage;
 }
 
 function createToolMessage(id: string, toolName: ToolName, overrides: Partial<ChatMessage> = {}): ChatMessage {
@@ -108,7 +110,7 @@ describe('upsertToolMessage', () => {
     const result = upsertToolMessage(messages, 'tool-1', { toolStatus: 'completed' });
 
     expect(result.map((m) => m.id)).toEqual(['tool-1', 'q1']);
-    expect(result[0].toolStatus).toBe('completed');
+    expect(asTool(result[0]).toolStatus).toBe('completed');
   });
 });
 
@@ -120,9 +122,9 @@ describe('resolveApproval', () => {
 
     const result = resolveApproval(messages, 't1', true);
 
-    expect(result[0].toolStatus).toBe('running');
+    expect(asTool(result[0]).toolStatus).toBe('running');
     expect(result[0].ts).toBeGreaterThan(1000);
-    expect(result[0].pausedAt).toBeUndefined();
+    expect(asTool(result[0]).pausedAt).toBeUndefined();
   });
 
   it('resumes the clock from where it paused when execution had already run', () => {
@@ -142,8 +144,8 @@ describe('resolveApproval', () => {
 
     const result = resolveApproval(messages, 't1', false);
 
-    expect(result[0].toolStatus).toBe('denied');
-    expect(result[0].pausedAt).toBeUndefined();
+    expect(asTool(result[0]).toolStatus).toBe('denied');
+    expect(asTool(result[0]).pausedAt).toBeUndefined();
   });
 });
 
@@ -158,8 +160,8 @@ describe('groupToolMessages', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe('r1');
-    expect(result[0].toolName).toBe('read_file');
-    expect(result[0].toolSections).toEqual([
+    expect(asTool(result[0]).toolName).toBe('read_file');
+    expect(asTool(result[0]).toolSections).toEqual([
       { id: 'r1', title: 'a.ts', content: 'a', language: 'text', openPath: 'a.ts', ts: 1, duration: undefined, status: 'completed' },
       { id: 'r2', title: 'b.ts', content: 'b', language: 'text', openPath: 'b.ts', ts: 1, duration: undefined, status: 'completed' },
     ]);
@@ -174,7 +176,7 @@ describe('groupToolMessages', () => {
     const result = groupToolMessages(messages);
 
     expect(result).toHaveLength(2);
-    expect(result.map((m) => m.toolName)).toEqual(['read_file', 'write_file']);
+    expect(result.map((m) => asTool(m).toolName)).toEqual(['read_file', 'write_file']);
   });
 
   it('should stack a pending approval beneath its completed tool sibling', () => {
@@ -186,8 +188,8 @@ describe('groupToolMessages', () => {
     const result = groupToolMessages(messages);
 
     expect(result).toHaveLength(1);
-    expect(result[0].toolSections).toHaveLength(2);
-    expect(result[0].toolSections?.[1].approvalMessage?.id).toBe('r2');
+    expect(asTool(result[0]).toolSections).toHaveLength(2);
+    expect(asTool(result[0]).toolSections?.[1].approvalMessage?.id).toBe('r2');
   });
 
   it('should stack consecutive tool calls that are both awaiting approval', () => {
@@ -199,7 +201,7 @@ describe('groupToolMessages', () => {
     const result = groupToolMessages(messages);
 
     expect(result).toHaveLength(1);
-    expect(result[0].toolSections).toHaveLength(2);
+    expect(asTool(result[0]).toolSections).toHaveLength(2);
   });
 
   it('should stack a later approval with earlier completed calls of the same tool', () => {
@@ -212,8 +214,8 @@ describe('groupToolMessages', () => {
     const result = groupToolMessages(messages);
 
     expect(result).toHaveLength(1);
-    expect(result[0].toolSections).toHaveLength(3);
-    expect(result[0].toolSections?.[2].approvalMessage?.id).toBe('r3');
+    expect(asTool(result[0]).toolSections).toHaveLength(3);
+    expect(asTool(result[0]).toolSections?.[2].approvalMessage?.id).toBe('r3');
   });
 
   it('should stack and group consecutive execute_command calls', () => {
@@ -225,7 +227,7 @@ describe('groupToolMessages', () => {
     const result = groupToolMessages(messages);
 
     expect(result).toHaveLength(1);
-    expect(result[0].toolSections).toEqual([
+    expect(asTool(result[0]).toolSections).toEqual([
       { id: 'c1', title: 'ls', content: 'a', language: 'shell', ts: 1, duration: undefined, status: 'completed' },
       { id: 'c2', title: 'pwd', content: 'b', language: 'shell', ts: 1, duration: undefined, status: 'completed' },
     ]);
@@ -240,7 +242,7 @@ describe('groupToolMessages', () => {
     const result = groupToolMessages(messages);
 
     expect(result).toHaveLength(1);
-    expect(result[0].toolSections).toEqual([
+    expect(asTool(result[0]).toolSections).toEqual([
       { id: 'c1', title: 'rg -n "foo"', content: 'output', language: 'shell', ts: 1, duration: undefined, status: 'completed' },
     ]);
   });
@@ -262,7 +264,7 @@ describe('groupToolMessages', () => {
     const result = groupToolMessages(messages);
 
     expect(result).toHaveLength(1);
-    expect(result[0].toolSections).toEqual([
+    expect(asTool(result[0]).toolSections).toEqual([
       {
         id: 's1',
         title: 'explore: find files',

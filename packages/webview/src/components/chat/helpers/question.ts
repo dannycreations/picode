@@ -25,7 +25,7 @@ export function parseQuestionData(toolArgs?: ToolArguments): QuestionData | unde
 export function findPendingQuestion(messages: readonly ChatMessage[]): ChatMessage | undefined {
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i];
-    if (msg.toolName === 'ask_question' && msg.toolStatus === 'running') {
+    if (msg.sender === 'tool' && msg.toolName === 'ask_question' && msg.toolStatus === 'running') {
       return msg;
     }
   }

@@ -1,5 +1,6 @@
-import type { THINKING_LEVEL_ORDER } from '@pi-code/shared/core/constants';
 import type { TodoItem } from '@pi-code/shared/utilities/todo';
+
+export type { ModelThinkingLevel } from '@earendil-works/pi-ai';
 
 export interface ActiveTaskState extends StatsData {
   readonly id: string;
@@ -7,6 +8,16 @@ export interface ActiveTaskState extends StatsData {
   readonly messages: ChatMessage[];
   readonly path?: string;
   readonly isArchived?: boolean;
+}
+
+export interface StatsData {
+  readonly tokensIn: number;
+  readonly tokensOut: number;
+  readonly cacheWrites?: number;
+  readonly cacheReads?: number;
+  readonly totalCost: number;
+  readonly contextTokens: number;
+  readonly contextLimit: number;
 }
 
 export type ToolName =
@@ -30,8 +41,6 @@ export type ToolArguments =
   // write_file
   | { path: string; content: string };
 
-export type ModelThinkingLevel = (typeof THINKING_LEVEL_ORDER)[number];
-
 export interface ReadFileSection {
   readonly path: string;
   readonly content: string;
@@ -51,20 +60,54 @@ export interface ToolSection {
   readonly approvalMessage?: ChatMessage;
 }
 
-export interface ChatMessage {
+export type ChatSender = 'api_request' | 'assistant' | 'checkpoint' | 'error' | 'info' | 'queue' | 'tool' | 'user';
+
+interface ChatMessageBase {
   readonly id: string;
-  readonly sender: 'api_request' | 'assistant' | 'checkpoint' | 'error' | 'info' | 'queue' | 'tool' | 'user';
   readonly text: string;
   readonly ts: number;
-  readonly toolName?: ToolName;
-  readonly toolArgs?: ToolArguments;
+}
+
+export interface ApiRequestChatMessage extends ChatMessageBase {
+  readonly sender: 'api_request';
+  readonly toolStatus?: 'approval' | 'completed' | 'denied' | 'running';
+  readonly errorMessage?: string;
+  readonly cost?: number;
+}
+
+export interface AssistantChatMessage extends ChatMessageBase {
+  readonly sender: 'assistant';
   readonly toolStatus?: 'approval' | 'completed' | 'denied' | 'running';
   readonly reasoning?: string;
   readonly cost?: number;
+}
+
+export interface CheckpointChatMessage extends ChatMessageBase {
+  readonly sender: 'checkpoint';
+}
+
+export interface ErrorChatMessage extends ChatMessageBase {
+  readonly sender: 'error';
+  readonly errorMessage?: string;
+}
+
+export interface InfoChatMessage extends ChatMessageBase {
+  readonly sender: 'info';
+}
+
+export interface QueueChatMessage extends ChatMessageBase {
+  readonly sender: 'queue';
+  readonly images?: string[];
+}
+
+export interface ToolChatMessage extends ChatMessageBase {
+  readonly sender: 'tool';
+  readonly toolName?: ToolName;
+  readonly toolArgs?: ToolArguments;
+  readonly toolStatus?: 'approval' | 'completed' | 'denied' | 'running';
   readonly diff?: string;
   readonly todos?: TodoItem[];
   readonly errorMessage?: string;
-  readonly images?: string[];
   readonly subagent?: string;
   readonly subtitle?: string;
   readonly toolCallId?: string;
@@ -74,12 +117,17 @@ export interface ChatMessage {
   readonly toolSections?: ReadonlyArray<ToolSection>;
 }
 
-export interface StatsData {
-  readonly tokensIn: number;
-  readonly tokensOut: number;
-  readonly cacheWrites?: number;
-  readonly cacheReads?: number;
-  readonly totalCost: number;
-  readonly contextTokens: number;
-  readonly contextLimit: number;
+export interface UserChatMessage extends ChatMessageBase {
+  readonly sender: 'user';
+  readonly images?: string[];
 }
+
+export type ChatMessage =
+  | ApiRequestChatMessage
+  | AssistantChatMessage
+  | CheckpointChatMessage
+  | ErrorChatMessage
+  | InfoChatMessage
+  | QueueChatMessage
+  | ToolChatMessage
+  | UserChatMessage;

@@ -21,6 +21,8 @@ interface AssistantMessageProps {
 export const AssistantMessage: FC<AssistantMessageProps> = ({ message, search }) => {
   const [isReasoningExpanded, setIsReasoningExpanded] = useState(false);
 
+  if (message.sender !== 'assistant') return null;
+
   const reasoning = message.reasoning?.trim() ?? '';
   const hasReasoning = reasoning !== '';
   const hasText = message.text.trim() !== '';

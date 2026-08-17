@@ -12,6 +12,8 @@ import type { ChatMessage } from '@pi-code/shared/core/types';
 import type { SearchContext } from '@pi-code/webview/components/shared/Highlight';
 
 export const ApiRequestMessage: FC<{ readonly message: ChatMessage }> = ({ message }) => {
+  if (message.sender !== 'api_request') return null;
+
   const isRunning = message.toolStatus === 'running';
   const isFailed = message.toolStatus === 'denied';
 
@@ -47,6 +49,8 @@ export const ApiRequestMessage: FC<{ readonly message: ChatMessage }> = ({ messa
 };
 
 export const ErrorMessage: FC<{ readonly message: ChatMessage; readonly search?: SearchContext }> = ({ message, search }) => {
+  if (message.sender !== 'error') return null;
+
   const text = message.errorMessage || message.text;
   const query = search?.query ?? '';
   const textCount = findOccurrences(text, query).length;
