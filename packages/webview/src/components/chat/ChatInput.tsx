@@ -7,6 +7,7 @@ import { logger } from '@pi-code/shared/core/logger';
 import { splitInputSegments } from '@pi-code/webview/components/chat/helpers/highlight';
 import { useChatCommand, useChatMention } from '@pi-code/webview/components/chat/hooks/useSuggestion';
 import { CommandMenu, MentionMenu } from '@pi-code/webview/components/chat/SuggestionMenu';
+import { ImageThumb } from '@pi-code/webview/components/shared/ImageThumb';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { readFileAsDataUrl } from '@pi-code/webview/utilities/common';
 
@@ -33,8 +34,8 @@ const AttachedImagesPreview: FC<{
   return (
     <div className="flex flex-wrap gap-2 mb-2">
       {images.map((img, idx) => (
-        <div key={idx} className="relative w-10 h-10 rounded border border-vscode-panel-border overflow-hidden group">
-          <img src={img} alt="attachment" className="w-full h-full object-cover" />
+        <div key={idx} className="relative w-10 h-10 rounded overflow-hidden">
+          <ImageThumb url={img} />
           <Tooltip content="Remove attachment">
             <button
               onClick={() => onRemove(idx)}
