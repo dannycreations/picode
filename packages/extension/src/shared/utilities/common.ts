@@ -20,15 +20,6 @@ export function defaultThinkingLevel(levels: readonly ModelThinkingLevel[]): Mod
   return levels.find((level) => level !== 'off') ?? levels[0];
 }
 
-export function safeJsonParse<T>(value?: string): T | undefined {
-  if (!value) return undefined;
-  try {
-    return JSON.parse(value) as T;
-  } catch {
-    return undefined;
-  }
-}
-
 export function findOccurrences(haystack: string, needle: string, caseSensitive = false): number[] {
   if (needle === '') return [];
   const source = caseSensitive ? haystack : haystack.toLowerCase();

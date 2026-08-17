@@ -1,6 +1,3 @@
-import { safeJsonParse } from '@pi-code/shared/utilities/common';
-import { extractResultText } from '@pi-code/webview/components/chat/messages/helpers/common';
-
 import type { ChatMessage, ToolArguments } from '@pi-code/shared/core/types';
 
 interface QuestionData {
@@ -13,11 +10,6 @@ interface RawQuestionArgs {
   readonly follow_up?: unknown;
 }
 
-interface RawQuestionResult {
-  readonly details?: { response?: unknown };
-  readonly content?: Array<{ text?: unknown }>;
-}
-
 export function parseQuestionData(toolArgs?: ToolArguments): QuestionData | undefined {
   const parsed = toolArgs as RawQuestionArgs | undefined;
   if (!parsed || typeof parsed.question !== 'string') return undefined;
@@ -28,16 +20,6 @@ export function parseQuestionData(toolArgs?: ToolArguments): QuestionData | unde
     .filter((text): text is string => typeof text === 'string' && text.trim() !== '');
 
   return { question: parsed.question, suggestions };
-}
-
-export function parseQuestionAnswer(diff?: string): string {
-  if (!diff) return '';
-
-  const parsed = safeJsonParse<RawQuestionResult>(diff);
-  if (!parsed) return diff.trim();
-
-  const text = extractResultText(parsed);
-  return text ? text.trim() : '';
 }
 
 export function findPendingQuestion(messages: readonly ChatMessage[]): ChatMessage | undefined {

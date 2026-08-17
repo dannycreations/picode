@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { findPendingQuestion, parseQuestionAnswer, parseQuestionData } from '@pi-code/webview/components/chat/helpers/question';
+import { findPendingQuestion, parseQuestionData } from '@pi-code/webview/components/chat/helpers/question';
 
 import type { ChatMessage, ToolArguments } from '@pi-code/shared/core/types';
 
@@ -37,25 +37,6 @@ describe('parseQuestionData', () => {
   it('should return undefined for missing or unrelated arguments', () => {
     expect(parseQuestionData(undefined)).toBeUndefined();
     expect(parseQuestionData({ path: 'unrelated.ts' })).toBeUndefined();
-  });
-});
-
-describe('parseQuestionAnswer', () => {
-  it('should read the answer from the tool result details', () => {
-    const result = JSON.stringify({ content: [{ type: 'text', text: 'Use pnpm' }], details: { response: 'Use pnpm' } });
-
-    expect(parseQuestionAnswer(result)).toBe('Use pnpm');
-  });
-
-  it('should fall back to the first content block', () => {
-    const result = JSON.stringify({ content: [{ type: 'text', text: 'Use npm' }] });
-
-    expect(parseQuestionAnswer(result)).toBe('Use npm');
-  });
-
-  it('should treat non-json results as the raw answer', () => {
-    expect(parseQuestionAnswer('Use bun')).toBe('Use bun');
-    expect(parseQuestionAnswer(undefined)).toBe('');
   });
 });
 

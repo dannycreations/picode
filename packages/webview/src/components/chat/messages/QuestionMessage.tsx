@@ -2,7 +2,7 @@ import { cn } from 'cnfast';
 import { ClipboardCopy, CornerDownRight, MessageCircleQuestionMark, ShieldAlert } from 'lucide-react';
 
 import { findOccurrences } from '@pi-code/shared/utilities/common';
-import { parseQuestionAnswer, parseQuestionData } from '@pi-code/webview/components/chat/helpers/question';
+import { parseQuestionData } from '@pi-code/webview/components/chat/helpers/question';
 import { localActiveIndex } from '@pi-code/webview/components/chat/helpers/search';
 import { Markdown } from '@pi-code/webview/components/chat/markdown/Markdown';
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
@@ -29,7 +29,7 @@ export const QuestionMessage: FC<QuestionMessageProps> = ({ message, search, onA
   // single source of truth for whether the card is still interactive.
   const isPending = message.toolStatus === 'running';
   const isCancelled = message.toolStatus === 'denied';
-  const answer = isCancelled ? '' : parseQuestionAnswer(message.diff);
+  const answer = isCancelled ? '' : (message.diff ?? '');
 
   const query = search?.query ?? '';
   const questionCount = findOccurrences(question, query).length;

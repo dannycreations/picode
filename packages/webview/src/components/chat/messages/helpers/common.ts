@@ -25,14 +25,3 @@ export function getDiffStat(diff?: string): DiffStat | undefined {
   if (added === 0 && removed === 0) return undefined;
   return { added, removed };
 }
-
-// A tool result is either `{ details: { result | response } }` or an
-// Anthropic-style `{ content: [{ text }] }`. Return the first human text.
-export function extractResultText(parsed: unknown): string {
-  if (!parsed || typeof parsed !== 'object') return '';
-  const result = parsed as { details?: { result?: unknown; response?: unknown }; content?: unknown };
-  if (typeof result.details?.result === 'string') return result.details.result;
-  if (typeof result.details?.response === 'string') return result.details.response;
-  if (Array.isArray(result.content) && typeof result.content[0]?.text === 'string') return result.content[0].text;
-  return '';
-}

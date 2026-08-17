@@ -1,7 +1,7 @@
 import { visit } from 'unist-util-visit';
 
 import { findOccurrences } from '@pi-code/shared/utilities/common';
-import { parseQuestionAnswer, parseQuestionData } from '@pi-code/webview/components/chat/helpers/question';
+import { parseQuestionData } from '@pi-code/webview/components/chat/helpers/question';
 
 import type { ChatMessage } from '@pi-code/shared/core/types';
 import type { SearchContext } from '@pi-code/webview/components/shared/Highlight';
@@ -25,7 +25,7 @@ export function getMessageSearchText(message: ChatMessage): string {
       // counting the others would send navigation to unhighlighted rows.
       if (message.toolName !== 'ask_question') return '';
       const question = parseQuestionData(message.toolArgs)?.question ?? message.text;
-      const answer = message.toolStatus === 'denied' ? '' : parseQuestionAnswer(message.diff);
+      const answer = message.toolStatus === 'denied' ? '' : (message.diff ?? '');
       return [question, answer].filter(Boolean).join('\n');
     }
     case 'error':
