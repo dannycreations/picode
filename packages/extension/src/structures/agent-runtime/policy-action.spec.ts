@@ -2,6 +2,7 @@ import * as shellQuote from 'shell-quote';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  applyYoloDecision,
   containsDangerousSubstitution,
   matchesGlob,
   parseCommand,
@@ -222,6 +223,26 @@ describe('resolveCommandAction', () => {
   it('should strip stream redirections properly during evaluation', () => {
     const action = resolveCommandAction('echo hello 2>&1', true, ['echo *'], []);
     expect(action).toBe('approve');
+  });
+});
+
+describe('applyYoloDecision', () => {
+  it('returns the decision unchanged when YOLO mode is off', () => {
+    const settings = { ...DEFAULT_SETTINGS, yolo: false };
+    expect(applyYoloDecision(settings, { action: 'deny', reason: 'blocked' })).toEqual({ action: 'deny', reason: 'blocked' });
+    expect(applyYoloDecision(settings, { action: 'confirm' })).toEqual({ action: 'confirm' });
+  });
+
+  it('approves every tool call in YOLO mode when denied settings are not respected', () => {
+    const settings = { ...DEFAULT_SETTINGS, yolo: true, yoloRespectDenied: false };
+    expect(applyYoloDecision(settings, { action: 'deny', reason: 'blocked' })).toEqual({ action: 'approve' });
+    expect(applyYoloDecision(settings, { action: 'confirm' })).toEqual({ action: 'approve' });
+  });
+
+  it('still blocks denied tool calls in YOLO mode when denied settings are respected', () => {
+    const settings = { ...DEFAULT_SETTINGS, yolo: true, yoloRespectDenied: true };
+    expect(applyYoloDecision(settings, { action: 'deny', reason: 'blocked' })).toEqual({ action: 'deny', reason: 'blocked' });
+    expect(applyYoloDecision(settings, { action: 'confirm' })).toEqual({ action: 'approve' });
   });
 });
 

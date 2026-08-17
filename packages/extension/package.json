@@ -21,6 +21,8 @@
       "supported": "limited",
       "description": "Project-local agent resources and command execution stay disabled until the workspace is trusted.",
       "restrictedConfigurations": [
+        "pi-code.yolo",
+        "pi-code.yoloRespectDenied",
         "pi-code.autoApproveRead",
         "pi-code.autoApproveSkillReads",
         "pi-code.autoApproveWrite",
@@ -61,6 +63,16 @@
           "type": "boolean",
           "default": true,
           "markdownDescription": "Let the agent pick skills (`SKILL.md` files) on its own. When off, skills stay available and you load one explicitly with `/skill:<name>`."
+        },
+        "pi-code.yolo": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically approve every agent tool call without asking. Overrides the per-action approval settings below."
+        },
+        "pi-code.yoloRespectDenied": {
+          "type": "boolean",
+          "default": true,
+          "description": "In yolo mode, still block tool calls that match your denied paths and commands."
         },
         "pi-code.autoApproveRead": {
           "type": "boolean",

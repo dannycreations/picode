@@ -12,6 +12,7 @@ import {
   Terminal,
   Trash2,
   UsersRound,
+  Zap,
 } from 'lucide-react';
 
 import { getSettingSpec, SETTING_KEYS } from '@pi-code/shared/core/settings';
@@ -46,6 +47,9 @@ export const SETTING_FIELDS: SettingFieldRegistry = {
   enableSubagentTool: { tab: 'ability', label: 'Task Delegation', icon: UsersRound },
   enableAgentRules: { tab: 'ability', label: 'Project Rules', icon: FileText },
   enableSkillDiscovery: { tab: 'ability', label: 'Skill Discovery', icon: BookOpen },
+
+  yolo: { tab: 'approval', label: 'YOLO Mode', icon: Zap },
+  yoloRespectDenied: { tab: 'approval', label: 'Respect Denied Tools', parent: 'yolo' },
 
   autoApproveRead: { tab: 'approval', label: 'Read Files', icon: Eye },
   autoApproveSkillReads: { tab: 'approval', label: 'Skill Reading', parent: 'autoApproveRead' },

@@ -7,6 +7,12 @@ import type { AppSettings } from '@pi-code/shared/core/settings';
 
 export type ApprovalDecision = { action: 'approve' } | { action: 'deny'; reason: string } | { action: 'confirm' };
 
+export function applyYoloDecision(settings: AppSettings, decision: ApprovalDecision): ApprovalDecision {
+  if (!settings.yolo) return decision;
+  if (settings.yoloRespectDenied && decision.action === 'deny') return decision;
+  return { action: 'approve' };
+}
+
 const DANGEROUS_PATTERNS: readonly RegExp[] = [
   /\$\{([^}]*@[PQEAak][^}]*)\}/, // Parameter expansion flags
   /\$\{([^}]*[=+\-?][^}]*\\(?:[0-7]{3}|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}))[^}]*\}/i, // Escapes in parameter defaults

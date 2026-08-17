@@ -53,6 +53,19 @@ export const SETTINGS_SCHEMA = {
       'Let the agent pick skills (`SKILL.md` files) on its own. When off, skills stay available and you load one explicitly with `/skill:<name>`.',
   },
 
+  yolo: {
+    type: 'boolean',
+    default: false,
+    restricted: true,
+    description: 'Automatically approve every agent tool call without asking. Overrides the per-action approval settings below.',
+  },
+  yoloRespectDenied: {
+    type: 'boolean',
+    default: true,
+    restricted: true,
+    description: 'In yolo mode, still block tool calls that match your denied paths and commands.',
+  },
+
   autoApproveRead: {
     type: 'boolean',
     default: false,

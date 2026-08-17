@@ -1,6 +1,11 @@
 import { readAppSettings } from '@pi-code/extension/core/settings';
 import { requestApproval } from '@pi-code/extension/structures/agent-runtime/brokers/approval';
-import { resolveCommandAction, resolvePathAction, resolveReadPath } from '@pi-code/extension/structures/agent-runtime/policy-action';
+import {
+  applyYoloDecision,
+  resolveCommandAction,
+  resolvePathAction,
+  resolveReadPath,
+} from '@pi-code/extension/structures/agent-runtime/policy-action';
 
 import type { InlineExtension, ToolCallEventResult } from '@earendil-works/pi-coding-agent';
 import type { ApprovalDecision } from '@pi-code/extension/structures/agent-runtime/policy-action';
@@ -57,7 +62,8 @@ function evaluateToolCall(toolName: ToolName, cwd: string, input: unknown): Appr
       break;
   }
 
-  return action === 'deny' ? { action, reason: denyReason } : { action };
+  const decision: ApprovalDecision = action === 'deny' ? { action, reason: denyReason } : { action };
+  return applyYoloDecision(settings, decision);
 }
 
 interface SubagentSessionInfo {
