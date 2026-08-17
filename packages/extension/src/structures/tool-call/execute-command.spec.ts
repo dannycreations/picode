@@ -1,6 +1,33 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { cleanCommandOutput } from '@pi-code/extension/structures/tool-call/execute-command';
+import { cleanCommandOutput, executeCommandTool } from '@pi-code/extension/structures/tool-call/execute-command';
+
+vi.mock('vscode', () => {
+  return {
+    workspace: {
+      getConfiguration: () => ({
+        get: (key: string) => {
+          if (key === 'maxToolOutputLines') return 2000;
+          if (key === 'maxToolOutputSizeKb') return 50;
+          return undefined;
+        },
+      }),
+    },
+  };
+});
+
+describe('executeCommandTool', () => {
+  it('respects requested timeout', async () => {
+    const result = (await executeCommandTool.execute(
+      'test-id',
+      { command: 'node -e "setTimeout(() => {}, 5000)"', timeout: 50 },
+      undefined,
+      undefined,
+      { cwd: process.cwd() } as any,
+    )) as any;
+    expect(result.details.timedOut).toBe(true);
+  });
+});
 
 describe('cleanCommandOutput', () => {
   it('strips ANSI color and style escape codes', () => {

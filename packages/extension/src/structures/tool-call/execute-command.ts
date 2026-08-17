@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { exec, spawn } from 'node:child_process';
 import { isAbsolute, resolve } from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
 import { defineTool, formatSize } from '@earendil-works/pi-coding-agent';
@@ -137,6 +137,7 @@ export const executeCommandTool = defineTool({
         cwd: resolvedCwd,
         env: { ...process.env, FORCE_COLOR: '1' },
         stdio: ['ignore', 'pipe', 'pipe'],
+        detached: process.platform !== 'win32',
       });
 
       let finished = false;
@@ -212,8 +213,14 @@ export const executeCommandTool = defineTool({
 
       const killProcess = (sig: NodeJS.Signals = 'SIGTERM') => {
         try {
-          if (!cp.killed) {
-            cp.kill(sig);
+          if (cp.pid && !cp.killed) {
+            const pid = cp.pid;
+            if (process.platform === 'win32') {
+              exec(`taskkill /pid ${pid} /T /F`, () => {});
+            } else {
+              process.kill(-pid, sig);
+              cp.kill(sig);
+            }
           }
         } catch {}
       };
