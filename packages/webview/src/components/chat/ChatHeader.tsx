@@ -32,6 +32,7 @@ interface ChatHeaderProps extends StatsData {
   readonly onArchive?: () => void;
   readonly isArchived?: boolean;
   readonly archiveDisabled?: boolean;
+  readonly deleteDisabled?: boolean;
   readonly isSearchOpen: boolean;
   readonly searchQuery: string;
   readonly matchCount: number;
@@ -133,6 +134,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
   onArchive,
   isArchived,
   archiveDisabled,
+  deleteDisabled,
   isSearchOpen,
   searchQuery,
   matchCount,
@@ -306,17 +308,16 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
                             </button>
                           </Tooltip>
                         )}
-                        {!isArchived && (
-                          <TaskActions
-                            iconSize={14}
-                            buttonClassName="icon-button opacity-80 hover:opacity-100 active:bg-vscode-list-hoverBackground/40 transition-opacity"
-                            wrapperClassName="select-none -my-1"
-                            copyText={title}
-                            onExport={onExport}
-                            onDelete={onDelete}
-                            onViewRaw={onViewRaw}
-                          />
-                        )}
+                        <TaskActions
+                          iconSize={14}
+                          buttonClassName="icon-button opacity-80 hover:opacity-100 active:bg-vscode-list-hoverBackground/40 transition-opacity"
+                          wrapperClassName="select-none -my-1"
+                          copyText={title}
+                          onExport={onExport}
+                          onDelete={onDelete}
+                          onViewRaw={onViewRaw}
+                          deleteDisabled={deleteDisabled}
+                        />
                       </div>
                     </div>
                   </td>

@@ -12,6 +12,7 @@ interface TaskActionsProps {
   readonly deleteButtonClassName?: string;
   readonly wrapperClassName?: string;
   readonly copyText: string;
+  readonly deleteDisabled?: boolean;
   readonly onExport?: () => void;
   readonly onDelete?: () => void;
   readonly onViewRaw?: () => void;
@@ -23,6 +24,7 @@ export const TaskActions: FC<TaskActionsProps> = ({
   deleteButtonClassName,
   wrapperClassName,
   copyText,
+  deleteDisabled,
   onExport,
   onDelete,
   onViewRaw,
@@ -52,7 +54,8 @@ export const TaskActions: FC<TaskActionsProps> = ({
         <Tooltip content="Delete task">
           <button
             type="button"
-            className={deleteButtonClassName ?? buttonClassName}
+            disabled={deleteDisabled}
+            className={cn(deleteButtonClassName ?? buttonClassName, 'disabled:opacity-40 disabled:cursor-default')}
             onClick={(e) => {
               stop(e);
               onDelete();

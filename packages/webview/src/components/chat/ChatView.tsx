@@ -327,11 +327,12 @@ export const ChatView: FC = () => {
           onClose={handleCloseTaskReturn}
           onCompact={() => postCompactMessage(activeTask)}
           onExport={activeTask.path ? () => exportSession(activeTask) : undefined}
-          onDelete={!isAgentRunning && activeTask.path ? () => setShowDeleteActiveConfirm(true) : undefined}
+          onDelete={activeTask.path ? () => setShowDeleteActiveConfirm(true) : undefined}
           onViewRaw={() => viewRaw(activeTask.path)}
           onArchive={handleArchive}
           isArchived={activeTask?.isArchived}
           archiveDisabled={isAgentRunning || !activeTask?.path}
+          deleteDisabled={isAgentRunning}
           isSearchOpen={searchOpen}
           searchQuery={searchQuery}
           matchCount={totalMatches}
