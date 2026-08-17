@@ -5,15 +5,15 @@ import { HistoryCard } from '@pi-code/webview/components/history/HistoryCard';
 import { HistoryFilter } from '@pi-code/webview/components/history/HistoryFilter';
 import { HistoryPagination } from '@pi-code/webview/components/history/HistoryPagination';
 import { HistorySelection } from '@pi-code/webview/components/history/HistorySelection';
-import { useHistoryFilter } from '@pi-code/webview/components/history/hooks/useHistoryFilter';
 import { ConfirmDialog } from '@pi-code/webview/components/shared/ConfirmDialog';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 
-import type { FC } from 'react';
+import type { Dispatch, FC, SetStateAction } from 'react';
 import type { HistoryItem, HistoryScope } from '@pi-code/shared/core/protocol';
+import type { UseHistoryFilterReturn } from '@pi-code/webview/components/history/hooks/useHistoryFilter';
 
 interface HistoryViewProps {
-  readonly history: HistoryItem[];
+  readonly filter: UseHistoryFilterReturn;
   readonly onSelectTask: (item: HistoryItem) => void;
   readonly onDone: () => void;
   readonly onDeleteTasks: (paths: string[]) => void;
@@ -21,15 +21,31 @@ interface HistoryViewProps {
   readonly setScope: (scope: HistoryScope) => void;
   readonly onViewRaw: (path: string) => void;
   readonly onExport: (item: HistoryItem) => void;
+  readonly isSelectionMode: boolean;
+  readonly setIsSelectionMode: Dispatch<SetStateAction<boolean>>;
+  readonly selectedPaths: string[];
+  readonly setSelectedPaths: Dispatch<SetStateAction<string[]>>;
 }
 
-export const HistoryView: FC<HistoryViewProps> = ({ history, onSelectTask, onDone, onDeleteTasks, scope, setScope, onViewRaw, onExport }) => {
-  const [isSelectionMode, setIsSelectionMode] = useState(false);
-  const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
+export const HistoryView: FC<HistoryViewProps> = ({
+  filter,
+  onSelectTask,
+  onDone,
+  onDeleteTasks,
+  scope,
+  setScope,
+  onViewRaw,
+  onExport,
+  isSelectionMode,
+  setIsSelectionMode,
+  selectedPaths,
+  setSelectedPaths,
+}) => {
   const [deleteConfirmPaths, setDeleteConfirmPaths] = useState<string[] | null>(null);
 
-  const { searchQuery, setSearchQuery, sortBy, setSortBy, currentPage, setCurrentPage, totalPages, filteredHistory, paginatedItems } =
-    useHistoryFilter(history, 6);
+  const { searchQuery, setSearchQuery, sortBy, setSortBy, currentPage, setCurrentPage, totalPages, filteredHistory, paginatedItems } = filter;
+
+  const onToggleSelectionMode = useCallback(() => setIsSelectionMode((prev) => !prev), [setIsSelectionMode]);
 
   // Selection handlers
   const handleToggleSelection = useCallback((path: string) => {
@@ -61,7 +77,7 @@ export const HistoryView: FC<HistoryViewProps> = ({ history, onSelectTask, onDon
       }
     }
     setDeleteConfirmPaths(null);
-  }, [deleteConfirmPaths, onDeleteTasks]);
+  }, [deleteConfirmPaths, onDeleteTasks, setSelectedPaths, setIsSelectionMode]);
 
   const isAllPageSelected = paginatedItems.length > 0 && paginatedItems.every((item) => selectedPaths.includes(item.path));
 
@@ -89,7 +105,7 @@ export const HistoryView: FC<HistoryViewProps> = ({ history, onSelectTask, onDon
         sortBy={sortBy}
         onSortChange={setSortBy}
         isSelectionMode={isSelectionMode}
-        onToggleSelectionMode={() => setIsSelectionMode((prev) => !prev)}
+        onToggleSelectionMode={onToggleSelectionMode}
       />
 
       {/* Selection Bar */}

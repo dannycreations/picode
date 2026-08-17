@@ -45,10 +45,6 @@ export const useChatHistory = ({ view }: UseChatHistoryProps): UseChatHistoryRet
     if (view === 'history') requestScope(scope);
   }, [view, scope, requestScope]);
 
-  useEffect(() => {
-    if (view === 'chat') setScope('current');
-  }, [view, setScope]);
-
   // Optimistically drop the deleted rows from every cached scope (not just the
   // visible one) so a later switch to "All" re-fetches instead of showing
   // stale entries, then ask the host to remove the files.

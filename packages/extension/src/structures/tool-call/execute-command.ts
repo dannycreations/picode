@@ -61,7 +61,7 @@ function collapseCarriageReturns(line: string): string {
 export const executeCommandTool = defineTool({
   name: 'execute_command' as ToolName,
   label: 'Execute Command',
-  description: 'Run a CLI command on the host. Prefer set "cwd" over using change directory "cd" command.',
+  description: 'Run a CLI command on the host. Prefer explicit "cwd" over using change directory "cd" command.',
   parameters: Type.Object({
     command: Type.String({ description: 'The command to execute.' }),
     cwd: Type.Optional(Type.Union([Type.String(), Type.Null()], { description: 'Optional working directory; defaults to the workspace.' })),

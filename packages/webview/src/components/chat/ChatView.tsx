@@ -1,7 +1,7 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { cn } from 'cnfast';
 import { Pi } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { findOccurrences } from '@pi-code/shared/utilities/common';
 import { ChatAction } from '@pi-code/webview/components/chat/ChatAction';
@@ -18,6 +18,7 @@ import { useChatConfig } from '@pi-code/webview/components/chat/hooks/useChatCon
 import { useChatHistory } from '@pi-code/webview/components/chat/hooks/useChatHistory';
 import { HistoryPreview } from '@pi-code/webview/components/history/HistoryPreview';
 import { HistoryView } from '@pi-code/webview/components/history/HistoryView';
+import { useHistoryFilter } from '@pi-code/webview/components/history/hooks/useHistoryFilter';
 import { SettingsView } from '@pi-code/webview/components/setting/SettingsView';
 import { ConfirmDialog } from '@pi-code/webview/components/shared/ConfirmDialog';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
@@ -35,7 +36,26 @@ export const ChatView: FC = () => {
   const composer = useChatComposer();
   const config = useChatConfig();
   const history = useChatHistory({ view: composer.view });
+  // The history list's filter and selection state live here (not inside
+  // HistoryView) so they survive the view switching to a task and back.
+  const historyFilter = useHistoryFilter(history.pastTasks, 6);
+  const [isHistorySelectionMode, setIsHistorySelectionMode] = useState(false);
+  const [historySelectedPaths, setHistorySelectedPaths] = useState<string[]>([]);
   const task = useActiveTask();
+
+  // Tracks the live view so message-driven navigations (e.g. opening settings)
+  // can read the view that was active when the message arrived.
+  const viewRef = useRef(composer.view);
+  viewRef.current = composer.view;
+
+  // Remembers whether the open task was launched from the history list so it
+  // returns there on close. Kept separate from the settings flag because
+  // settings can open on top of a task and must not overwrite this.
+  const taskFromHistoryRef = useRef(false);
+
+  // Remembers whether settings was opened from the history list, so it returns
+  // there on close instead of the chat.
+  const settingsFromHistoryRef = useRef(false);
 
   // Fan every incoming extension message out to the domain hook that owns its
   // state. Each hook's onMessage ignores the message types it does not handle.
@@ -44,6 +64,7 @@ export const ChatView: FC = () => {
 
     const handleMessage = (event: MessageEvent<ExtensionToWebviewMessage>): void => {
       const msg = event.data;
+      if (msg.type === 'show_settings') settingsFromHistoryRef.current = viewRef.current === 'history';
       composer.onMessage(msg);
       config.onMessage(msg);
       history.onMessage(msg);
@@ -93,6 +114,48 @@ export const ChatView: FC = () => {
   const { scrollRef, contentRef, showScrollToBottom, handleScroll, scrollToBottom, onWheel, onTouchStart, onPointerDown, onKeyDown } = useAutoScroll(
     activeTask?.id,
   );
+
+  // Closing a task opened from the history list must return to that list (with
+  // its scope and cached data intact), not the recent tasks screen.
+  const returnToHistoryIfNeeded = useCallback(() => {
+    if (taskFromHistoryRef.current) {
+      taskFromHistoryRef.current = false;
+      setView('history');
+    }
+  }, [setView]);
+
+  const handleCloseTaskReturn = useCallback(() => {
+    handleCloseTask();
+    returnToHistoryIfNeeded();
+  }, [handleCloseTask, returnToHistoryIfNeeded]);
+
+  // Leaving the history list for the recent tasks screen clears its scope and
+  // every in-list state (search, sort, pagination, selection) so it starts
+  // fresh next time.
+  const { setSearchQuery: resetHistorySearch, setSortBy: resetHistorySort, setCurrentPage: resetHistoryPage } = historyFilter;
+
+  const handleHistoryDone = useCallback(() => {
+    resetHistorySearch('');
+    resetHistorySort('newest');
+    resetHistoryPage(1);
+    setIsHistorySelectionMode(false);
+    setHistorySelectedPaths([]);
+    setScope('current');
+    setView('chat');
+    taskFromHistoryRef.current = false;
+    settingsFromHistoryRef.current = false;
+  }, [resetHistorySearch, resetHistorySort, resetHistoryPage, setIsHistorySelectionMode, setHistorySelectedPaths, setScope, setView]);
+
+  // Closing settings returns to the history list when it was opened from there
+  // (state preserved); otherwise it returns to the chat.
+  const handleSettingsDone = useCallback(() => {
+    if (settingsFromHistoryRef.current) {
+      settingsFromHistoryRef.current = false;
+      setView('history');
+    } else {
+      setView('chat');
+    }
+  }, [setView]);
 
   const messages = activeTask?.messages;
   const visibleMessages = useMemo(() => (messages ?? []).filter(isRenderableMessage), [messages]);
@@ -195,9 +258,13 @@ export const ChatView: FC = () => {
     [scrollToBottom, handleAnswerQuestion],
   );
 
-  const loadSession = useCallback((item: HistoryItem) => {
-    vscode?.postMessage({ type: 'load_session', path: item.path, id: item.id, title: item.task });
-  }, []);
+  const loadSession = useCallback(
+    (item: HistoryItem) => {
+      taskFromHistoryRef.current = view === 'history';
+      vscode?.postMessage({ type: 'load_session', path: item.path, id: item.id, title: item.task });
+    },
+    [view],
+  );
 
   const exportSession = useCallback((item: { id: string; path?: string }) => {
     if (!item.path) return;
@@ -217,7 +284,7 @@ export const ChatView: FC = () => {
     return (
       <div className="view-container">
         {settings ? (
-          <SettingsView settings={settings} onDone={() => setView('chat')} />
+          <SettingsView settings={settings} onDone={handleSettingsDone} />
         ) : (
           <div className="flex items-center justify-center h-full text-muted select-none">Loading settings...</div>
         )}
@@ -229,17 +296,18 @@ export const ChatView: FC = () => {
     return (
       <div className="view-container">
         <HistoryView
-          history={pastTasks}
+          filter={historyFilter}
           onSelectTask={loadSession}
-          onDone={() => {
-            setScope('current');
-            setView('chat');
-          }}
+          onDone={handleHistoryDone}
           onDeleteTasks={deleteSessions}
           scope={scope}
           setScope={setScope}
           onViewRaw={viewRaw}
           onExport={exportSession}
+          isSelectionMode={isHistorySelectionMode}
+          setIsSelectionMode={setIsHistorySelectionMode}
+          selectedPaths={historySelectedPaths}
+          setSelectedPaths={setHistorySelectedPaths}
         />
       </div>
     );
@@ -256,7 +324,7 @@ export const ChatView: FC = () => {
       {activeTask ? (
         <ChatHeader
           {...activeTask}
-          onClose={handleCloseTask}
+          onClose={handleCloseTaskReturn}
           onCompact={() => postCompactMessage(activeTask)}
           onExport={activeTask.path ? () => exportSession(activeTask) : undefined}
           onDelete={!isAgentRunning && activeTask.path ? () => setShowDeleteActiveConfirm(true) : undefined}
@@ -355,7 +423,7 @@ export const ChatView: FC = () => {
         isAgentRunning={isAgentRunning}
         onScrollToBottom={scrollToBottom}
         onCancelTask={handleCancelTask}
-        onCloseTask={handleCloseTask}
+        onCloseTask={handleCloseTaskReturn}
         onContinueTask={() => {
           if (!activeTask) return;
           scrollToBottom();
@@ -403,6 +471,7 @@ export const ChatView: FC = () => {
         description="Are you sure you want to delete this task?"
         onConfirm={() => {
           handleDeleteActiveTask();
+          returnToHistoryIfNeeded();
           setShowDeleteActiveConfirm(false);
         }}
         onCancel={() => setShowDeleteActiveConfirm(false)}
