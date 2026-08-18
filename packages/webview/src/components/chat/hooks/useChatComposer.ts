@@ -19,8 +19,21 @@ export const useChatComposer = (): UseChatComposerReturn => {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const appendToInput = useCallback((text: string): void => {
-    setInputValue((prev) => (prev ? `${prev}\n${text}` : text));
-    setTimeout(() => textareaRef.current?.focus(), 0);
+    const textarea = textareaRef.current;
+    if (!textarea) {
+      setInputValue((prev) => (prev ? `${prev}\n${text}` : text));
+      return;
+    }
+
+    const caret = textarea.selectionStart;
+
+    setInputValue((prev) => `${prev.slice(0, caret)}${text}${prev.slice(caret)}`);
+
+    const nextCaret = caret + text.length;
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(nextCaret, nextCaret);
+    }, 0);
   }, []);
 
   const onMessage = useCallback(
