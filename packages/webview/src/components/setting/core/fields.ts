@@ -1,19 +1,4 @@
-import {
-  BookOpen,
-  Database,
-  Edit,
-  Eye,
-  FileText,
-  FoldVertical,
-  ListChecks,
-  MessageCircleQuestion,
-  ShieldCheck,
-  Sparkles,
-  Terminal,
-  Trash2,
-  UsersRound,
-  Zap,
-} from 'lucide-react';
+import { Database, ShieldCheck, Sparkles } from 'lucide-react';
 
 import { getSettingSpec, SETTING_KEYS } from '@pi-code/shared/core/settings';
 
@@ -42,34 +27,34 @@ export const SETTINGS_TABS: readonly SettingsTab[] = [
 ];
 
 export const SETTING_FIELDS: SettingFieldRegistry = {
-  enableTodoTool: { tab: 'ability', label: 'Task Planning', icon: ListChecks },
-  enableAskQuestionTool: { tab: 'ability', label: 'Clarifying Questions', icon: MessageCircleQuestion },
-  enableSubagentTool: { tab: 'ability', label: 'Task Delegation', icon: UsersRound },
-  enableAgentRules: { tab: 'ability', label: 'Project Rules', icon: FileText },
-  enableSkillDiscovery: { tab: 'ability', label: 'Skill Discovery', icon: BookOpen },
+  enableTodoTool: { tab: 'ability', label: 'Task Planning' },
+  enableAskQuestionTool: { tab: 'ability', label: 'Clarifying Questions' },
+  enableSubagentTool: { tab: 'ability', label: 'Task Delegation' },
+  enableAgentRules: { tab: 'ability', label: 'Project Rules' },
+  enableSkillDiscovery: { tab: 'ability', label: 'Skill Discovery' },
 
-  yolo: { tab: 'approval', label: 'YOLO Mode', icon: Zap },
+  yolo: { tab: 'approval', label: 'YOLO Mode' },
   yoloRespectDenied: { tab: 'approval', label: 'Respect Denied Tools', parent: 'yolo' },
 
-  autoApproveRead: { tab: 'approval', label: 'Read Files', icon: Eye },
+  autoApproveRead: { tab: 'approval', label: 'Read Files' },
   autoApproveSkillReads: { tab: 'approval', label: 'Skill Reading', parent: 'autoApproveRead' },
   allowedReadPaths: { tab: 'approval', label: 'Allowed Read Paths', parent: 'autoApproveRead', placeholder: 'e.g. src/**/*.ts' },
   deniedReadPaths: { tab: 'approval', label: 'Denied Read Paths', parent: 'autoApproveRead', placeholder: 'e.g. env/*.env' },
 
-  autoApproveWrite: { tab: 'approval', label: 'Write & Edit Files', icon: Edit },
+  autoApproveWrite: { tab: 'approval', label: 'Write & Edit Files' },
   allowedWritePaths: { tab: 'approval', label: 'Allowed Write Paths', parent: 'autoApproveWrite', placeholder: 'e.g. src/**/*.ts' },
   deniedWritePaths: { tab: 'approval', label: 'Denied Write Paths', parent: 'autoApproveWrite', placeholder: 'e.g. package.json' },
 
-  autoApproveDelete: { tab: 'approval', label: 'Delete Files', icon: Trash2 },
+  autoApproveDelete: { tab: 'approval', label: 'Delete Files' },
   allowedDeletePaths: { tab: 'approval', label: 'Allowed Delete Paths', parent: 'autoApproveDelete', placeholder: 'e.g. temp/**/*.log' },
   deniedDeletePaths: { tab: 'approval', label: 'Denied Delete Paths', parent: 'autoApproveDelete', placeholder: 'e.g. src/**/*.ts' },
 
-  autoApproveExecute: { tab: 'approval', label: 'Execute Commands', icon: Terminal },
+  autoApproveExecute: { tab: 'approval', label: 'Execute Commands' },
   allowedExecuteCommands: { tab: 'approval', label: 'Allowed Commands', parent: 'autoApproveExecute', placeholder: 'e.g. npm' },
   deniedExecuteCommands: { tab: 'approval', label: 'Denied Commands', parent: 'autoApproveExecute', placeholder: 'e.g. rm -rf' },
 
   autoCompactContext: { tab: 'context', label: 'Automatic trigger compaction' },
-  autoCompactContextPercent: { tab: 'context', label: 'Compaction threshold', icon: FoldVertical, parent: 'autoCompactContext' },
+  autoCompactContextPercent: { tab: 'context', label: 'Compaction threshold', parent: 'autoCompactContext' },
   maxOpenTabsContext: { tab: 'context', label: 'Open tabs context limit' },
   maxWorkspaceFiles: { tab: 'context', label: 'Workspace files context limit' },
   excludeIgnoredFiles: { tab: 'context', label: 'Exclude ignored files', parent: 'maxWorkspaceFiles' },

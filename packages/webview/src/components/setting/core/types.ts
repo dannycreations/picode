@@ -13,7 +13,6 @@ export interface SettingsTab {
 interface SettingFieldBase {
   readonly tab: SettingsTabId;
   readonly label: string;
-  readonly icon?: LucideIcon;
   readonly parent?: SettingKey;
 }
 

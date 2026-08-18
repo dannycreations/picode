@@ -21,9 +21,6 @@ export const SettingControl: FC<SettingControlProps> = ({ settingKey, draftSetti
   const field = SETTING_FIELDS[settingKey];
   const value = draftSettings[settingKey];
 
-  const Icon = field.icon;
-  const icon = Icon ? <Icon size={14} className="text-vscode-descriptionForeground shrink-0" /> : undefined;
-
   const currentMatched = parentMatched || (searchQuery.trim() ? matchesQuery(settingKey, searchQuery) : false);
   const childKeys = getChildFieldKeys(settingKey).filter((childKey) => isFieldVisible(childKey, searchQuery, currentMatched));
   const children = childKeys.length
@@ -42,13 +39,7 @@ export const SettingControl: FC<SettingControlProps> = ({ settingKey, draftSetti
   switch (spec.type) {
     case 'boolean': {
       return (
-        <SettingCheckbox
-          label={field.label}
-          icon={icon}
-          description={spec.description}
-          checked={value === true}
-          onChange={(next) => onChange(settingKey, next)}
-        >
+        <SettingCheckbox label={field.label} description={spec.description} checked={value === true} onChange={(next) => onChange(settingKey, next)}>
           {children}
         </SettingCheckbox>
       );
@@ -59,7 +50,6 @@ export const SettingControl: FC<SettingControlProps> = ({ settingKey, draftSetti
         <div className="flex flex-col gap-4">
           <SettingSlider
             label={field.label}
-            icon={icon}
             description={spec.description}
             value={typeof value === 'number' ? value : spec.default}
             min={spec.minimum}
