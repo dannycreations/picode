@@ -1,6 +1,6 @@
 import { CodeAction, CodeActionKind, Selection } from 'vscode';
 
-import { getEffectiveSelection, mapDiagnostics } from '@pi-code/extension/structures/add-to-context/helpers';
+import { getEffectiveSelection, mapDiagnostics } from '@pi-code/extension/structures/context-command/helpers';
 import { toRelativePath } from '@pi-code/extension/utilities/vscode';
 
 import type { CancellationToken, CodeActionContext, CodeActionProvider, CodeActionProviderMetadata, Range, TextDocument } from 'vscode';
@@ -23,24 +23,22 @@ export class PiCodeActionProvider implements CodeActionProvider {
 
     const actions: CodeAction[] = [];
 
-    // 1. "Add to Context" code action
-    const addAction = new CodeAction('Add to Context', CodeActionKind.RefactorRewrite);
+    const addAction = new CodeAction('Add to Pi Context', CodeActionKind.RefactorRewrite);
     addAction.command = {
       command: 'pi-code.addToContext',
-      title: 'Add to Context',
+      title: 'Add to Pi Context',
       arguments: [filePath, effectiveContext.text, startLine, endLine],
     };
     actions.push(addAction);
 
-    // 2. "Fix with Pi Code" code action
     const diagnostics = context.diagnostics;
     if (diagnostics.length > 0) {
-      const fixAction = new CodeAction('Fix with Pi Code', CodeActionKind.QuickFix);
+      const fixAction = new CodeAction('Add to Pi Context', CodeActionKind.QuickFix);
       // Map diagnostics to a clean JSON-serializable object format for the command
       const mappedDiagnostics = mapDiagnostics(diagnostics);
       fixAction.command = {
-        command: 'pi-code.fixCode',
-        title: 'Fix with Pi Code',
+        command: 'pi-code.addProblemToContext',
+        title: 'Add to Pi Context',
         arguments: [filePath, effectiveContext.text, startLine, endLine, mappedDiagnostics],
       };
       fixAction.isPreferred = true;

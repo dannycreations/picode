@@ -245,6 +245,11 @@
     },
     "commands": [
       {
+        "command": "pi-code.settingsButtonClicked",
+        "title": "Settings",
+        "icon": "$(settings-gear)"
+      },
+      {
         "command": "pi-code.generateCommitMessage",
         "title": "Generate Commit Message with Pi",
         "icon": "$(sparkle)"
@@ -255,14 +260,25 @@
         "category": "Pi Code"
       },
       {
-        "command": "pi-code.fixCode",
-        "title": "Fix Code",
+        "command": "pi-code.addProblemToContext",
+        "title": "Add to Pi Context",
         "category": "Pi Code"
       },
       {
-        "command": "pi-code.settingsButtonClicked",
-        "title": "Settings",
-        "icon": "$(settings-gear)"
+        "command": "pi-code.fillCode",
+        "title": "Auto Fill Code",
+        "category": "Pi Code"
+      },
+      {
+        "command": "pi-code.fixCode",
+        "title": "Auto Fix Code",
+        "category": "Pi Code"
+      }
+    ],
+    "submenus": [
+      {
+        "id": "pi-code.editorContext",
+        "label": "Pi Code"
       }
     ],
     "menus": {
@@ -271,13 +287,6 @@
           "command": "pi-code.settingsButtonClicked",
           "group": "navigation@10",
           "when": "view == pi-code.chatView"
-        }
-      ],
-      "editor/context": [
-        {
-          "command": "pi-code.addToContext",
-          "when": "editorTextFocus",
-          "group": "pi-code@1"
         }
       ],
       "scm/input": [
@@ -291,6 +300,30 @@
           "command": "pi-code.generateCommitMessage",
           "when": "scmProvider == git",
           "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "submenu": "pi-code.editorContext",
+          "when": "editorTextFocus",
+          "group": "1"
+        }
+      ],
+      "pi-code.editorContext": [
+        {
+          "command": "pi-code.addToContext",
+          "when": "editorTextFocus",
+          "group": "pi-code@1"
+        },
+        {
+          "command": "pi-code.fillCode",
+          "when": "editorTextFocus",
+          "group": "pi-code@2"
+        },
+        {
+          "command": "pi-code.fixCode",
+          "when": "editorTextFocus",
+          "group": "pi-code@3"
         }
       ]
     }

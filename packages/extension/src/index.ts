@@ -1,11 +1,16 @@
 import { cleanupSessionResources, registerSessionResourceCleanup } from '@earendil-works/pi-ai';
 import { commands, languages, window, workspace } from 'vscode';
 
-import { registerAddToContextCommand, registerFixCodeCommand } from '@pi-code/extension/structures/add-to-context/command';
-import { PiCodeActionProvider } from '@pi-code/extension/structures/add-to-context/provider';
 import { invalidateAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { ChatViewProvider } from '@pi-code/extension/structures/agent-webview/provider';
 import { registerCommitMessageCommand } from '@pi-code/extension/structures/commit-message/command';
+import {
+  registerAddProblemToContextCommand,
+  registerAddToContextCommand,
+  registerFillCodeCommand,
+  registerFixCodeCommand,
+} from '@pi-code/extension/structures/context-command/command';
+import { PiCodeActionProvider } from '@pi-code/extension/structures/context-command/provider';
 import { logger } from '@pi-code/shared/core/logger';
 
 import type { ExtensionContext } from 'vscode';
@@ -27,7 +32,9 @@ export function activate(context: ExtensionContext): void {
     }),
     registerCommitMessageCommand(),
     registerAddToContextCommand(chatViewProvider),
-    registerFixCodeCommand(chatViewProvider),
+    registerAddProblemToContextCommand(chatViewProvider),
+    registerFillCodeCommand(),
+    registerFixCodeCommand(),
     languages.registerCodeActionsProvider('*', new PiCodeActionProvider(), PiCodeActionProvider.metadata),
     commands.registerCommand('pi-code.settingsButtonClicked', () => {
       chatViewProvider.postMessage({ type: 'show_settings' });
