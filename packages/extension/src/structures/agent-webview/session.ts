@@ -1,5 +1,6 @@
-import { existsSync } from 'node:fs';
-import { dirname, join, sep } from 'node:path';
+import { createReadStream, existsSync } from 'node:fs';
+import { dirname, join, resolve, sep } from 'node:path';
+import { createInterface } from 'node:readline';
 import { getSupportedThinkingLevels } from '@earendil-works/pi-ai';
 import { getAgentDir, SessionManager } from '@earendil-works/pi-coding-agent';
 import { FileType, Uri, window, workspace } from 'vscode';
@@ -12,12 +13,18 @@ import { logger } from '@pi-code/shared/core/logger';
 import { EMPTY_STATS } from '@pi-code/shared/utilities/common';
 
 import type { Api, Model, ModelThinkingLevel } from '@earendil-works/pi-ai';
-import type { ModelRuntime, SessionInfo } from '@earendil-works/pi-coding-agent';
+import type { ModelRuntime } from '@earendil-works/pi-coding-agent';
 import type { AgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import type { ExtensionToWebviewMessage, HistoryItem, HistoryScope, ModelItem } from '@pi-code/shared/core/protocol';
 import type { ChatMessage, StatsData } from '@pi-code/shared/core/types';
 
 type SessionInitData = Extract<ExtensionToWebviewMessage, { type: 'init_data' }>['payload'];
+
+const ARCHIVES_DIR_NAME = 'archives';
+const SESSIONS_DIR_NAME = 'sessions';
+
+const MAX_PREVIEW_LINES = 2000;
+const HISTORY_PREVIEW_CHUNK = 12;
 
 const CATALOG_TIMEOUT_MS = 60_000;
 
@@ -49,17 +56,79 @@ function resolveDefaultModelId(models: ModelItem[], preferred: { id?: string; pr
   return models[0]?.id;
 }
 
-function formatSessions(sessions: SessionInfo[]): HistoryItem[] {
-  return sessions.map((session) => ({
-    id: session.id,
-    path: session.path,
-    task: session.firstMessage || 'Untitled Task',
-    ts: session.created ? new Date(session.created).getTime() : Date.now(),
-  }));
+function parseSessionLine(line: string): Record<string, unknown> | null {
+  const trimmed = line.trim();
+  if (!trimmed) return null;
+  try {
+    return JSON.parse(trimmed) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
 }
 
-const SESSIONS_DIR_NAME = 'sessions';
-const ARCHIVES_DIR_NAME = 'archives';
+function extractUserText(content: unknown): string {
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return '';
+  return content
+    .filter(
+      (block): block is { type: string; text: string } =>
+        typeof block === 'object' && block !== null && (block as { type?: unknown }).type === 'text',
+    )
+    .map((block) => block.text)
+    .join(' ');
+}
+
+async function readSessionPreview(filePath: string, mtime: number): Promise<HistoryItem | null> {
+  try {
+    const stream = createReadStream(filePath, 'utf8');
+    const rl = createInterface({ input: stream, crlfDelay: Infinity });
+    let id = '';
+    let created = '';
+    let firstMessage = '';
+    let lines = 0;
+    for await (const line of rl) {
+      if (++lines > MAX_PREVIEW_LINES) break;
+      const entry = parseSessionLine(line);
+      if (!entry) continue;
+      if (!id) {
+        if (entry['type'] !== 'session' || typeof entry['id'] !== 'string') break;
+        id = entry['id'];
+        created = typeof entry['timestamp'] === 'string' ? entry['timestamp'] : '';
+        continue;
+      }
+      if (entry['type'] === 'message' && (entry as { message?: { role?: unknown } }).message?.role === 'user') {
+        firstMessage = extractUserText((entry as { message?: { content?: unknown } }).message?.content);
+        break;
+      }
+    }
+    rl.close();
+    if (!id) return null;
+    const ts = mtime > 0 ? mtime : created ? new Date(created).getTime() : Date.now();
+    return { id, path: filePath, task: firstMessage || 'Untitled Task', ts };
+  } catch {
+    return null;
+  }
+}
+
+async function listJsonlFiles(dir: string): Promise<string[]> {
+  if (!existsSync(dir)) return [];
+  try {
+    const entries = await workspace.fs.readDirectory(Uri.file(dir));
+    return entries
+      .filter(([, type]) => type === FileType.File || (type & FileType.SymbolicLink) !== 0)
+      .map(([name]) => join(dir, name))
+      .filter((path) => path.endsWith('.jsonl'));
+  } catch {
+    return [];
+  }
+}
+
+function getCurrentSessionDir(cwd: string): string {
+  const safePath = `--${resolve(cwd)
+    .replace(/^[/\\]/, '')
+    .replace(/[/\\:]/g, '-')}--`;
+  return join(getAgentDir(), SESSIONS_DIR_NAME, safePath);
+}
 
 export function isArchivedPath(path: string): boolean {
   return path.split(sep).includes(ARCHIVES_DIR_NAME);
@@ -76,17 +145,6 @@ function getCounterpartPath(path: string): { target: string; archived: boolean }
   return { target: segments.join(sep), archived: !currentlyArchived };
 }
 
-export async function listArchives(): Promise<HistoryItem[]> {
-  const archivesRoot = join(getAgentDir(), ARCHIVES_DIR_NAME);
-  if (!existsSync(archivesRoot)) return [];
-  const entries = await workspace.fs.readDirectory(Uri.file(archivesRoot));
-  const subdirs = entries
-    .filter(([, type]) => type === FileType.Directory || (type & FileType.SymbolicLink) !== 0)
-    .map(([name]) => join(archivesRoot, name));
-  const lists = await Promise.all(subdirs.map((dir) => SessionManager.listAll(dir)));
-  return lists.flatMap((sessions) => formatSessions(sessions));
-}
-
 export async function archiveSession(sourcePath: string): Promise<{ path: string; archived: boolean }> {
   const { target, archived } = getCounterpartPath(sourcePath);
   await workspace.fs.createDirectory(Uri.file(dirname(target)));
@@ -96,15 +154,12 @@ export async function archiveSession(sourcePath: string): Promise<{ path: string
 
 export async function getInitData(cwd: string, resources?: AgentResources): Promise<SessionInitData> {
   const resolved = resources ?? (await createAgentResources(cwd));
-  const sessions = await SessionManager.list(cwd);
-
   const [models, defaultModel] = await Promise.all([listSelectableModels(resolved.services.modelRuntime), getDefaultModelSelection(cwd)]);
 
   const thinkingLevel = getSettingsManager(cwd).getDefaultThinkingLevel() ?? undefined;
 
   return {
     models,
-    history: formatSessions(sessions),
     default_model: resolveDefaultModelId(models, defaultModel),
     default_thinking_level: thinkingLevel,
     settings: resolved.settings,
@@ -154,10 +209,48 @@ export async function loadSessionDetails(
   return loadSessionTranscript(entries, model?.contextWindow ?? EMPTY_STATS.contextLimit);
 }
 
-export async function fetchHistory(cwd: string, scope: HistoryScope): Promise<HistoryItem[]> {
-  if (scope === 'archives') return listArchives();
-  const sessions = scope === 'all' ? await SessionManager.listAll() : await SessionManager.list(cwd);
-  return formatSessions(sessions);
+export async function* streamHistory(cwd: string, scope: HistoryScope): AsyncGenerator<HistoryItem[]> {
+  const files: string[] = [];
+  if (scope === 'current') {
+    files.push(...(await listJsonlFiles(getCurrentSessionDir(cwd))));
+  } else {
+    const root = scope === 'archives' ? join(getAgentDir(), ARCHIVES_DIR_NAME) : join(getAgentDir(), SESSIONS_DIR_NAME);
+    if (!existsSync(root)) return;
+    const entries = await workspace.fs.readDirectory(Uri.file(root));
+    for (const [name, type] of entries) {
+      if (type === FileType.Directory || (type & FileType.SymbolicLink) !== 0) {
+        files.push(...(await listJsonlFiles(join(root, name))));
+      }
+    }
+  }
+
+  // One cheap stat per file so we can stream newest-first without reading full
+  // contents up front.
+  const metas = (
+    await Promise.all(
+      files.map(async (path) => {
+        try {
+          const stat = await workspace.fs.stat(Uri.file(path));
+          return { path, mtime: typeof stat.mtime === 'number' ? stat.mtime : 0 };
+        } catch {
+          return null;
+        }
+      }),
+    )
+  ).filter((meta): meta is { path: string; mtime: number } => meta !== null);
+  metas.sort((a, b) => b.mtime - a.mtime);
+
+  let chunk: HistoryItem[] = [];
+  for (const meta of metas) {
+    const preview = await readSessionPreview(meta.path, meta.mtime);
+    if (!preview) continue;
+    chunk.push(preview);
+    if (chunk.length >= HISTORY_PREVIEW_CHUNK) {
+      yield chunk;
+      chunk = [];
+    }
+  }
+  if (chunk.length > 0) yield chunk;
 }
 
 export async function deleteSessions(paths: string[]): Promise<void> {

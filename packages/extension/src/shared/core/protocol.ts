@@ -67,14 +67,13 @@ export type ExtensionToWebviewMessage =
       type: 'init_data';
       payload: {
         models: ModelItem[];
-        history: HistoryItem[];
         default_model?: string;
         default_thinking_level?: ModelThinkingLevel;
         settings: AppSettings;
         commands: CommandItem[];
       };
     }
-  | { type: 'history_data'; payload: { history: HistoryItem[]; scope: HistoryScope } }
+  | { type: 'history_data'; payload: { scope: HistoryScope; items: HistoryItem[] } }
   | { type: 'commands_data'; payload: { commands: CommandItem[] } }
   | { type: 'models_data'; payload: { models: ModelItem[] } }
   | { type: 'settings_data'; payload: { settings: AppSettings } }

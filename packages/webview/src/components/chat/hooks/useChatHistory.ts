@@ -60,19 +60,18 @@ export const useChatHistory = ({ view }: UseChatHistoryProps): UseChatHistoryRet
     vscode?.postMessage({ type: 'delete_sessions', paths });
   }, []);
 
-  // The response carries its own scope, so a reply that arrives after the user
-  // switched tabs still lands in the cache entry it was requested for.
   const onMessage = useCallback((msg: ExtensionToWebviewMessage): void => {
     switch (msg.type) {
       case 'init_data':
         fetchedScopes.current.add('current');
-        setHistoryByScope((prev) => ({ ...prev, current: msg.payload.history }));
         break;
 
-      case 'history_data':
-        fetchedScopes.current.add(msg.payload.scope);
-        setHistoryByScope((prev) => ({ ...prev, [msg.payload.scope]: msg.payload.history }));
+      case 'history_data': {
+        const { scope, items } = msg.payload;
+        fetchedScopes.current.add(scope);
+        setHistoryByScope((prev) => ({ ...prev, [scope]: [...prev[scope], ...items] }));
         break;
+      }
 
       case 'archive_result': {
         // The task moved between sessions/ and archives/. Update the caches

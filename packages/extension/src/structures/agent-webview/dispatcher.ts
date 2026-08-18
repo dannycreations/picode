@@ -9,11 +9,11 @@ import {
   archiveSession,
   deleteSessions,
   exportSession,
-  fetchHistory,
   getInitData,
   isArchivedPath,
   loadSessionDetails,
   refreshModelCatalog,
+  streamHistory,
 } from '@pi-code/extension/structures/agent-webview/session';
 import { searchWorkspaceFiles } from '@pi-code/extension/utilities/fs';
 import { ACTIVE_TASK_ID, HISTORY_SCOPES } from '@pi-code/shared/core/constants';
@@ -47,17 +47,31 @@ async function postSession(
   const isArchived = path ? isArchivedPath(path) : false;
   ctx.postMessage({
     type: 'session_loaded',
-    payload: { id: id || ACTIVE_TASK_ID, title: title || '', messages: details.messages, path, isArchived, ...details.stats },
+    payload: {
+      id: id || ACTIVE_TASK_ID,
+      title: title || '',
+      messages: details.messages,
+      path,
+      isArchived,
+      ...details.stats,
+    },
   });
 }
 
 async function postHistory(ctx: MessageHandlerContext, scope: HistoryScope): Promise<void> {
-  const history = await fetchHistory(ctx.cwd, scope);
-  ctx.postMessage({ type: 'history_data', payload: { history, scope } });
+  try {
+    for await (const items of streamHistory(ctx.cwd, scope)) {
+      ctx.postMessage({ type: 'history_data', payload: { scope, items } });
+    }
+  } catch (error) {
+    logger.warn(`History stream for "${scope}" failed; the list may be incomplete.`, error);
+  }
 }
 
 const HANDLER_MAP: HandlerMap = {
   init: async (_, ctx) => {
+    void postHistory(ctx, HISTORY_SCOPES.current);
+
     const resources = await createAgentResources(ctx.cwd);
     const data = await getInitData(ctx.cwd, resources);
     ctx.postMessage({ type: 'init_data', payload: data });
