@@ -69,7 +69,13 @@ export const useChatHistory = ({ view }: UseChatHistoryProps): UseChatHistoryRet
       case 'history_data': {
         const { scope, items } = msg.payload;
         fetchedScopes.current.add(scope);
-        setHistoryByScope((prev) => ({ ...prev, [scope]: [...prev[scope], ...items] }));
+        // The host can push a scope more than once (initial load plus the
+        // post-cancel refresh); skip entries already cached so they don't repeat.
+        setHistoryByScope((prev) => {
+          const known = new Set(prev[scope].map((entry) => entry.id));
+          const additions = items.filter((item) => !known.has(item.id));
+          return { ...prev, [scope]: [...prev[scope], ...additions] };
+        });
         break;
       }
 
