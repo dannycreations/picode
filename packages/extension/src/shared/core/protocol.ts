@@ -54,8 +54,8 @@ export type WebviewToExtensionMessage =
   | { type: 'open_image'; dataUrl: string }
   | { type: 'save_image'; dataUrl: string; filename: string }
   | { type: 'cancel_task' }
-  | { type: 'compact'; id: string; path?: string; title: string }
-  | { type: 'reload' }
+  | { type: 'builtin_command'; command: 'reload' | 'update' }
+  | { type: 'builtin_command'; command: 'compact'; id: string; path?: string; title: string }
   | { type: 'set_model'; model: ModelSelection; thinkingLevel?: ModelThinkingLevel }
   | { type: 'update_settings'; settings: Partial<AppSettings> }
   | { type: 'add_to_reply_queue'; text: string; images?: string[] }

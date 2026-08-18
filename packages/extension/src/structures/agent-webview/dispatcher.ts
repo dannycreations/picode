@@ -96,22 +96,42 @@ const HANDLER_MAP: HandlerMap = {
     await ctx.agent.cancelTask();
     await postHistory(ctx, HISTORY_SCOPES.current);
   },
-  reload: (_, ctx) => {
-    void ctx.agent.reload();
-  },
-  compact: async (msg, ctx) => {
-    const path = msg.path || ctx.agent.getSessionFile();
-    if (!path) {
-      window.showInformationMessage('Open or start a task before using /compact.');
-      return;
+  builtin_command: async (msg, ctx) => {
+    switch (msg.command) {
+      case 'reload':
+        void ctx.agent.reload();
+        return;
+      case 'update': {
+        // Force a network refresh of the shared model runtime so both the webview
+        // (via the pushed models_data) and the agent runtime read the newest catalog.
+        window.showInformationMessage('Updating model catalog...');
+        const resources = await createAgentResources(ctx.cwd);
+        void refreshModelCatalog(
+          resources.services.modelRuntime,
+          (models) => {
+            ctx.postMessage({ type: 'models_data', payload: { models } });
+            window.showInformationMessage('Model catalog updated.');
+          },
+          true,
+        );
+        return;
+      }
+      case 'compact': {
+        const path = msg.path || ctx.agent.getSessionFile();
+        if (!path) {
+          window.showInformationMessage('Open or start a task before using /compact.');
+          return;
+        }
+
+        const details = await ctx.agent.compact(path);
+        if (!details) return;
+
+        // Refresh the webview from the in-memory session we just compacted instead
+        // of re-opening and re-parsing the same session file a second time.
+        await postSession(ctx, msg.id || ACTIVE_TASK_ID, msg.title || '', path, details);
+        return;
+      }
     }
-
-    const details = await ctx.agent.compact(path);
-    if (!details) return;
-
-    // Refresh the webview from the in-memory session we just compacted instead
-    // of re-opening and re-parsing the same session file a second time.
-    await postSession(ctx, msg.id || ACTIVE_TASK_ID, msg.title || '', path, details);
   },
   load_session: async (msg, ctx) => {
     const details = await loadSessionDetails(msg.path ?? '', ctx.cwd);

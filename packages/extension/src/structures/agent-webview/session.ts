@@ -112,9 +112,10 @@ export async function getInitData(cwd: string, resources?: AgentResources): Prom
   };
 }
 
-export async function refreshModelCatalog(modelRuntime: ModelRuntime, onModels: (models: ModelItem[]) => void): Promise<void> {
+export async function refreshModelCatalog(modelRuntime: ModelRuntime, onModels: (models: ModelItem[]) => void, force = false): Promise<void> {
   try {
     await modelRuntime.refresh({
+      force,
       allowNetwork: true,
       signal: AbortSignal.timeout(CATALOG_TIMEOUT_MS),
     });

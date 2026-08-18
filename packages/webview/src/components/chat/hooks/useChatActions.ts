@@ -61,11 +61,15 @@ export const useChatActions = (params: UseChatActionsProps): UseChatActionsRetur
       // `init_data` response arrives.
       const builtin = parseBuiltinCommand(text);
       if (builtin === 'reload') {
-        vscode?.postMessage({ type: 'reload' });
+        vscode?.postMessage({ type: 'builtin_command', command: 'reload' });
         return;
       }
       if (builtin === 'compact') {
         postCompactMessage(activeTask);
+        return;
+      }
+      if (builtin === 'update') {
+        vscode?.postMessage({ type: 'builtin_command', command: 'update' });
         return;
       }
 

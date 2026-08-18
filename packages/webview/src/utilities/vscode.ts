@@ -10,7 +10,8 @@ export const vscode: WebviewApi | null = typeof acquireVsCodeApi === 'function' 
 
 export function postCompactMessage(activeTask: ActiveTaskState | null): void {
   vscode?.postMessage({
-    type: 'compact',
+    type: 'builtin_command',
+    command: 'compact',
     id: activeTask?.id ?? '',
     path: activeTask?.path,
     title: activeTask?.title ?? '',

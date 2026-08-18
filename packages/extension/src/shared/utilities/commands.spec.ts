@@ -6,6 +6,7 @@ describe('parseBuiltinCommand', () => {
   it('parses a bare builtin invocation', () => {
     expect(parseBuiltinCommand('/reload')).toBe('reload');
     expect(parseBuiltinCommand('/compact')).toBe('compact');
+    expect(parseBuiltinCommand('/update')).toBe('update');
   });
 
   it('ignores surrounding whitespace', () => {
