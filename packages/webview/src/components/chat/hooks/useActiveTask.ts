@@ -188,7 +188,15 @@ export const useActiveTask = (): UseActiveTaskReturn => {
             if (target?.sender === 'tool' && target.toolName === 'execute_command') {
               return rebuildToolSections(patchMessage(messages, id, { diff: `${target.diff ?? ''}${result}`, subtitle }), id);
             }
-            return rebuildToolSections(patchMessage(messages, id, { diff: result, subtitle }), id);
+            // A sub-agent's first content only arrives once it wins a
+            // concurrency slot and actually starts running, which can be
+            // minutes after the parent dispatched the call. Restart the
+            // elapsed timer from then so queued wait time is not counted as
+            // execution time (this also makes the final duration correct).
+            const isSubagent = target?.sender === 'tool' && target.toolName === 'spawn_subagent';
+            const startedNow = isSubagent && target.diff === undefined;
+            const patch = startedNow ? { diff: result, subtitle, ts: Date.now() } : { diff: result, subtitle };
+            return rebuildToolSections(patchMessage(messages, id, patch), id);
           });
           break;
         }
