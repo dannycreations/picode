@@ -67,12 +67,16 @@ export const useChatHistory = ({ view }: UseChatHistoryProps): UseChatHistoryRet
       case 'history_data': {
         const { scope, items } = msg.payload;
         fetchedScopes.current.add(scope);
-        // The host can push a scope more than once (initial load plus the
-        // post-cancel refresh); skip entries already cached so they don't repeat.
+        // The host streams a full, newest-first snapshot of the scope in chunks
+        // and can re-push it (e.g. after a task is cancelled). Merge every seen
+        // item by id so re-fetches neither duplicate nor drop entries, then
+        // order by recency so a freshly created session surfaces at the front
+        // instead of being appended after older ones.
         setHistoryByScope((prev) => {
-          const known = new Set(prev[scope].map((entry) => entry.id));
-          const additions = items.filter((item) => !known.has(item.id));
-          return { ...prev, [scope]: [...prev[scope], ...additions] };
+          const byId = new Map(prev[scope].map((entry) => [entry.id, entry]));
+          for (const item of items) byId.set(item.id, item);
+          const merged = [...byId.values()].sort((a, b) => b.ts - a.ts);
+          return { ...prev, [scope]: merged };
         });
         break;
       }
