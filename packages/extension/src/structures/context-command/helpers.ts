@@ -29,7 +29,10 @@ export function getEffectiveSelection(document: TextDocument, selection: Selecti
     return null;
   }
 
-  const range = document.validateRange(new Range(cursorLine.lineNumber - 1, 0, cursorLine.lineNumber + 1, Number.MAX_SAFE_INTEGER));
+  const lastLine = document.lineCount - 1;
+  const startLine = Math.max(0, cursorLine.lineNumber - 1);
+  const endLine = Math.min(lastLine, cursorLine.lineNumber + 1);
+  const range = document.validateRange(new Range(startLine, 0, endLine, Number.MAX_SAFE_INTEGER));
   return {
     startLine: range.start.line,
     endLine: range.end.line,

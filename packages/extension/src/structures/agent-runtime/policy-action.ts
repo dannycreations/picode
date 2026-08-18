@@ -3,6 +3,8 @@ import { CONFIG_DIR_NAME, getAgentDir } from '@earendil-works/pi-coding-agent';
 import { minimatch } from 'minimatch';
 import { parse } from 'shell-quote';
 
+import { normalizeSeparators } from '@pi-code/extension/utilities/fs';
+
 import type { AppSettings } from '@pi-code/shared/core/settings';
 
 export type ApprovalDecision = { action: 'approve' } | { action: 'deny'; reason: string } | { action: 'confirm' };
@@ -26,7 +28,7 @@ const DANGEROUS_PATTERNS: readonly RegExp[] = [
 
 export function matchesGlob(pattern: string, filePath: string): boolean {
   if (!pattern || !filePath) return false;
-  const normalizedFile = filePath.replace(/\\/g, '/');
+  const normalizedFile = normalizeSeparators(filePath);
   return minimatch(normalizedFile, pattern, { nocase: true, dot: true });
 }
 
@@ -77,7 +79,7 @@ export function resolvePathAction(
     return 'deny';
   }
 
-  const normalizedPath = filePath.replace(/\\/g, '/');
+  const normalizedPath = normalizeSeparators(filePath);
   const action = resolveAllowDeny(allowedPatterns, deniedPatterns, (pat) => pat === '*' || matchesGlob(pat, normalizedPath));
   if (action !== 'confirm') {
     return action;
@@ -297,13 +299,13 @@ function getSkillDirectories(cwd: string): readonly string[] {
 }
 
 function isInsideDirectory(target: string, dir: string): boolean {
-  const normalizedTarget = resolve(target).replace(/\\/g, '/').replace(/\/+$/, '');
-  const normalizedDir = resolve(dir).replace(/\\/g, '/').replace(/\/+$/, '');
+  const normalizedTarget = normalizeSeparators(resolve(target)).replace(/\/+$/, '');
+  const normalizedDir = normalizeSeparators(resolve(dir)).replace(/\/+$/, '');
   return normalizedTarget === normalizedDir || normalizedTarget.startsWith(`${normalizedDir}/`);
 }
 
 export function resolveReadPath(cwd: string, filePath: string, settings: AppSettings): ApprovalDecision['action'] {
-  const normalizedPath = filePath.replace(/\\/g, '/');
+  const normalizedPath = normalizeSeparators(filePath);
   const isDenied = settings.deniedReadPaths.some((pat) => pat === '*' || matchesGlob(pat, normalizedPath));
   if (isDenied) return 'deny';
 

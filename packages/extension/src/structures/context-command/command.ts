@@ -38,6 +38,13 @@ function resolveSelection(args: any[]): ResolvedSelection | null {
   };
 }
 
+function getDiagnosticText(args: unknown[], selection: ResolvedSelection): string {
+  const passedDiagnostics = args[4] as MappedDiagnostic[] | undefined;
+  return Array.isArray(passedDiagnostics) && passedDiagnostics.length > 0
+    ? formatDiagnosticBlock(passedDiagnostics)
+    : collectSelectionDiagnostics(selection);
+}
+
 export function registerAddToContextCommand(chatViewProvider: ChatViewProvider): Disposable {
   return commands.registerCommand('pi-code.addToContext', async (...args: any[]) => {
     const selection = resolveSelection(args);
@@ -55,11 +62,7 @@ export function registerAddProblemToContextCommand(chatViewProvider: ChatViewPro
     const selection = resolveSelection(args);
     if (!selection) return;
 
-    const passedDiagnostics = args[4] as MappedDiagnostic[] | undefined;
-    const diagnosticText =
-      Array.isArray(passedDiagnostics) && passedDiagnostics.length > 0
-        ? formatDiagnosticBlock(passedDiagnostics)
-        : collectSelectionDiagnostics(selection);
+    const diagnosticText = getDiagnosticText(args, selection);
 
     await commands.executeCommand('pi-code.chatView.focus');
 
@@ -164,11 +167,7 @@ export function registerFixCodeCommand(): Disposable {
       return;
     }
 
-    const passedDiagnostics = args[4] as MappedDiagnostic[] | undefined;
-    const diagnosticText =
-      Array.isArray(passedDiagnostics) && passedDiagnostics.length > 0
-        ? formatDiagnosticBlock(passedDiagnostics)
-        : collectSelectionDiagnostics(selection);
+    const diagnosticText = getDiagnosticText(args, selection);
 
     const prompt =
       'Fix the issues in the following code. Replace it with corrected code that resolves the problems listed below. ' +
