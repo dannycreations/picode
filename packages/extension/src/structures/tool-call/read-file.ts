@@ -44,7 +44,7 @@ export async function readFileTextContent(resolvedPath: string, limits: OutputLi
     throw new Error(check.body);
   }
 
-  const lines = await readLines(path);
+  const lines = await readLines(path, limits.maxLines > 0 ? limits.maxLines : undefined);
   const { text } = truncateOutput(numberLines(lines, undefined), { limits, keep: 'head' });
   return text;
 }
@@ -123,7 +123,10 @@ async function readFileSection(cwd: string, file: FileRequest, limits: OutputLim
     const hasRanges = ranges !== undefined && ranges.length > 0;
 
     // With ranges, stop streaming at the highest requested line number.
-    const maxLines = hasRanges ? Math.max(...ranges.map((range) => Math.max(1, range[1]))) : undefined;
+    // Without ranges, cap the read at the output line budget so a plain head
+    // read of a large file does not load the whole file into memory before
+    // truncation (the `head` keep still keeps the first N lines).
+    const maxLines = hasRanges ? Math.max(...ranges.map((range) => Math.max(1, range[1]))) : limits.maxLines > 0 ? limits.maxLines : undefined;
     const lines = await readLines(resolvedPath, maxLines);
 
     const header = hasRanges ? `File: ${file.path} (Ranges: ${JSON.stringify(ranges)})` : `File: ${file.path}`;
