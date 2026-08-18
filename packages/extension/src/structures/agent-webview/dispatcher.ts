@@ -16,7 +16,7 @@ import {
   streamHistory,
 } from '@pi-code/extension/structures/agent-webview/session';
 import { searchWorkspaceFiles } from '@pi-code/extension/utilities/fs';
-import { ACTIVE_TASK_ID, HISTORY_SCOPES } from '@pi-code/shared/core/constants';
+import { ACTIVE_TASK_ID } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
 
 import type { MessageHandlerContext } from '@pi-code/extension/structures/agent-webview/types';
@@ -70,7 +70,7 @@ async function postHistory(ctx: MessageHandlerContext, scope: HistoryScope): Pro
 
 const HANDLER_MAP: HandlerMap = {
   init: async (_, ctx) => {
-    void postHistory(ctx, HISTORY_SCOPES.current);
+    void postHistory(ctx, 'current');
 
     const resources = await createAgentResources(ctx.cwd);
     const data = await getInitData(ctx.cwd, resources);
@@ -108,7 +108,7 @@ const HANDLER_MAP: HandlerMap = {
   question_response: (msg) => answerQuestion(msg.question_id, msg.text),
   cancel_task: async (_, ctx) => {
     await ctx.agent.cancelTask();
-    await postHistory(ctx, HISTORY_SCOPES.current);
+    await postHistory(ctx, 'current');
   },
   builtin_command: async (msg, ctx) => {
     switch (msg.command) {

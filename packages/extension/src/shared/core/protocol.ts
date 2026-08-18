@@ -1,4 +1,3 @@
-import type { HISTORY_SCOPES } from '@pi-code/shared/core/constants';
 import type { AppSettings } from '@pi-code/shared/core/settings';
 import type {
   ActiveTaskState,
@@ -10,6 +9,10 @@ import type {
   ToolName,
 } from '@pi-code/shared/core/types';
 import type { TodoItem } from '@pi-code/shared/utilities/todo';
+
+export const HISTORY_SCOPES = ['current', 'all', 'archives'] as const;
+
+export type HistoryScope = (typeof HISTORY_SCOPES)[number];
 
 export interface HistoryItem {
   readonly id: string;
@@ -34,8 +37,6 @@ export interface CommandItem {
   readonly description?: string;
   readonly detail?: string;
 }
-
-export type HistoryScope = keyof typeof HISTORY_SCOPES;
 
 export type WebviewToExtensionMessage =
   | { type: 'init' }

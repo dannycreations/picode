@@ -1,16 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { HISTORY_SCOPES } from '@pi-code/shared/core/constants';
+import { HISTORY_SCOPES } from '@pi-code/shared/core/protocol';
 import { vscode } from '@pi-code/webview/utilities/vscode';
 
 import type { Dispatch, SetStateAction } from 'react';
 import type { ExtensionToWebviewMessage, HistoryItem, HistoryScope } from '@pi-code/shared/core/protocol';
 
-const HISTORY_SCOPE_KEYS = Object.keys(HISTORY_SCOPES) as HistoryScope[];
-
 function emptyHistoryByScope(): Record<HistoryScope, HistoryItem[]> {
   const record = {} as Record<HistoryScope, HistoryItem[]>;
-  for (const scope of HISTORY_SCOPE_KEYS) {
+  for (const scope of HISTORY_SCOPES) {
     record[scope] = [];
   }
   return record;
@@ -52,7 +50,7 @@ export const useChatHistory = ({ view }: UseChatHistoryProps): UseChatHistoryRet
     const removed = new Set(paths);
     setHistoryByScope((prev) => {
       const next = { ...prev };
-      for (const scope of HISTORY_SCOPE_KEYS) {
+      for (const scope of HISTORY_SCOPES) {
         next[scope] = prev[scope].filter((item) => !removed.has(item.path));
       }
       return next;
