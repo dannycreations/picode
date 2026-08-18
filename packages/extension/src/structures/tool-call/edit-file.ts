@@ -5,6 +5,7 @@ import { Type } from 'typebox';
 
 import { acquireFileLock } from '@pi-code/extension/structures/tool-call/helpers/mutex';
 import { toolError, toolErrorFrom } from '@pi-code/extension/structures/tool-call/helpers/result';
+import { checkReadableFile } from '@pi-code/extension/structures/tool-call/read-file';
 import { buildFileChangeResult } from '@pi-code/extension/utilities/truncate';
 import { findOccurrences } from '@pi-code/shared/utilities/common';
 
@@ -155,13 +156,20 @@ export const editFileTool = defineTool({
       let fileExists = false;
       let originalContent = '';
       try {
-        originalContent = await readFile(resolvedPath, 'utf8');
+        const check = await checkReadableFile(resolvedPath);
+        if (!check.ok) {
+          return toolError(`${check.body} Use "write_file" to overwrite this file, or "read_file" with "line_ranges" to inspect a portion.`);
+        }
         fileExists = true;
       } catch (err: unknown) {
         const isEnoent = err && typeof err === 'object' && 'code' in err && (err as { code?: string }).code === 'ENOENT';
         if (!isEnoent) {
-          return toolErrorFrom(err, `reading file ${file_path}`);
+          return toolErrorFrom(err, `accessing file ${file_path}`);
         }
+      }
+
+      if (fileExists) {
+        originalContent = await readFile(resolvedPath, 'utf8');
       }
 
       if (fileExists && old_string === '') {

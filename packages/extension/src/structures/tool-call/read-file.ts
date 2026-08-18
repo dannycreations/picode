@@ -22,7 +22,7 @@ function buildSizeLimitMessage(filePath: string, sizeBytes: number): string {
   return `Error: ${filePath} exceeds the 10 MB size limit (${(sizeBytes / MEGABYTE).toFixed(2)} MB).`;
 }
 
-async function checkReadableFile(path: string): Promise<{ ok: true } | { ok: false; body: string }> {
+export async function checkReadableFile(path: string): Promise<{ ok: true } | { ok: false; body: string }> {
   const fileStat = await stat(path);
   if (!fileStat.isFile()) {
     return { ok: false, body: `Error: "${path}" is not a regular file.` };

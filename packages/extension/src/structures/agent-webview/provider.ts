@@ -108,7 +108,9 @@ export class ChatViewProvider implements WebviewViewProvider {
     });
 
     const disposeSubagentEventCallback = setSubagentEventCallback((msg) => {
-      void webview.postMessage(msg);
+      // Route sub-agent events through the agent's WebviewMessenger so they
+      // share the same 16 ms coalescing buffer as the main-agent stream.
+      this.agent?.postMessage(msg);
     });
 
     const handlerContext: MessageHandlerContext = {

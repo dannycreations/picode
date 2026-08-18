@@ -158,9 +158,14 @@ async function walkConcurrently<T>(seed: readonly T[], concurrency: number, proc
   });
 }
 
-export async function walkWorkspace(cwd: string, limit: number, excludeIgnoredFiles: boolean): Promise<{ paths: string[]; hitLimit: boolean }> {
+export async function walkWorkspace(
+  cwd: string,
+  limit: number,
+  excludeIgnoredFiles: boolean,
+  sharedRepo?: Repository | null,
+): Promise<{ paths: string[]; hitLimit: boolean }> {
   const rootUri = Uri.file(cwd);
-  const repo = excludeIgnoredFiles ? await getGitRepository(rootUri).catch(() => null) : null;
+  const repo = excludeIgnoredFiles ? (sharedRepo ?? (await getGitRepository(rootUri).catch(() => null))) : null;
   const useLocalGitignore = excludeIgnoredFiles && !repo;
 
   const fileResults: string[] = [];
@@ -303,8 +308,8 @@ export function renderFileTree(root: FileTreeNode, rootLabel: string): string {
   return lines.join('\n');
 }
 
-async function getGitStatusLines(cwd: string): Promise<string[]> {
-  const repo: Repository | null = await getGitRepository(Uri.file(cwd));
+async function getGitStatusLines(cwd: string, sharedRepo?: Repository | null): Promise<string[]> {
+  const repo = sharedRepo ?? (await getGitRepository(Uri.file(cwd)));
   if (!repo) return [];
 
   const describe = (change: Change, label: string): string => `${label} ${toRelativePath(change.uri)}`;
@@ -363,32 +368,38 @@ export async function getEnvironmentDetails(cwd: string, includeFileDetails = fa
       ?.value?.replace('GMT', 'UTC') ?? '';
   details += `\n\n### Current Time\n\n- **UTC**: ${now.toISOString()}\n- **User Time Zone**: ${timeZone} (${timeZoneOffset})`;
 
-  // Git Status
+  // Git Status and the workspace file listing are independent, so build them
+  // together. Resolve the git repository once and share it between the two
+  // passes so the git extension is not activated twice per environment build.
   const maxGitStatusFiles = settings.maxGitStatusFiles;
-  if (maxGitStatusFiles > 0) {
-    try {
-      const lines = await getGitStatusLines(cwd);
-      if (lines.length > 0) {
-        details += '\n\n### Git Status\n\n```\n';
-        details += lines.slice(0, maxGitStatusFiles).join('\n');
-        if (lines.length > maxGitStatusFiles) {
-          details += `\n... and ${lines.length - maxGitStatusFiles} more files`;
-        }
-        details += '\n```';
-      }
-    } catch {}
+  const maxWorkspaceFiles = settings.maxWorkspaceFiles;
+  const gitStatusEnabled = maxGitStatusFiles > 0;
+  const workspaceFilesEnabled = includeFileDetails && maxWorkspaceFiles > 0;
+
+  const repo =
+    gitStatusEnabled || (workspaceFilesEnabled && settings.excludeIgnoredFiles) ? await getGitRepository(Uri.file(cwd)).catch(() => null) : null;
+
+  const [gitLines, listing] = await Promise.all([
+    gitStatusEnabled ? getGitStatusLines(cwd, repo).catch(() => []) : Promise.resolve<string[]>([]),
+    workspaceFilesEnabled
+      ? walkWorkspace(cwd, maxWorkspaceFiles, settings.excludeIgnoredFiles, repo)
+      : Promise.resolve({ paths: [], hitLimit: false }),
+  ]);
+
+  if (gitStatusEnabled && gitLines.length > 0) {
+    details += '\n\n### Git Status\n\n```\n';
+    details += gitLines.slice(0, maxGitStatusFiles).join('\n');
+    if (gitLines.length > maxGitStatusFiles) {
+      details += `\n... and ${gitLines.length - maxGitStatusFiles} more files`;
+    }
+    details += '\n```';
   }
 
-  // Current Workspace Directory Files
-  if (includeFileDetails) {
-    const maxWorkspaceFiles = settings.maxWorkspaceFiles;
-    if (maxWorkspaceFiles > 0) {
-      details += `\n\n### Workspace Files (${cwd.replace(/\\/g, '/')})\n\n`;
-      const listing = await walkWorkspace(cwd, maxWorkspaceFiles, settings.excludeIgnoredFiles);
-      details += renderFileTree(buildFileTree(listing.paths), basename(cwd));
-      if (listing.hitLimit) {
-        details += '\n\n*(File list truncated. Use `execute_command` to list files in specific subdirectories if you need to explore further.)*';
-      }
+  if (workspaceFilesEnabled) {
+    details += `\n\n### Workspace Files (${cwd.replace(/\\/g, '/')})\n\n`;
+    details += renderFileTree(buildFileTree(listing.paths), basename(cwd));
+    if (listing.hitLimit) {
+      details += '\n\n*(File list truncated. Use `execute_command` to list files in specific subdirectories if you need to explore further.)*';
     }
   }
 

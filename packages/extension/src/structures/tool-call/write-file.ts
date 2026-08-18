@@ -5,6 +5,7 @@ import { Type } from 'typebox';
 
 import { acquireFileLock } from '@pi-code/extension/structures/tool-call/helpers/mutex';
 import { toolErrorFrom } from '@pi-code/extension/structures/tool-call/helpers/result';
+import { checkReadableFile } from '@pi-code/extension/structures/tool-call/read-file';
 import { stripCodeFence } from '@pi-code/extension/utilities/markdown';
 import { buildFileChangeResult } from '@pi-code/extension/utilities/truncate';
 
@@ -25,9 +26,13 @@ export const writeFileTool = defineTool({
       // Clean content from code block markers if present
       const finalContent = stripCodeFence(params.content);
 
+      // Only build a diff from the prior content when the file is small enough
+      // to load safely; large files are written without a diff.
       let oldContent = '';
       try {
-        oldContent = await readFile(resolvedPath, 'utf8');
+        if ((await checkReadableFile(resolvedPath)).ok) {
+          oldContent = await readFile(resolvedPath, 'utf8');
+        }
       } catch {}
 
       await mkdir(dirname(resolvedPath), { recursive: true });

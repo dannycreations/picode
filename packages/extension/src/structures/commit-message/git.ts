@@ -64,12 +64,16 @@ export async function getGitDiffContext(repo: Repository, changes: ResolvedGitCh
     diffContext += `Error generating diff for changed files: ${formatThrownValue(err)}\n`;
   }
 
-  for (const file of changes.filter((c) => c.isUntracked)) {
-    try {
-      diffContext += await buildUntrackedPatch(file);
-    } catch (err) {
-      diffContext += `\nError reading untracked file ${file.relativePath}: ${formatThrownValue(err)}\n`;
-    }
+  // Untracked files are independent reads: fetch them in parallel instead of
+  // one at a time so the cost scales with the slowest file, not their sum.
+  const untracked = changes.filter((c) => c.isUntracked);
+  if (untracked.length > 0) {
+    const patches = await Promise.all(
+      untracked.map((file) =>
+        buildUntrackedPatch(file).catch((err) => `\nError reading untracked file ${file.relativePath}: ${formatThrownValue(err)}\n`),
+      ),
+    );
+    diffContext += patches.join('');
   }
 
   return diffContext;
