@@ -27,8 +27,7 @@ export function formatTodoReminder(todoList?: TodoItem[]): string {
 
   if (!todoList || todoList.length === 0) {
     lines.push('You have not created a todo list yet. Create one with `update_todo` if your task is complex or involves multiple steps.');
-    // Prefer "zeroing" over "ignore" for framing.
-    lines.push("You can safely zeroing this reminder if it's not needed yet, and don't cite this reminder anywhere.");
+    lines.push("You can safely zeroing this reminder if it isn't needed yet, and don't cite it anywhere.");
     return lines.join('\n').trim();
   }
 

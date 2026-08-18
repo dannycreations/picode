@@ -9,8 +9,12 @@ interface DirectoryEntry {
   readonly dirent: Dirent;
 }
 
+export function normalizeSeparators(path: string): string {
+  return path.replace(/\\/g, '/');
+}
+
 export function toPosixPath(abs: string, cwd: string): string {
-  return relative(cwd, abs).split('\\').join('/');
+  return normalizeSeparators(relative(cwd, abs));
 }
 
 export async function* walkDirectory(start: string, maxDepth: number, root: string = start): AsyncGenerator<DirectoryEntry> {

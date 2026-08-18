@@ -98,29 +98,19 @@ function getToolLanguage(toolName?: string): string {
 }
 
 function getToolFilePath(toolArgs?: ToolArguments): string | undefined {
-  const record = parseToolArgs(toolArgs);
-  if (!record) return undefined;
-
-  for (const key of ['path', 'file_path']) {
-    if (typeof record[key] === 'string') return record[key];
-  }
-
-  const files = record['files'];
-  if (Array.isArray(files)) {
-    const first = files[0] as { path?: unknown } | undefined;
+  if (!toolArgs) return undefined;
+  if ('path' in toolArgs && typeof toolArgs.path === 'string') return toolArgs.path;
+  if ('file_path' in toolArgs && typeof toolArgs.file_path === 'string') return toolArgs.file_path;
+  if ('files' in toolArgs && Array.isArray(toolArgs.files)) {
+    const first = toolArgs.files[0];
     if (first && typeof first.path === 'string') return first.path;
   }
-
   return undefined;
 }
 
-function parseToolArgs(toolArgs?: ToolArguments): Record<string, unknown> | undefined {
-  return toolArgs && typeof toolArgs === 'object' ? (toolArgs as Record<string, unknown>) : undefined;
-}
-
 function commandSection(message: ToolChatMessage): ToolSection[] {
-  const args = parseToolArgs(message.toolArgs);
-  const command = typeof args?.['command'] === 'string' ? args['command'] : undefined;
+  const args = message.toolArgs;
+  const command = args && 'command' in args && typeof args.command === 'string' ? args.command : undefined;
 
   if (command === undefined && message.diff === undefined) return [];
 
@@ -137,9 +127,9 @@ function commandSection(message: ToolChatMessage): ToolSection[] {
 }
 
 function subagentSection(message: ToolChatMessage): ToolSection[] {
-  const args = parseToolArgs(message.toolArgs);
-  const agent = typeof args?.['agent'] === 'string' ? args['agent'] : message.subagent;
-  const description = typeof args?.['description'] === 'string' ? args['description'] : undefined;
+  const args = message.toolArgs;
+  const agent = args && 'agent' in args && typeof args.agent === 'string' ? args.agent : message.subagent;
+  const description = args && 'description' in args && typeof args.description === 'string' ? args.description : undefined;
   let title: string;
   if (agent && description) {
     title = `${agent}: ${description}`;
