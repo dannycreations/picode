@@ -3,7 +3,7 @@ import { dirname, resolve } from 'node:path';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
-import { acquireFileLock } from '@pi-code/extension/structures/tool-call/helpers/mutex';
+import { withFileLock } from '@pi-code/extension/structures/tool-call/helpers/mutex';
 import { toolError, toolErrorFrom } from '@pi-code/extension/structures/tool-call/helpers/result';
 import { checkReadableFile } from '@pi-code/extension/structures/tool-call/read-file';
 import { buildFileChangeResult } from '@pi-code/extension/utilities/truncate';
@@ -151,70 +151,69 @@ export const editFileTool = defineTool({
   async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
     const { file_path, old_string, new_string } = params;
     const resolvedPath = resolve(ctx.cwd, file_path);
-    const release = await acquireFileLock(resolvedPath);
-    try {
-      let fileExists = false;
-      let originalContent = '';
+    return withFileLock(resolvedPath, async () => {
       try {
-        const check = await checkReadableFile(resolvedPath);
-        if (!check.ok) {
-          return toolError(`${check.body} Use "write_file" to overwrite this file, or "read_file" with "line_ranges" to inspect a portion.`);
-        }
-        fileExists = true;
-      } catch (err: unknown) {
-        const isEnoent = err && typeof err === 'object' && 'code' in err && (err as { code?: string }).code === 'ENOENT';
-        if (!isEnoent) {
-          return toolErrorFrom(err, `accessing file ${file_path}`);
-        }
-      }
-
-      if (fileExists) {
-        originalContent = await readFile(resolvedPath, 'utf8');
-      }
-
-      if (fileExists && old_string === '') {
-        return toolError(`Error: "file_path" already exists: ${file_path}. Use a non-empty "old_string" to modify it.`);
-      }
-      if (!fileExists && old_string !== '') {
-        return toolError(`Error: "file_path" does not exist: ${file_path}. Set "old_string" to empty string to create a new file.`);
-      }
-
-      let newContent: string;
-
-      if (!fileExists) {
-        newContent = new_string;
-        await mkdir(dirname(resolvedPath), { recursive: true });
-        await writeFile(resolvedPath, newContent, 'utf8');
-      } else {
-        const originalEol = detectLineEnding(originalContent);
-        const originalLF = normalizeToLF(originalContent);
-        const oldLF = normalizeToLF(old_string);
-        const newLF = normalizeToLF(new_string);
-
-        if (oldLF === newLF) {
-          return toolError('Error: "old_string" and "new_string" are identical; nothing to change.');
+        let fileExists = false;
+        let originalContent = '';
+        try {
+          const check = await checkReadableFile(resolvedPath);
+          if (!check.ok) {
+            return toolError(`${check.body} Use "write_file" to overwrite this file, or "read_file" with "line_ranges" to inspect a portion.`);
+          }
+          fileExists = true;
+        } catch (err: unknown) {
+          const isEnoent = err && typeof err === 'object' && 'code' in err && (err as { code?: string }).code === 'ENOENT';
+          if (!isEnoent) {
+            return toolErrorFrom(err, `accessing file ${file_path}`);
+          }
         }
 
-        const expected = params.expected ?? 1;
-        const outcome = replaceExpected(originalLF, oldLF, newLF, expected, file_path);
-        if (outcome.error !== undefined) {
-          return toolError(outcome.error);
+        if (fileExists) {
+          originalContent = await readFile(resolvedPath, 'utf8');
         }
 
-        newContent = restoreLineEnding(outcome.content, originalEol);
-        await writeFile(resolvedPath, newContent, 'utf8');
-      }
+        if (fileExists && old_string === '') {
+          return toolError(`Error: "file_path" already exists: ${file_path}. Use a non-empty "old_string" to modify it.`);
+        }
+        if (!fileExists && old_string !== '') {
+          return toolError(`Error: "file_path" does not exist: ${file_path}. Set "old_string" to empty string to create a new file.`);
+        }
 
-      return buildFileChangeResult({
-        oldContent: originalContent,
-        newContent,
-        successMessage: `Updated ${file_path}`,
-        hint: `Edit applied; read "${file_path}" to verify the remaining changes.`,
-      });
-    } catch (err) {
-      return toolErrorFrom(err, 'editing file');
-    } finally {
-      release();
-    }
+        let newContent: string;
+
+        if (!fileExists) {
+          newContent = new_string;
+          await mkdir(dirname(resolvedPath), { recursive: true });
+          await writeFile(resolvedPath, newContent, 'utf8');
+        } else {
+          const originalEol = detectLineEnding(originalContent);
+          const originalLF = normalizeToLF(originalContent);
+          const oldLF = normalizeToLF(old_string);
+          const newLF = normalizeToLF(new_string);
+
+          if (oldLF === newLF) {
+            return toolError('Error: "old_string" and "new_string" are identical; nothing to change.');
+          }
+
+          const expected = params.expected ?? 1;
+          const outcome = replaceExpected(originalLF, oldLF, newLF, expected, file_path);
+          if (outcome.error !== undefined) {
+            return toolError(outcome.error);
+          }
+
+          newContent = restoreLineEnding(outcome.content, originalEol);
+          await writeFile(resolvedPath, newContent, 'utf8');
+        }
+
+        return buildFileChangeResult({
+          oldContent: originalContent,
+          newContent,
+          successMessage: `Updated ${file_path}`,
+          hint: `Edit applied; read "${file_path}" to verify the remaining changes.`,
+        });
+      } catch (err) {
+        return toolErrorFrom(err, 'editing file');
+      }
+    });
   },
 });

@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
-import { acquireFileLock } from '@pi-code/extension/structures/tool-call/helpers/mutex';
+import { withFileLock } from '@pi-code/extension/structures/tool-call/helpers/mutex';
 import { toolError, toolErrorFrom, toolResult } from '@pi-code/extension/structures/tool-call/helpers/result';
 
 import type { Stats } from 'node:fs';
@@ -18,29 +18,28 @@ export const deleteFileTool = defineTool({
   }),
   async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
     const resolvedPath = resolve(ctx.cwd, params.path);
-    const release = await acquireFileLock(resolvedPath);
-    try {
-      let stats: Stats;
+    return withFileLock(resolvedPath, async () => {
       try {
-        stats = await stat(resolvedPath);
-      } catch (err) {
-        if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
-          return toolError(`Error: "path" does not exist: ${params.path}`);
+        let stats: Stats;
+        try {
+          stats = await stat(resolvedPath);
+        } catch (err) {
+          if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+            return toolError(`Error: "path" does not exist: ${params.path}`);
+          }
+          throw err;
         }
-        throw err;
-      }
 
-      if (stats.isDirectory()) {
-        await rm(resolvedPath, { recursive: true, force: true });
-        return toolResult(`Deleted directory: ${params.path}`);
-      }
+        if (stats.isDirectory()) {
+          await rm(resolvedPath, { recursive: true, force: true });
+          return toolResult(`Deleted directory: ${params.path}`);
+        }
 
-      await unlink(resolvedPath);
-      return toolResult(`Deleted file: ${params.path}`);
-    } catch (err) {
-      return toolErrorFrom(err, 'deleting file');
-    } finally {
-      release();
-    }
+        await unlink(resolvedPath);
+        return toolResult(`Deleted file: ${params.path}`);
+      } catch (err) {
+        return toolErrorFrom(err, 'deleting file');
+      }
+    });
   },
 });

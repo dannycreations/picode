@@ -3,7 +3,7 @@ import { dirname, resolve } from 'node:path';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
-import { acquireFileLock } from '@pi-code/extension/structures/tool-call/helpers/mutex';
+import { withFileLock } from '@pi-code/extension/structures/tool-call/helpers/mutex';
 import { toolErrorFrom } from '@pi-code/extension/structures/tool-call/helpers/result';
 import { checkReadableFile } from '@pi-code/extension/structures/tool-call/read-file';
 import { stripCodeFence } from '@pi-code/extension/utilities/markdown';
@@ -21,33 +21,32 @@ export const writeFileTool = defineTool({
   }),
   async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
     const resolvedPath = resolve(ctx.cwd, params.path);
-    const release = await acquireFileLock(resolvedPath);
-    try {
-      // Clean content from code block markers if present
-      const finalContent = stripCodeFence(params.content);
-
-      // Only build a diff from the prior content when the file is small enough
-      // to load safely; large files are written without a diff.
-      let oldContent = '';
+    return withFileLock(resolvedPath, async () => {
       try {
-        if ((await checkReadableFile(resolvedPath)).ok) {
-          oldContent = await readFile(resolvedPath, 'utf8');
-        }
-      } catch {}
+        // Clean content from code block markers if present
+        const finalContent = stripCodeFence(params.content);
 
-      await mkdir(dirname(resolvedPath), { recursive: true });
-      await writeFile(resolvedPath, finalContent, 'utf8');
+        // Only build a diff from the prior content when the file is small enough
+        // to load safely; large files are written without a diff.
+        let oldContent = '';
+        try {
+          if ((await checkReadableFile(resolvedPath)).ok) {
+            oldContent = await readFile(resolvedPath, 'utf8');
+          }
+        } catch {}
 
-      return buildFileChangeResult({
-        oldContent,
-        newContent: finalContent,
-        successMessage: `Wrote ${params.path}`,
-        hint: `Write applied; read "${params.path}" to verify the remaining changes.`,
-      });
-    } catch (err) {
-      return toolErrorFrom(err, 'writing to file');
-    } finally {
-      release();
-    }
+        await mkdir(dirname(resolvedPath), { recursive: true });
+        await writeFile(resolvedPath, finalContent, 'utf8');
+
+        return buildFileChangeResult({
+          oldContent,
+          newContent: finalContent,
+          successMessage: `Wrote ${params.path}`,
+          hint: `Write applied; read "${params.path}" to verify the remaining changes.`,
+        });
+      } catch (err) {
+        return toolErrorFrom(err, 'writing to file');
+      }
+    });
   },
 });

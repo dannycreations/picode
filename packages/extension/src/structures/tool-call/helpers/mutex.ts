@@ -1,6 +1,6 @@
 const activeLocks = new Map<string, Promise<void>>();
 
-export async function acquireFileLock(path: string): Promise<() => void> {
+async function acquireFileLock(path: string): Promise<() => void> {
   const existing = activeLocks.get(path);
   let release!: () => void;
   const promise = new Promise<void>((resolve) => {
@@ -21,4 +21,13 @@ export async function acquireFileLock(path: string): Promise<() => void> {
       activeLocks.delete(path);
     }
   };
+}
+
+export async function withFileLock<T>(resolvedPath: string, run: () => Promise<T>): Promise<T> {
+  const release = await acquireFileLock(resolvedPath);
+  try {
+    return await run();
+  } finally {
+    release();
+  }
 }

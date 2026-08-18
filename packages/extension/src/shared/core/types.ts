@@ -23,6 +23,8 @@ export interface StatsData {
 export type ToolName =
   'ask_question' | 'delete_file' | 'edit_file' | 'execute_command' | 'read_file' | 'spawn_subagent' | 'update_todo' | 'write_file';
 
+export type ToolStatus = 'approval' | 'completed' | 'denied' | 'running';
+
 export type ToolArguments =
   // ask_question
   | { question: string; follow_up: Array<{ text: string }> }
@@ -68,14 +70,14 @@ interface ChatMessageBase {
 
 export interface ApiRequestChatMessage extends ChatMessageBase {
   readonly sender: 'api_request';
-  readonly toolStatus?: 'approval' | 'completed' | 'denied' | 'running';
+  readonly toolStatus?: ToolStatus;
   readonly errorMessage?: string;
   readonly cost?: number;
 }
 
 export interface AssistantChatMessage extends ChatMessageBase {
   readonly sender: 'assistant';
-  readonly toolStatus?: 'approval' | 'completed' | 'denied' | 'running';
+  readonly toolStatus?: ToolStatus;
   readonly reasoning?: string;
   readonly cost?: number;
 }
@@ -102,7 +104,7 @@ export interface ToolChatMessage extends ChatMessageBase {
   readonly sender: 'tool';
   readonly toolName?: ToolName;
   readonly toolArgs?: ToolArguments;
-  readonly toolStatus?: 'approval' | 'completed' | 'denied' | 'running';
+  readonly toolStatus?: ToolStatus;
   readonly diff?: string;
   readonly todos?: TodoItem[];
   readonly errorMessage?: string;
