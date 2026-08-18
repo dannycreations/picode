@@ -198,12 +198,7 @@ export const readFileTool = defineTool({
       }
 
       const safeSections = sections.filter((section): section is FileSection => section !== undefined);
-      const results = safeSections.map((section) => (section.hasError ? section.body : `${section.header}\n${section.body}`));
-      const { text } = truncateOutput(results.join('\n\n'), {
-        limits,
-        keep: 'head',
-        hint: 'Read fewer files per call to see the rest.',
-      });
+      const text = safeSections.map((section) => (section.hasError ? section.body : `${section.header}\n${section.body}`)).join('\n\n');
 
       const files = safeSections.map((section) => ({ path: section.path, content: section.body }));
       const allFailed = safeSections.length > 0 && safeSections.every((section) => section.hasError);

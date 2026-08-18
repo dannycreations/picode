@@ -27,12 +27,9 @@ export async function expandMentions(text: string, cwd: string): Promise<string>
   const limits = toOutputLimits(readAppSettings());
 
   const resolved = new Map<string, ResolvedMention | null>();
-  for (const match of matches) {
-    const raw = match[1];
-    if (!resolved.has(raw)) {
-      resolved.set(raw, await resolveMention(raw, cwd, limits));
-    }
-  }
+  const uniqueMentions = [...new Set(matches.map((match) => match[1]))];
+  const resolvedMentions = await Promise.all(uniqueMentions.map((raw) => resolveMention(raw, cwd, limits)));
+  uniqueMentions.forEach((raw, index) => resolved.set(raw, resolvedMentions[index]));
 
   let rewritten = '';
   let cursor = 0;

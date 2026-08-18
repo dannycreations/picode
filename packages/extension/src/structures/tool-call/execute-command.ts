@@ -84,9 +84,6 @@ export const executeCommandTool = defineTool({
       const stdoutDecoder = new StringDecoder('utf8');
       const stderrDecoder = new StringDecoder('utf8');
 
-      // Live preview: accumulate raw output and push it to the UI in small,
-      // throttled deltas so the card's expandable content fills in during the
-      // run instead of staying empty until the process exits.
       let streamBuffer = '';
       let streamSent = 0;
       let streamDirty = false;
@@ -116,6 +113,11 @@ export const executeCommandTool = defineTool({
       const streamUpdate = (text: string) => {
         if (!text) return;
         streamBuffer += stripAnsiAndNormalize(text);
+        if (streamBuffer.length > retainedBytes) {
+          const dropped = streamBuffer.length - retainedBytes;
+          streamBuffer = streamBuffer.slice(dropped);
+          streamSent = Math.max(0, streamSent - dropped);
+        }
         streamDirty = true;
         scheduleStream();
       };
