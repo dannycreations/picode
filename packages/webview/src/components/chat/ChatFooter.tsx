@@ -72,9 +72,19 @@ const ModelDropdownMenu: FC<ModelDropdownMenuProps> = ({ models, currentModel, o
     (m) => m.name.toLowerCase().includes(searchQuery.toLowerCase()) || m.id.toLowerCase().includes(searchQuery.toLowerCase()),
   );
   const selectedItemRef = useRef<HTMLButtonElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
+  // scrollIntoView would also scroll the chat's scroll container and jump the
+  // page upward. Center the selected model inside the list itself by moving
+  // only container.scrollTop, so no ancestor shifts.
   useEffect(() => {
-    selectedItemRef.current?.scrollIntoView({ block: 'center' });
+    const container = listRef.current;
+    const item = selectedItemRef.current;
+    if (!container || !item) return;
+    const containerRect = container.getBoundingClientRect();
+    const itemRect = item.getBoundingClientRect();
+    const itemCenter = itemRect.top + itemRect.height / 2 - containerRect.top;
+    container.scrollTop = container.scrollTop + itemCenter - container.clientHeight / 2;
   }, []);
 
   return (
@@ -89,7 +99,7 @@ const ModelDropdownMenu: FC<ModelDropdownMenuProps> = ({ models, currentModel, o
           autoFocus
         />
       </div>
-      <div className="overflow-y-auto flex-1 min-h-0 flex flex-col py-1">
+      <div ref={listRef} className="overflow-y-auto flex-1 min-h-0 flex flex-col py-1">
         {filteredModels.length > 0 ? (
           filteredModels.map((m) => {
             const isSelected = currentModel === m.id;
