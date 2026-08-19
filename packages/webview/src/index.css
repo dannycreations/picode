@@ -148,6 +148,11 @@
   caret-color: var(--vscode-focusBorder);
 }
 
+input::placeholder,
+textarea::placeholder {
+  user-select: none;
+}
+
 @keyframes fade-in {
   0% {
     opacity: 0;
