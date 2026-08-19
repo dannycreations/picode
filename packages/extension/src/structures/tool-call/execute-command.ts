@@ -1,8 +1,6 @@
 import { exec, spawn } from 'node:child_process';
-import { isAbsolute, resolve } from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
-import { defineTool, formatSize } from '@earendil-works/pi-coding-agent';
-import { stripAnsi } from '@earendil-works/pi-coding-agent/utils/ansi';
+import { defineTool, formatSize, resolvePath, stripAnsi } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
 import { getOutputLimits, truncateOutput } from '@pi-code/extension/utilities/truncate';
@@ -73,7 +71,7 @@ export const executeCommandTool = defineTool({
     return new Promise<CustomToolResult<{ exitCode: number | null; signalCode: string | null; output: string; timedOut: boolean }>>((res) => {
       let resolvedCwd = ctx.cwd;
       if (typeof params.cwd === 'string' && params.cwd.trim() !== '') {
-        resolvedCwd = isAbsolute(params.cwd) ? params.cwd : resolve(ctx.cwd, params.cwd);
+        resolvedCwd = resolvePath(params.cwd, ctx.cwd);
       }
 
       const output: string[] = [];

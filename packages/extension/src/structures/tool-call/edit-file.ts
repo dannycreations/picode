@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
-import { defineTool, withFileMutationQueue } from '@earendil-works/pi-coding-agent';
+import { dirname } from 'node:path';
+import { defineTool, detectLineEnding, normalizeToLF, resolvePath, restoreLineEndings, withFileMutationQueue } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
 import { toolError, toolErrorFrom } from '@pi-code/extension/structures/tool-call/helpers/result';
@@ -10,26 +10,11 @@ import { findOccurrences } from '@pi-code/shared/utilities/common';
 
 import type { ToolName } from '@pi-code/shared/core/types';
 
-type LineEnding = '\r\n' | '\n';
-
 function safeLiteralReplace(str: string, oldString: string, newString: string): string {
   if (oldString === '' || !str.includes(oldString)) {
     return str;
   }
   return str.replaceAll(oldString, () => newString);
-}
-
-function detectLineEnding(content: string): LineEnding {
-  return content.includes('\r\n') ? '\r\n' : '\n';
-}
-
-function normalizeToLF(content: string): string {
-  return content.replaceAll('\r\n', '\n');
-}
-
-function restoreLineEnding(contentLF: string, eol: LineEnding): string {
-  if (eol === '\n') return contentLF;
-  return contentLF.replaceAll('\n', '\r\n');
 }
 
 function escapeRegExp(input: string): string {
@@ -149,7 +134,7 @@ export const editFileTool = defineTool({
   }),
   async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
     const { file_path, old_string, new_string } = params;
-    const resolvedPath = resolve(ctx.cwd, file_path);
+    const resolvedPath = resolvePath(file_path, ctx.cwd);
     return withFileMutationQueue(resolvedPath, async () => {
       try {
         let fileExists = false;
@@ -200,7 +185,7 @@ export const editFileTool = defineTool({
             return toolError(outcome.error);
           }
 
-          newContent = restoreLineEnding(outcome.content, originalEol);
+          newContent = restoreLineEndings(outcome.content, originalEol);
           await writeFile(resolvedPath, newContent, 'utf8');
         }
 

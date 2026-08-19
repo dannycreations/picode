@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
-import { defineTool, withFileMutationQueue } from '@earendil-works/pi-coding-agent';
+import { dirname } from 'node:path';
+import { defineTool, resolvePath, withFileMutationQueue } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
 import { toolErrorFrom } from '@pi-code/extension/structures/tool-call/helpers/result';
@@ -19,7 +19,7 @@ export const writeFileTool = defineTool({
     content: Type.String({ description: 'Complete file content; never truncate.' }),
   }),
   async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
-    const resolvedPath = resolve(ctx.cwd, params.path);
+    const resolvedPath = resolvePath(params.path, ctx.cwd);
     return withFileMutationQueue(resolvedPath, async () => {
       try {
         // Clean content from code block markers if present

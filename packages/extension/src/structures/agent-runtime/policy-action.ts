@@ -1,5 +1,5 @@
 import { isAbsolute, join, relative, resolve } from 'node:path';
-import { CONFIG_DIR_NAME, getAgentDir } from '@earendil-works/pi-coding-agent';
+import { CONFIG_DIR_NAME, getAgentDir, getCwdRelativePath } from '@earendil-works/pi-coding-agent';
 import { minimatch } from 'minimatch';
 import { parse } from 'shell-quote';
 
@@ -298,12 +298,6 @@ function getSkillDirectories(cwd: string): readonly string[] {
   return [join(getAgentDir(), 'skills'), join(cwd, CONFIG_DIR_NAME, 'skills')];
 }
 
-function isInsideDirectory(target: string, dir: string): boolean {
-  const normalizedTarget = normalizeSeparators(resolve(target)).replace(/\/+$/, '');
-  const normalizedDir = normalizeSeparators(resolve(dir)).replace(/\/+$/, '');
-  return normalizedTarget === normalizedDir || normalizedTarget.startsWith(`${normalizedDir}/`);
-}
-
 export function resolveReadPath(cwd: string, filePath: string, settings: AppSettings): ApprovalDecision['action'] {
   const normalizedPath = normalizeSeparators(filePath);
   const isDenied = settings.deniedReadPaths.some((pat) => pat === '*' || matchesGlob(pat, normalizedPath));
@@ -311,7 +305,7 @@ export function resolveReadPath(cwd: string, filePath: string, settings: AppSett
 
   if (settings.autoApproveRead && settings.autoApproveSkillReads) {
     const resolved = resolve(cwd, filePath);
-    const insideSkillDir = getSkillDirectories(cwd).some((dir) => isInsideDirectory(resolved, dir));
+    const insideSkillDir = getSkillDirectories(cwd).some((dir) => getCwdRelativePath(resolved, dir) !== undefined);
     if (insideSkillDir) return 'approve';
   }
 

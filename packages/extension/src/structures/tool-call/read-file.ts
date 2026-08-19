@@ -1,9 +1,8 @@
 import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
-import { resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { formatThrownValue } from '@earendil-works/pi-ai';
-import { defineTool } from '@earendil-works/pi-coding-agent';
+import { defineTool, resolvePath } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
 import { readAppSettings } from '@pi-code/extension/core/settings';
@@ -37,7 +36,7 @@ export async function checkReadableFile(path: string): Promise<{ ok: true } | { 
 }
 
 export async function readFileTextContent(resolvedPath: string, limits: OutputLimits): Promise<string> {
-  const path = resolve(resolvedPath);
+  const path = resolvePath(resolvedPath);
 
   const check = await checkReadableFile(path);
   if (!check.ok) {
@@ -112,7 +111,7 @@ function numberLines(lines: readonly string[], ranges: FileRequest['line_ranges'
 
 async function readFileSection(cwd: string, file: FileRequest, limits: OutputLimits): Promise<FileSection> {
   try {
-    const resolvedPath = resolve(cwd, file.path);
+    const resolvedPath = resolvePath(file.path, cwd);
 
     const check = await checkReadableFile(resolvedPath);
     if (!check.ok) {

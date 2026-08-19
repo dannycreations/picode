@@ -1,6 +1,5 @@
 import { rm, stat, unlink } from 'node:fs/promises';
-import { resolve } from 'node:path';
-import { defineTool, withFileMutationQueue } from '@earendil-works/pi-coding-agent';
+import { defineTool, resolvePath, withFileMutationQueue } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
 import { toolError, toolErrorFrom, toolResult } from '@pi-code/extension/structures/tool-call/helpers/result';
@@ -16,7 +15,7 @@ export const deleteFileTool = defineTool({
     path: Type.String({ description: 'Workspace-relative path of the file or directory.' }),
   }),
   async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
-    const resolvedPath = resolve(ctx.cwd, params.path);
+    const resolvedPath = resolvePath(params.path, ctx.cwd);
     return withFileMutationQueue(resolvedPath, async () => {
       try {
         let stats: Stats;
