@@ -25,7 +25,7 @@ export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
 
   const { draftSettings, isChangeDetected, handleFieldChange, handleSave, resetDraft } = useSetting(settings);
 
-  const { containerRef, isCollapsed } = useResponsive(550);
+  const { containerRef, isCollapsed, shouldAnimate } = useResponsive(550);
 
   useEffect(() => {
     if (searchQuery.trim()) {
@@ -119,7 +119,8 @@ export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
         <div
           className={cn(
             isCollapsed ? 'w-12' : 'w-48',
-            'border-r border-vscode-editorGroup-border/20 flex flex-col shrink-0 py-2 overflow-y-auto overflow-x-hidden bg-vscode-sideBar-background transition-all duration-150',
+            'border-r border-vscode-editorGroup-border/20 flex flex-col shrink-0 py-2 overflow-y-auto overflow-x-hidden bg-vscode-sideBar-background',
+            shouldAnimate ? 'transition-all duration-150' : '',
           )}
         >
           {SETTINGS_TABS.map((tab) => {
