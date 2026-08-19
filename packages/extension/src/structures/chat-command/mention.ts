@@ -12,6 +12,13 @@ import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
 
 const MENTION_PATTERN = /(?:^|(?<=[\s]))@(\S+)/g;
 
+// A dropped file arrives as an absolute path or a `file://` URI. Collapse it to
+// the workspace-relative `@token` the mention parser expects, so a Shift-drag
+// produces the same reference the `@` picker inserts.
+export function toMentionText(path: string, cwd: string): string {
+  return `@${formatPathRelativeToCwdOrAbsolute(path, cwd)}`;
+}
+
 const FOLDER_MAX_FILES = 50;
 const FOLDER_MAX_DEPTH = 2;
 const FOLDER_CHAR_CAP = 20_000;

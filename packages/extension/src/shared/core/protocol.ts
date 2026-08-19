@@ -61,7 +61,8 @@ export type WebviewToExtensionMessage =
   | { type: 'update_settings'; settings: Partial<AppSettings> }
   | { type: 'add_to_reply_queue'; text: string; images?: string[] }
   | { type: 'edit_reply_queue'; id: string; text: string }
-  | { type: 'remove_from_reply_queue'; id: string };
+  | { type: 'remove_from_reply_queue'; id: string }
+  | { type: 'insert_mentions'; paths: string[] };
 
 export type ExtensionToWebviewMessage =
   | {

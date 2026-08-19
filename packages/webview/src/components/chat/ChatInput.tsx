@@ -10,8 +10,9 @@ import { CommandMenu, MentionMenu } from '@pi-code/webview/components/chat/Sugge
 import { ImageThumb } from '@pi-code/webview/components/shared/ImageThumb';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { readFileAsDataUrl } from '@pi-code/webview/utilities/common';
+import { vscode } from '@pi-code/webview/utilities/vscode';
 
-import type { ChangeEvent, ClipboardEvent, FC, KeyboardEvent, RefObject } from 'react';
+import type { ChangeEvent, ClipboardEvent, DragEvent, FC, KeyboardEvent, RefObject } from 'react';
 import type { CommandItem } from '@pi-code/shared/core/protocol';
 
 interface ChatInputProps {
@@ -61,6 +62,7 @@ export const ChatInput: FC<ChatInputProps> = ({
   supportsImages,
 }) => {
   const [isFocused, setIsFocused] = useState(false);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const matchRef = useRef<HTMLDivElement>(null);
@@ -133,6 +135,44 @@ export const ChatInput: FC<ChatInputProps> = ({
     }
   };
 
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    // Only a Shift-drag may drop files as mentions; otherwise the textarea
+    // keeps its ordinary behaviour and the drop is ignored.
+    if (!e.shiftKey) {
+      setIsDraggingOver(false);
+      return;
+    }
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    setIsDraggingOver(true);
+  };
+
+  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
+    // Moving between children fires dragleave too; only clear when the pointer
+    // actually leaves the input box, so the dotted outline does not flicker.
+    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+    setIsDraggingOver(false);
+  };
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    setIsDraggingOver(false);
+    if (!e.shiftKey) return;
+    e.preventDefault();
+
+    // VS Code delivers dragged editor tabs and files as a uri-list; a plain
+    // text payload covers the remaining drag sources.
+    const text = e.dataTransfer.getData('text') || e.dataTransfer.getData('application/vnd.code.uri-list');
+    if (!text) return;
+
+    const paths = text
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0 && !line.startsWith('#'));
+    if (paths.length === 0) return;
+
+    vscode?.postMessage({ type: 'insert_mentions', paths });
+  };
+
   const isSendButtonActive = (inputValue.trim().length > 0 || selectedImages.length > 0) && !sendingDisabled;
 
   return (
@@ -142,7 +182,11 @@ export const ChatInput: FC<ChatInputProps> = ({
       <div
         className={cn(
           'relative flex flex-col rounded border transition-all duration-150',
-          isFocused ? 'border-vscode-focusBorder ring-1 ring-vscode-focusBorder' : 'border-vscode-input-border bg-vscode-input-background',
+          isDraggingOver
+            ? 'border-dashed border-vscode-focusBorder'
+            : isFocused
+              ? 'border-vscode-focusBorder ring-1 ring-vscode-focusBorder'
+              : 'border-vscode-input-border bg-vscode-input-background',
         )}
       >
         {command.isOpen && (
@@ -156,7 +200,7 @@ export const ChatInput: FC<ChatInputProps> = ({
         {mention.isOpen && (
           <MentionMenu results={mention.results} selectedIndex={mention.selectedIndex} onSelect={mention.select} onHover={mention.setSelectedIndex} />
         )}
-        <div className="relative flex">
+        <div className="relative flex" onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
           <div
             ref={matchRef}
             aria-hidden="true"

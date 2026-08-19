@@ -15,6 +15,7 @@ import {
   refreshModelCatalog,
   streamHistory,
 } from '@pi-code/extension/structures/agent-webview/session';
+import { toMentionText } from '@pi-code/extension/structures/chat-command/mention';
 import { searchWorkspaceFiles } from '@pi-code/extension/utilities/fs';
 import { ACTIVE_TASK_ID } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
@@ -88,6 +89,15 @@ const HANDLER_MAP: HandlerMap = {
   search_files: async (msg, ctx) => {
     const paths = await searchWorkspaceFiles(msg.query, ctx.cwd);
     ctx.postMessage({ type: 'search_results', payload: { requestId: msg.requestId, paths } });
+  },
+  insert_mentions: (msg, ctx) => {
+    const text = msg.paths
+      .map((path) => path.trim())
+      .filter((path) => path.length > 0)
+      .map((path) => toMentionText(path, ctx.cwd))
+      .join(' ');
+    if (text.length === 0) return;
+    ctx.postMessage({ type: 'set_chat_input', payload: { text: `${text} ` } });
   },
   add_to_reply_queue: (msg, ctx) => {
     ctx.agent.addToReplyQueue(msg.text, msg.images);
