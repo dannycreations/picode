@@ -1,9 +1,8 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
-import { defineTool } from '@earendil-works/pi-coding-agent';
+import { defineTool, withFileMutationQueue } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
-import { withFileLock } from '@pi-code/extension/structures/tool-call/helpers/mutex';
 import { toolErrorFrom } from '@pi-code/extension/structures/tool-call/helpers/result';
 import { checkReadableFile } from '@pi-code/extension/structures/tool-call/read-file';
 import { stripCodeFence } from '@pi-code/extension/utilities/markdown';
@@ -21,7 +20,7 @@ export const writeFileTool = defineTool({
   }),
   async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
     const resolvedPath = resolve(ctx.cwd, params.path);
-    return withFileLock(resolvedPath, async () => {
+    return withFileMutationQueue(resolvedPath, async () => {
       try {
         // Clean content from code block markers if present
         const finalContent = stripCodeFence(params.content);

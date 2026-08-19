@@ -1,0 +1,15 @@
+diff --git a/package.json b/package.json
+index 58d9dd64d57ce37477fd0376904513a3d470e109..6e62c016532d0af35aea261f814b72b72d74f028 100644
+--- a/package.json
++++ b/package.json
+@@ -16,6 +16,10 @@
+ 			"types": "./dist/index.d.ts",
+ 			"import": "./dist/index.js"
+ 		},
++		"./utils/ansi": {
++			"types": "./dist/utils/ansi.d.ts",
++			"import": "./dist/utils/ansi.js"
++		},
+ 		"./rpc-entry": {
+ 			"import": "./dist/rpc-entry.js"
+ 		},

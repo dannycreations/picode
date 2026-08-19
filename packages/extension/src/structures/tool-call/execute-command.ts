@@ -2,6 +2,7 @@ import { exec, spawn } from 'node:child_process';
 import { isAbsolute, resolve } from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
 import { defineTool, formatSize } from '@earendil-works/pi-coding-agent';
+import { stripAnsi } from '@earendil-works/pi-coding-agent/utils/ansi';
 import { Type } from 'typebox';
 
 import { getOutputLimits, truncateOutput } from '@pi-code/extension/utilities/truncate';
@@ -9,10 +10,8 @@ import { getOutputLimits, truncateOutput } from '@pi-code/extension/utilities/tr
 import type { CustomToolResult } from '@pi-code/extension/types/extension';
 import type { ToolName } from '@pi-code/shared/core/types';
 
-const ANSI_PATTERN = /\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b[=>c()#%*+]/g;
-
 function stripAnsiAndNormalize(raw: string): string {
-  return raw.replace(ANSI_PATTERN, '').replace(/\r\n/g, '\n');
+  return stripAnsi(raw).replace(/\r\n/g, '\n');
 }
 
 const DEFAULT_TIMEOUT_MS = 120_000;

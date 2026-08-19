@@ -1,9 +1,8 @@
 import { rm, stat, unlink } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { defineTool } from '@earendil-works/pi-coding-agent';
+import { defineTool, withFileMutationQueue } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
-import { withFileLock } from '@pi-code/extension/structures/tool-call/helpers/mutex';
 import { toolError, toolErrorFrom, toolResult } from '@pi-code/extension/structures/tool-call/helpers/result';
 
 import type { Stats } from 'node:fs';
@@ -18,7 +17,7 @@ export const deleteFileTool = defineTool({
   }),
   async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
     const resolvedPath = resolve(ctx.cwd, params.path);
-    return withFileLock(resolvedPath, async () => {
+    return withFileMutationQueue(resolvedPath, async () => {
       try {
         let stats: Stats;
         try {
