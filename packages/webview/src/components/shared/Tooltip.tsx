@@ -22,6 +22,7 @@ const ARROW_BORDERS: Record<TooltipSide, string> = {
 interface TooltipAnchorProps {
   readonly ref?: Ref<HTMLElement | null>;
   readonly onPointerEnter?: (event: PointerEvent<HTMLElement>) => void;
+  readonly onPointerMove?: (event: PointerEvent<HTMLElement>) => void;
   readonly onPointerLeave?: (event: PointerEvent<HTMLElement>) => void;
   readonly onPointerDown?: (event: PointerEvent<HTMLElement>) => void;
   readonly onFocus?: (event: FocusEvent<HTMLElement>) => void;
@@ -54,6 +55,7 @@ export const Tooltip: FC<TooltipProps> = ({ content, side = 'top', disabled = fa
   const anchorRef = useRef<HTMLElement | null>(null);
   const tooltipRef = useRef<HTMLDivElement | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pointerRef = useRef<{ readonly x: number; readonly y: number } | null>(null);
 
   const [isOpen, setOpen] = useState(false);
   const [placement, setPlacement] = useState<TooltipPlacement | null>(null);
@@ -85,22 +87,32 @@ export const Tooltip: FC<TooltipProps> = ({ content, side = 'top', disabled = fa
 
   const hide = useCallback((): void => {
     cancelTimer();
+    pointerRef.current = null;
     setOpen(false);
   }, [cancelTimer]);
 
   useEffect(() => cancelTimer, [cancelTimer]);
 
   // Measuring before paint keeps the tooltip from flashing at the wrong spot,
-  // and re-running on scroll or resize keeps it glued to a moving anchor.
+  // and re-running on scroll or resize keeps it glued to a moving anchor. A
+  // stationary pointer during a scroll never fires pointerleave, so the anchor
+  // can slide out from under the cursor and leave the tooltip stuck open. We
+  // re-check the pointer against the anchor and close when it has drifted off.
   useLayoutEffect(() => {
     if (!isVisible) return;
 
-    const reposition = (): void => {
+    const syncTooltip = (): void => {
       const anchor = anchorRef.current;
       const tooltip = tooltipRef.current;
       if (!anchor || !tooltip) return;
 
       const rect = anchor.getBoundingClientRect();
+      const pointer = pointerRef.current;
+      if (pointer && (pointer.x < rect.left || pointer.x > rect.right || pointer.y < rect.top || pointer.y > rect.bottom)) {
+        hide();
+        return;
+      }
+
       const next = computeTooltipPlacement({
         anchor: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
         tooltip: { width: tooltip.offsetWidth, height: tooltip.offsetHeight },
@@ -113,16 +125,16 @@ export const Tooltip: FC<TooltipProps> = ({ content, side = 'top', disabled = fa
       );
     };
 
-    reposition();
+    syncTooltip();
 
     // Capture catches scrolling in any ancestor, not just the window.
-    window.addEventListener('scroll', reposition, true);
-    window.addEventListener('resize', reposition);
+    window.addEventListener('scroll', syncTooltip, true);
+    window.addEventListener('resize', syncTooltip);
     return () => {
-      window.removeEventListener('scroll', reposition, true);
-      window.removeEventListener('resize', reposition);
+      window.removeEventListener('scroll', syncTooltip, true);
+      window.removeEventListener('resize', syncTooltip);
     };
-  }, [isVisible, side, content]);
+  }, [isVisible, side, content, hide]);
 
   useEffect(() => {
     if (!isVisible) return;
@@ -157,7 +169,14 @@ export const Tooltip: FC<TooltipProps> = ({ content, side = 'top', disabled = fa
       anchorProps.onPointerEnter?.(event);
       // Touch reports an enter right before the tap, which would leave a
       // tooltip hanging over the control the user just pressed.
-      if (event.pointerType !== 'touch') show(false);
+      if (event.pointerType !== 'touch') {
+        pointerRef.current = { x: event.clientX, y: event.clientY };
+        show(false);
+      }
+    },
+    onPointerMove: (event) => {
+      anchorProps.onPointerMove?.(event);
+      if (pointerRef.current) pointerRef.current = { x: event.clientX, y: event.clientY };
     },
     onPointerLeave: (event) => {
       anchorProps.onPointerLeave?.(event);
