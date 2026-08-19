@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import type { KeyboardEvent, RefCallback, RefObject } from 'react';
+import type { KeyboardEvent, PointerEvent, RefCallback, RefObject } from 'react';
 
 export interface ScrollMetrics {
   readonly scrollTop: number;
@@ -16,6 +16,9 @@ export const AT_BOTTOM_THRESHOLD_PX = 32;
 // window — layout shifts, browser scroll anchoring, our own corrective
 // writes — must never be treated as "the user scrolled up".
 const USER_INTENT_WINDOW_MS = 400;
+
+// A press that moves less than this (in px) is a tap, not a scroll gesture.
+const TAP_MOVE_THRESHOLD_PX = 4;
 
 export function isAtBottom(metrics: ScrollMetrics, threshold: number = AT_BOTTOM_THRESHOLD_PX): boolean {
   return metrics.scrollHeight - metrics.scrollTop - metrics.clientHeight <= threshold;
@@ -34,8 +37,8 @@ interface UseAutoScrollReturn {
   readonly handleScroll: () => void;
   readonly scrollToBottom: () => void;
   readonly onWheel: () => void;
-  readonly onTouchStart: () => void;
-  readonly onPointerDown: () => void;
+  readonly onPointerDown: (event: PointerEvent<HTMLDivElement>) => void;
+  readonly onPointerUp: (event: PointerEvent<HTMLDivElement>) => void;
   readonly onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => void;
 }
 
@@ -60,6 +63,9 @@ export const useAutoScroll = (resetKey?: unknown): UseAutoScrollReturn => {
   // Timestamp of the last real, physical user input aimed at scrolling.
   const lastUserIntentAtRef = useRef(0);
 
+  // Press start position, used to tell a tap (click) from a drag (scroll).
+  const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
+
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
 
   const markUserIntent = useCallback((): void => {
@@ -72,6 +78,28 @@ export const useAutoScroll = (resetKey?: unknown): UseAutoScrollReturn => {
     },
     [markUserIntent],
   );
+
+  // A press opens the scroll-intent window, but a press without movement is a
+  // tap, not a scroll. onPointerUp closes the window again for taps so the
+  // layout shift from a click (e.g. answering a question) isn't read as scroll-up.
+  const onPointerDown = useCallback(
+    (event: PointerEvent<HTMLDivElement>): void => {
+      pointerStartRef.current = { x: event.clientX, y: event.clientY };
+      markUserIntent();
+    },
+    [markUserIntent],
+  );
+
+  const onPointerUp = useCallback((event: PointerEvent<HTMLDivElement>): void => {
+    const start = pointerStartRef.current;
+    pointerStartRef.current = null;
+    if (!start) return;
+    const dx = event.clientX - start.x;
+    const dy = event.clientY - start.y;
+    if (dx * dx + dy * dy <= TAP_MOVE_THRESHOLD_PX * TAP_MOVE_THRESHOLD_PX) {
+      lastUserIntentAtRef.current = 0;
+    }
+  }, []);
 
   const writeScrollTop = useCallback((scroller: HTMLDivElement, value: number): void => {
     isProgrammaticScrollRef.current = true;
@@ -170,8 +198,8 @@ export const useAutoScroll = (resetKey?: unknown): UseAutoScrollReturn => {
     handleScroll,
     scrollToBottom,
     onWheel: markUserIntent,
-    onTouchStart: markUserIntent,
-    onPointerDown: markUserIntent,
+    onPointerDown,
+    onPointerUp,
     onKeyDown,
   };
 };

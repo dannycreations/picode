@@ -112,7 +112,7 @@ export const ChatView: FC = () => {
     deleteSessions,
   });
 
-  const { scrollRef, contentRef, showScrollToBottom, handleScroll, scrollToBottom, onWheel, onTouchStart, onPointerDown, onKeyDown } = useAutoScroll(
+  const { scrollRef, contentRef, showScrollToBottom, handleScroll, scrollToBottom, onWheel, onPointerDown, onPointerUp, onKeyDown } = useAutoScroll(
     activeTask?.id,
   );
 
@@ -364,8 +364,8 @@ export const ChatView: FC = () => {
           ref={scrollRef}
           onScroll={handleScroll}
           onWheel={onWheel}
-          onTouchStart={onTouchStart}
           onPointerDown={onPointerDown}
+          onPointerUp={onPointerUp}
           onKeyDown={onKeyDown}
           tabIndex={0}
           className="flex-1 min-h-0 overflow-y-auto chat-viewport outline-none"
