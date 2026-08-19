@@ -50,15 +50,11 @@ export async function searchWorkspaceFiles(query: string, cwd: string): Promise<
 
   // With no name fragment, list the immediate children of the anchor directory.
   if (needle === '') {
-    try {
-      const entries = await readdir(start, { withFileTypes: true });
-      return entries
-        .filter((entry) => entry.isFile() || entry.isDirectory())
-        .map((entry) => formatPathRelativeToCwdOrAbsolute(resolve(start, entry.name), cwd))
-        .slice(0, MAX_RESULTS);
-    } catch {
-      return [];
+    const entries: string[] = [];
+    for await (const { rel, dirent } of walkDirectory(start, 0, cwd)) {
+      if (dirent.isFile() || dirent.isDirectory()) entries.push(rel);
     }
+    return entries.slice(0, MAX_RESULTS);
   }
 
   const results: string[] = [];

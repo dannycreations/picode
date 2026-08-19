@@ -1,6 +1,8 @@
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { builtinModules } from 'node:module';
 import { join, relative, resolve } from 'node:path';
+
+import { walkDirectory } from '@pi-code/extension/utilities/fs';
 
 const packageDir = resolve(import.meta.dirname, '..');
 const sharedDir = join(packageDir, 'src', 'shared');
@@ -31,15 +33,10 @@ function lineNumberOf(source: string, index: number): number {
   return source.slice(0, index).split('\n').length;
 }
 
-function listTypeScriptFiles(dir: string): string[] {
+async function listTypeScriptFiles(dir: string): Promise<string[]> {
   const out: string[] = [];
-  for (const entry of readdirSync(dir)) {
-    const full = resolve(dir, entry);
-    if (statSync(full).isDirectory()) {
-      out.push(...listTypeScriptFiles(full));
-    } else if (full.endsWith('.ts')) {
-      out.push(full);
-    }
+  for await (const { abs, dirent } of walkDirectory(dir, Infinity)) {
+    if (dirent.isFile() && abs.endsWith('.ts')) out.push(abs);
   }
   return out;
 }
@@ -71,16 +68,18 @@ function scanFile(file: string, violations: Violation[]): void {
   check(DYNAMIC_IMPORT, false);
 }
 
-const files = listTypeScriptFiles(sharedDir);
-const violations: Violation[] = [];
-for (const file of files) scanFile(file, violations);
+(async () => {
+  const files = await listTypeScriptFiles(sharedDir);
+  const violations: Violation[] = [];
+  for (const file of files) scanFile(file, violations);
 
-if (violations.length > 0) {
-  console.error(`Shared module is not platform-agnostic (${violations.length} issue(s)):`);
-  for (const { file, line, specifier, reason } of violations) {
-    console.error(`  ${relative(process.cwd(), file)}:${line}  import '${specifier}' — ${reason}`);
+  if (violations.length > 0) {
+    console.error(`Shared module is not platform-agnostic (${violations.length} issue(s)):`);
+    for (const { file, line, specifier, reason } of violations) {
+      console.error(`  ${relative(process.cwd(), file)}:${line}  import '${specifier}' — ${reason}`);
+    }
+    process.exit(1);
   }
-  process.exit(1);
-}
 
-console.log('Shared module is platform-agnostic.');
+  console.log('Shared module is platform-agnostic.');
+})();
