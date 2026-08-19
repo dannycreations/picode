@@ -51,4 +51,23 @@ describe('searchWorkspaceFiles', () => {
     expect(results).toContain('src/index.ts');
     expect(results).toContain('src/util.ts');
   });
+
+  it('ranks the shortest path match first, above a nested match', async () => {
+    await write('context/something/patches');
+    await write('patches');
+
+    const results = await searchWorkspaceFiles('patches', cwd);
+
+    expect(results[0]).toBe('patches');
+    expect(results).toContain('context/something/patches');
+  });
+
+  it('ranks a basename-prefix match above a basename-infix match', async () => {
+    await write('mypatches.ts');
+    await write('patches.ts');
+
+    const results = await searchWorkspaceFiles('patches', cwd);
+
+    expect(results[0]).toBe('patches.ts');
+  });
 });

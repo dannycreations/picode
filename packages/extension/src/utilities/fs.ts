@@ -37,6 +37,40 @@ export async function* walkDirectory(start: string, maxDepth: number, root: stri
   yield* walk(start, 0);
 }
 
+interface PathRank {
+  // Basename starts with the query: 0. Match elsewhere in the basename: 1.
+  readonly prefix: number;
+  // Index of the query within the basename. Lower is a closer match.
+  readonly baseIndex: number;
+  // Path depth, counted as directory separators. Shallower is closer.
+  readonly depth: number;
+  // Full path length, used as a final closeness tiebreaker.
+  readonly length: number;
+}
+
+function rankPath(path: string, needle: string): PathRank {
+  const base = path.split('/').pop() ?? path;
+  const baseIndex = base.toLowerCase().indexOf(needle);
+  return {
+    prefix: baseIndex === 0 ? 0 : 1,
+    baseIndex: baseIndex < 0 ? Number.MAX_SAFE_INTEGER : baseIndex,
+    depth: path.split('/').length - 1,
+    length: path.length,
+  };
+}
+
+function rankPaths(paths: readonly string[], needle: string): string[] {
+  return [...paths].sort((a, b) => {
+    const ra = rankPath(a, needle);
+    const rb = rankPath(b, needle);
+    if (ra.prefix !== rb.prefix) return ra.prefix - rb.prefix;
+    if (ra.baseIndex !== rb.baseIndex) return ra.baseIndex - rb.baseIndex;
+    if (ra.depth !== rb.depth) return ra.depth - rb.depth;
+    if (ra.length !== rb.length) return ra.length - rb.length;
+    return a.localeCompare(b);
+  });
+}
+
 const MAX_RESULTS = 50;
 const MAX_SCANNED = 8000;
 const SEARCH_MAX_DEPTH = 2;
@@ -57,21 +91,16 @@ export async function searchWorkspaceFiles(query: string, cwd: string): Promise<
     return entries.slice(0, MAX_RESULTS);
   }
 
-  const results: string[] = [];
+  const matches: string[] = [];
   let scanned = 0;
-  let stopped = false;
 
   for await (const { rel, dirent } of walkDirectory(start, SEARCH_MAX_DEPTH, cwd)) {
-    if (stopped || results.length >= MAX_RESULTS) break;
     scanned++;
-    if (scanned > MAX_SCANNED) {
-      stopped = true;
-      break;
-    }
+    if (scanned > MAX_SCANNED) break;
     if (!dirent.isFile() && !dirent.isDirectory()) continue;
     if (!rel.toLowerCase().includes(needle)) continue;
-    results.push(rel);
+    matches.push(rel);
   }
 
-  return results.slice(0, MAX_RESULTS);
+  return rankPaths(matches, needle).slice(0, MAX_RESULTS);
 }
