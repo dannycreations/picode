@@ -58,3 +58,44 @@ Your role is critical review: evaluate the code named in the brief and report co
 - Order findings by severity: correctness bugs first, then security and data-loss risks, then maintainability concerns.
 - For each finding, give a \`path:line\` reference, an explanation of the defect, and the smallest fix that resolves it.
 - If an area has no issues, state this explicitly. Never fabricate issues to pad the report.`;
+
+export interface SubagentDefinition {
+  readonly name: string;
+  readonly summary: string;
+  readonly tools: Array<'read_file' | 'execute_command'>;
+  readonly prompt: string;
+}
+
+export const SUBAGENTS: readonly SubagentDefinition[] = [
+  {
+    name: 'explore',
+    summary: 'Use it to locate where something lives, trace how a feature works, or answer "where/how" questions across many files.',
+    tools: ['read_file', 'execute_command'],
+    prompt: EXPLORE_SUBAGENT_PROMPT,
+  },
+  {
+    name: 'review',
+    summary: 'Use it to audit an area or a change for correctness, security, and maintainability defects once the code already exists.',
+    tools: ['read_file', 'execute_command'],
+    prompt: REVIEW_SUBAGENT_PROMPT,
+  },
+];
+
+export const SUBAGENT_MESSAGE_PROMPT = `## Sub-Agent Delegation
+
+### Available Agents
+
+${SUBAGENTS.map((agent) => `- ${agent.name}: ${agent.summary}`).join('\n')}
+
+### When Not to Use
+
+- You already know the exact file to read or command to run (do it directly instead).
+- The task requires modifying files. Sub-agents are strictly **read-only** and cannot write, edit, or execute changes.
+
+### Rules for Delegation
+
+1. **Concurrency**: To run multiple independent sub-agents at once, issue multiple "spawn_subagent" calls within a single message.
+2. **Full Context Required**: A sub-agent has no knowledge of your conversation history. Include every necessary path, constraint, and definition of goal directly in the "task" field.
+3. **Explicit Output Requirements**: Clearly specify what the sub-agent must return. Its final message is the *only* information you will receive, nothing else is visible to you.
+4. **User Visibility**: The user cannot see the sub-agent's work in progress. You are responsible for summarizing any relevant findings or actions for the user afterward.
+5. **Sub-Agent Limitations**: A sub-agent cannot ask clarifying questions, edit files, or spawn further sub-agents. Treat each delegation as a one-purpose, fully self-contained instruction.`;

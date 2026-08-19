@@ -1,39 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  describeSubagents,
-  formatSubagentStep,
-  getSubagent,
-  recordSubagentUsage,
-  SUBAGENTS,
-  takeSubagentUsage,
-} from '@pi-code/extension/structures/agent-runtime/subagent';
-
-describe('subagent catalog', () => {
-  it('grants only read-only tools', () => {
-    for (const agent of SUBAGENTS) {
-      expect(agent.tools.length, agent.name).toBeGreaterThan(0);
-      for (const tool of agent.tools) {
-        expect(['read_file', 'execute_command'], agent.name).toContain(tool);
-      }
-    }
-  });
-
-  it('describes every sub-agent for the tool description', () => {
-    const described = describeSubagents();
-
-    for (const agent of SUBAGENTS) {
-      expect(described).toContain(agent.name);
-      expect(described).toContain(agent.summary);
-      expect(agent.prompt.trim(), agent.name).not.toBe('');
-    }
-  });
-
-  it('resolves known names and rejects unknown ones', () => {
-    expect(getSubagent('explore')?.name).toBe('explore');
-    expect(getSubagent('nope')).toBeUndefined();
-  });
-});
+import { formatSubagentStep, recordSubagentUsage, takeSubagentUsage } from '@pi-code/extension/structures/agent-runtime/subagent';
 
 describe('formatSubagentStep', () => {
   it('summarises a file read by path', () => {

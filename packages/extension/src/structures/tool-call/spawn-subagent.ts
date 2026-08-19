@@ -2,8 +2,9 @@ import { formatThrownValue, StringEnum } from '@earendil-works/pi-ai';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
+import { SUBAGENTS } from '@pi-code/extension/core/prompt';
 import { mapEvent, notifySubagentEvent } from '@pi-code/extension/structures/agent-runtime/event';
-import { describeSubagents, getSubagent, recordSubagentUsage, spawnSubagent, SUBAGENTS } from '@pi-code/extension/structures/agent-runtime/subagent';
+import { recordSubagentUsage, spawnSubagent } from '@pi-code/extension/structures/agent-runtime/subagent';
 import { toolError, toolResult } from '@pi-code/extension/structures/tool-call/helpers/result';
 import { getOutputLimits, truncateOutput } from '@pi-code/extension/utilities/truncate';
 
@@ -50,36 +51,19 @@ const SUBAGENT_NAMES = SUBAGENTS.map((agent) => agent.name);
 export const spawnSubagentTool = defineTool({
   name: 'spawn_subagent' as ToolName,
   label: 'Spawn Sub-agent',
-  description: `Delegate a self-contained, read-only task to a sub-agent that works independently and returns a final report, when you don't need its intermediate steps.
-
-## Available Agents
-
-${describeSubagents()}
-
-## When Not to Use
-
-- You already know the exact file to read or command to run (do it directly instead).
-- The task requires modifying files. Sub-agents are strictly **read-only** and cannot write, edit, or execute changes.
-
-## Rules for Delegation
-
-1. **Concurrency**: To run multiple independent sub-agents at once, issue multiple "spawn_subagent" calls within a single message.
-2. **Full Context Required**: A sub-agent has no knowledge of your conversation history. Include every necessary path, constraint, and definition of goal directly in the "task" field.
-3. **Explicit Output Requirements**: Clearly specify what the sub-agent must return. Its final message is the *only* information you will receive — nothing else is visible to you.
-4. **User Visibility**: The user cannot see the sub-agent's work in progress. You are responsible for summarizing any relevant findings or actions for the user afterward.
-5. **Sub-Agent Limitations**: A sub-agent cannot ask clarifying questions, edit files, or spawn further sub-agents. Treat each delegation as a one-purpose, fully self-contained instruction.`,
+  description: 'Delegate a self-contained, read-only task to a sub-agent that works independently and returns a final report.',
   parameters: Type.Object({
     agent: StringEnum(SUBAGENT_NAMES, { description: 'Name of the sub-agent to delegate to.' }),
     description: Type.String({ description: 'A 3-5 word description of the delegated task, shown to the user.' }),
     task: Type.String({
-      description: 'The complete brief for the sub-agent. It has no other context, so include the goal, relevant paths, and what to report back.',
+      description: 'The complete brief for the sub-agent, including the goal, relevant paths, and what to report back.',
     }),
   }),
   async execute(toolCallId, params, signal, onUpdate, ctx): Promise<CustomToolResult<SubagentDetails>> {
     const failure = (text: string, agentName: string): CustomToolResult<SubagentDetails> =>
       toolError(text, { agent: agentName, description: params.description, steps: '' });
 
-    const agent = getSubagent(params.agent);
+    const agent = SUBAGENTS.find((agent) => agent.name === params.agent);
     if (!agent) {
       return failure(`Error: unknown sub-agent "${params.agent}". Available sub-agents: ${SUBAGENT_NAMES.join(', ')}.`, params.agent);
     }

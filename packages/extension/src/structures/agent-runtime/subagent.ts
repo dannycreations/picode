@@ -1,7 +1,6 @@
 import { contentText } from '@earendil-works/pi-ai';
 import { createAgentSessionFromServices, SessionManager } from '@earendil-works/pi-coding-agent';
 
-import { EXPLORE_SUBAGENT_PROMPT, REVIEW_SUBAGENT_PROMPT } from '@pi-code/extension/core/prompt';
 import { registerSubagentSession, unregisterSubagentSession } from '@pi-code/extension/structures/agent-runtime/policy';
 import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { executeCommandTool } from '@pi-code/extension/structures/tool-call/execute-command';
@@ -10,44 +9,15 @@ import { logger } from '@pi-code/shared/core/logger';
 import { elapsedSeconds } from '@pi-code/shared/utilities/common';
 
 import type { Api, Model } from '@earendil-works/pi-ai';
-import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent';
+import type { AgentSession, AgentSessionEvent, ToolDefinition } from '@earendil-works/pi-coding-agent';
+import type { SubagentDefinition } from '@pi-code/extension/core/prompt';
+
+type SubagentToolName = SubagentDefinition['tools'][number];
 
 const SUBAGENT_TOOLS = {
   read_file: readFileTool,
   execute_command: executeCommandTool,
-} as const;
-
-type SubagentToolName = keyof typeof SUBAGENT_TOOLS;
-
-interface SubagentDefinition {
-  readonly name: string;
-  readonly summary: string;
-  readonly tools: readonly SubagentToolName[];
-  readonly prompt: string;
-}
-
-export const SUBAGENTS: readonly SubagentDefinition[] = [
-  {
-    name: 'explore',
-    summary: 'Use it to locate where something lives, trace how a feature works, or answer "where/how" questions across many files.',
-    tools: ['read_file', 'execute_command'],
-    prompt: EXPLORE_SUBAGENT_PROMPT,
-  },
-  {
-    name: 'review',
-    summary: 'Use it to audit an area or a change for correctness, security, and maintainability defects once the code already exists.',
-    tools: ['read_file', 'execute_command'],
-    prompt: REVIEW_SUBAGENT_PROMPT,
-  },
-];
-
-export function getSubagent(name: string): SubagentDefinition | undefined {
-  return SUBAGENTS.find((agent) => agent.name === name);
-}
-
-export function describeSubagents(): string {
-  return SUBAGENTS.map((agent) => `- ${agent.name}: ${agent.summary}`).join('\n');
-}
+} satisfies Record<SubagentToolName, ToolDefinition>;
 
 export interface SubagentUsage {
   readonly turns: number;
