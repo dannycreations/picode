@@ -27,11 +27,11 @@ export function formatTodoReminder(todoList?: TodoItem[]): string {
 
   if (!todoList || todoList.length === 0) {
     lines.push('You have not created a todo list yet. Create one with `update_todo` if your task is complex or involves multiple steps.');
-    lines.push("You can safely zeroing this reminder if it isn't needed yet, and don't cite it anywhere.");
+    lines.push("You can safely ignore this reminder if it isn't needed yet, and don't cite it anywhere.");
     return lines.join('\n').trim();
   }
 
-  lines.push('Below is a list of your current reminders for this task. Keep them update or expand as you progress.', '');
+  lines.push('Below is a list of your current reminders for this task. Keep them updated or expand as you progress.', '');
   lines.push('| # | Content | Status |');
   lines.push('|---|---------|--------|');
   todoList.forEach((item, idx) => {

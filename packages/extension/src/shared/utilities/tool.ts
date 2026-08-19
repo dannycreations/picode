@@ -90,7 +90,7 @@ const TOOL_META: Readonly<Record<string, ToolMeta>> = {
 export const GROUP_TOOLS: ReadonlySet<ToolName> = new Set(Object.keys(TOOL_META) as ToolName[]);
 
 function toolMeta(toolName?: string): ToolMeta {
-  return (toolName && TOOL_META[toolName]) || DEFAULT_TOOL_META;
+  return TOOL_META[toolName ?? ''] ?? DEFAULT_TOOL_META;
 }
 
 function getToolLanguage(toolName?: string): string {

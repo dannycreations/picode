@@ -103,7 +103,14 @@ async function readSessionPreview(filePath: string, mtime: number): Promise<Hist
     }
     rl.close();
     if (!id) return null;
-    const ts = mtime > 0 ? mtime : created ? new Date(created).getTime() : Date.now();
+    let ts: number;
+    if (mtime > 0) {
+      ts = mtime;
+    } else if (created) {
+      ts = new Date(created).getTime();
+    } else {
+      ts = Date.now();
+    }
     return { id, path: filePath, task: firstMessage || 'Untitled Task', ts };
   } catch {
     return null;

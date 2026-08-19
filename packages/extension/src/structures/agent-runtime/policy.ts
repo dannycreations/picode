@@ -36,12 +36,13 @@ function evaluateToolCall(toolName: ToolName, cwd: string, input: unknown): Appr
   let denyReason = '';
 
   switch (toolName) {
-    case 'read_file':
+    case 'read_file': {
       const resolutions = (args.files ?? []).map((file) => resolveReadPath(cwd, file.path ?? '', settings));
       if (resolutions.includes('deny')) action = 'deny';
       else action = resolutions.every((resolution) => resolution === 'approve') ? 'approve' : 'confirm';
       denyReason = 'Access to read one or more specified paths is explicitly denied by settings.';
       break;
+    }
     case 'write_file':
     case 'edit_file':
       action = resolvePathAction(

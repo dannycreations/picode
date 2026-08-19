@@ -22,17 +22,26 @@ function buildSizeLimitMessage(filePath: string, sizeBytes: number): string {
 }
 
 export async function checkReadableFile(path: string): Promise<{ ok: true } | { ok: false; body: string }> {
-  const fileStat = await stat(path);
-  if (!fileStat.isFile()) {
-    return { ok: false, body: `Error: "${path}" is not a regular file.` };
+  try {
+    const fileStat = await stat(path);
+    if (!fileStat.isFile()) {
+      return { ok: false, body: `Error: "${path}" is not a regular file.` };
+    }
+    if (fileStat.size > MAX_FILE_SIZE_BYTES) {
+      return { ok: false, body: buildSizeLimitMessage(path, fileStat.size) };
+    }
+    if (await isBinaryFile(path)) {
+      return { ok: false, body: `Error: ${path} is binary and cannot be read as text.` };
+    }
+    return { ok: true };
+  } catch (err) {
+    // A missing file is an expected, non-error outcome for callers that probe
+    // existence, so report it as not-found instead of throwing.
+    if ((err as NodeJS.ErrnoException)?.code === 'ENOENT') {
+      return { ok: false, body: `Error: "${path}" does not exist.` };
+    }
+    throw err;
   }
-  if (fileStat.size > MAX_FILE_SIZE_BYTES) {
-    return { ok: false, body: buildSizeLimitMessage(path, fileStat.size) };
-  }
-  if (await isBinaryFile(path)) {
-    return { ok: false, body: `Error: ${path} is binary and cannot be read as text.` };
-  }
-  return { ok: true };
 }
 
 export async function readFileTextContent(resolvedPath: string, limits: OutputLimits): Promise<string> {

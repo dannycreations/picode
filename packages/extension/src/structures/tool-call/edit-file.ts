@@ -137,35 +137,21 @@ export const editFileTool = defineTool({
     const resolvedPath = resolvePath(file_path, ctx.cwd);
     return withFileMutationQueue(resolvedPath, async () => {
       try {
-        let fileExists = false;
         let originalContent = '';
-        try {
-          const check = await checkReadableFile(resolvedPath);
-          if (!check.ok) {
-            return toolError(`${check.body} Use "write_file" to overwrite this file, or "read_file" with "line_ranges" to inspect a portion.`);
-          }
-          fileExists = true;
-        } catch (err: unknown) {
-          const isEnoent = err && typeof err === 'object' && 'code' in err && (err as { code?: string }).code === 'ENOENT';
-          if (!isEnoent) {
-            return toolErrorFrom(err, `accessing file ${file_path}`);
-          }
-        }
-
-        if (fileExists) {
+        const check = await checkReadableFile(resolvedPath);
+        if (check.ok) {
           originalContent = await readFile(resolvedPath, 'utf8');
+        } else if (old_string !== '') {
+          return toolError(`${check.body} Use "write_file" to overwrite this file, or "read_file" with "line_ranges" to inspect a portion.`);
         }
 
-        if (fileExists && old_string === '') {
+        if (check.ok && old_string === '') {
           return toolError(`Error: "file_path" already exists: ${file_path}. Use a non-empty "old_string" to modify it.`);
-        }
-        if (!fileExists && old_string !== '') {
-          return toolError(`Error: "file_path" does not exist: ${file_path}. Set "old_string" to empty string to create a new file.`);
         }
 
         let newContent: string;
 
-        if (!fileExists) {
+        if (!check.ok) {
           newContent = new_string;
           await mkdir(dirname(resolvedPath), { recursive: true });
           await writeFile(resolvedPath, newContent, 'utf8');

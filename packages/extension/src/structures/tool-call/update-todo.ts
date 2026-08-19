@@ -6,7 +6,7 @@ import { toolResult } from '@pi-code/extension/structures/tool-call/helpers/resu
 import type { ToolName } from '@pi-code/shared/core/types';
 import type { TodoItem, TodoStatus } from '@pi-code/shared/utilities/todo';
 
-const TODO_STATUSES = ['pending', 'progress', 'completed'] as TodoStatus[];
+const TODO_STATUSES: readonly TodoStatus[] = ['pending', 'progress', 'completed'];
 
 export const updateTodoTool = defineTool({
   name: 'update_todo' as ToolName,

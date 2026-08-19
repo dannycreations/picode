@@ -45,17 +45,18 @@ interface PathRank {
   // Path depth, counted as directory separators. Shallower is closer.
   readonly depth: number;
   // Full path length, used as a final closeness tiebreaker.
-  readonly length: number;
+  readonly pathLength: number;
 }
 
 function rankPath(path: string, needle: string): PathRank {
-  const base = path.split('/').pop() ?? path;
+  const segments = path.split('/');
+  const base = segments.pop() ?? path;
   const baseIndex = base.toLowerCase().indexOf(needle);
   return {
     prefix: baseIndex === 0 ? 0 : 1,
     baseIndex: baseIndex < 0 ? Number.MAX_SAFE_INTEGER : baseIndex,
-    depth: path.split('/').length - 1,
-    length: path.length,
+    depth: segments.length,
+    pathLength: path.length,
   };
 }
 
@@ -66,7 +67,7 @@ function rankPaths(paths: readonly string[], needle: string): string[] {
     if (ra.prefix !== rb.prefix) return ra.prefix - rb.prefix;
     if (ra.baseIndex !== rb.baseIndex) return ra.baseIndex - rb.baseIndex;
     if (ra.depth !== rb.depth) return ra.depth - rb.depth;
-    if (ra.length !== rb.length) return ra.length - rb.length;
+    if (ra.pathLength !== rb.pathLength) return ra.pathLength - rb.pathLength;
     return a.localeCompare(b);
   });
 }

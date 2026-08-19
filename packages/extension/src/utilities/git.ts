@@ -7,7 +7,7 @@ export const GIT_STATUS = {
   INDEX_DELETED: 2,
   DELETED: 6,
   UNTRACKED: 7,
-} as const satisfies Record<string, number>;
+} as const;
 
 async function getGitApi(): Promise<API | null> {
   const gitExtension = extensions.getExtension<GitExtension>('vscode.git');

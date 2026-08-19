@@ -23,6 +23,9 @@ import type { Webview } from 'vscode';
 import type { ExtensionToWebviewMessage, ModelSelection } from '@pi-code/shared/core/protocol';
 import type { ChatMessage, StatsData } from '@pi-code/shared/core/types';
 
+const COMPACTION_ABORT_ERROR_NAME = 'AbortError';
+const COMPACTION_CANCEL_MESSAGE = 'Compaction cancelled';
+
 function parseImageAttachments(images?: string[]): ImageContent[] | undefined {
   if (!images || images.length === 0) return undefined;
 
@@ -147,7 +150,7 @@ export class AgentRunner {
       // A user cancel aborts the in-flight compaction, which the session
       // rethrows as an AbortError. Don't surface that as a spurious error
       // bubble: the deliberate stop is already signaled by compaction_end.
-      const isAbort = err instanceof Error && (err.name === 'AbortError' || err.message === 'Compaction cancelled');
+      const isAbort = err instanceof Error && (err.name === COMPACTION_ABORT_ERROR_NAME || err.message === COMPACTION_CANCEL_MESSAGE);
       if (!isAbort) {
         this.messenger.postError(err);
       }
@@ -273,7 +276,7 @@ export class AgentRunner {
     const sessionManager = session.sessionManager;
     const baseAppendMessage = sessionManager.appendMessage.bind(sessionManager);
     sessionManager.appendMessage = (message): string => {
-      // Ignore "Request aborted" message trigger by cancelTask() > abort()
+      // Ignore "Request aborted" message triggered by cancelTask() > abort()
       if (!this.session && message.role === 'assistant' && message.stopReason === 'aborted') {
         return uuidv7();
       }

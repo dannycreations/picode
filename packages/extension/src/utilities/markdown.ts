@@ -19,7 +19,12 @@ function readOpeningFence(line: string): Fence | null {
 function readFencedBody(raw: string, anchored: boolean): string | null {
   const lines = raw.split('\n');
 
-  const start = anchored ? lines.findIndex((line) => line.trim() !== '') : lines.findIndex((line) => readOpeningFence(line) !== null);
+  let start: number;
+  if (anchored) {
+    start = lines.findIndex((line) => line.trim() !== '');
+  } else {
+    start = lines.findIndex((line) => readOpeningFence(line) !== null);
+  }
   if (start === -1) return null;
 
   const fence = readOpeningFence(lines[start]);
@@ -27,7 +32,7 @@ function readFencedBody(raw: string, anchored: boolean): string | null {
 
   // The closing pattern depends only on the opening fence, so compile it once
   // rather than recompiling it for every line scanned from the bottom.
-  const closing = new RegExp(`^ {0,3}${fence.char === '`' ? '`' : '~'}{${fence.length},}[ \\t\\r]*$`);
+  const closing = new RegExp(`^ {0,3}${fence.char}{${fence.length},}[ \\t\\r]*$`);
 
   // Scan from the bottom so nested fences inside a markdown block stay intact.
   for (let end = lines.length - 1; end > start; end--) {

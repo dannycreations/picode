@@ -32,6 +32,10 @@ export function matchesGlob(pattern: string, filePath: string): boolean {
   return minimatch(normalizedFile, pattern, { nocase: true, dot: true });
 }
 
+function matchesPathPattern(pattern: string, filePath: string): boolean {
+  return pattern === '*' || matchesGlob(pattern, filePath);
+}
+
 function resolveAllowDeny(
   allowedPatterns: readonly string[],
   deniedPatterns: readonly string[],
@@ -80,7 +84,7 @@ export function resolvePathAction(
   }
 
   const normalizedPath = normalizeSeparators(filePath);
-  const action = resolveAllowDeny(allowedPatterns, deniedPatterns, (pat) => pat === '*' || matchesGlob(pat, normalizedPath));
+  const action = resolveAllowDeny(allowedPatterns, deniedPatterns, (pat) => matchesPathPattern(pat, normalizedPath));
   if (action !== 'confirm') {
     return action;
   }
@@ -300,7 +304,7 @@ function getSkillDirectories(cwd: string): readonly string[] {
 
 export function resolveReadPath(cwd: string, filePath: string, settings: AppSettings): ApprovalDecision['action'] {
   const normalizedPath = normalizeSeparators(filePath);
-  const isDenied = settings.deniedReadPaths.some((pat) => pat === '*' || matchesGlob(pat, normalizedPath));
+  const isDenied = settings.deniedReadPaths.some((pat) => matchesPathPattern(pat, normalizedPath));
   if (isDenied) return 'deny';
 
   if (settings.autoApproveRead && settings.autoApproveSkillReads) {

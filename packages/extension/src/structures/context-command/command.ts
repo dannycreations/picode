@@ -133,31 +133,12 @@ async function runInlineCompletion(cwd: string, selection: ResolvedSelection, pr
   }
 }
 
-export function registerFillCodeCommand(): Disposable {
-  return commands.registerCommand('pi-code.fillCode', async (...args: any[]) => {
-    const selection = resolveSelection(args);
-    if (!selection) return;
-
-    const cwd = getWorkspaceCwd();
-    if (!cwd) {
-      window.showErrorMessage('No workspace folder is open.');
-      return;
-    }
-
-    const prompt =
-      'Replace the following code with a complete, working implementation that preserves and satisfies the specified contract and requirements. ' +
-      'Preserve the original indentation of the replaced lines. Return only the replacement code, with no explanations.\n\n' +
-      `${selection.filePath}:${selection.startLine}-${selection.endLine}\n` +
-      '```\n' +
-      `${selection.selectedText}\n` +
-      '```\n\n';
-
-    await runInlineCompletion(cwd, selection, prompt, 'Filling code with Pi...');
-  });
-}
-
-export function registerFixCodeCommand(): Disposable {
-  return commands.registerCommand('pi-code.fixCode', async (...args: any[]) => {
+function registerInlineEditCommand(
+  id: string,
+  progressTitle: string,
+  buildPrompt: (selection: ResolvedSelection, diagnosticText: string) => string,
+): Disposable {
+  return commands.registerCommand(id, async (...args: any[]) => {
     const selection = resolveSelection(args);
     if (!selection) return;
 
@@ -168,16 +149,36 @@ export function registerFixCodeCommand(): Disposable {
     }
 
     const diagnosticText = getDiagnosticText(args, selection);
+    const prompt = buildPrompt(selection, diagnosticText);
+    await runInlineCompletion(cwd, selection, prompt, progressTitle);
+  });
+}
 
-    const prompt =
+export function registerFillCodeCommand(): Disposable {
+  return registerInlineEditCommand(
+    'pi-code.fillCode',
+    'Filling code with Pi...',
+    (selection) =>
+      'Replace the following code with a complete, working implementation that preserves and satisfies the specified contract and requirements. ' +
+      'Preserve the original indentation of the replaced lines. Return only the replacement code, with no explanations.\n\n' +
+      `${selection.filePath}:${selection.startLine}-${selection.endLine}\n` +
+      '```\n' +
+      `${selection.selectedText}\n` +
+      '```\n\n',
+  );
+}
+
+export function registerFixCodeCommand(): Disposable {
+  return registerInlineEditCommand(
+    'pi-code.fixCode',
+    'Fixing code with Pi...',
+    (selection, diagnosticText) =>
       'Fix the issues in the following code. Replace it with corrected code that resolves the problems listed below. ' +
       'Preserve the original indentation of the replaced lines. Return only the replacement code, with no explanations.\n\n' +
       `${diagnosticText ? `${diagnosticText}\n\n` : ''}` +
       `${selection.filePath}:${selection.startLine}-${selection.endLine}\n` +
       '```\n' +
       `${selection.selectedText}\n` +
-      '```\n\n';
-
-    await runInlineCompletion(cwd, selection, prompt, 'Fixing code with Pi...');
-  });
+      '```\n\n',
+  );
 }

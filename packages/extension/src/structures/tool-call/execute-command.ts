@@ -67,6 +67,7 @@ export const executeCommandTool = defineTool({
   async execute(_toolCallId, params, signal, onUpdate, ctx) {
     const limits = getOutputLimits();
     const retainedBytes = limits.maxBytes * 2;
+    const effectiveTimeout = resolveTimeout(params.timeout);
 
     return new Promise<CustomToolResult<{ exitCode: number | null; signalCode: string | null; output: string; timedOut: boolean }>>((res) => {
       let resolvedCwd = ctx.cwd;
@@ -251,7 +252,6 @@ export const executeCommandTool = defineTool({
         finish(code, sig);
       });
 
-      const effectiveTimeout = resolveTimeout(params.timeout);
       timeoutTimer = setTimeout(() => {
         timedOut = true;
         escalateKill();

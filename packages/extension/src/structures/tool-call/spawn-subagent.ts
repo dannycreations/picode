@@ -47,6 +47,7 @@ function renderOutcome(outcome: SubagentOutcome, state: 'completed' | 'error'): 
 }
 
 const SUBAGENT_NAMES = SUBAGENTS.map((agent) => agent.name);
+const FORWARDED_SUBAGENT_EVENTS = new Set(['tool_execution_start', 'tool_execution_update', 'tool_execution_end']);
 
 export const spawnSubagentTool = defineTool({
   name: 'spawn_subagent' as ToolName,
@@ -95,7 +96,7 @@ export const spawnSubagentTool = defineTool({
               })
           : undefined,
         onEvent: (event, subagentSession) => {
-          if (event.type === 'tool_execution_start' || event.type === 'tool_execution_update' || event.type === 'tool_execution_end') {
+          if (FORWARDED_SUBAGENT_EVENTS.has(event.type)) {
             const { message } = mapEvent(event, subagentSession, null);
             if (message) {
               notifySubagentEvent(message);
