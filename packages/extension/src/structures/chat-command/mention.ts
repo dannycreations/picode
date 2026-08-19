@@ -21,9 +21,18 @@ interface ResolvedMention {
   readonly content: string;
 }
 
-export async function expandMentions(text: string, cwd: string): Promise<string> {
+export interface ExpandedMentions {
+  // The prompt with the original `@token` references left intact, ready to be
+  // shown to the user and persisted as the user message.
+  readonly text: string;
+  // The file/folder contents the model should read, delivered separately as a
+  // hidden custom message so it never lands in the displayed transcript.
+  readonly mentionContent: string;
+}
+
+export async function expandMentions(text: string, cwd: string): Promise<ExpandedMentions> {
   const matches = [...text.matchAll(MENTION_PATTERN)];
-  if (matches.length === 0) return text;
+  if (matches.length === 0) return { text, mentionContent: '' };
 
   const limits = toOutputLimits(readAppSettings());
 
@@ -32,20 +41,6 @@ export async function expandMentions(text: string, cwd: string): Promise<string>
   const resolvedMentions = await Promise.all(uniqueMentions.map((raw) => resolveMention(raw, cwd, limits)));
   uniqueMentions.forEach((raw, index) => resolved.set(raw, resolvedMentions[index]));
 
-  let rewritten = '';
-  let cursor = 0;
-  for (const match of matches) {
-    const raw = match[1];
-    const start = match.index ?? 0;
-    const end = start + match[0].length;
-
-    rewritten += text.slice(cursor, start);
-    const mention = resolved.get(raw);
-    rewritten += mention ? `${raw} (${mention.kind} content below)` : match[0];
-    cursor = end;
-  }
-  rewritten += text.slice(cursor);
-
   const blocks = [...resolved.entries()]
     .filter((entry): entry is [string, ResolvedMention] => entry[1] !== null)
     .map(([raw, mention]) =>
@@ -53,9 +48,8 @@ export async function expandMentions(text: string, cwd: string): Promise<string>
         ? `<folder_content path="${raw}">\n${mention.content}\n</folder_content>`
         : `<file_content path="${raw}">\n${mention.content}\n</file_content>`,
     );
-
-  if (blocks.length === 0) return text;
-  return `${rewritten}\n\n${blocks.join('\n\n')}`;
+  const mentionContent = blocks.length === 0 ? '' : blocks.join('\n\n');
+  return { text, mentionContent };
 }
 
 async function resolveMention(raw: string, cwd: string, limits: OutputLimits): Promise<ResolvedMention | null> {

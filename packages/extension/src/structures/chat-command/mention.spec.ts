@@ -34,22 +34,26 @@ async function write(rel: string, content: string): Promise<void> {
 describe('expandMentions', () => {
   it('leaves unrelated text such as emails and missing paths untouched', async () => {
     const text = 'contact a@b about @does-not-exist please';
-    expect(await expandMentions(text, cwd)).toBe(text);
+    const result = await expandMentions(text, cwd);
+    expect(result.text).toBe(text);
+    expect(result.mentionContent).toBe('');
   });
 
-  it('expands an existing file into a file_content block, including gitignored files', async () => {
+  it('keeps the original @tokens in the prompt and moves file content to mentionContent', async () => {
     await write('.gitignore', 'secret.txt\n');
     await write('secret.txt', 'hidden treasure');
     await write('readme.md', 'project docs');
 
     const result = await expandMentions('Review @secret.txt and @readme.md', cwd);
 
-    expect(result).toContain('<file_content path="secret.txt">');
-    expect(result).toContain('hidden treasure');
-    expect(result).toContain('<file_content path="readme.md">');
-    expect(result).toContain('project docs');
-    // The raw token is replaced, not left inline.
-    expect(result).not.toContain('@secret.txt');
+    // The visible prompt keeps the tokens, nothing about the file is inlined.
+    expect(result.text).toBe('Review @secret.txt and @readme.md');
+    // The file bodies go to the hidden channel the model reads instead.
+    expect(result.mentionContent).toContain('<file_content path="secret.txt">');
+    expect(result.mentionContent).toContain('hidden treasure');
+    expect(result.mentionContent).toContain('<file_content path="readme.md">');
+    expect(result.mentionContent).toContain('project docs');
+    expect(result.text).not.toContain('<file_content');
   });
 
   it('expands an existing folder into a folder_content block listing only entry names', async () => {
@@ -58,12 +62,12 @@ describe('expandMentions', () => {
 
     const result = await expandMentions('Look at @src', cwd);
 
-    expect(result).toContain('<folder_content path="src">');
-    expect(result).toContain('src/index.ts');
-    expect(result).toContain('src/util.ts');
+    expect(result.mentionContent).toContain('<folder_content path="src">');
+    expect(result.mentionContent).toContain('src/index.ts');
+    expect(result.mentionContent).toContain('src/util.ts');
     // File contents are not inlined; only the entry names are listed.
-    expect(result).not.toContain('console.log(1)');
-    expect(result).not.toContain('export const x = 2');
+    expect(result.mentionContent).not.toContain('console.log(1)');
+    expect(result.mentionContent).not.toContain('export const x = 2');
   });
 
   it('deduplicates repeated mentions into a single block', async () => {
@@ -71,6 +75,6 @@ describe('expandMentions', () => {
 
     const result = await expandMentions('@dup.ts then @dup.ts', cwd);
 
-    expect(result.match(/<file_content path="dup.ts">/g)).toHaveLength(1);
+    expect(result.mentionContent.match(/<file_content path="dup.ts">/g)).toHaveLength(1);
   });
 });

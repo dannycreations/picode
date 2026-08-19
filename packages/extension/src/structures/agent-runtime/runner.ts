@@ -91,14 +91,23 @@ export class AgentRunner {
     try {
       const { session, envDetails } = await this.prepareSession(path);
 
+      const expanded = await expandMentions(promptText, getWorkspaceCwd());
+
+      // The mention content reaches the model but stays out of the rendered
+      // transcript, so the user's message keeps the clean `@token`.
+      if (expanded.mentionContent) {
+        await session.sendCustomMessage(
+          { customType: 'mention_content', content: expanded.mentionContent, display: false },
+          { deliverAs: 'nextTurn' },
+        );
+      }
+
       // `nextTurn` makes pi attach the details to the upcoming user message, so
       // they reach the model and get persisted with the turn that used them.
       await session.sendCustomMessage({ customType: 'environment_details', content: envDetails, display: false }, { deliverAs: 'nextTurn' });
 
       const attachments = parseImageAttachments(images);
-      const expandedText = await expandMentions(promptText, getWorkspaceCwd());
-
-      void session.prompt(expandedText, { images: attachments }).catch((err) => {
+      void session.prompt(expanded.text, { images: attachments }).catch((err) => {
         this.messenger.postError(err);
       });
     } catch (err) {
@@ -331,12 +340,18 @@ export class AgentRunner {
   private async steerQueuedReply(msg: ChatMessage, cwd: string, session: AgentSession, images: string[] | undefined): Promise<boolean> {
     try {
       const attachments = parseImageAttachments(images);
-      const text = await expandMentions(msg.text, cwd);
-      const content: (TextContent | ImageContent)[] = [{ type: 'text', text }];
+      const expanded = await expandMentions(msg.text, cwd);
+      const content: (TextContent | ImageContent)[] = [{ type: 'text', text: expanded.text }];
       if (attachments) {
         content.push(...attachments);
       }
       session.agent.steer({ role: 'user', content, timestamp: msg.ts });
+
+      // Same as startTask: keep the mention content out of the displayed
+      // message by delivering it as a hidden custom message on the same turn.
+      if (expanded.mentionContent) {
+        await session.sendCustomMessage({ customType: 'mention_content', content: expanded.mentionContent, display: false }, { deliverAs: 'steer' });
+      }
       return true;
     } catch (err) {
       logger.error('Failed to steer queued reply, keeping it for later:', err);

@@ -48,6 +48,7 @@ export const useChatActions = (params: UseChatActionsProps): UseChatActionsRetur
 
   const handleSendPrompt = useCallback(
     (text: string, images: string[]): void => {
+      text = text.trim();
       // A pending question owns the input box: the reply answers the tool call
       // instead of starting a new turn.
       if (pendingQuestion) {
@@ -90,12 +91,7 @@ export const useChatActions = (params: UseChatActionsProps): UseChatActionsRetur
 
       setIsAgentRunning(true);
       setActiveTask((prev) => (prev ? { ...prev, messages: [...prev.messages, userMsg] } : createActiveTask(ACTIVE_TASK_ID, text, [userMsg])));
-      vscode?.postMessage({
-        type: 'send_message',
-        text,
-        path: activeTask?.path,
-        images,
-      });
+      vscode?.postMessage({ type: 'send_message', text, path: activeTask?.path, images });
     },
     [pendingQuestion, handleAnswerQuestion, activeTask, setActiveTask, setIsAgentRunning, isAgentRunning],
   );
