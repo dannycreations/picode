@@ -6,6 +6,7 @@ import { findOccurrences } from '@pi-code/shared/utilities/common';
 import { localActiveIndex } from '@pi-code/webview/components/chat/helpers/search';
 import { Markdown } from '@pi-code/webview/components/chat/markdown/Markdown';
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
+import { Accordion } from '@pi-code/webview/components/shared/Accordion';
 import { Highlight } from '@pi-code/webview/components/shared/Highlight';
 import { Spinner } from '@pi-code/webview/components/shared/Spinner';
 
@@ -37,7 +38,7 @@ export const AssistantMessage: FC<AssistantMessageProps> = ({ message, search })
   return (
     <div className="group flex flex-col gap-1.5">
       {hasReasoning && (
-        <div className={cn('flex flex-col gap-1.5', hasText && 'mb-2')}>
+        <div className={cn('flex flex-col', hasText && 'mb-2')}>
           <MessageHeader
             icon={
               message.toolStatus === 'running' && !hasText ? (
@@ -52,11 +53,11 @@ export const AssistantMessage: FC<AssistantMessageProps> = ({ message, search })
           >
             <ChevronUp size={14} className={cn('transition-transform duration-200', !showReasoning && 'rotate-180')} />
           </MessageHeader>
-          {showReasoning && (
+          <Accordion open={showReasoning}>
             <div className="ml-6 border-l border-vscode-descriptionForeground/20 pl-4 pb-1 text-muted whitespace-pre-wrap break-words leading-relaxed select-text">
               <Highlight text={reasoning} query={query} activeOccurrence={reasoningActive} />
             </div>
-          )}
+          </Accordion>
         </div>
       )}
 

@@ -30,7 +30,7 @@ const SuggestionMenu = <T,>({ items, selectedIndex, onSelect, onHover, renderIte
       // Keep focus in the textarea so clicking a row does not blur-and-close first.
       onMouseDown={(event) => event.preventDefault()}
     >
-      <div ref={listRef} className="max-h-52 overflow-y-auto">
+      <div ref={listRef} className="max-h-55 overflow-y-auto">
         {items.map((item, index) => (
           <div
             key={index}

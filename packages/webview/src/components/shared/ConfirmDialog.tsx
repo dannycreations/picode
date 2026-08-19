@@ -76,16 +76,21 @@ export const ConfirmDialog: FC<ConfirmDialogProps> = ({
 
   useModalKeyboard({ isOpen, onEscape: onCancel, onEnter: onConfirm });
 
-  if (!isOpen) return null;
-
   return createPortal(
-    <div className="modal-overlay">
+    <div
+      className={cn('modal-overlay transition-opacity duration-150', isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none')}
+      inert={!isOpen}
+      aria-hidden={!isOpen}
+    >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={description ? descriptionId : undefined}
-        className="bg-vscode-editor-background border border-vscode-panel-border rounded-md w-full max-w-md overflow-hidden flex flex-col shadow-xl"
+        className={cn(
+          'bg-vscode-editor-background border border-vscode-panel-border rounded-md w-full max-w-md overflow-hidden flex flex-col shadow-xl transition-all duration-150',
+          isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0',
+        )}
       >
         <div className="px-4 py-3 bg-vscode-sideBarSectionHeader-background border-b border-vscode-panel-border/50 flex justify-between items-center">
           <h3 id={titleId} className="font-semibold text-xs uppercase tracking-wider text-vscode-foreground m-0">

@@ -5,6 +5,7 @@ import { HistoryCard } from '@pi-code/webview/components/history/HistoryCard';
 import { HistoryFilter } from '@pi-code/webview/components/history/HistoryFilter';
 import { HistoryPagination } from '@pi-code/webview/components/history/HistoryPagination';
 import { HistorySelection } from '@pi-code/webview/components/history/HistorySelection';
+import { Accordion } from '@pi-code/webview/components/shared/Accordion';
 import { ConfirmDialog } from '@pi-code/webview/components/shared/ConfirmDialog';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 
@@ -109,7 +110,7 @@ export const HistoryView: FC<HistoryViewProps> = ({
       />
 
       {/* Selection Bar */}
-      {isSelectionMode && (
+      <Accordion open={isSelectionMode} className="shrink-0">
         <HistorySelection
           selectedCount={selectedPaths.length}
           isAllPageSelected={isAllPageSelected}
@@ -120,7 +121,7 @@ export const HistoryView: FC<HistoryViewProps> = ({
           }}
           onDeleteSelected={() => setDeleteConfirmPaths(selectedPaths)}
         />
-      )}
+      </Accordion>
 
       {/* List Container */}
       <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">

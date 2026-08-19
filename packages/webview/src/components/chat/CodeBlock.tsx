@@ -153,6 +153,7 @@ export const CodeBlock = memo(({ source = '', language }: CodeBlockProps) => {
   const [windowShade, setWindowShade] = useState(true);
   const [currentLanguage, setCurrentLanguage] = useState(() => normalizeLanguage(language));
   const [showCollapseButton, setShowCollapseButton] = useState(true);
+  const [fullHeight, setFullHeight] = useState(COLLAPSED_HEIGHT);
   const [isHovered, setIsHovered] = useState(false);
 
   const userChangedLanguageRef = useRef(false);
@@ -168,8 +169,10 @@ export const CodeBlock = memo(({ source = '', language }: CodeBlockProps) => {
   const highlightedCode = useShikiHighlighter(source, currentLanguage, hasBeenVisible);
 
   useEffect(() => {
-    if (codeBlockRef.current) {
-      setShowCollapseButton(codeBlockRef.current.scrollHeight >= COLLAPSED_HEIGHT);
+    const el = codeBlockRef.current;
+    if (el) {
+      setShowCollapseButton(el.scrollHeight >= COLLAPSED_HEIGHT);
+      setFullHeight(el.scrollHeight);
     }
   }, [highlightedCode]);
 
@@ -187,7 +190,8 @@ export const CodeBlock = memo(({ source = '', language }: CodeBlockProps) => {
         className="p-3 overflow-y-auto leading-relaxed select-text"
         style={{
           backgroundColor: 'transparent',
-          maxHeight: windowShade ? `${COLLAPSED_HEIGHT}px` : 'none',
+          maxHeight: windowShade ? `${COLLAPSED_HEIGHT}px` : `${fullHeight}px`,
+          transition: 'max-height 200ms ease-out',
           whiteSpace: wordWrap ? 'pre-wrap' : 'pre',
           wordBreak: 'normal',
           overflowWrap: wordWrap ? 'break-word' : 'normal',

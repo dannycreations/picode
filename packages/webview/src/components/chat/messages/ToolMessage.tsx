@@ -5,6 +5,7 @@ import { Fragment, useEffect, useState } from 'react';
 import { buildToolSections, getDiffStat, getFileToolMeta, getFirstDiffLine } from '@pi-code/shared/utilities/tool';
 import { CodeBlock } from '@pi-code/webview/components/chat/CodeBlock';
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
+import { Accordion } from '@pi-code/webview/components/shared/Accordion';
 import { Spinner } from '@pi-code/webview/components/shared/Spinner';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { useElapsedSeconds } from '@pi-code/webview/hooks/useElapsedSeconds';
@@ -155,10 +156,12 @@ const ToolSection: FC<ToolSectionProps> = ({
         ) : null}
       </div>
 
-      {open && hasContent && (
-        <div className="border-t border-vscode-editorGroup-border/30 p-2 pt-0">
-          <CodeBlock source={content} language={language ?? 'text'} />
-        </div>
+      {hasContent && (
+        <Accordion open={open}>
+          <div className="border-t border-vscode-editorGroup-border/30 p-2 pt-0">
+            <CodeBlock source={content} language={language ?? 'text'} />
+          </div>
+        </Accordion>
       )}
     </div>
   );
@@ -186,8 +189,6 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
     }
   }, [shouldExpandForApproval, isExpanded]);
 
-  const visibleSections = isExpanded ? sections : sections.slice(0, 1);
-
   const openFile = (target: string, content?: string) => {
     if (!target) return;
     if (message.toolName === 'edit_file') {
@@ -207,7 +208,7 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
 
       <div className="ml-6 text-sm">
         <div className="border border-vscode-editorGroup-border rounded-md overflow-hidden bg-vscode-input-background">
-          {visibleSections.map((section, index) => {
+          {sections.map((section, index) => {
             const sectionStatus = section.status ?? message.toolStatus;
             const approvalMessage = section.approvalMessage;
             const hasSecApproval = approvalMessage !== undefined;
@@ -220,13 +221,13 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
             const showTimer = message.toolName === 'execute_command' || (isSubagent && section.content !== undefined);
             const displaySection = subagentDone ? { ...section, subtitle: appendElapsed(section.subtitle, section.duration) } : section;
 
-            return (
+            const item = (
               <Fragment key={index}>
                 <ToolSection
                   section={displaySection}
                   defaultOpen={false}
                   isFirst={index === 0}
-                  isLast={index === visibleSections.length - 1 && !hasMore && !hasSecApproval}
+                  isLast={index === (isExpanded ? sections.length - 1 : 0) && !hasMore && !hasSecApproval}
                   showTimer={showTimer && !subagentDone}
                   isActive={isRunning}
                   isRunning={isRunning}
@@ -249,6 +250,13 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
                   </div>
                 )}
               </Fragment>
+            );
+
+            if (index === 0) return item;
+            return (
+              <Accordion key={index} open={isExpanded}>
+                {item}
+              </Accordion>
             );
           })}
 

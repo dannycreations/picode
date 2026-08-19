@@ -6,6 +6,7 @@ import { logger } from '@pi-code/shared/core/logger';
 import { svgToPng } from '@pi-code/webview/components/chat/markdown/helpers/mermaid';
 import { useMermaidRender } from '@pi-code/webview/components/chat/markdown/hooks/useMermaidRender';
 import { MermaidModal } from '@pi-code/webview/components/chat/markdown/MermaidModal';
+import { Accordion } from '@pi-code/webview/components/shared/Accordion';
 import { IconButton } from '@pi-code/webview/components/shared/IconButton';
 import { useCopyToClipboard } from '@pi-code/webview/hooks/useCopyToClipboard';
 import { useInViewport } from '@pi-code/webview/hooks/useInViewport';
@@ -68,14 +69,14 @@ export const MermaidBlock: FC<MermaidBlockProps> = ({ code: originalCode }) => {
               <span className={cn('codicon', `codicon-chevron-${isErrorExpanded ? 'up' : 'down'}`, 'text-xs')} />
             </div>
           </div>
-          {isErrorExpanded && (
+          <Accordion open={isErrorExpanded}>
             <div className="p-2 bg-vscode-editor-background text-muted flex flex-col gap-2">
               <div className="font-mono text-vscode-errorForeground break-words">{error}</div>
               <pre className="p-2 rounded bg-vscode-textCodeBlock-background text-xs overflow-x-auto font-mono text-vscode-editor-foreground">
                 <code>{code}</code>
               </pre>
             </div>
-          )}
+          </Accordion>
         </div>
       ) : (
         <div

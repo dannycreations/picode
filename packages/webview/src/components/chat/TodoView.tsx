@@ -3,6 +3,7 @@ import { ArrowRight, Check, ListChecks, SquareDashed } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { getScrollIndex } from '@pi-code/shared/utilities/todo';
+import { Accordion } from '@pi-code/webview/components/shared/Accordion';
 
 import type { FC } from 'react';
 import type { TodoItem, TodoStatus } from '@pi-code/shared/utilities/todo';
@@ -64,7 +65,7 @@ export const TodoView: FC<TodoViewProps> = ({ todos }) => {
         )}
       </div>
 
-      {!isCollapsed && (
+      <Accordion open={!isCollapsed}>
         <ul className="list-none max-h-[300px] overflow-y-auto mt-2 -mb-1 pb-0 px-3 cursor-default">
           {todos.map((todo, idx) => (
             <li
@@ -83,7 +84,7 @@ export const TodoView: FC<TodoViewProps> = ({ todos }) => {
             </li>
           ))}
         </ul>
-      )}
+      </Accordion>
     </div>
   );
 };

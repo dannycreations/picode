@@ -157,7 +157,7 @@ export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
           </div>
 
           {/* Controls are generated from the shared settings schema */}
-          <div className="flex flex-col gap-6 px-5 py-2">
+          <div className="flex flex-col gap-5 px-5 py-2">
             {visibleRootKeys.length > 0 ? (
               visibleRootKeys.map((key) => (
                 <SettingControl key={key} settingKey={key} draftSettings={draftSettings} onChange={handleFieldChange} searchQuery={searchQuery} />
@@ -177,7 +177,7 @@ export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
         title="Unsaved Changes"
         description="Do you want to discard changes and continue?"
         warningText=""
-        confirmLabel="Discard changes"
+        confirmLabel="Discard"
         cancelLabel="Cancel"
         onConfirm={() => {
           setDiscardDialogShow(false);

@@ -15,6 +15,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 
 import { TodoView } from '@pi-code/webview/components/chat/TodoView';
+import { Accordion } from '@pi-code/webview/components/shared/Accordion';
 import { TaskActions } from '@pi-code/webview/components/shared/TaskActions';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 
@@ -177,7 +178,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
     <div className="py-2 px-3.5 border-b border-vscode-editorGroup-border/30 bg-vscode-sideBar-background shrink-0 select-none">
       <div
         onClick={handleContainerClick}
-        className="px-3 pt-2.5 pb-2 flex flex-col gap-1.5 relative z-1 cursor-pointer bg-vscode-input-background hover:bg-vscode-input-background/90 text-vscode-foreground/80 hover:text-vscode-foreground shadow-lg shadow-vscode-sideBar-background/50 rounded-xl border border-vscode-panel-border/50 transition-all duration-200"
+        className="px-3 pt-2.5 pb-2 flex flex-col relative z-1 cursor-pointer bg-vscode-input-background hover:bg-vscode-input-background/90 text-vscode-foreground/80 hover:text-vscode-foreground shadow-lg shadow-vscode-sideBar-background/50 rounded-xl border border-vscode-panel-border/50 transition-all duration-200"
       >
         {/* Title Bar */}
         <div className="flex justify-between items-center gap-2">
@@ -205,7 +206,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 
         {/* Collapsed State Summary */}
         {!isExpanded && (
-          <div className="w-full flex items-center justify-between gap-3" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full flex items-center justify-between gap-3 mt-1.5" onClick={(e) => e.stopPropagation()}>
             <div className="flex-1 flex items-center gap-2">
               <span className="text-muted whitespace-nowrap">Context: {contextPercentage}%</span>
               <ContextProgressBar percentage={contextPercentage} />
@@ -222,8 +223,8 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
         )}
 
         {/* Expanded Details Table */}
-        {isExpanded && (
-          <div className="flex flex-col gap-2 pt-0.5" onClick={(e) => e.stopPropagation()}>
+        <Accordion open={isExpanded}>
+          <div className="flex flex-col gap-2 mt-1.5" onClick={(e) => e.stopPropagation()}>
             <table className="w-full text-muted">
               <tbody>
                 {/* Context Row */}
@@ -325,8 +326,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
               </tbody>
             </table>
           </div>
-        )}
-
+        </Accordion>
         {todos && todos.length > 0 && <TodoView todos={todos} />}
       </div>
     </div>
