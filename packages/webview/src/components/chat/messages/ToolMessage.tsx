@@ -60,8 +60,9 @@ interface ToolSectionProps {
   readonly isFirst: boolean;
   readonly isLast: boolean;
   readonly showTimer: boolean;
-  readonly isRunning: boolean;
   readonly isActive?: boolean;
+  readonly isRunning: boolean;
+  readonly isWaiting?: boolean;
   readonly startTs: number;
   readonly duration?: number;
   readonly revealTimerOnHover?: boolean;
@@ -74,8 +75,9 @@ const ToolSection: FC<ToolSectionProps> = ({
   isFirst,
   isLast,
   showTimer,
-  isRunning,
   isActive,
+  isRunning,
+  isWaiting,
   startTs,
   duration,
   revealTimerOnHover,
@@ -100,9 +102,9 @@ const ToolSection: FC<ToolSectionProps> = ({
               open ? 'codicon-chevron-up' : 'codicon-chevron-down',
             )}
           />
-        ) : isRunning ? (
+        ) : isRunning && !isWaiting ? (
           <Spinner className="text-vscode-focusBorder" />
-        ) : isApproval ? (
+        ) : isApproval || isWaiting ? (
           <span className="codicon codicon-clock text-vscode-descriptionForeground shrink-0" />
         ) : (
           <div className="w-3.5 h-3.5 shrink-0" />
@@ -145,8 +147,8 @@ const ToolSection: FC<ToolSectionProps> = ({
         ) : showTimer ? (
           <ElapsedTimer
             startTs={startTs}
-            isRunning={isRunning}
             isActive={isActive ?? isRunning}
+            isRunning={isRunning}
             duration={duration}
             revealOnHover={revealTimerOnHover}
           />
@@ -211,6 +213,7 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
             const hasSecApproval = approvalMessage !== undefined;
 
             const isRunning = sectionStatus === 'running';
+            const isWaiting = isRunning && message.toolName === 'spawn_subagent' && !section.content;
             const isSubagent = message.toolName === 'spawn_subagent';
             const isDone = !isRunning && section.duration !== undefined;
             const subagentDone = isSubagent && isDone;
@@ -225,8 +228,9 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
                   isFirst={index === 0}
                   isLast={index === visibleSections.length - 1 && !hasMore && !hasSecApproval}
                   showTimer={showTimer && !subagentDone}
-                  isRunning={isRunning}
                   isActive={isRunning}
+                  isRunning={isRunning}
+                  isWaiting={isWaiting}
                   startTs={section.ts ?? message.ts}
                   duration={section.duration}
                   revealTimerOnHover={showTimer && isDone}
