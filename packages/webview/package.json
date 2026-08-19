@@ -10,11 +10,11 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@tanstack/react-virtual": "^3.14.9",
+    "@tanstack/react-virtual": "^3.14.10",
     "cnfast": "^0.1.0",
     "hast-util-to-jsx-runtime": "^2.3.6",
     "katex": "^0.18.4",
-    "lucide-react": "^1.31.0",
+    "lucide-react": "^1.32.0",
     "mermaid-compact": "^0.0.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
@@ -37,6 +37,6 @@
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
     "vite": "^8.2.1",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   }
 }

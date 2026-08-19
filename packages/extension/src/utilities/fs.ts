@@ -1,5 +1,6 @@
 import { readdir } from 'node:fs/promises';
-import { relative, resolve } from 'node:path';
+import { resolve } from 'node:path';
+import { formatPathRelativeToCwdOrAbsolute } from '@earendil-works/pi-coding-agent';
 
 import type { Dirent } from 'node:fs';
 
@@ -11,10 +12,6 @@ interface DirectoryEntry {
 
 export function normalizeSeparators(path: string): string {
   return path.replace(/\\/g, '/');
-}
-
-export function toPosixPath(abs: string, cwd: string): string {
-  return normalizeSeparators(relative(cwd, abs));
 }
 
 export async function* walkDirectory(start: string, maxDepth: number, root: string = start): AsyncGenerator<DirectoryEntry> {
@@ -30,7 +27,7 @@ export async function* walkDirectory(start: string, maxDepth: number, root: stri
 
     for (const dirent of entries) {
       const abs = resolve(dir, dirent.name);
-      yield { abs, rel: toPosixPath(abs, root), dirent };
+      yield { abs, rel: formatPathRelativeToCwdOrAbsolute(abs, root), dirent };
       if (dirent.isDirectory() && depth < maxDepth) {
         yield* walk(abs, depth + 1);
       }
@@ -57,7 +54,7 @@ export async function searchWorkspaceFiles(query: string, cwd: string): Promise<
       const entries = await readdir(start, { withFileTypes: true });
       return entries
         .filter((entry) => entry.isFile() || entry.isDirectory())
-        .map((entry) => toPosixPath(resolve(start, entry.name), cwd))
+        .map((entry) => formatPathRelativeToCwdOrAbsolute(resolve(start, entry.name), cwd))
         .slice(0, MAX_RESULTS);
     } catch {
       return [];

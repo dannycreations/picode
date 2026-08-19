@@ -1,10 +1,11 @@
 import { stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { formatThrownValue } from '@earendil-works/pi-ai';
+import { formatPathRelativeToCwdOrAbsolute } from '@earendil-works/pi-coding-agent';
 
 import { readAppSettings } from '@pi-code/extension/core/settings';
 import { readFileTextContent } from '@pi-code/extension/structures/tool-call/read-file';
-import { toPosixPath, walkDirectory } from '@pi-code/extension/utilities/fs';
+import { walkDirectory } from '@pi-code/extension/utilities/fs';
 import { toOutputLimits } from '@pi-code/extension/utilities/truncate';
 
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
@@ -85,10 +86,10 @@ async function listFolderEntries(dir: string, cwd: string): Promise<string> {
   let entryCount = 0;
   let totalChars = 0;
 
-  for await (const { abs, dirent } of walkDirectory(dir, FOLDER_MAX_DEPTH)) {
+  for await (const { abs } of walkDirectory(dir, FOLDER_MAX_DEPTH)) {
     if (entryCount >= FOLDER_MAX_FILES) break;
 
-    const label = dirent.isDirectory() ? `${toPosixPath(abs, cwd)}/` : toPosixPath(abs, cwd);
+    const label = formatPathRelativeToCwdOrAbsolute(abs, cwd);
     if (totalChars + label.length > FOLDER_CHAR_CAP) {
       lines.push(`... folder truncated: ${entryCount} entries listed ...`);
       break;
