@@ -19,6 +19,7 @@ import type { ActiveTaskState, ApiRequestChatMessage, ChatMessage } from '@pi-co
 interface UseActiveTaskReturn {
   readonly activeTask: ActiveTaskState | null;
   readonly isAgentRunning: boolean;
+  readonly isCompacting: boolean;
   readonly setActiveTask: React.Dispatch<React.SetStateAction<ActiveTaskState | null>>;
   readonly setIsAgentRunning: React.Dispatch<React.SetStateAction<boolean>>;
   readonly pendingQuestion: ChatMessage | undefined;
@@ -28,6 +29,7 @@ interface UseActiveTaskReturn {
 export const useActiveTask = (): UseActiveTaskReturn => {
   const [activeTask, setActiveTask] = useState<ActiveTaskState | null>(null);
   const [isAgentRunning, setIsAgentRunning] = useState(false);
+  const [isCompacting, setIsCompacting] = useState(false);
 
   const pendingQuestion = useMemo(() => findPendingQuestion(activeTask?.messages ?? []), [activeTask?.messages]);
 
@@ -50,8 +52,18 @@ export const useActiveTask = (): UseActiveTaskReturn => {
         case 'session_loaded': {
           setActiveTask(msg.payload);
           setIsAgentRunning(false);
+          setIsCompacting(false);
           break;
         }
+
+        case 'compaction_start':
+          setIsCompacting(true);
+          break;
+
+        case 'compaction_end':
+          setIsCompacting(false);
+          updateTask((prev) => ({ ...prev, ...msg.payload }));
+          break;
 
         case 'reply_queue_data': {
           updateMessages((messages) => [...messages.filter((m) => m.sender !== 'queue'), ...msg.payload.queue]);
@@ -62,10 +74,6 @@ export const useActiveTask = (): UseActiveTaskReturn => {
           updateMessages((messages) => deliverQueuedReplies(messages, msg.payload.messages));
           break;
         }
-
-        case 'compaction_end':
-          updateTask((prev) => ({ ...prev, ...msg.payload }));
-          break;
 
         case 'agent_start': {
           const { path, stats } = msg.payload;
@@ -101,7 +109,7 @@ export const useActiveTask = (): UseActiveTaskReturn => {
             const target = prev.messages.find((m) => m.id === id && m.sender === 'api_request') as ApiRequestChatMessage | undefined;
             let messages = target
               ? patchMessage(prev.messages, id, {
-                  toolStatus: error ? 'denied' : 'running',
+                  toolStatus: error ? 'denied' : 'completed',
                   cost: cost ?? target.cost,
                   errorMessage: error ?? target.errorMessage,
                 })
@@ -121,7 +129,7 @@ export const useActiveTask = (): UseActiveTaskReturn => {
           updateTask((prev) => ({
             ...prev,
             messages: patchLastAssistant(prev.messages, (message) => ({
-              toolStatus: 'running',
+              toolStatus: 'completed',
               cost: cost ?? message.cost,
             })),
             ...stats,
@@ -241,6 +249,7 @@ export const useActiveTask = (): UseActiveTaskReturn => {
 
         case 'agent_settled':
           setIsAgentRunning(false);
+          setIsCompacting(false);
           updateTask((prev) => ({ ...prev, messages: settlePendingTurns(prev.messages), ...msg.payload }));
           break;
 
@@ -255,5 +264,5 @@ export const useActiveTask = (): UseActiveTaskReturn => {
     [updateMessages, updateTask],
   );
 
-  return { activeTask, isAgentRunning, setActiveTask, setIsAgentRunning, pendingQuestion, onMessage };
+  return { activeTask, isAgentRunning, isCompacting, setActiveTask, setIsAgentRunning, pendingQuestion, onMessage };
 };

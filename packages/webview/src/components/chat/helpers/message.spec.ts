@@ -6,6 +6,7 @@ import {
   groupToolMessages,
   isRenderableMessage,
   resolveApproval,
+  settlePendingTurns,
   upsertToolMessage,
 } from '@pi-code/webview/components/chat/helpers/message';
 
@@ -300,5 +301,19 @@ describe('buildToolSections subagent', () => {
 
     expect(section.title).toBe('explore: find files');
     expect(section.subtitle).toBe('5 turns, 74050 in / 14399 out, $0.0000');
+  });
+});
+
+describe('settlePendingTurns', () => {
+  it('should transition running api_request and assistant messages to completed', () => {
+    const messages = [
+      createMessage({ id: 'm1', sender: 'api_request', toolStatus: 'running' }),
+      createMessage({ id: 'm2', sender: 'assistant', toolStatus: 'running' }),
+    ];
+
+    const result = settlePendingTurns(messages);
+
+    expect((result[0] as any).toolStatus).toBe('completed');
+    expect((result[1] as any).toolStatus).toBe('completed');
   });
 });

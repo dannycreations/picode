@@ -7,6 +7,7 @@ interface ChatActionProps {
   readonly activeTask: ActiveTaskState | null;
   readonly showScrollToBottom: boolean;
   readonly isAgentRunning: boolean;
+  readonly isCompacting: boolean;
   readonly isAwaitingApproval: boolean;
   readonly onScrollToBottom: () => void;
   readonly onCancelTask: () => void;
@@ -18,6 +19,7 @@ export const ChatAction: FC<ChatActionProps> = ({
   activeTask,
   showScrollToBottom,
   isAgentRunning,
+  isCompacting,
   isAwaitingApproval,
   onScrollToBottom,
   onCancelTask,
@@ -27,7 +29,8 @@ export const ChatAction: FC<ChatActionProps> = ({
   // Archived tasks are read-only, so their action bar is hidden entirely.
   if (activeTask?.isArchived) return null;
 
-  const showActionButtons = activeTask && (showScrollToBottom || isAgentRunning || !isAwaitingApproval);
+  const showCancel = isAgentRunning || isCompacting;
+  const showActionButtons = activeTask && (showScrollToBottom || showCancel || !isAwaitingApproval);
 
   if (!showActionButtons) return null;
 
@@ -39,7 +42,7 @@ export const ChatAction: FC<ChatActionProps> = ({
             <span className="codicon codicon-chevron-down mr-1" style={{ fontSize: 'inherit', lineHeight: 'inherit' }} />
           </button>
         </Tooltip>
-      ) : isAgentRunning ? (
+      ) : showCancel ? (
         <button onClick={onCancelTask} className="action-button action-button-secondary w-full">
           <span className="w-1.5 h-1.5 rounded-full bg-vscode-errorForeground animate-pulse mr-1" />
           Cancel Task

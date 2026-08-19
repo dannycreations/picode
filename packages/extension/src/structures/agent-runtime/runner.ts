@@ -125,6 +125,7 @@ export class AgentRunner {
     const cwd = getWorkspaceCwd();
 
     this.compacting = true;
+    this.messenger.post({ type: 'compaction_start' });
     try {
       const session = await this.getOrCreateSession(path, cwd);
       await session.compact();
@@ -134,10 +135,17 @@ export class AgentRunner {
       const entries = session.sessionManager.buildContextEntries();
       return loadSessionTranscript(entries, session.model?.contextWindow ?? EMPTY_STATS.contextLimit);
     } catch (err) {
-      this.messenger.postError(err);
+      // A user cancel aborts the in-flight compaction, which the session
+      // rethrows as an AbortError. Don't surface that as a spurious error
+      // bubble: the deliberate stop is already signaled by compaction_end.
+      const isAbort = err instanceof Error && (err.name === 'AbortError' || err.message === 'Compaction cancelled');
+      if (!isAbort) {
+        this.messenger.postError(err);
+      }
       return null;
     } finally {
       this.compacting = false;
+      this.messenger.post({ type: 'compaction_end' });
     }
   }
 

@@ -21,6 +21,7 @@ import { HistoryView } from '@pi-code/webview/components/history/HistoryView';
 import { useHistoryFilter } from '@pi-code/webview/components/history/hooks/useHistoryFilter';
 import { SettingsView } from '@pi-code/webview/components/setting/SettingsView';
 import { ConfirmDialog } from '@pi-code/webview/components/shared/ConfirmDialog';
+import { Spinner } from '@pi-code/webview/components/shared/Spinner';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { useAutoScroll } from '@pi-code/webview/hooks/useAutoScroll';
 import { postCompactMessage, vscode } from '@pi-code/webview/utilities/vscode';
@@ -87,7 +88,7 @@ export const ChatView: FC = () => {
     return () => clearTimeout(timer);
   }, [pendingQuestionId, composer.textareaRef]);
 
-  const { activeTask, isAgentRunning, pendingQuestion } = task;
+  const { activeTask, isAgentRunning, isCompacting, pendingQuestion } = task;
   const {
     models,
     settings,
@@ -393,6 +394,12 @@ export const ChatView: FC = () => {
               </div>
             ))}
           </div>
+          {isCompacting && (
+            <div className="px-3.5 py-2.5 flex items-center gap-2 text-xs text-vscode-foreground select-none">
+              <Spinner className="text-vscode-focusBorder" />
+              <span className="font-semibold">Compacting context...</span>
+            </div>
+          )}
         </div>
       ) : (
         <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
@@ -422,6 +429,7 @@ export const ChatView: FC = () => {
         activeTask={activeTask}
         showScrollToBottom={showScrollToBottom}
         isAgentRunning={isAgentRunning}
+        isCompacting={isCompacting}
         onScrollToBottom={scrollToBottom}
         onCancelTask={handleCancelTask}
         onCloseTask={handleCloseTaskReturn}

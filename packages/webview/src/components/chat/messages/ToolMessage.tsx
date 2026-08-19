@@ -69,7 +69,7 @@ interface ToolSectionProps {
 }
 
 const ToolSection: FC<ToolSectionProps> = ({
-  section: { title, subtitle, content, language, openPath },
+  section: { title, subtitle, content, language, openPath, status },
   defaultOpen,
   isFirst,
   isLast,
@@ -83,6 +83,7 @@ const ToolSection: FC<ToolSectionProps> = ({
 }) => {
   const [open, setOpen] = useState(defaultOpen);
   const hasContent = !!content && content.trim() !== '';
+  const isApproval = status === 'approval';
 
   const radiusClass = isFirst && isLast ? 'rounded-md' : isFirst ? 'rounded-t-md' : isLast ? 'rounded-b-md' : 'rounded-none';
 
@@ -99,8 +100,12 @@ const ToolSection: FC<ToolSectionProps> = ({
               open ? 'codicon-chevron-up' : 'codicon-chevron-down',
             )}
           />
-        ) : (
+        ) : isRunning ? (
           <Spinner className="text-vscode-focusBorder" />
+        ) : isApproval ? (
+          <span className="codicon codicon-clock text-vscode-descriptionForeground shrink-0" />
+        ) : (
+          <div className="w-3.5 h-3.5 shrink-0" />
         )}
         <div className="min-w-0 flex-1">
           <Tooltip content={openPath ?? title}>
