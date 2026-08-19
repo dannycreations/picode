@@ -143,6 +143,9 @@ const HANDLER_MAP: HandlerMap = {
         // Refresh the webview from the in-memory session we just compacted instead
         // of re-opening and re-parsing the same session file a second time.
         await postSession(ctx, msg.id || ACTIVE_TASK_ID, msg.title || '', path, details);
+        // Compaction rewrites the session file, so refresh the current sessions
+        // list the way cancelTask does after it mutates the file on disk.
+        await postHistory(ctx, 'current');
         return;
       }
     }
