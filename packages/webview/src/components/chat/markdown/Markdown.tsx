@@ -11,7 +11,7 @@ import { extractCodeFromChildren, parseFileUri } from '@pi-code/webview/componen
 import { MermaidBlock } from '@pi-code/webview/components/chat/markdown/MermaidBlock';
 import { CopyButton } from '@pi-code/webview/components/shared/CopyButton';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
-import { vscode } from '@pi-code/webview/utilities/vscode';
+import { useChatStore } from '@pi-code/webview/stores/useChatStore';
 
 import type { FC, MouseEvent, ReactNode } from 'react';
 import type { Components } from 'react-markdown';
@@ -41,11 +41,7 @@ const MarkdownLink: FC<{ href?: string; children?: ReactNode }> = ({ href, child
     if (isLocalPath) {
       e.preventDefault();
       const { filePath, line } = parseFileUri(href);
-      vscode?.postMessage({
-        type: 'open_file',
-        text: filePath,
-        values: line !== undefined ? { line } : undefined,
-      });
+      useChatStore.getState().openFile(filePath, line !== undefined ? { line } : undefined);
     }
   };
 

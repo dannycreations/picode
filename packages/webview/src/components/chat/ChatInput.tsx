@@ -9,8 +9,8 @@ import { useChatCommand, useChatMention } from '@pi-code/webview/components/chat
 import { CommandMenu, MentionMenu } from '@pi-code/webview/components/chat/SuggestionMenu';
 import { ImageThumb } from '@pi-code/webview/components/shared/ImageThumb';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
+import { useChatStore } from '@pi-code/webview/stores/useChatStore';
 import { readFileAsDataUrl } from '@pi-code/webview/utilities/common';
-import { vscode } from '@pi-code/webview/utilities/vscode';
 
 import type { ChangeEvent, ClipboardEvent, DragEvent, FC, KeyboardEvent, RefObject } from 'react';
 import type { CommandItem } from '@pi-code/shared/core/protocol';
@@ -170,7 +170,7 @@ export const ChatInput: FC<ChatInputProps> = ({
       .filter((line) => line.length > 0 && !line.startsWith('#'));
     if (paths.length === 0) return;
 
-    vscode?.postMessage({ type: 'insert_mentions', paths });
+    useChatStore.getState().insertMentions(paths);
   };
 
   const isSendButtonActive = (inputValue.trim().length > 0 || selectedImages.length > 0) && !sendingDisabled;

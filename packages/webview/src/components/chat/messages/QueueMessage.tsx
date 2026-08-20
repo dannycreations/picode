@@ -6,7 +6,7 @@ import { localActiveIndex } from '@pi-code/webview/components/chat/helpers/searc
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
 import { Highlight } from '@pi-code/webview/components/shared/Highlight';
 import { ImageThumb } from '@pi-code/webview/components/shared/ImageThumb';
-import { vscode } from '@pi-code/webview/utilities/vscode';
+import { useChatStore } from '@pi-code/webview/stores/useChatStore';
 
 import type { FC } from 'react';
 import type { ChatMessage } from '@pi-code/shared/core/types';
@@ -30,19 +30,12 @@ export const QueueMessage: FC<QueueMessageProps> = ({ message, search }) => {
   const handleSave = (): void => {
     const trimmed = editText.trim();
     if (!trimmed) return;
-    vscode?.postMessage({
-      type: 'edit_reply_queue',
-      id: message.id,
-      text: trimmed,
-    });
+    useChatStore.getState().editReplyQueue(message.id, trimmed);
     setIsEditing(false);
   };
 
   const handleRemove = (): void => {
-    vscode?.postMessage({
-      type: 'remove_from_reply_queue',
-      id: message.id,
-    });
+    useChatStore.getState().removeFromReplyQueue(message.id);
   };
 
   return (

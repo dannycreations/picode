@@ -10,7 +10,7 @@ import { Accordion } from '@pi-code/webview/components/shared/Accordion';
 import { IconButton } from '@pi-code/webview/components/shared/IconButton';
 import { useCopyToClipboard } from '@pi-code/webview/hooks/useCopyToClipboard';
 import { useInViewport } from '@pi-code/webview/hooks/useInViewport';
-import { vscode } from '@pi-code/webview/utilities/vscode';
+import { useChatStore } from '@pi-code/webview/stores/useChatStore';
 
 import type { FC, MouseEvent } from 'react';
 
@@ -40,7 +40,7 @@ export const MermaidBlock: FC<MermaidBlockProps> = ({ code: originalCode }) => {
 
     try {
       const dataUrl = await svgToPng(svgEl);
-      vscode?.postMessage({ type: 'save_image', dataUrl, filename: 'mermaid-diagram.png' });
+      useChatStore.getState().saveImage(dataUrl, 'mermaid-diagram.png');
     } catch (err) {
       logger.error('Error saving image:', err);
     }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { SETTING_KEYS } from '@pi-code/shared/core/settings';
-import { vscode } from '@pi-code/webview/utilities/vscode';
+import { useChatStore } from '@pi-code/webview/stores/useChatStore';
 
 import type { AppSettings, SettingKey } from '@pi-code/shared/core/settings';
 
@@ -44,7 +44,7 @@ export const useSetting = (settings: AppSettings): UseSettingReturn => {
 
     if (Object.keys(updates).length === 0) return;
 
-    vscode?.postMessage({ type: 'update_settings', settings: updates as Partial<AppSettings> });
+    useChatStore.getState().updateSettings(updates as Partial<AppSettings>);
   };
 
   const resetDraft = (): void => {

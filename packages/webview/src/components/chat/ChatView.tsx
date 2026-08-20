@@ -11,11 +11,8 @@ import { ChatHeader } from '@pi-code/webview/components/chat/ChatHeader';
 import { ChatInput } from '@pi-code/webview/components/chat/ChatInput';
 import { ESTIMATED_ROW_HEIGHT, groupToolMessages, hasPendingApproval, isRenderableMessage } from '@pi-code/webview/components/chat/helpers/message';
 import { getMessageSearchText } from '@pi-code/webview/components/chat/helpers/search';
-import { useActiveTask } from '@pi-code/webview/components/chat/hooks/useActiveTask';
 import { useChatActions } from '@pi-code/webview/components/chat/hooks/useChatActions';
-import { useChatComposer } from '@pi-code/webview/components/chat/hooks/useChatComposer';
 import { useChatConfig } from '@pi-code/webview/components/chat/hooks/useChatConfig';
-import { useChatHistory } from '@pi-code/webview/components/chat/hooks/useChatHistory';
 import { HistoryPreview } from '@pi-code/webview/components/history/HistoryPreview';
 import { HistoryView } from '@pi-code/webview/components/history/HistoryView';
 import { useHistoryFilter } from '@pi-code/webview/components/history/hooks/useHistoryFilter';
@@ -24,71 +21,66 @@ import { ConfirmDialog } from '@pi-code/webview/components/shared/ConfirmDialog'
 import { Spinner } from '@pi-code/webview/components/shared/Spinner';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { useAutoScroll } from '@pi-code/webview/hooks/useAutoScroll';
-import { postCompactMessage, vscode } from '@pi-code/webview/utilities/vscode';
+import { selectPendingQuestion, useChatStore } from '@pi-code/webview/stores/useChatStore';
 
 import type { FC } from 'react';
-import type { ExtensionToWebviewMessage, HistoryItem } from '@pi-code/shared/core/protocol';
+import type { HistoryItem } from '@pi-code/shared/core/protocol';
 import type { SearchContext } from '@pi-code/webview/components/shared/Highlight';
 
 export const ChatView: FC = () => {
   const [historyExpanded, setHistoryExpanded] = useState(true);
   const [showDeleteActiveConfirm, setShowDeleteActiveConfirm] = useState(false);
 
-  const composer = useChatComposer();
   const config = useChatConfig();
-  const history = useChatHistory({ view: composer.view });
+  const view = useChatStore((state) => state.view);
+  const setView = useChatStore((state) => state.setView);
+  const inputValue = useChatStore((state) => state.inputValue);
+  const setInputValue = useChatStore((state) => state.setInputValue);
+  const appendToInput = useChatStore((state) => state.appendToInput);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  useEffect(() => {
+    useChatStore.getState().setTextareaRef(textareaRef);
+    return () => useChatStore.getState().setTextareaRef(null);
+  }, []);
+
+  const scope = useChatStore((state) => state.scope);
+  const pastTasks = useChatStore((state) => state.historyByScope[state.scope]);
+  const setScope = useChatStore((state) => state.setScope);
+  const deleteSessions = useChatStore((state) => state.deleteSessions);
+
+  // Fetch the active scope's history the first time the history view opens.
+  useEffect(() => {
+    if (view === 'history') useChatStore.getState().getHistory(scope);
+  }, [view, scope]);
+
   // The history list's filter and selection state live here (not inside
   // HistoryView) so they survive the view switching to a task and back.
-  const historyFilter = useHistoryFilter(history.pastTasks, 6);
+  const historyFilter = useHistoryFilter(pastTasks, 6);
   const [isHistorySelectionMode, setIsHistorySelectionMode] = useState(false);
   const [historySelectedPaths, setHistorySelectedPaths] = useState<string[]>([]);
-  const task = useActiveTask();
 
-  // Tracks the live view so message-driven navigations (e.g. opening settings)
-  // can read the view that was active when the message arrived.
-  const viewRef = useRef(composer.view);
-  viewRef.current = composer.view;
+  const activeTask = useChatStore((state) => state.activeTask);
+  const isAgentRunning = useChatStore((state) => state.isAgentRunning);
+  const isCompacting = useChatStore((state) => state.isCompacting);
+  const pendingQuestion = useChatStore(selectPendingQuestion);
 
   // Remembers whether the open task was launched from the history list so it
   // returns there on close. Kept separate from the settings flag because
   // settings can open on top of a task and must not overwrite this.
   const taskFromHistoryRef = useRef(false);
 
-  // Remembers whether settings was opened from the history list, so it returns
-  // there on close instead of the chat.
-  const settingsFromHistoryRef = useRef(false);
-
-  // Fan every incoming extension message out to the domain hook that owns its
-  // state. Each hook's onMessage ignores the message types it does not handle.
   useEffect(() => {
-    if (!vscode) return;
-
-    const handleMessage = (event: MessageEvent<ExtensionToWebviewMessage>): void => {
-      const msg = event.data;
-      if (msg.type === 'show_settings') settingsFromHistoryRef.current = viewRef.current === 'history';
-      composer.onMessage(msg);
-      config.onMessage(msg);
-      history.onMessage(msg);
-      task.onMessage(msg);
-    };
-
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, [composer.onMessage, config.onMessage, history.onMessage, task.onMessage]);
-
-  useEffect(() => {
-    vscode?.postMessage({ type: 'init' });
+    useChatStore.getState().init();
   }, []);
 
   // Focus the composer when a pending question appears.
-  const pendingQuestionId = task.pendingQuestion?.id;
+  const pendingQuestionId = pendingQuestion?.id;
   useEffect(() => {
     if (!pendingQuestionId) return;
-    const timer = setTimeout(() => composer.textareaRef.current?.focus(), 0);
+    const timer = setTimeout(() => textareaRef.current?.focus(), 0);
     return () => clearTimeout(timer);
-  }, [pendingQuestionId, composer.textareaRef]);
+  }, [pendingQuestionId, textareaRef]);
 
-  const { activeTask, isAgentRunning, isCompacting, pendingQuestion } = task;
   const {
     models,
     settings,
@@ -100,17 +92,7 @@ export const ChatView: FC = () => {
     supportsImages,
     commands,
   } = config;
-  const { pastTasks, deleteSessions, scope, setScope } = history;
-  const { view, setView, inputValue, setInputValue, textareaRef } = composer;
-
-  const { handleSendPrompt, handleToolResponse, handleAnswerQuestion, handleCloseTask, handleCancelTask, handleDeleteActiveTask } = useChatActions({
-    activeTask,
-    pendingQuestion,
-    isAgentRunning,
-    setActiveTask: task.setActiveTask,
-    setIsAgentRunning: task.setIsAgentRunning,
-    deleteSessions,
-  });
+  const { handleSendPrompt, handleToolResponse, handleAnswerQuestion, handleCloseTask, handleCancelTask, handleDeleteActiveTask } = useChatActions();
 
   const { scrollRef, contentRef, showScrollToBottom, handleScroll, scrollToBottom, onWheel, onPointerDown, onPointerUp, onKeyDown } = useAutoScroll(
     activeTask?.id,
@@ -144,14 +126,12 @@ export const ChatView: FC = () => {
     setScope('current');
     setView('chat');
     taskFromHistoryRef.current = false;
-    settingsFromHistoryRef.current = false;
   }, [resetHistorySearch, resetHistorySort, resetHistoryPage, setIsHistorySelectionMode, setHistorySelectedPaths, setScope, setView]);
 
   // Closing settings returns to the history list when it was opened from there
   // (state preserved); otherwise it returns to the chat.
   const handleSettingsDone = useCallback(() => {
-    if (settingsFromHistoryRef.current) {
-      settingsFromHistoryRef.current = false;
+    if (useChatStore.getState().openedSettingsFromHistory) {
       setView('history');
     } else {
       setView('chat');
@@ -262,23 +242,23 @@ export const ChatView: FC = () => {
   const loadSession = useCallback(
     (item: HistoryItem) => {
       taskFromHistoryRef.current = view === 'history';
-      vscode?.postMessage({ type: 'load_session', path: item.path, id: item.id, title: item.task });
+      useChatStore.getState().loadSession(item.id, item.path, item.task);
     },
     [view],
   );
 
   const exportSession = useCallback((item: { id: string; path?: string }) => {
     if (!item.path) return;
-    vscode?.postMessage({ type: 'export_session', path: item.path, id: item.id });
+    useChatStore.getState().exportSession(item.path, item.id);
   }, []);
 
   const viewRaw = useCallback((path: string | undefined) => {
-    if (path) vscode?.postMessage({ type: 'view_raw_task', path });
+    if (path) useChatStore.getState().viewRawTask(path);
   }, []);
 
   const handleArchive = useCallback((): void => {
     if (!activeTask?.path) return;
-    vscode?.postMessage({ type: 'archive_session', path: activeTask.path, id: activeTask.id, title: activeTask.title });
+    useChatStore.getState().archiveSession(activeTask.path, activeTask.id, activeTask.title);
   }, [activeTask?.path, activeTask?.id, activeTask?.title]);
 
   if (view === 'settings') {
@@ -327,7 +307,7 @@ export const ChatView: FC = () => {
           {...activeTask}
           contextLimit={config.selectedModelContextWindow}
           onClose={handleCloseTaskReturn}
-          onCompact={() => postCompactMessage(activeTask)}
+          onCompact={() => useChatStore.getState().compact()}
           onExport={activeTask.path ? () => exportSession(activeTask) : undefined}
           onDelete={activeTask.path ? () => setShowDeleteActiveConfirm(true) : undefined}
           onViewRaw={() => viewRaw(activeTask.path)}
@@ -390,7 +370,7 @@ export const ChatView: FC = () => {
                   onApproveTool={handleApproveTool}
                   onDenyTool={handleDenyTool}
                   onAnswerQuestion={handleAnswer}
-                  onCopyToInput={composer.appendToInput}
+                  onCopyToInput={appendToInput}
                 />
               </div>
             ))}
@@ -437,10 +417,7 @@ export const ChatView: FC = () => {
         onContinueTask={() => {
           if (!activeTask) return;
           scrollToBottom();
-          vscode?.postMessage({
-            type: 'continue_task',
-            path: activeTask.path,
-          });
+          useChatStore.getState().continueTask(activeTask.path);
         }}
         isAwaitingApproval={isAwaitingApproval}
       />

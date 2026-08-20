@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 
 import { applyCommand, matchCommands, readCommandQuery } from '@pi-code/webview/components/chat/helpers/command';
 import { applyMention, readMentionQuery } from '@pi-code/webview/components/chat/helpers/mention';
-import { vscode } from '@pi-code/webview/utilities/vscode';
+import { useChatStore } from '@pi-code/webview/stores/useChatStore';
 
 import type { ChangeEvent, Dispatch, KeyboardEvent, RefObject, SetStateAction } from 'react';
 import type { CommandItem } from '@pi-code/shared/core/protocol';
@@ -257,31 +257,21 @@ export const useChatMention = ({ value, setValue, textareaRef }: UseMentionProps
     applyInsertion: (text, caret, path) => applyMention(text, caret, path),
   });
 
-  const requestIdRef = useRef('');
+  const searchResults = useChatStore((state) => state.searchResults);
 
-  // Receive search results streamed back from the extension host.
   useEffect(() => {
-    const handler = (event: MessageEvent): void => {
-      const msg = event.data;
-      if (msg?.type === 'search_results' && msg.payload?.requestId === requestIdRef.current) {
-        setItems(msg.payload.paths);
-        setSelectedIndex(0);
-      }
-    };
-    window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
-  }, [setItems, setSelectedIndex]);
+    setItems(searchResults);
+    setSelectedIndex(0);
+  }, [searchResults, setItems, setSelectedIndex]);
 
-  // Query the host whenever the active mention changes.
   useEffect(() => {
     if (query === null) {
       setItems([]);
       return;
     }
     const requestId = crypto.randomUUID();
-    requestIdRef.current = requestId;
     const handle = setTimeout(() => {
-      vscode?.postMessage({ type: 'search_files', query, requestId });
+      useChatStore.getState().searchFiles(query, requestId);
     }, 200);
     return () => clearTimeout(handle);
   }, [query, setItems]);

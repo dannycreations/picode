@@ -9,8 +9,8 @@ import { Accordion } from '@pi-code/webview/components/shared/Accordion';
 import { Spinner } from '@pi-code/webview/components/shared/Spinner';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { useElapsedSeconds } from '@pi-code/webview/hooks/useElapsedSeconds';
+import { useChatStore } from '@pi-code/webview/stores/useChatStore';
 import { formatDuration } from '@pi-code/webview/utilities/common';
-import { vscode } from '@pi-code/webview/utilities/vscode';
 
 import type { FC } from 'react';
 import type { ChatMessage, ToolSection } from '@pi-code/shared/core/types';
@@ -192,10 +192,10 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
   const openFile = (target: string, content?: string) => {
     if (!target) return;
     if (message.toolName === 'edit_file') {
-      vscode?.postMessage({ type: 'open_file', text: target, values: { line: getFirstDiffLine(content), diff: true } });
+      useChatStore.getState().openFile(target, { line: getFirstDiffLine(content), diff: true });
       return;
     }
-    vscode?.postMessage({ type: 'open_file', text: target });
+    useChatStore.getState().openFile(target);
   };
 
   return (

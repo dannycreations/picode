@@ -18,6 +18,7 @@
     "mermaid-compact": "^0.0.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "zustand": "^5.0.15",
     "react-markdown": "^10.1.0",
     "react-textarea-autosize": "^8.5.9",
     "rehype-katex": "^7.0.1",
