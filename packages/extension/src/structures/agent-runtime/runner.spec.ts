@@ -28,6 +28,9 @@ function makeFakeSession(steer: () => void, appendMessage: ReturnType<typeof vi.
     sessionManager: {
       appendMessage,
     },
+    settingsManager: {
+      applyOverrides: vi.fn(),
+    },
   } as unknown as AgentSession;
 }
 

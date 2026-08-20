@@ -1,5 +1,6 @@
 import { AgentSession, createAgentSessionFromServices, SessionManager } from '@earendil-works/pi-coding-agent';
 
+import { readAppSettings } from '@pi-code/extension/core/settings';
 import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { askQuestionTool } from '@pi-code/extension/structures/tool-call/ask-question';
 import { deleteFileTool } from '@pi-code/extension/structures/tool-call/delete-file';
@@ -42,6 +43,13 @@ export async function createSession(cwd: string, sessionPath?: string): Promise<
     customTools: enabledTools,
   });
 
+  applyCompactionSettings(session);
+
+  return session;
+}
+
+export function applyCompactionSettings(session: AgentSession): void {
+  const settings = readAppSettings();
   const contextWindow = session.model?.contextWindow ?? EMPTY_STATS.contextLimit;
   const reserveTokens = Math.round(((100 - settings.autoCompactContextPercent) / 100) * contextWindow);
   session.settingsManager.applyOverrides({
@@ -50,6 +58,4 @@ export async function createSession(cwd: string, sessionPath?: string): Promise<
       reserveTokens,
     },
   });
-
-  return session;
 }

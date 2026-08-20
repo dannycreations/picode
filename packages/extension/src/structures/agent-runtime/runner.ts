@@ -6,7 +6,7 @@ import { cancelAllApprovals } from '@pi-code/extension/structures/agent-runtime/
 import { cancelAllQuestions } from '@pi-code/extension/structures/agent-runtime/brokers/question';
 import { mapEvent } from '@pi-code/extension/structures/agent-runtime/event';
 import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
-import { createSession } from '@pi-code/extension/structures/agent-runtime/session';
+import { applyCompactionSettings, createSession } from '@pi-code/extension/structures/agent-runtime/session';
 import { injectSkillMessages } from '@pi-code/extension/structures/agent-runtime/skill';
 import { WebviewMessenger } from '@pi-code/extension/structures/agent-runtime/webview';
 import { collectCommands } from '@pi-code/extension/structures/chat-command/command';
@@ -44,6 +44,7 @@ export class AgentRunner {
   private replyQueue: ChatMessage[] = [];
   private apiRequestId: string | null = null;
   private compacting = false;
+  private continueAfterCompaction = false;
 
   private readonly messenger = new WebviewMessenger();
 
@@ -159,12 +160,23 @@ export class AgentRunner {
     this.messenger.post({ type: 'compaction_start' });
     try {
       const session = await this.getOrCreateSession(path, cwd);
-      await session.compact();
+      const compaction = await session.compact();
 
       // Returns the compacted transcript and its stats so the caller can refresh the
       // webview from the in-memory session instead of re-opening the file on disk.
       const entries = session.sessionManager.buildContextEntries();
-      return loadSessionTranscript(entries, session.model?.contextWindow ?? EMPTY_STATS.contextLimit);
+      const transcript = loadSessionTranscript(entries, session.model?.contextWindow ?? EMPTY_STATS.contextLimit);
+      // loadSessionTranscript derives contextTokens from the last assistant usage,
+      // which is the pre-compaction size once the context is rebuilt. Use the
+      // library's post-compaction estimate so the header reflects the shrink
+      // without waiting for the next prompt.
+      if (typeof compaction?.estimatedTokensAfter === 'number') {
+        return {
+          messages: transcript.messages,
+          stats: { ...transcript.stats, contextTokens: compaction.estimatedTokensAfter },
+        };
+      }
+      return transcript;
     } catch (err) {
       // A user cancel aborts the in-flight compaction, which the session
       // rethrows as an AbortError. Don't surface that as a spurious error
@@ -213,6 +225,7 @@ export class AgentRunner {
   public async cancelTask(): Promise<void> {
     this.cleanupPending();
     this.clearReplyQueue();
+    this.continueAfterCompaction = false;
     if (!this.session) return;
 
     const session = this.session;
@@ -239,6 +252,7 @@ export class AgentRunner {
   private prepareRun(): void {
     this.cleanupPending();
     this.apiRequestId = null;
+    this.continueAfterCompaction = false;
   }
 
   public getSessionFile(): string | undefined {
@@ -275,8 +289,23 @@ export class AgentRunner {
   }
 
   private handleSessionEvent(event: AgentSessionEvent, session: AgentSession): void {
+    // A percent or overflow auto-compaction that finished without a built-in
+    // retry leaves the upstream loop stopped unless queued messages exist.
+    // Remember it so we resume the agent on settle and the task keeps running.
+    if (event.type === 'compaction_end' && !this.compacting && !event.aborted && !event.willRetry) {
+      this.continueAfterCompaction = true;
+    }
+
     if (event.type === 'agent_settled' || event.type === 'agent_end') {
-      this.clearReplyQueue();
+      if (this.continueAfterCompaction && this.session?.sessionFile) {
+        this.continueAfterCompaction = false;
+        // Resume the agent so a successful auto-compaction does not halt the
+        // work. The re-triggered turn delivers any queued replies and clears
+        // the queue on its own settle, so leave it intact here.
+        void this.continueTask(this.session.sessionFile);
+      } else {
+        this.clearReplyQueue();
+      }
     }
 
     if (this.compacting && (event.type === 'compaction_start' || event.type === 'compaction_end')) {
@@ -407,6 +436,8 @@ export class AgentRunner {
         logger.warn(`Could not apply persisted thinking level ${level}:`, err);
       }
     }
+
+    applyCompactionSettings(session);
   }
 
   private cleanupSession(): void {
