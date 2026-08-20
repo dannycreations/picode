@@ -227,7 +227,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   applyMessage: (msg) => {
     switch (msg.type) {
       case 'session_loaded':
-        set({ activeTask: msg.payload, isAgentRunning: false, isCompacting: false });
+        set({ activeTask: msg.payload, isAgentRunning: false, isCompacting: false, view: 'chat' });
         break;
 
       case 'compaction_start':
