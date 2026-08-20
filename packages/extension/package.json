@@ -10,7 +10,7 @@
   "main": "./dist/index.cjs",
   "engines": {
     "node": ">=24.13.3",
-    "vscode": ">=1.125.0"
+    "vscode": ">=1.134.0"
   },
   "capabilities": {
     "virtualWorkspaces": {
@@ -347,11 +347,11 @@
   "devDependencies": {
     "@pi-code/webview": "workspace:*",
     "@types/node": "24.13.3",
-    "@types/vscode": "^1.125.0",
+    "@types/vscode": "^1.134.0",
     "@vscode/vsce": "^3.9.2",
     "tsx": "^4.23.12",
     "typescript": "^7.0.2",
-    "vite": "^8.2.1",
+    "vite": "^8.2.2",
     "vitest": "^4.1.11"
   }
 }
