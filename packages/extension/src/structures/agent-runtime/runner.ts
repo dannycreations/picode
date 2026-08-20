@@ -7,6 +7,7 @@ import { cancelAllQuestions } from '@pi-code/extension/structures/agent-runtime/
 import { mapEvent } from '@pi-code/extension/structures/agent-runtime/event';
 import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { createSession } from '@pi-code/extension/structures/agent-runtime/session';
+import { injectSkillMessages } from '@pi-code/extension/structures/agent-runtime/skill';
 import { WebviewMessenger } from '@pi-code/extension/structures/agent-runtime/webview';
 import { collectCommands } from '@pi-code/extension/structures/chat-command/command';
 import { expandMentions } from '@pi-code/extension/structures/chat-command/mention';
@@ -93,6 +94,8 @@ export class AgentRunner {
 
     try {
       const { session, envDetails } = await this.prepareSession(path);
+      const { services } = await createAgentResources(getWorkspaceCwd());
+      const skills = services.resourceLoader.getSkills().skills;
 
       const expanded = await expandMentions(promptText, getWorkspaceCwd());
 
@@ -100,17 +103,33 @@ export class AgentRunner {
       // transcript, so the user's message keeps the clean `@token`.
       if (expanded.mentionContent) {
         await session.sendCustomMessage(
-          { customType: 'mention_content', content: expanded.mentionContent, display: false },
+          {
+            customType: 'mention_content',
+            content: expanded.mentionContent,
+            display: false,
+          },
           { deliverAs: 'nextTurn' },
         );
       }
 
       // `nextTurn` makes pi attach the details to the upcoming user message, so
       // they reach the model and get persisted with the turn that used them.
-      await session.sendCustomMessage({ customType: 'environment_details', content: envDetails, display: false }, { deliverAs: 'nextTurn' });
+      await session.sendCustomMessage(
+        {
+          customType: 'environment_details',
+          content: envDetails,
+          display: false,
+        },
+        { deliverAs: 'nextTurn' },
+      );
+
+      // Move any `/skill:name` invocation into its own hidden message before the
+      // user turn, leaving the user message clean. The returned text is the
+      // skill args (or the original text when there is no skill invocation).
+      const userText = await injectSkillMessages(session, skills, expanded.text);
 
       const attachments = parseImageAttachments(images);
-      void session.prompt(expanded.text, { images: attachments }).catch((err) => {
+      void session.prompt(userText, { images: attachments }).catch((err) => {
         this.messenger.postError(err);
       });
     } catch (err) {

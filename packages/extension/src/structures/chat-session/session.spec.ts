@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { recordApprovalDuration } from '@pi-code/extension/structures/agent-runtime/policy';
-import { collapseSkillBlock, convertSessionEntries } from '@pi-code/extension/structures/chat-session/session';
+import { convertSessionEntries } from '@pi-code/extension/structures/chat-session/session';
 
 import type { AssistantMessage, ToolResultMessage, UserMessage } from '@earendil-works/pi-ai';
 import type { SessionEntry } from '@earendil-works/pi-coding-agent';
@@ -9,10 +9,6 @@ import type { ToolChatMessage } from '@pi-code/shared/core/types';
 
 function messageEntry(id: string, message: UserMessage | AssistantMessage | ToolResultMessage): SessionEntry {
   return { id, type: 'message', parentId: null, timestamp: new Date().toISOString(), message };
-}
-
-function userMessage(content: UserMessage['content']): UserMessage {
-  return { role: 'user', content, timestamp: Date.now() };
 }
 
 function assistantMessage(content: AssistantMessage['content']): AssistantMessage {
@@ -39,33 +35,6 @@ function toolResultMessage(toolCallId: string, toolName: string, text: string, d
     timestamp: Date.now(),
   };
 }
-
-function skillBlock(body: string, trailing = ''): string {
-  return `<skill name="pdf-form" location="/skills/pdf-form/SKILL.md">\n${body}\n</skill>${trailing}`;
-}
-
-describe('collapseSkillBlock', () => {
-  it('should fold an expanded skill block back into the command the user typed', () => {
-    expect(collapseSkillBlock(skillBlock('References are relative to /skills/pdf-form.\n\n# PDF Form'))).toBe('/skill:pdf-form');
-  });
-
-  it('should keep the arguments that followed the command', () => {
-    expect(collapseSkillBlock(skillBlock('# PDF Form', '\n\nfill in page 2'))).toBe('/skill:pdf-form fill in page 2');
-  });
-
-  it('should leave ordinary messages untouched', () => {
-    expect(collapseSkillBlock('just a normal message')).toBe('just a normal message');
-    expect(collapseSkillBlock('talking about <skill> tags inline')).toBe('talking about <skill> tags inline');
-  });
-});
-
-describe('convertSessionEntries user messages', () => {
-  it('should render a reloaded skill invocation as the original command', () => {
-    const entries = [messageEntry('u1', userMessage(skillBlock('# PDF Form', '\n\nfill in page 2')))];
-
-    expect(convertSessionEntries(entries)[0].text).toBe('/skill:pdf-form fill in page 2');
-  });
-});
 
 describe('convertSessionEntries todo parsing', () => {
   it('attaches the parsed update_todo list to the message', () => {

@@ -1,5 +1,5 @@
 import { contentText, uuidv7 } from '@earendil-works/pi-ai';
-import { calculateContextTokens, getLastAssistantUsage, parseSkillBlock } from '@earendil-works/pi-coding-agent';
+import { calculateContextTokens, getLastAssistantUsage } from '@earendil-works/pi-coding-agent';
 
 import { buildToolSections } from '@pi-code/extension/shared/utilities/tool';
 import { getApprovalDuration } from '@pi-code/extension/structures/agent-runtime/policy';
@@ -40,14 +40,6 @@ function collectImages(parts: readonly MessageContentPart[]): string[] {
   return parts.filter((part) => part.type === 'image').map((part) => toBase64DataUrl(part.data, part.mimeType));
 }
 
-export function collapseSkillBlock(text: string): string {
-  const parsed = parseSkillBlock(text);
-  if (!parsed) return text;
-
-  const command = `/skill:${parsed.name}`;
-  return parsed.userMessage ? `${command} ${parsed.userMessage}` : command;
-}
-
 export function convertSessionEntries(entries: readonly SessionEntry[]): ChatMessage[] {
   const result: ChatMessage[] = [];
 
@@ -83,7 +75,7 @@ function appendMessage(result: ChatMessage[], id: string, msg: SessionMessage, t
       result.push({
         id,
         sender: 'user',
-        text: collapseSkillBlock(contentText(msg.content).trim()),
+        text: contentText(msg.content).trim(),
         images: images.length > 0 ? images : undefined,
         ts,
       });
