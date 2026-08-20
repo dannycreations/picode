@@ -76,7 +76,7 @@ export type ExtensionToWebviewMessage =
         commands: CommandItem[];
       };
     }
-  | { type: 'history_data'; payload: { scope: HistoryScope; items: HistoryItem[] } }
+  | { type: 'history_data'; payload: { scope: HistoryScope; epoch: number; items: HistoryItem[] } }
   | { type: 'commands_data'; payload: { commands: CommandItem[] } }
   | { type: 'models_data'; payload: { models: ModelItem[] } }
   | { type: 'settings_data'; payload: { settings: AppSettings } }

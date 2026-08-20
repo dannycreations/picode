@@ -119,8 +119,11 @@ export const useChatActions = (params: UseChatActionsProps): UseChatActionsRetur
     if (activeTask?.path) {
       deleteSessions([activeTask.path]);
     }
-    handleCloseTask();
-  }, [activeTask, deleteSessions, handleCloseTask]);
+    // The host's delete_sessions handler cancels the running agent and
+    // re-streams the scopes, so we only clear the local view here.
+    setActiveTask(null);
+    setIsAgentRunning(false);
+  }, [activeTask, deleteSessions, setActiveTask, setIsAgentRunning]);
 
   return { handleSendPrompt, handleToolResponse, handleAnswerQuestion, handleCloseTask, handleCancelTask, handleDeleteActiveTask };
 };

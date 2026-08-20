@@ -19,6 +19,7 @@ import { toMentionText } from '@pi-code/extension/structures/chat-command/mentio
 import { searchWorkspaceFiles } from '@pi-code/extension/utilities/fs';
 import { ACTIVE_TASK_ID } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
+import { HISTORY_SCOPES } from '@pi-code/shared/core/protocol';
 
 import type { MessageHandlerContext } from '@pi-code/extension/structures/agent-webview/types';
 import type { HistoryScope, WebviewToExtensionMessage } from '@pi-code/shared/core/protocol';
@@ -32,6 +33,11 @@ type CommandHandler<T extends WebviewToExtensionMessage['type']> = (
 type HandlerMap = {
   [T in WebviewToExtensionMessage['type']]: CommandHandler<T>;
 };
+
+// Monotonic per-session counter for history refreshes. The webview applies
+// only the highest epoch per scope, so a stale or out-of-order history_data
+// chunk from an earlier refresh cannot corrupt the list.
+let historyEpoch = 0;
 
 interface TranscriptDetails {
   readonly messages: ChatMessage[];
@@ -60,9 +66,10 @@ async function postSession(
 }
 
 async function postHistory(ctx: MessageHandlerContext, scope: HistoryScope): Promise<void> {
+  const epoch = ++historyEpoch;
   try {
     for await (const items of streamHistory(ctx.cwd, scope)) {
-      ctx.postMessage({ type: 'history_data', payload: { scope, items } });
+      ctx.postMessage({ type: 'history_data', payload: { scope, epoch, items } });
     }
   } catch (error) {
     logger.warn(`History stream for "${scope}" failed; the list may be incomplete.`, error);
@@ -71,11 +78,14 @@ async function postHistory(ctx: MessageHandlerContext, scope: HistoryScope): Pro
 
 const HANDLER_MAP: HandlerMap = {
   init: async (_, ctx) => {
-    void postHistory(ctx, 'current');
+    historyEpoch = 0;
 
     const resources = await createAgentResources(ctx.cwd);
     const data = await getInitData(ctx.cwd, resources);
+    // Send init_data before the history stream so the webview resets its epoch
+    // bookkeeping before the first history_data chunk arrives.
     ctx.postMessage({ type: 'init_data', payload: data });
+    void postHistory(ctx, 'current');
     // The local catalog is enough to render the chat view, so refresh the
     // remote catalog in the background and push the merged models once it lands.
     // Reuse the runtime we just built instead of re-resolving resources.
@@ -192,8 +202,20 @@ const HANDLER_MAP: HandlerMap = {
   get_history: async (msg, ctx) => {
     await postHistory(ctx, msg.scope);
   },
-  delete_sessions: async (msg) => {
+  delete_sessions: async (msg, ctx) => {
+    // Stop the running agent only when we are deleting the task it is on, so a
+    // list deletion never cancels an unrelated active session.
+    const activePath = ctx.agent.getSessionFile();
+    if (activePath && msg.paths.includes(activePath)) {
+      await ctx.agent.cancelTask();
+    }
     await deleteSessions(msg.paths);
+    // Re-stream every scope after the files are gone so the webview receives an
+    // authoritative, post-delete snapshot in one awaited pass (no race with a
+    // concurrent re-stream reading the disk before the delete finishes).
+    for (const target of HISTORY_SCOPES) {
+      await postHistory(ctx, target);
+    }
   },
   update_settings: async (msg) => {
     // The write triggers `onDidChangeConfiguration`, which pushes the fresh

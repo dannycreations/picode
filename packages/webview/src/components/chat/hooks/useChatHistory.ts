@@ -14,6 +14,14 @@ function emptyHistoryByScope(): Record<HistoryScope, HistoryItem[]> {
   return record;
 }
 
+function zeroEpochs(): Record<HistoryScope, number> {
+  const record = {} as Record<HistoryScope, number>;
+  for (const scope of HISTORY_SCOPES) {
+    record[scope] = 0;
+  }
+  return record;
+}
+
 interface UseChatHistoryProps {
   readonly view: 'chat' | 'history' | 'settings';
 }
@@ -29,6 +37,14 @@ interface UseChatHistoryReturn {
 export const useChatHistory = ({ view }: UseChatHistoryProps): UseChatHistoryReturn => {
   const [scope, setScope] = useState<HistoryScope>('current');
   const [historyByScope, setHistoryByScope] = useState<Record<HistoryScope, HistoryItem[]>>(emptyHistoryByScope());
+  // Highest history_data epoch applied per scope. Each host refresh bumps the
+  // epoch: the first chunk of a refresh resets the scope, later chunks append,
+  // and any chunk with a lower epoch is a stale remnant we drop. This makes the
+  // webview a pure projection of the host, so deletions and re-streams cannot
+  // leave a stale or duplicated entry behind.
+  const latestEpoch = useRef<Record<HistoryScope, number>>(zeroEpochs());
+  // Scopes we have already asked the host to stream, so switching tabs does not
+  // re-scan the disk.
   const fetchedScopes = useRef<Set<HistoryScope>>(new Set());
 
   const pastTasks = historyByScope[scope];
@@ -43,15 +59,14 @@ export const useChatHistory = ({ view }: UseChatHistoryProps): UseChatHistoryRet
     if (view === 'history') requestScope(scope);
   }, [view, scope, requestScope]);
 
-  // Optimistically drop the deleted rows from every cached scope (not just the
-  // visible one) so a later switch to "All" re-fetches instead of showing
-  // stale entries, then ask the host to remove the files.
+  // Drop the rows now so the list reacts before the host round-trips. The host
+  // re-streams the scopes after deleting, so this is just instant feedback.
   const deleteSessions = useCallback((paths: string[]): void => {
     const removed = new Set(paths);
     setHistoryByScope((prev) => {
       const next = { ...prev };
-      for (const scope of HISTORY_SCOPES) {
-        next[scope] = prev[scope].filter((item) => !removed.has(item.path));
+      for (const target of HISTORY_SCOPES) {
+        next[target] = prev[target].filter((item) => !removed.has(item.path));
       }
       return next;
     });
@@ -62,22 +77,16 @@ export const useChatHistory = ({ view }: UseChatHistoryProps): UseChatHistoryRet
     switch (msg.type) {
       case 'init_data':
         fetchedScopes.current.add('current');
+        latestEpoch.current = zeroEpochs();
         break;
 
       case 'history_data': {
-        const { scope, items } = msg.payload;
-        fetchedScopes.current.add(scope);
-        // The host streams a full, newest-first snapshot of the scope in chunks
-        // and can re-push it (e.g. after a task is cancelled). Merge every seen
-        // item by id so re-fetches neither duplicate nor drop entries, then
-        // order by recency so a freshly created session surfaces at the front
-        // instead of being appended after older ones.
-        setHistoryByScope((prev) => {
-          const byId = new Map(prev[scope].map((entry) => [entry.id, entry]));
-          for (const item of items) byId.set(item.id, item);
-          const merged = [...byId.values()].sort((a, b) => b.ts - a.ts);
-          return { ...prev, [scope]: merged };
-        });
+        const { scope, epoch, items } = msg.payload;
+        const prevEpoch = latestEpoch.current[scope];
+        if (epoch < prevEpoch) return;
+        const isNewRefresh = epoch > prevEpoch;
+        latestEpoch.current[scope] = epoch;
+        setHistoryByScope((prev) => ({ ...prev, [scope]: isNewRefresh ? items : [...prev[scope], ...items] }));
         break;
       }
 
