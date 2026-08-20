@@ -70,6 +70,19 @@ describe('expandMentions', () => {
     expect(result.mentionContent).not.toContain('export const x = 2');
   });
 
+  it('excludes .git internals from a mentioned folder, matching the environment walk', async () => {
+    await write('project/src/index.ts', 'console.log(1)');
+    await write('project/.git/config', 'core.filemode=true');
+
+    const result = await expandMentions('Look at @project', cwd);
+
+    expect(result.mentionContent).toContain('<folder_content path="project">');
+    expect(result.mentionContent).toContain('project/src/index.ts');
+    // The .git directory must stay out of the listing entirely.
+    expect(result.mentionContent).not.toContain('.git');
+    expect(result.mentionContent).not.toContain('core.filemode=true');
+  });
+
   it('deduplicates repeated mentions into a single block', async () => {
     await write('dup.ts', 'same content');
 

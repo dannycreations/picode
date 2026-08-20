@@ -2,12 +2,27 @@ import { readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { formatPathRelativeToCwdOrAbsolute } from '@earendil-works/pi-coding-agent';
 
-import type { Dirent } from 'node:fs';
+export interface FileChild {
+  readonly name: string;
+  readonly isDir: boolean;
+  readonly isFile: boolean;
+  readonly isSymlink: boolean;
+}
+
+export async function readDirectoryChildren(dir: string, readRaw: (dir: string) => Promise<FileChild[]>): Promise<FileChild[]> {
+  let children: FileChild[];
+  try {
+    children = await readRaw(dir);
+  } catch {
+    return [];
+  }
+  return children.filter((child) => child.name !== '.git');
+}
 
 interface DirectoryEntry {
   readonly abs: string;
   readonly rel: string;
-  readonly dirent: Dirent;
+  readonly entry: FileChild;
 }
 
 export function normalizeSeparators(path: string): string {
@@ -15,20 +30,19 @@ export function normalizeSeparators(path: string): string {
 }
 
 export async function* walkDirectory(start: string, maxDepth: number, root: string = start): AsyncGenerator<DirectoryEntry> {
+  const readRaw = async (dir: string): Promise<FileChild[]> => {
+    const dirents = await readdir(dir, { withFileTypes: true });
+    return dirents.map((d) => ({ name: d.name, isDir: d.isDirectory(), isFile: d.isFile(), isSymlink: d.isSymbolicLink() }));
+  };
+
   const walk = async function* (dir: string, depth: number): AsyncGenerator<DirectoryEntry> {
     if (depth > maxDepth) return;
 
-    let entries: Dirent[];
-    try {
-      entries = await readdir(dir, { withFileTypes: true });
-    } catch {
-      return;
-    }
-
-    for (const dirent of entries) {
-      const abs = resolve(dir, dirent.name);
-      yield { abs, rel: formatPathRelativeToCwdOrAbsolute(abs, root), dirent };
-      if (dirent.isDirectory() && depth < maxDepth) {
+    const children = await readDirectoryChildren(dir, readRaw);
+    for (const child of children) {
+      const abs = resolve(dir, child.name);
+      yield { abs, rel: formatPathRelativeToCwdOrAbsolute(abs, root), entry: child };
+      if (child.isDir && depth < maxDepth && !child.isSymlink) {
         yield* walk(abs, depth + 1);
       }
     }
@@ -86,8 +100,8 @@ export async function searchWorkspaceFiles(query: string, cwd: string): Promise<
   // With no name fragment, list the immediate children of the anchor directory.
   if (needle === '') {
     const entries: string[] = [];
-    for await (const { rel, dirent } of walkDirectory(start, 0, cwd)) {
-      if (dirent.isFile() || dirent.isDirectory()) entries.push(rel);
+    for await (const { rel, entry } of walkDirectory(start, 0, cwd)) {
+      if (entry.isFile || entry.isDir) entries.push(rel);
     }
     return entries.slice(0, MAX_RESULTS);
   }
@@ -95,10 +109,10 @@ export async function searchWorkspaceFiles(query: string, cwd: string): Promise<
   const matches: string[] = [];
   let scanned = 0;
 
-  for await (const { rel, dirent } of walkDirectory(start, SEARCH_MAX_DEPTH, cwd)) {
+  for await (const { rel, entry } of walkDirectory(start, SEARCH_MAX_DEPTH, cwd)) {
     scanned++;
     if (scanned > MAX_SCANNED) break;
-    if (!dirent.isFile() && !dirent.isDirectory()) continue;
+    if (!entry.isFile && !entry.isDir) continue;
     if (!rel.toLowerCase().includes(needle)) continue;
     matches.push(rel);
   }

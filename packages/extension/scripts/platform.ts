@@ -35,8 +35,8 @@ function lineNumberOf(source: string, index: number): number {
 
 async function listTypeScriptFiles(dir: string): Promise<string[]> {
   const out: string[] = [];
-  for await (const { abs, dirent } of walkDirectory(dir, Infinity)) {
-    if (dirent.isFile() && abs.endsWith('.ts')) out.push(abs);
+  for await (const { abs, entry } of walkDirectory(dir, Infinity)) {
+    if (entry.isFile && abs.endsWith('.ts')) out.push(abs);
   }
   return out;
 }

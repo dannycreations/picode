@@ -4,11 +4,13 @@ import ignore from 'ignore';
 import { FileType, TabInputText, Uri, window, workspace } from 'vscode';
 
 import { readAppSettings } from '@pi-code/extension/core/settings';
+import { readDirectoryChildren } from '@pi-code/extension/utilities/fs';
 import { getGitRepository, getIgnoredPaths } from '@pi-code/extension/utilities/git';
 import { toRelativePath, toWorkspaceRelativePath } from '@pi-code/extension/utilities/vscode';
 
 import type { AgentMessage } from '@earendil-works/pi-agent-core';
 import type { Change, Repository } from '@pi-code/extension/types/git';
+import type { FileChild } from '@pi-code/extension/utilities/fs';
 import type { TodoItem } from '@pi-code/shared/utilities/todo';
 
 const STATUS_MAP: Record<TodoItem['status'], string> = {
@@ -172,38 +174,41 @@ export async function walkWorkspace(
   const processNode = async (node: UriNode): Promise<UriNode[]> => {
     const { uri, relative, depth, ignores } = node;
 
-    let entries: [string, FileType][];
-    try {
-      entries = await workspace.fs.readDirectory(uri);
-    } catch {
-      return [];
-    }
+    const children = await readDirectoryChildren(uri.fsPath, async (dir) => {
+      const raw = await workspace.fs.readDirectory(Uri.file(dir));
+      return raw.map(([name, type]): FileChild => ({
+        name,
+        isDir: !!(type & FileType.Directory),
+        isFile: !!(type & FileType.File),
+        isSymlink: !!(type & FileType.SymbolicLink),
+      }));
+    });
 
-    const entryCount = entries.length;
-    if (entryCount === 0) return [];
+    const childCount = children.length;
+    if (childCount === 0) return [];
 
     const names: string[] = [];
-    const types: FileType[] = [];
+    const isDirFlags: boolean[] = [];
+    const isFileFlags: boolean[] = [];
+    const isSymlinkFlags: boolean[] = [];
     const childUris: Uri[] = [];
     const fsPaths: string[] = [];
 
-    for (let i = 0; i < entryCount; i++) {
-      const [name, type] = entries[i];
-      if (name === '.git') continue;
-      const childUri = Uri.joinPath(uri, name);
-      names.push(name);
-      types.push(type);
+    for (let i = 0; i < childCount; i++) {
+      const child = children[i];
+      const childUri = Uri.joinPath(uri, child.name);
+      names.push(child.name);
+      isDirFlags.push(child.isDir);
+      isFileFlags.push(child.isFile);
+      isSymlinkFlags.push(child.isSymlink);
       childUris.push(childUri);
       fsPaths.push(childUri.fsPath);
     }
 
-    const childCount = names.length;
-    if (childCount === 0) return [];
-
     let localIgnores = ignores;
     if (useLocalGitignore) {
       const gitignoreIndex = names.indexOf('.gitignore');
-      if (gitignoreIndex !== -1 && types[gitignoreIndex] & FileType.File) {
+      if (gitignoreIndex !== -1 && isFileFlags[gitignoreIndex]) {
         const filter = await loadGitignoreFilter(childUris[gitignoreIndex]);
         if (filter) localIgnores = [...ignores, { relativeDir: relative, filter }];
       }
@@ -217,9 +222,8 @@ export async function walkWorkspace(
     const hasLocalIgnores = localIgnores.length > 0;
 
     for (let i = 0; i < childCount; i++) {
-      const type = types[i];
       const childUri = childUris[i];
-      const isDir = !!(type & FileType.Directory);
+      const isDir = isDirFlags[i];
       const childRelative = relativePrefix + names[i];
 
       if (repo) {
@@ -229,13 +233,13 @@ export async function walkWorkspace(
       }
 
       if (isDir) {
-        if (canDescend && !(type & FileType.SymbolicLink)) {
+        if (canDescend && !isSymlinkFlags[i]) {
           nextNodes.push({ uri: childUri, relative: childRelative, depth: depth + 1, ignores: localIgnores });
         }
         continue;
       }
 
-      if (type & FileType.File) fileResults.push(childRelative);
+      if (isFileFlags[i]) fileResults.push(childRelative);
     }
 
     return nextNodes;
