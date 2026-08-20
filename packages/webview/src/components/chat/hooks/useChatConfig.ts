@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { DEFAULT_APP_ID } from '@pi-code/shared/core/constants';
-import { defaultThinkingLevel } from '@pi-code/shared/utilities/common';
+import { defaultThinkingLevel, EMPTY_STATS } from '@pi-code/shared/utilities/common';
 import { vscode } from '@pi-code/webview/utilities/vscode';
 
 import type { CommandItem, ExtensionToWebviewMessage, ModelItem, ModelSelection } from '@pi-code/shared/core/protocol';
@@ -19,6 +19,7 @@ interface UseChatConfigReturn {
   readonly selectedThinkingLevel: ModelThinkingLevel | null;
   readonly setSelectedThinkingLevel: (level: ModelThinkingLevel) => void;
   readonly supportsImages: boolean;
+  readonly selectedModelContextWindow: number;
   readonly onMessage: (msg: ExtensionToWebviewMessage) => void;
 }
 
@@ -85,6 +86,11 @@ export const useChatConfig = (): UseChatConfigReturn => {
 
   const supportsImages = useMemo<boolean>(() => models.find((model) => model.id === selectedModel)?.supportsImages ?? false, [models, selectedModel]);
 
+  const selectedModelContextWindow = useMemo<number>(
+    () => models.find((model) => model.id === selectedModel)?.contextWindow ?? EMPTY_STATS.contextLimit,
+    [models, selectedModel],
+  );
+
   // Picking a model also re-publishes the current thinking level (clamped to what
   // the new model supports) so the persisted pair always matches the footer.
   const setSelectedModel = useCallback(
@@ -119,6 +125,7 @@ export const useChatConfig = (): UseChatConfigReturn => {
     selectedThinkingLevel,
     setSelectedThinkingLevel,
     supportsImages,
+    selectedModelContextWindow,
     onMessage,
   };
 };

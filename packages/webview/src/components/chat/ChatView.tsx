@@ -325,6 +325,7 @@ export const ChatView: FC = () => {
       {activeTask ? (
         <ChatHeader
           {...activeTask}
+          contextLimit={config.selectedModelContextWindow}
           onClose={handleCloseTaskReturn}
           onCompact={() => postCompactMessage(activeTask)}
           onExport={activeTask.path ? () => exportSession(activeTask) : undefined}

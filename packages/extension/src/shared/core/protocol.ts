@@ -25,6 +25,7 @@ export interface ModelItem {
   readonly id: string;
   readonly name: string;
   readonly provider: string;
+  readonly contextWindow?: number;
   readonly supportsImages?: boolean;
   readonly thinkingLevels?: readonly ModelThinkingLevel[];
 }

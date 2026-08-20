@@ -205,13 +205,13 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
         </div>
 
         {/* Collapsed State Summary */}
-        {!isExpanded && (
+        <Accordion open={!isExpanded}>
           <div className="w-full flex items-center justify-between gap-3 mt-1.5" onClick={(e) => e.stopPropagation()}>
             <div className="flex-1 flex items-center gap-2">
               <span className="text-muted whitespace-nowrap">Context: {contextPercentage}%</span>
               <ContextProgressBar percentage={contextPercentage} />
             </div>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2">
               {totalCost > 0 && <span className="text-xs font-mono text-vscode-foreground/80">${totalCost.toFixed(4)}</span>}
               <Tooltip content="Search chat" side="bottom">
                 <button onClick={onSearchOpen} className="icon-button">
@@ -220,11 +220,11 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
               </Tooltip>
             </div>
           </div>
-        )}
+        </Accordion>
 
         {/* Expanded Details Table */}
         <Accordion open={isExpanded}>
-          <div className="flex flex-col gap-2 mt-1.5" onClick={(e) => e.stopPropagation()}>
+          <div className="flex flex-col gap-2 mt-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
             <table className="w-full text-muted">
               <tbody>
                 {/* Context Row */}
