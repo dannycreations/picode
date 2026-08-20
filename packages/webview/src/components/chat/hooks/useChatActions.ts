@@ -26,15 +26,15 @@ export const useChatActions = (): UseChatActionsReturn => {
     store.setActiveTask((prev) =>
       prev ? { ...prev, messages: patchMessage(prev.messages, questionId, { toolStatus: 'completed', diff: answer }) } : null,
     );
-    store.setIsAgentRunning(true);
-    store.questionResponse(questionId, answer);
+    store.setIsRunning(true);
+    store.send({ type: 'question_response', question_id: questionId, text: answer });
   }, []);
 
   const handleSendPrompt = useCallback(
     (text: string, images: string[]): void => {
       text = text.trim();
       const store = useChatStore.getState();
-      const { activeTask, isAgentRunning } = store;
+      const { activeTask, isRunning } = store;
       const pendingQuestion = selectPendingQuestion(store);
 
       // A pending question owns the input box: the reply answers the tool call
@@ -50,7 +50,7 @@ export const useChatActions = (): UseChatActionsReturn => {
       // `init_data` response arrives.
       const builtin = parseBuiltinCommand(text);
       if (builtin === 'reload') {
-        store.reloadCatalog();
+        store.send({ type: 'builtin_command', command: 'reload' });
         return;
       }
       if (builtin === 'compact') {
@@ -58,14 +58,14 @@ export const useChatActions = (): UseChatActionsReturn => {
         return;
       }
       if (builtin === 'update') {
-        store.updateCatalog();
+        store.send({ type: 'builtin_command', command: 'update' });
         return;
       }
 
       // A running agent cannot take a new turn, so the reply is queued and
       // steered into the current one instead.
-      if (activeTask && isAgentRunning) {
-        store.addToReplyQueue(text, images);
+      if (activeTask && isRunning) {
+        store.send({ type: 'add_to_reply_queue', text, images: images.length > 0 ? images : undefined });
         return;
       }
 
@@ -77,29 +77,29 @@ export const useChatActions = (): UseChatActionsReturn => {
         ts: Date.now(),
       };
 
-      store.setIsAgentRunning(true);
+      store.setIsRunning(true);
       store.setActiveTask((prev) => (prev ? { ...prev, messages: [...prev.messages, userMsg] } : createActiveTask(ACTIVE_TASK_ID, text, [userMsg])));
-      store.sendMessage(text, activeTask?.path, images);
+      store.send({ type: 'send_message', text, path: activeTask?.path, images: images.length > 0 ? images : undefined });
     },
     [handleAnswerQuestion],
   );
 
   const handleToolResponse = useCallback((msgId: string, approved: boolean): void => {
     const store = useChatStore.getState();
-    store.setIsAgentRunning(true);
+    store.setIsRunning(true);
     store.setActiveTask((prev) => (prev ? { ...prev, messages: resolveApproval(prev.messages, msgId, approved) } : null));
-    store.toolResponse(msgId, approved);
+    store.send({ type: 'tool_response', approval_id: msgId, approved });
   }, []);
 
   const handleCancelTask = useCallback((): void => {
-    useChatStore.getState().cancelTask();
+    useChatStore.getState().send({ type: 'cancel_task' });
   }, []);
 
   const handleCloseTask = useCallback((): void => {
     const store = useChatStore.getState();
-    store.cancelTask();
+    store.send({ type: 'cancel_task' });
     store.setActiveTask(null);
-    store.setIsAgentRunning(false);
+    store.setIsRunning(false);
   }, []);
 
   const handleDeleteActiveTask = useCallback((): void => {
@@ -108,7 +108,7 @@ export const useChatActions = (): UseChatActionsReturn => {
     // The host's delete_sessions handler cancels the running agent and
     // re-streams the scopes, so we only clear the local view here.
     store.setActiveTask(null);
-    store.setIsAgentRunning(false);
+    store.setIsRunning(false);
   }, []);
 
   return { handleSendPrompt, handleToolResponse, handleAnswerQuestion, handleCloseTask, handleCancelTask, handleDeleteActiveTask };

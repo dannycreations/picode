@@ -271,7 +271,7 @@ export const useChatMention = ({ value, setValue, textareaRef }: UseMentionProps
     }
     const requestId = crypto.randomUUID();
     const handle = setTimeout(() => {
-      useChatStore.getState().searchFiles(query, requestId);
+      useChatStore.getState().send({ type: 'search_files', query, requestId });
     }, 200);
     return () => clearTimeout(handle);
   }, [query, setItems]);

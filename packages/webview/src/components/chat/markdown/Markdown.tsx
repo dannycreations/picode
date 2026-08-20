@@ -41,7 +41,7 @@ const MarkdownLink: FC<{ href?: string; children?: ReactNode }> = ({ href, child
     if (isLocalPath) {
       e.preventDefault();
       const { filePath, line } = parseFileUri(href);
-      useChatStore.getState().openFile(filePath, line !== undefined ? { line } : undefined);
+      useChatStore.getState().send({ type: 'open_file', text: filePath, values: line !== undefined ? { line } : undefined });
     }
   };
 

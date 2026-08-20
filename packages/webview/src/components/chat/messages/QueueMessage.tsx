@@ -30,12 +30,12 @@ export const QueueMessage: FC<QueueMessageProps> = ({ message, search }) => {
   const handleSave = (): void => {
     const trimmed = editText.trim();
     if (!trimmed) return;
-    useChatStore.getState().editReplyQueue(message.id, trimmed);
+    useChatStore.getState().send({ type: 'edit_reply_queue', id: message.id, text: trimmed });
     setIsEditing(false);
   };
 
   const handleRemove = (): void => {
-    useChatStore.getState().removeFromReplyQueue(message.id);
+    useChatStore.getState().send({ type: 'remove_from_reply_queue', id: message.id });
   };
 
   return (

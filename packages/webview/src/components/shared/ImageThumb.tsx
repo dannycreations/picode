@@ -9,7 +9,7 @@ interface ImageThumbProps {
 
 export const ImageThumb: FC<ImageThumbProps> = ({ url }) => (
   <Tooltip content="Click to view image">
-    <div onClick={() => useChatStore.getState().openImage(url)} className="image-thumb">
+    <div onClick={() => useChatStore.getState().send({ type: 'open_image', dataUrl: url })} className="image-thumb">
       <img src={url} alt="attachment" className="w-full h-full object-cover" />
     </div>
   </Tooltip>

@@ -192,10 +192,10 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
   const openFile = (target: string, content?: string) => {
     if (!target) return;
     if (message.toolName === 'edit_file') {
-      useChatStore.getState().openFile(target, { line: getFirstDiffLine(content), diff: true });
+      useChatStore.getState().send({ type: 'open_file', text: target, values: { line: getFirstDiffLine(content), diff: true } });
       return;
     }
-    useChatStore.getState().openFile(target);
+    useChatStore.getState().send({ type: 'open_file', text: target });
   };
 
   return (

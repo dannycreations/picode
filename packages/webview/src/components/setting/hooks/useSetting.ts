@@ -44,7 +44,7 @@ export const useSetting = (settings: AppSettings): UseSettingReturn => {
 
     if (Object.keys(updates).length === 0) return;
 
-    useChatStore.getState().updateSettings(updates as Partial<AppSettings>);
+    useChatStore.getState().send({ type: 'update_settings', settings: updates as Partial<AppSettings> });
   };
 
   const resetDraft = (): void => {

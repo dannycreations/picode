@@ -53,7 +53,7 @@ let searchRequestId = '';
 
 interface ChatState {
   readonly activeTask: ActiveTaskState | null;
-  readonly isAgentRunning: boolean;
+  readonly isRunning: boolean;
   readonly isCompacting: boolean;
   readonly view: 'chat' | 'history' | 'settings';
   readonly inputValue: string;
@@ -68,35 +68,15 @@ interface ChatState {
   readonly searchResults: string[];
   readonly openedSettingsFromHistory: boolean;
 
-  readonly init: () => void;
-  readonly loadSession: (id: string, path: string, title: string) => void;
-  readonly exportSession: (path: string, id: string) => void;
-  readonly viewRawTask: (path?: string) => void;
-  readonly archiveSession: (path: string, id: string, title: string) => void;
-  readonly continueTask: (path?: string) => void;
-  readonly sendMessage: (text: string, path: string | undefined, images: string[]) => void;
-  readonly addToReplyQueue: (text: string, images?: string[]) => void;
-  readonly questionResponse: (questionId: string, text: string) => void;
-  readonly toolResponse: (approvalId: string, approved: boolean) => void;
-  readonly cancelTask: () => void;
-  readonly reloadCatalog: () => void;
-  readonly updateCatalog: () => void;
+  readonly send: (message: WebviewToExtensionMessage) => void;
   readonly compact: () => void;
   readonly setSelectedModel: (id: string) => void;
   readonly setSelectedThinkingLevel: (level: ModelThinkingLevel | null) => void;
   readonly getHistory: (scope: HistoryScope) => void;
   readonly deleteSessions: (paths: string[]) => void;
-  readonly updateSettings: (settings: Partial<AppSettings>) => void;
-  readonly searchFiles: (query: string, requestId: string) => void;
-  readonly openImage: (dataUrl: string) => void;
-  readonly insertMentions: (paths: string[]) => void;
-  readonly saveImage: (dataUrl: string, filename: string) => void;
-  readonly openFile: (text: string, values?: { line?: number; diff?: boolean }) => void;
-  readonly editReplyQueue: (id: string, text: string) => void;
-  readonly removeFromReplyQueue: (id: string) => void;
   readonly applyMessage: (msg: ExtensionToWebviewMessage) => void;
   readonly setActiveTask: (value: ActiveTaskState | null | ((prev: ActiveTaskState | null) => ActiveTaskState | null)) => void;
-  readonly setIsAgentRunning: (value: boolean) => void;
+  readonly setIsRunning: (value: boolean) => void;
   readonly setIsCompacting: (value: boolean) => void;
   readonly setView: (view: ChatState['view']) => void;
   readonly setInputValue: (value: string) => void;
@@ -111,7 +91,7 @@ interface ChatState {
 
 export const useChatStore = create<ChatState>((set, get) => ({
   activeTask: null,
-  isAgentRunning: false,
+  isRunning: false,
   isCompacting: false,
   view: 'chat',
   inputValue: '',
@@ -126,41 +106,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
   searchResults: [],
   openedSettingsFromHistory: false,
 
-  init: () => vscode?.postMessage({ type: 'init' }),
-
-  loadSession: (id, path, title) => vscode?.postMessage({ type: 'load_session', id, path, title }),
-
-  exportSession: (path, id) => {
-    if (!path) return;
-    vscode?.postMessage({ type: 'export_session', path, id });
-  },
-
-  viewRawTask: (path) => {
-    if (path) vscode?.postMessage({ type: 'view_raw_task', path });
-  },
-
-  archiveSession: (path, id, title) => vscode?.postMessage({ type: 'archive_session', path, id, title }),
-
-  continueTask: (path) => vscode?.postMessage({ type: 'continue_task', path }),
-
-  sendMessage: (text, path, images) => vscode?.postMessage({ type: 'send_message', text, path, images: images.length > 0 ? images : undefined }),
-
-  addToReplyQueue: (text, images) =>
-    vscode?.postMessage({ type: 'add_to_reply_queue', text, images: images && images.length > 0 ? images : undefined }),
-
-  questionResponse: (questionId, text) => vscode?.postMessage({ type: 'question_response', question_id: questionId, text }),
-
-  toolResponse: (approvalId, approved) => vscode?.postMessage({ type: 'tool_response', approval_id: approvalId, approved }),
-
-  cancelTask: () => vscode?.postMessage({ type: 'cancel_task' }),
-
-  reloadCatalog: () => vscode?.postMessage({ type: 'builtin_command', command: 'reload' }),
-
-  updateCatalog: () => vscode?.postMessage({ type: 'builtin_command', command: 'update' }),
+  send: (message) => vscode?.postMessage(message),
 
   compact: () => {
     const { activeTask } = get();
-    vscode?.postMessage({
+    get().send({
       type: 'builtin_command',
       command: 'compact',
       id: activeTask?.id ?? '',
@@ -176,20 +126,20 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const levels = model.thinkingLevels ?? [];
     const level = selectedThinkingLevel && levels.includes(selectedThinkingLevel) ? selectedThinkingLevel : defaultThinkingLevel(levels);
     set({ selectedModel: id, selectedThinkingLevel: level });
-    vscode?.postMessage({ type: 'set_model', model: { id: model.id, provider: model.provider }, thinkingLevel: level ?? undefined });
+    get().send({ type: 'set_model', model: { id: model.id, provider: model.provider }, thinkingLevel: level ?? undefined });
   },
 
   setSelectedThinkingLevel: (level) => {
     set({ selectedThinkingLevel: level });
     const { selectedModel, models } = get();
     const provider = models.find((m) => m.id === selectedModel)?.provider ?? '';
-    vscode?.postMessage({ type: 'set_model', model: { id: selectedModel, provider }, thinkingLevel: level ?? undefined });
+    get().send({ type: 'set_model', model: { id: selectedModel, provider }, thinkingLevel: level ?? undefined });
   },
 
   getHistory: (scope) => {
     if (fetchedScopes.has(scope)) return;
     fetchedScopes.add(scope);
-    vscode?.postMessage({ type: 'get_history', scope });
+    get().send({ type: 'get_history', scope });
   },
 
   deleteSessions: (paths) => {
@@ -201,33 +151,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
       return { historyByScope: next };
     });
-    vscode?.postMessage({ type: 'delete_sessions', paths });
+    get().send({ type: 'delete_sessions', paths });
   },
-
-  updateSettings: (settings) => vscode?.postMessage({ type: 'update_settings', settings }),
-
-  searchFiles: (query, requestId) => {
-    searchRequestId = requestId;
-    set({ searchResults: [] });
-    vscode?.postMessage({ type: 'search_files', query, requestId });
-  },
-
-  openImage: (dataUrl) => vscode?.postMessage({ type: 'open_image', dataUrl }),
-
-  insertMentions: (paths) => vscode?.postMessage({ type: 'insert_mentions', paths }),
-
-  saveImage: (dataUrl, filename) => vscode?.postMessage({ type: 'save_image', dataUrl, filename }),
-
-  openFile: (text, values) => vscode?.postMessage({ type: 'open_file', text, values }),
-
-  editReplyQueue: (id, text) => vscode?.postMessage({ type: 'edit_reply_queue', id, text }),
-
-  removeFromReplyQueue: (id) => vscode?.postMessage({ type: 'remove_from_reply_queue', id }),
 
   applyMessage: (msg) => {
     switch (msg.type) {
       case 'session_loaded':
-        set({ activeTask: msg.payload, isAgentRunning: false, isCompacting: false, view: 'chat' });
+        set({ activeTask: msg.payload, isRunning: false, isCompacting: false, view: 'chat' });
         break;
 
       case 'compaction_start':
@@ -260,7 +190,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       case 'agent_start': {
         const { path, stats } = msg.payload;
         set((state) => ({
-          isAgentRunning: true,
+          isRunning: true,
           activeTask: state.activeTask ? { ...state.activeTask, path: path ?? state.activeTask.path, ...stats } : state.activeTask,
         }));
         break;
@@ -269,7 +199,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       case 'message_start': {
         const { timestamp } = msg.payload;
         set((state) => ({
-          isAgentRunning: true,
+          isRunning: true,
           activeTask: state.activeTask
             ? {
                 ...state.activeTask,
@@ -286,7 +216,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       case 'api_request_start': {
         const { id, timestamp } = msg.payload;
         set((state) => ({
-          isAgentRunning: true,
+          isRunning: true,
           activeTask: state.activeTask
             ? {
                 ...state.activeTask,
@@ -382,7 +312,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       case 'tool_execution_start': {
         const { id, tool_name, arguments: toolArgs, subagent } = msg.payload;
         set((state) => ({
-          isAgentRunning: true,
+          isRunning: true,
           activeTask: state.activeTask
             ? {
                 ...state.activeTask,
@@ -460,9 +390,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
       case 'agent_error': {
         const { message } = msg.payload;
         set((state) => {
-          if (!state.activeTask) return { isAgentRunning: false };
+          if (!state.activeTask) return { isRunning: false };
           return {
-            isAgentRunning: false,
+            isRunning: false,
             activeTask: {
               ...state.activeTask,
               messages: appendOnce(settlePendingTurns(state.activeTask.messages, { error: message }), {
@@ -480,7 +410,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
       case 'agent_settled':
         set((state) => ({
-          isAgentRunning: false,
+          isRunning: false,
           isCompacting: false,
           activeTask: state.activeTask
             ? { ...state.activeTask, messages: settlePendingTurns(state.activeTask.messages), ...msg.payload }
@@ -562,6 +492,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
           set({ searchResults: msg.payload.paths });
         }
         break;
+
+      default:
+        throw new Error(`Unhandled message type: ${JSON.stringify(msg)}`);
     }
   },
 
@@ -570,7 +503,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       activeTask: typeof value === 'function' ? (value as (prev: ActiveTaskState | null) => ActiveTaskState | null)(state.activeTask) : value,
     })),
 
-  setIsAgentRunning: (value) => set({ isAgentRunning: value }),
+  setIsRunning: (value) => set({ isRunning: value }),
 
   setIsCompacting: (value) => set({ isCompacting: value }),
 

@@ -6,7 +6,7 @@ import type { ActiveTaskState } from '@pi-code/shared/core/types';
 interface ChatActionProps {
   readonly activeTask: ActiveTaskState | null;
   readonly showScrollToBottom: boolean;
-  readonly isAgentRunning: boolean;
+  readonly isRunning: boolean;
   readonly isCompacting: boolean;
   readonly isAwaitingApproval: boolean;
   readonly onScrollToBottom: () => void;
@@ -18,7 +18,7 @@ interface ChatActionProps {
 export const ChatAction: FC<ChatActionProps> = ({
   activeTask,
   showScrollToBottom,
-  isAgentRunning,
+  isRunning,
   isCompacting,
   isAwaitingApproval,
   onScrollToBottom,
@@ -29,7 +29,7 @@ export const ChatAction: FC<ChatActionProps> = ({
   // Archived tasks are read-only, so their action bar is hidden entirely.
   if (activeTask?.isArchived) return null;
 
-  const showCancel = isAgentRunning || isCompacting;
+  const showCancel = isRunning || isCompacting;
   const showActionButtons = activeTask && (showScrollToBottom || showCancel || !isAwaitingApproval);
 
   if (!showActionButtons) return null;

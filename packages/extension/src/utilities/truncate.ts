@@ -93,7 +93,7 @@ interface FileChangeResultOptions {
   readonly hint: string;
 }
 
-export async function buildFileChangeResult(opts: FileChangeResultOptions): Promise<CustomToolResult<{ diff: string }>> {
+export function buildFileChangeResult(opts: FileChangeResultOptions): CustomToolResult<{ diff: string }> {
   const diffResult = generateDiffString(opts.oldContent, opts.newContent);
   const { text } = truncateOutput(diffResult.diff || opts.successMessage, {
     limits: getOutputLimits(),

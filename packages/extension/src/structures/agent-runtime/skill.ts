@@ -55,7 +55,7 @@ export async function injectSkillMessages(session: AgentSession, skills: readonl
   // No `deliverAs`: a bare sendCustomMessage lands on the session before the
   // upcoming user turn, whereas `nextTurn` would be appended after it.
   await session.sendCustomMessage({
-    customType: 'skill',
+    customType: 'skill_content',
     content: buildSkillBlock(skill.name, skill.filePath, body),
     display: false,
   });

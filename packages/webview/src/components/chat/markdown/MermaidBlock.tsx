@@ -40,7 +40,7 @@ export const MermaidBlock: FC<MermaidBlockProps> = ({ code: originalCode }) => {
 
     try {
       const dataUrl = await svgToPng(svgEl);
-      useChatStore.getState().saveImage(dataUrl, 'mermaid-diagram.png');
+      useChatStore.getState().send({ type: 'save_image', dataUrl, filename: 'mermaid-diagram.png' });
     } catch (err) {
       logger.error('Error saving image:', err);
     }

@@ -51,7 +51,7 @@ describe('injectSkillMessages', () => {
       expect(sendCustomMessage).toHaveBeenCalledTimes(1);
       expect(sendCustomMessage).toHaveBeenCalledWith(
         expect.objectContaining({
-          customType: 'skill',
+          customType: 'skill_content',
           display: false,
           content: expect.stringContaining('<skill name="review"'),
         }),

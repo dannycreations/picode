@@ -17,10 +17,6 @@ const MEGABYTE = 1024 * 1024;
 const MAX_FILE_SIZE_BYTES = 10 * MEGABYTE;
 const DEFAULT_MAX_CONCURRENT_READS = 5;
 
-function buildSizeLimitMessage(filePath: string, sizeBytes: number): string {
-  return `Error: ${filePath} exceeds the 10 MB size limit (${(sizeBytes / MEGABYTE).toFixed(2)} MB).`;
-}
-
 export async function checkReadableFile(path: string): Promise<{ ok: true } | { ok: false; body: string }> {
   try {
     const fileStat = await stat(path);
@@ -28,7 +24,7 @@ export async function checkReadableFile(path: string): Promise<{ ok: true } | { 
       return { ok: false, body: `Error: "${path}" is not a regular file.` };
     }
     if (fileStat.size > MAX_FILE_SIZE_BYTES) {
-      return { ok: false, body: buildSizeLimitMessage(path, fileStat.size) };
+      return { ok: false, body: `Error: ${path} exceeds the 10 MB size limit (${(fileStat.size / MEGABYTE).toFixed(2)} MB).` };
     }
     if (await isBinaryFile(path)) {
       return { ok: false, body: `Error: ${path} is binary and cannot be read as text.` };

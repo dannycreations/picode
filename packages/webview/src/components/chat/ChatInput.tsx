@@ -170,7 +170,7 @@ export const ChatInput: FC<ChatInputProps> = ({
       .filter((line) => line.length > 0 && !line.startsWith('#'));
     if (paths.length === 0) return;
 
-    useChatStore.getState().insertMentions(paths);
+    useChatStore.getState().send({ type: 'insert_mentions', paths });
   };
 
   const isSendButtonActive = (inputValue.trim().length > 0 || selectedImages.length > 0) && !sendingDisabled;

@@ -1,11 +1,11 @@
 import { contentText, uuidv7 } from '@earendil-works/pi-ai';
 import { calculateContextTokens, getLastAssistantUsage } from '@earendil-works/pi-coding-agent';
 
-import { buildToolSections } from '@pi-code/extension/shared/utilities/tool';
 import { getApprovalDuration } from '@pi-code/extension/structures/agent-runtime/policy';
 import { toBase64DataUrl } from '@pi-code/extension/utilities/codec';
 import { logger } from '@pi-code/shared/core/logger';
 import { elapsedSeconds, EMPTY_STATS } from '@pi-code/shared/utilities/common';
+import { buildToolSections } from '@pi-code/shared/utilities/tool';
 
 import type { ImageContent, TextContent, ThinkingContent, ToolCall, Usage } from '@earendil-works/pi-ai';
 import type { SessionEntry } from '@earendil-works/pi-coding-agent';
@@ -104,6 +104,10 @@ function appendMessage(result: ChatMessage[], id: string, msg: SessionMessage, t
         duration: 0,
         ts,
       });
+      break;
+
+    default:
+      logger.warn(`Unhandled session message role during transcript conversion: ${msg.role}`);
       break;
   }
 }

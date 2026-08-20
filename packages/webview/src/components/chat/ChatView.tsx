@@ -60,7 +60,7 @@ export const ChatView: FC = () => {
   const [historySelectedPaths, setHistorySelectedPaths] = useState<string[]>([]);
 
   const activeTask = useChatStore((state) => state.activeTask);
-  const isAgentRunning = useChatStore((state) => state.isAgentRunning);
+  const isRunning = useChatStore((state) => state.isRunning);
   const isCompacting = useChatStore((state) => state.isCompacting);
   const pendingQuestion = useChatStore(selectPendingQuestion);
 
@@ -70,7 +70,7 @@ export const ChatView: FC = () => {
   const taskFromHistoryRef = useRef(false);
 
   useEffect(() => {
-    useChatStore.getState().init();
+    useChatStore.getState().send({ type: 'init' });
   }, []);
 
   // Focus the composer when a pending question appears.
@@ -242,23 +242,23 @@ export const ChatView: FC = () => {
   const loadSession = useCallback(
     (item: HistoryItem) => {
       taskFromHistoryRef.current = view === 'history';
-      useChatStore.getState().loadSession(item.id, item.path, item.task);
+      useChatStore.getState().send({ type: 'load_session', id: item.id, path: item.path, title: item.task });
     },
     [view],
   );
 
   const exportSession = useCallback((item: { id: string; path?: string }) => {
     if (!item.path) return;
-    useChatStore.getState().exportSession(item.path, item.id);
+    useChatStore.getState().send({ type: 'export_session', path: item.path, id: item.id });
   }, []);
 
   const viewRaw = useCallback((path: string | undefined) => {
-    if (path) useChatStore.getState().viewRawTask(path);
+    if (path) useChatStore.getState().send({ type: 'view_raw_task', path });
   }, []);
 
   const handleArchive = useCallback((): void => {
     if (!activeTask?.path) return;
-    useChatStore.getState().archiveSession(activeTask.path, activeTask.id, activeTask.title);
+    useChatStore.getState().send({ type: 'archive_session', path: activeTask.path, id: activeTask.id, title: activeTask.title });
   }, [activeTask?.path, activeTask?.id, activeTask?.title]);
 
   if (view === 'settings') {
@@ -313,8 +313,8 @@ export const ChatView: FC = () => {
           onViewRaw={() => viewRaw(activeTask.path)}
           onArchive={handleArchive}
           isArchived={activeTask?.isArchived}
-          archiveDisabled={isAgentRunning || !activeTask?.path}
-          deleteDisabled={isAgentRunning}
+          archiveDisabled={isRunning || !activeTask?.path}
+          deleteDisabled={isRunning}
           isSearchOpen={searchOpen}
           searchQuery={searchQuery}
           matchCount={totalMatches}
@@ -409,7 +409,7 @@ export const ChatView: FC = () => {
       <ChatAction
         activeTask={activeTask}
         showScrollToBottom={showScrollToBottom}
-        isAgentRunning={isAgentRunning}
+        isRunning={isRunning}
         isCompacting={isCompacting}
         onScrollToBottom={scrollToBottom}
         onCancelTask={handleCancelTask}
@@ -417,7 +417,7 @@ export const ChatView: FC = () => {
         onContinueTask={() => {
           if (!activeTask) return;
           scrollToBottom();
-          useChatStore.getState().continueTask(activeTask.path);
+          useChatStore.getState().send({ type: 'continue_task', path: activeTask.path });
         }}
         isAwaitingApproval={isAwaitingApproval}
       />
