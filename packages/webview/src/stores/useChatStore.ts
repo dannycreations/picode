@@ -500,7 +500,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
             next.current = [item, ...state.historyByScope.current.filter((e) => e.id !== id)];
             next.all = [item, ...state.historyByScope.all.filter((e) => e.id !== id)];
           }
-          return { historyByScope: next };
+          const activeTask = state.activeTask && state.activeTask.id === id ? { ...state.activeTask, path, isArchived: archived } : state.activeTask;
+          return { historyByScope: next, activeTask };
         });
         fetchedScopes.delete('archives');
         fetchedScopes.delete('all');
