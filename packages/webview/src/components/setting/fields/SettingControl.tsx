@@ -47,19 +47,18 @@ export const SettingControl: FC<SettingControlProps> = ({ settingKey, draftSetti
 
     case 'number': {
       return (
-        <div className="flex flex-col gap-4">
-          <SettingSlider
-            label={field.label}
-            description={spec.description}
-            value={typeof value === 'number' ? value : spec.default}
-            min={spec.minimum}
-            max={spec.maximum}
-            step={spec.step}
-            unit={spec.unit}
-            onChange={(next) => onChange(settingKey, next)}
-          />
-          {children && <div className="pl-3 border-l-2 border-vscode-button-background/60 flex flex-col gap-4">{children}</div>}
-        </div>
+        <SettingSlider
+          label={field.label}
+          description={spec.description}
+          value={typeof value === 'number' ? value : spec.default}
+          min={spec.minimum}
+          max={spec.maximum}
+          step={spec.step}
+          unit={spec.unit}
+          onChange={(next) => onChange(settingKey, next)}
+        >
+          {children}
+        </SettingSlider>
       );
     }
 

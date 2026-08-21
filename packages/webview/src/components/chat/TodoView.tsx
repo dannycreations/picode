@@ -66,7 +66,7 @@ export const TodoView: FC<TodoViewProps> = ({ todos }) => {
       </div>
 
       <Accordion open={!isCollapsed}>
-        <ul className="list-none max-h-[300px] overflow-y-auto mt-2 -mb-1 pb-0 px-3 cursor-default">
+        <ul className="list-none max-h-[300px] overflow-y-auto pt-2 -mb-1 pb-0 px-3 cursor-default">
           {todos.map((todo, idx) => (
             <li
               key={idx}

@@ -11,15 +11,15 @@ interface SettingCheckboxProps {
 }
 
 export const SettingCheckbox: FC<SettingCheckboxProps> = ({ label, checked, onChange, description, children }) => (
-  <div className="flex flex-col border-t border-vscode-editorGroup-border/10">
+  <div className="flex flex-col gap-2">
     <div className="flex flex-col gap-1">
       <label className="flex items-start gap-2 cursor-pointer select-none">
         <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="cursor-pointer w-4 h-4 shrink-0 mt-0.5" />
-        <div className="flex items-center gap-1.5 font-semibold text-sm text-vscode-foreground">
+        <div className="flex items-center gap-1.5 font-semibold text-xs text-vscode-foreground">
           <span>{label}</span>
         </div>
       </label>
-      {description && <span className="text-muted leading-normal font-normal">{description}</span>}
+      {description && <span className="text-muted leading-normal">{description}</span>}
     </div>
     {children && (
       <Accordion open={checked}>

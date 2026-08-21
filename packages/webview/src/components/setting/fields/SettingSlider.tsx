@@ -1,4 +1,4 @@
-import type { FC } from 'react';
+import type { FC, ReactNode } from 'react';
 
 interface SettingSliderProps {
   readonly label: string;
@@ -9,9 +9,10 @@ interface SettingSliderProps {
   readonly description?: string;
   readonly unit?: string;
   readonly step?: number;
+  readonly children?: ReactNode;
 }
 
-export const SettingSlider: FC<SettingSliderProps> = ({ label, value, min, max, onChange, description, unit = '', step = 1 }) => {
+export const SettingSlider: FC<SettingSliderProps> = ({ label, value, min, max, onChange, description, unit = '', step = 1, children }) => {
   const percentage = ((value - min) / (max - min)) * 100;
   const trackStyle = {
     background: `linear-gradient(to right, var(--vscode-button-background) ${percentage}%, var(--vscode-input-background) ${percentage}%)`,
@@ -39,6 +40,7 @@ export const SettingSlider: FC<SettingSliderProps> = ({ label, value, min, max, 
         </span>
       </div>
       {description && <div className="text-muted leading-normal">{description}</div>}
+      {children && <div className="mt-1 pl-3 border-l-2 border-vscode-button-background/60 flex flex-col gap-4">{children}</div>}
     </div>
   );
 };
