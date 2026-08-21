@@ -45,7 +45,7 @@ export const useChatConfig = (): UseChatConfigReturn => {
   useEffect(() => {
     const current = useChatStore.getState().selectedThinkingLevel;
     const next = thinkingLevels.length === 0 ? null : current && thinkingLevels.includes(current) ? current : defaultThinkingLevel(thinkingLevels);
-    useChatStore.getState().setSelectedThinkingLevelState(next);
+    useChatStore.getState().syncSelectedThinkingLevel(next);
   }, [thinkingLevels]);
 
   const supportsImages = useMemo<boolean>(() => models.find((model) => model.id === selectedModel)?.supportsImages ?? false, [models, selectedModel]);

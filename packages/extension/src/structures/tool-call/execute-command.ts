@@ -212,22 +212,24 @@ export const executeCommandTool = defineTool({
         });
       };
 
+      // Safe to call repeatedly until the tree is gone. Never gate
+      // on cp.killed, which only records that a kill was requested.
       const killProcess = (sig: NodeJS.Signals = 'SIGTERM') => {
+        const pid = cp.pid;
+        if (!pid) return;
         try {
-          if (cp.pid && !cp.killed) {
-            const pid = cp.pid;
-            if (process.platform === 'win32') {
-              exec(`taskkill /pid ${pid} /T /F`, () => {});
-            } else {
-              process.kill(-pid, sig);
-              cp.kill(sig);
-            }
+          if (process.platform === 'win32') {
+            exec(`taskkill /pid ${pid} /T /F`, () => {});
+          } else {
+            process.kill(-pid, sig);
+            cp.kill(sig);
           }
         } catch {}
       };
 
       const escalateKill = (graceMs: number = KILL_GRACE_MS) => {
         killProcess('SIGTERM');
+        if (escalationTimer) clearTimeout(escalationTimer);
         escalationTimer = setTimeout(() => killProcess('SIGKILL'), graceMs);
       };
 

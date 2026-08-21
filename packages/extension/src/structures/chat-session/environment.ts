@@ -329,35 +329,42 @@ export async function getEnvironmentDetails(cwd: string, includeFileDetails = fa
   let details = '';
   const settings = readAppSettings();
 
-  // VS Code Visible Files
-  const visibleFilePaths = window.visibleTextEditors
-    .map((editor) => editor.document?.uri)
-    .filter((uri) => uri !== undefined)
-    .map((uri) => toWorkspaceRelativePath(uri))
-    .filter((path) => path !== undefined);
-
-  if (visibleFilePaths.length > 0) {
-    details += '\n\n### VS Code Visible Files\n\n';
-    details += visibleFilePaths.map((p) => `- ${p}`).join('\n');
-  }
-
-  // VS Code Open Tabs
   const maxOpenTabsContext = settings.maxOpenTabsContext;
-  let openTabPaths = window.tabGroups.all
-    .flatMap((group) => group.tabs)
-    .filter((tab) => tab.input instanceof TabInputText)
-    .map((tab) => toWorkspaceRelativePath((tab.input as TabInputText).uri))
-    .filter((path) => path !== undefined);
 
-  if (maxOpenTabsContext > 0 && openTabPaths.length > 0) {
-    const totalOpenTabs = openTabPaths.length;
-    if (openTabPaths.length > maxOpenTabsContext) {
-      openTabPaths = openTabPaths.slice(0, maxOpenTabsContext);
+  if (maxOpenTabsContext > 0) {
+    // VS Code Visible Files
+    const allVisibleFilePaths = window.visibleTextEditors
+      .map((editor) => editor.document?.uri)
+      .filter((uri) => uri !== undefined)
+      .map((uri) => toWorkspaceRelativePath(uri))
+      .filter((path) => path !== undefined);
+
+    if (allVisibleFilePaths.length > 0) {
+      const visibleFilePaths = allVisibleFilePaths.slice(0, maxOpenTabsContext);
+      details += '\n\n### VS Code Visible Files\n\n';
+      details += visibleFilePaths.map((p) => `- ${p}`).join('\n');
+      if (allVisibleFilePaths.length > maxOpenTabsContext) {
+        details += `\n*(Truncated. Showing first ${maxOpenTabsContext} of ${allVisibleFilePaths.length} visible files)*`;
+      }
     }
-    details += '\n\n### VS Code Open Tabs\n\n';
-    details += openTabPaths.map((p) => `- ${p}`).join('\n');
-    if (totalOpenTabs > maxOpenTabsContext) {
-      details += `\n*(Truncated. Showing first ${maxOpenTabsContext} of ${totalOpenTabs} open tabs)*`;
+
+    // VS Code Open Tabs
+    let openTabPaths = window.tabGroups.all
+      .flatMap((group) => group.tabs)
+      .filter((tab) => tab.input instanceof TabInputText)
+      .map((tab) => toWorkspaceRelativePath((tab.input as TabInputText).uri))
+      .filter((path) => path !== undefined);
+
+    if (openTabPaths.length > 0) {
+      const totalOpenTabs = openTabPaths.length;
+      if (openTabPaths.length > maxOpenTabsContext) {
+        openTabPaths = openTabPaths.slice(0, maxOpenTabsContext);
+      }
+      details += '\n\n### VS Code Open Tabs\n\n';
+      details += openTabPaths.map((p) => `- ${p}`).join('\n');
+      if (totalOpenTabs > maxOpenTabsContext) {
+        details += `\n*(Truncated. Showing first ${maxOpenTabsContext} of ${totalOpenTabs} open tabs)*`;
+      }
     }
   }
 

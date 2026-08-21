@@ -29,6 +29,34 @@ describe('executeCommandTool', () => {
   });
 });
 
+describe('executeCommandTool cancellation', () => {
+  it('kills the process tree and settles when the task is canceled', async () => {
+    const controller = new AbortController();
+    const startedAt = Date.now();
+    setTimeout(() => controller.abort(), 50);
+
+    const result = (await executeCommandTool.execute('test-id', { command: 'node -e "setInterval(() => {}, 5000)"' }, controller.signal, undefined, {
+      cwd: process.cwd(),
+    } as any)) as any;
+
+    expect(Date.now() - startedAt).toBeLessThan(4000);
+    expect(result.details.timedOut).toBe(false);
+    expect(result.isError).toBe(true);
+  });
+
+  it('escalates to SIGKILL so commands that ignore SIGTERM still settle', async () => {
+    const result = (await executeCommandTool.execute(
+      'test-id',
+      { command: `node -e "process.on('SIGTERM', () => {}); setInterval(() => {}, 5000)"`, timeout: 30 },
+      undefined,
+      undefined,
+      { cwd: process.cwd() } as any,
+    )) as any;
+
+    expect(result.details.timedOut).toBe(true);
+  }, 10_000);
+});
+
 describe('cleanCommandOutput', () => {
   it('strips ANSI color and style escape codes', () => {
     const dirty = '\x1b[2m$ tsx scripts/build.ts\x1b[22m\n\x1b[36mvite v8.2.0\x1b[39m \x1b[32mbuilding\x1b[0m';

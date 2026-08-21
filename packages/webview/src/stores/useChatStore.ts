@@ -77,20 +77,16 @@ interface ChatState {
   readonly compact: () => void;
   readonly setSelectedModel: (id: string) => void;
   readonly setSelectedThinkingLevel: (level: ModelThinkingLevel | null) => void;
+  readonly syncSelectedThinkingLevel: (level: ModelThinkingLevel | null) => void;
   readonly getHistory: (scope: HistoryScope) => void;
   readonly deleteSessions: (paths: string[]) => void;
   readonly applyMessage: (msg: ExtensionToWebviewMessage) => void;
   readonly setActiveTask: (value: ActiveTaskState | null | ((prev: ActiveTaskState | null) => ActiveTaskState | null)) => void;
   readonly setIsRunning: (value: boolean) => void;
-  readonly setIsCompacting: (value: boolean) => void;
   readonly setView: (view: ChatState['view']) => void;
   readonly setInputValue: (value: string) => void;
   readonly setTextareaRef: (ref: RefObject<HTMLTextAreaElement | null> | null) => void;
   readonly appendToInput: (text: string) => void;
-  readonly setModels: (models: ModelItem[]) => void;
-  readonly setSettings: (settings: AppSettings | null) => void;
-  readonly setCommands: (commands: CommandItem[]) => void;
-  readonly setSelectedThinkingLevelState: (level: ModelThinkingLevel | null) => void;
   readonly setScope: (scope: HistoryScope) => void;
 }
 
@@ -446,6 +442,8 @@ export const useChatStore = create<ChatState>((set, get) => {
       get().send({ type: 'set_model', model: { id: selectedModel, provider }, thinkingLevel: level ?? undefined });
     },
 
+    syncSelectedThinkingLevel: (level) => set({ selectedThinkingLevel: level }),
+
     getHistory: (scope) => {
       const fetched = get().fetchedScopes;
       if (fetched.has(scope)) return;
@@ -483,8 +481,6 @@ export const useChatStore = create<ChatState>((set, get) => {
 
     setIsRunning: (value) => set({ isRunning: value }),
 
-    setIsCompacting: (value) => set({ isCompacting: value }),
-
     setView: (value) => set({ view: value }),
 
     setInputValue: (value) => set({ inputValue: value }),
@@ -505,14 +501,6 @@ export const useChatStore = create<ChatState>((set, get) => {
         textarea.setSelectionRange(nextCaret, nextCaret);
       }, 0);
     },
-
-    setModels: (models) => set({ models }),
-
-    setSettings: (settings) => set({ settings }),
-
-    setCommands: (commands) => set({ commands }),
-
-    setSelectedThinkingLevelState: (level) => set({ selectedThinkingLevel: level }),
 
     setScope: (scope) => set({ scope }),
   };
