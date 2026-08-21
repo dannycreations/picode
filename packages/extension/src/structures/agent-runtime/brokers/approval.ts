@@ -1,6 +1,7 @@
 import { uuidv7 } from '@earendil-works/pi-ai';
 
 import { createRequestRegistry } from '@pi-code/extension/structures/agent-runtime/brokers/registry';
+import { logger } from '@pi-code/shared/core/logger';
 
 import type { ToolName } from '@pi-code/shared/core/types';
 
@@ -36,6 +37,7 @@ export function requestApproval(
 ): Promise<boolean> {
   const currentPresenter = presenter;
   if (!currentPresenter) {
+    logger.error('Approval requested before an approval presenter was registered. Denying the tool call.');
     return Promise.resolve(false);
   }
 

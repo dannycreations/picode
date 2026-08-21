@@ -23,7 +23,12 @@ export function setSubagentEventCallback(callback: SubagentEventCallback): () =>
 }
 
 export function notifySubagentEvent(event: ExtensionToWebviewMessage): void {
-  subagentEventCallback?.(event);
+  if (!subagentEventCallback) {
+    throw new Error(
+      'Sub-agent event emitted before the webview callback was registered. Register it during provider startup with setSubagentEventCallback.',
+    );
+  }
+  subagentEventCallback(event);
 }
 
 interface ToolResultPart {

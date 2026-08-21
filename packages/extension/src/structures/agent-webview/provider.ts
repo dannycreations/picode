@@ -13,6 +13,7 @@ import { CHAT_VIEW_TYPE, DEFAULT_APP_ID } from '@pi-code/shared/core/constants';
 import type { CancellationToken, ExtensionContext, Webview, WebviewView, WebviewViewProvider, WebviewViewResolveContext } from 'vscode';
 import type { MessageHandlerContext } from '@pi-code/extension/structures/agent-webview/types';
 import type { ExtensionToWebviewMessage, WebviewToExtensionMessage } from '@pi-code/shared/core/protocol';
+import type { ToolArguments } from '@pi-code/shared/core/types';
 
 function buildChatViewHtml(webview: Webview, extensionUri: Uri): string {
   const scriptUri = webview.asWebviewUri(Uri.joinPath(extensionUri, 'dist', 'webview.cjs'));
@@ -95,12 +96,14 @@ export class ChatViewProvider implements WebviewViewProvider {
     const cwd = getWorkspaceCwd();
 
     const disposeApprovalPresenter = setApprovalPresenter((request) => {
-      void webview.postMessage({
+      // Route approval through the agent messenger so it shares the same sink
+      // and coalescing buffer as the rest of the tool lifecycle.
+      this.agent?.postMessage({
         type: 'tool_approval_request',
         payload: {
           id: request.id,
           tool_name: request.toolName,
-          arguments: request.args,
+          arguments: request.args as ToolArguments,
           subagent: request.subagent,
           toolCallId: request.toolCallId,
         },
