@@ -11,6 +11,8 @@ interface UsePanZoomReturn {
   readonly dragPosition: { x: number; y: number };
   readonly isDragging: boolean;
   readonly adjustZoom: (amount: number) => void;
+  readonly setZoom: (value: number) => void;
+  readonly resetPan: () => void;
   readonly handleWheel: (e: WheelEvent) => void;
   readonly startDrag: (e: MouseEvent) => void;
   readonly onDrag: (e: MouseEvent) => void;
@@ -24,6 +26,14 @@ export const usePanZoom = (): UsePanZoomReturn => {
 
   const adjustZoom = useCallback((amount: number): void => {
     setZoomLevel((prev) => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, prev + amount)));
+  }, []);
+
+  const setZoom = useCallback((value: number): void => {
+    setZoomLevel(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, value)));
+  }, []);
+
+  const resetPan = useCallback((): void => {
+    setDragPosition({ x: 0, y: 0 });
   }, []);
 
   const handleWheel = useCallback(
@@ -61,6 +71,8 @@ export const usePanZoom = (): UsePanZoomReturn => {
     dragPosition,
     isDragging,
     adjustZoom,
+    setZoom,
+    resetPan,
     handleWheel,
     startDrag,
     onDrag,

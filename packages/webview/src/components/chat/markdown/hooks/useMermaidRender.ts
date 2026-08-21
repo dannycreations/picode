@@ -1,8 +1,8 @@
 import mermaid from 'mermaid-compact';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { logger } from '@pi-code/shared/core/logger';
-import { applyDeterministicFixes, ensureMermaidInitialized } from '@pi-code/webview/components/chat/markdown/helpers/mermaid';
+import { ensureMermaidInitialized } from '@pi-code/webview/components/chat/markdown/helpers/mermaid';
 
 const RENDER_DEBOUNCE_MS = 500;
 
@@ -11,7 +11,6 @@ interface UseMermaidRenderReturn {
   readonly svgContent: string;
   readonly isLoading: boolean;
   readonly error: string | null;
-  readonly handleSyntaxFix: () => void;
 }
 
 export const useMermaidRender = (originalCode: string, enabled: boolean): UseMermaidRenderReturn => {
@@ -49,16 +48,10 @@ export const useMermaidRender = (originalCode: string, enabled: boolean): UseMer
     return () => clearTimeout(timer);
   }, [code, enabled]);
 
-  const handleSyntaxFix = useCallback((): void => {
-    const fixed = applyDeterministicFixes(code);
-    setCode(fixed);
-  }, [code]);
-
   return {
     code,
     svgContent,
     isLoading,
     error,
-    handleSyntaxFix,
   };
 };

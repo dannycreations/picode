@@ -1,9 +1,10 @@
 import { cn } from 'cnfast';
+import { useLayoutEffect, useRef, useState } from 'react';
 
 import { usePanZoom } from '@pi-code/webview/components/chat/markdown/hooks/usePanZoom';
 import { IconButton } from '@pi-code/webview/components/shared/IconButton';
 
-import type { FC, MouseEvent } from 'react';
+import type { FC, MouseEvent, WheelEvent } from 'react';
 
 type ViewMode = 'diagram' | 'code';
 
@@ -38,8 +39,40 @@ const ViewTab: FC<{ readonly icon: string; readonly label: string; readonly isAc
 );
 
 export const MermaidModal: FC<MermaidModalProps> = ({ code, svgContent, modalViewMode, showCopy, setModalViewMode, onClose, onCopy, onSave }) => {
-  const { zoomLevel, dragPosition, isDragging, adjustZoom, handleWheel, startDrag, onDrag, stopDrag } = usePanZoom();
+  const { zoomLevel, dragPosition, isDragging, adjustZoom, handleWheel, startDrag, onDrag, stopDrag, setZoom, resetPan } = usePanZoom();
   const isDiagram = modalViewMode === 'diagram';
+  const areaRef = useRef<HTMLDivElement>(null);
+  const diagramRef = useRef<HTMLDivElement>(null);
+  const [transitionEnabled, setTransitionEnabled] = useState(false);
+
+  useLayoutEffect(() => {
+    if (!isDiagram) return;
+    const area = areaRef.current;
+    const diagram = diagramRef.current;
+    if (!area || !diagram) return;
+    const svg = diagram.querySelector('svg');
+    if (!svg) return;
+    const naturalW = svg.clientWidth;
+    const naturalH = svg.clientHeight;
+    if (naturalW <= 0 || naturalH <= 0) return;
+    const availW = area.clientWidth;
+    const availH = area.clientHeight;
+    if (availW <= 0 || availH <= 0) return;
+    const fitZoom = Math.min(availW / naturalW, availH / naturalH);
+    resetPan();
+    setZoom(fitZoom);
+    setTransitionEnabled(false);
+  }, [isDiagram, svgContent, setZoom, resetPan]);
+
+  const handleAdjustZoom = (amount: number): void => {
+    setTransitionEnabled(true);
+    adjustZoom(amount);
+  };
+
+  const handleWheelZoom = (e: WheelEvent): void => {
+    setTransitionEnabled(true);
+    handleWheel(e);
+  };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -59,15 +92,16 @@ export const MermaidModal: FC<MermaidModalProps> = ({ code, svgContent, modalVie
         {/* Modal Content */}
         <div
           className="flex-1 p-4 pb-16 overflow-auto flex items-center justify-center relative bg-vscode-editor-background"
-          onWheel={isDiagram ? handleWheel : undefined}
+          onWheel={isDiagram ? handleWheelZoom : undefined}
         >
           {isDiagram ? (
-            <div className="w-full h-full flex items-center justify-center overflow-hidden">
+            <div ref={areaRef} className="w-full h-full flex items-center justify-center overflow-hidden">
               <div
+                ref={diagramRef}
                 style={{
                   transform: `scale(${zoomLevel}) translate(${dragPosition.x}px, ${dragPosition.y}px)`,
                   transformOrigin: 'center center',
-                  transition: isDragging ? 'none' : 'transform 0.1s ease',
+                  transition: isDragging ? 'none' : transitionEnabled ? 'transform 0.1s ease' : 'none',
                   cursor: isDragging ? 'grabbing' : 'grab',
                 }}
                 onMouseDown={startDrag}
@@ -75,7 +109,6 @@ export const MermaidModal: FC<MermaidModalProps> = ({ code, svgContent, modalVie
                 onMouseUp={stopDrag}
                 onMouseLeave={stopDrag}
                 dangerouslySetInnerHTML={{ __html: svgContent }}
-                className="max-w-full max-h-full"
               />
               <div className="absolute bottom-4 left-4 bg-vscode-editor-background border border-vscode-editorGroup-border rounded px-2 py-1 text-muted opacity-80">
                 {Math.round(zoomLevel * 100)}%
@@ -94,8 +127,8 @@ export const MermaidModal: FC<MermaidModalProps> = ({ code, svgContent, modalVie
         <div className="absolute bottom-0 right-0 left-0 p-3 flex items-center justify-end gap-2 bg-vscode-editor-background border-t border-vscode-editorGroup-border rounded-b">
           {isDiagram && (
             <>
-              <IconButton icon="zoom-out" tooltip="Zoom out" onClick={() => adjustZoom(-0.2)} />
-              <IconButton icon="zoom-in" tooltip="Zoom in" onClick={() => adjustZoom(0.2)} />
+              <IconButton icon="zoom-out" tooltip="Zoom out" onClick={() => handleAdjustZoom(-0.2)} />
+              <IconButton icon="zoom-in" tooltip="Zoom in" onClick={() => handleAdjustZoom(0.2)} />
             </>
           )}
           <IconButton icon={showCopy ? 'check' : 'copy'} tooltip={showCopy ? 'Copied source!' : 'Copy source'} onClick={onCopy} />

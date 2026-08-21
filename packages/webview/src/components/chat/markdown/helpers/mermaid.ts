@@ -60,14 +60,6 @@ export function ensureMermaidInitialized(): void {
   });
 }
 
-export function applyDeterministicFixes(code: string): string {
-  return code
-    .replace(/--&gt;/g, '-->')
-    .replace(/```mermaid/g, '')
-    .replace(/```/g, '')
-    .trim();
-}
-
 export async function svgToPng(svgEl: SVGElement): Promise<string> {
   const svgClone = svgEl.cloneNode(true) as SVGElement;
   const viewBox = svgClone.getAttribute('viewBox')?.split(' ').map(Number) || [];

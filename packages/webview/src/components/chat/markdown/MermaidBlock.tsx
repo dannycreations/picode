@@ -26,7 +26,7 @@ export const MermaidBlock: FC<MermaidBlockProps> = ({ code: originalCode }) => {
   const [isHovering, setIsHovering] = useState(false);
 
   const { ref: rootRef, hasBeenVisible } = useInViewport<HTMLDivElement>();
-  const { code, svgContent, isLoading, error, handleSyntaxFix } = useMermaidRender(originalCode, hasBeenVisible);
+  const { code, svgContent, isLoading, error } = useMermaidRender(originalCode, hasBeenVisible);
   const { showCopy, copy } = useCopyToClipboard();
 
   const handleCopy = async (e: MouseEvent) => {
@@ -64,9 +64,15 @@ export const MermaidBlock: FC<MermaidBlockProps> = ({ code: originalCode }) => {
               <span className="font-bold text-xs text-vscode-editor-foreground">Mermaid render error</span>
             </div>
             <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-              <IconButton icon="wand" tooltip="Auto-fix common syntax issues" onClick={handleSyntaxFix} />
               <IconButton icon={showCopy ? 'check' : 'copy'} tooltip={showCopy ? 'Copied diagram code!' : 'Copy diagram code'} onClick={handleCopy} />
-              <span className={cn('codicon', `codicon-chevron-${isErrorExpanded ? 'up' : 'down'}`, 'text-xs')} />
+              <span
+                className={cn('codicon cursor-pointer', `codicon-chevron-${isErrorExpanded ? 'up' : 'down'}`, 'text-xs')}
+                title={isErrorExpanded ? 'Collapse' : 'Expand'}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsErrorExpanded(!isErrorExpanded);
+                }}
+              />
             </div>
           </div>
           <Accordion open={isErrorExpanded}>
