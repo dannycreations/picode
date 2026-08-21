@@ -24,7 +24,10 @@ export async function checkReadableFile(path: string): Promise<{ ok: true } | { 
       return { ok: false, body: `Error: "${path}" is not a regular file.` };
     }
     if (fileStat.size > MAX_FILE_SIZE_BYTES) {
-      return { ok: false, body: `Error: ${path} exceeds the 10 MB size limit (${(fileStat.size / MEGABYTE).toFixed(2)} MB).` };
+      return {
+        ok: false,
+        body: `Error: ${path} exceeds the ${MAX_FILE_SIZE_BYTES / MEGABYTE} MB size limit (${(fileStat.size / MEGABYTE).toFixed(2)} MB).`,
+      };
     }
     if (await isBinaryFile(path)) {
       return { ok: false, body: `Error: ${path} is binary and cannot be read as text.` };

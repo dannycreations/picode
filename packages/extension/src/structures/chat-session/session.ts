@@ -165,7 +165,7 @@ function patchToolCall(result: ChatMessage[], msg: Extract<SessionMessage, { rol
 
   const rawDuration = elapsedSeconds(existing.ts, ts);
   const approvalMs = msg.toolCallId ? getApprovalDuration(msg.toolCallId) : undefined;
-  const netDuration = approvalMs !== undefined ? Math.max(0, Math.round((ts - existing.ts - approvalMs) / 1000)) : rawDuration;
+  const netDuration = approvalMs !== undefined ? elapsedSeconds(existing.ts, ts - approvalMs) : rawDuration;
 
   result[index] = {
     ...existing,

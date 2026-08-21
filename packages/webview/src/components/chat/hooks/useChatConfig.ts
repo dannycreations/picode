@@ -3,7 +3,7 @@ import { useEffect, useMemo } from 'react';
 import { defaultThinkingLevel, EMPTY_STATS } from '@pi-code/shared/utilities/common';
 import { useChatStore } from '@pi-code/webview/stores/useChatStore';
 
-import type { CommandItem, ModelItem, ModelSelection } from '@pi-code/shared/core/protocol';
+import type { CommandItem, ModelItem } from '@pi-code/shared/core/protocol';
 import type { AppSettings } from '@pi-code/shared/core/settings';
 import type { ModelThinkingLevel } from '@pi-code/shared/core/types';
 
@@ -12,7 +12,6 @@ interface UseChatConfigReturn {
   readonly settings: AppSettings | null;
   readonly commands: CommandItem[];
   readonly selectedModel: string;
-  readonly modelSelection: ModelSelection;
   readonly setSelectedModel: (modelId: string) => void;
   readonly thinkingLevels: readonly ModelThinkingLevel[];
   readonly selectedThinkingLevel: ModelThinkingLevel | null;
@@ -29,11 +28,6 @@ export const useChatConfig = (): UseChatConfigReturn => {
   const selectedThinkingLevel = useChatStore((state) => state.selectedThinkingLevel);
   const setSelectedModel = useChatStore((state) => state.setSelectedModel);
   const setSelectedThinkingLevel = useChatStore((state) => state.setSelectedThinkingLevel);
-
-  const modelSelection = useMemo<ModelSelection>(
-    () => ({ id: selectedModel, provider: models.find((m) => m.id === selectedModel)?.provider ?? '' }),
-    [models, selectedModel],
-  );
 
   const thinkingLevels = useMemo<readonly ModelThinkingLevel[]>(
     () => models.find((m) => m.id === selectedModel)?.thinkingLevels ?? [],
@@ -60,7 +54,6 @@ export const useChatConfig = (): UseChatConfigReturn => {
     settings,
     commands,
     selectedModel,
-    modelSelection,
     setSelectedModel,
     thinkingLevels,
     selectedThinkingLevel,

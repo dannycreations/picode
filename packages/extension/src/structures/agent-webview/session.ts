@@ -5,7 +5,7 @@ import { getSupportedThinkingLevels } from '@earendil-works/pi-ai';
 import { getAgentDir, SessionManager } from '@earendil-works/pi-coding-agent';
 import { FileType, Uri, window, workspace } from 'vscode';
 
-import { getDefaultModelSelection, getSettingsManager } from '@pi-code/extension/core/settings';
+import { getDefaultModelSelection, getSettingsManager, readAppSettings } from '@pi-code/extension/core/settings';
 import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { collectCommands } from '@pi-code/extension/structures/chat-command/command';
 import { convertSessionEntries, loadSessionTranscript } from '@pi-code/extension/structures/chat-session/session';
@@ -13,8 +13,7 @@ import { logger } from '@pi-code/shared/core/logger';
 import { EMPTY_STATS } from '@pi-code/shared/utilities/common';
 
 import type { Api, Model, ModelThinkingLevel } from '@earendil-works/pi-ai';
-import type { ModelRuntime } from '@earendil-works/pi-coding-agent';
-import type { AgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
+import type { AgentSessionServices, ModelRuntime } from '@earendil-works/pi-coding-agent';
 import type { ExtensionToWebviewMessage, HistoryItem, HistoryScope, ModelItem } from '@pi-code/shared/core/protocol';
 import type { ChatMessage, StatsData } from '@pi-code/shared/core/types';
 
@@ -160,9 +159,9 @@ export async function archiveSession(sourcePath: string): Promise<{ path: string
   return { path: target, archived };
 }
 
-export async function getInitData(cwd: string, resources?: AgentResources): Promise<SessionInitData> {
-  const resolved = resources ?? (await createAgentResources(cwd));
-  const [models, defaultModel] = await Promise.all([listSelectableModels(resolved.services.modelRuntime), getDefaultModelSelection(cwd)]);
+export async function getInitData(cwd: string, services?: AgentSessionServices): Promise<SessionInitData> {
+  const resolved = services ?? (await createAgentResources(cwd));
+  const [models, defaultModel] = await Promise.all([listSelectableModels(resolved.modelRuntime), getDefaultModelSelection(cwd)]);
 
   const thinkingLevel = getSettingsManager(cwd).getDefaultThinkingLevel() ?? undefined;
 
@@ -170,8 +169,8 @@ export async function getInitData(cwd: string, resources?: AgentResources): Prom
     models,
     default_model: resolveDefaultModelId(models, defaultModel),
     default_thinking_level: thinkingLevel,
-    settings: resolved.settings,
-    commands: collectCommands(resolved.services.resourceLoader),
+    settings: readAppSettings(),
+    commands: collectCommands(resolved.resourceLoader),
   };
 }
 
@@ -198,7 +197,7 @@ export async function loadSessionDetails(
   const sessionManager = SessionManager.open(sessionPath);
   const entries = sessionManager.buildContextEntries();
 
-  const modelRuntime = (await createAgentResources(cwd)).services.modelRuntime;
+  const modelRuntime = (await createAgentResources(cwd)).modelRuntime;
 
   // Prefer the provider/model the session actually ran with; the saved id alone
   // is ambiguous when two providers share a model id. The agent settings are

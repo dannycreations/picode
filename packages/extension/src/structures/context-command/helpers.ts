@@ -1,18 +1,11 @@
 import { Range } from 'vscode';
 
-import { toRelativePath } from '@pi-code/extension/utilities/vscode';
-
 import type { Diagnostic, Selection, TextDocument } from 'vscode';
 
 interface EffectiveSelection {
   readonly startLine: number;
   readonly endLine: number;
   readonly text: string;
-}
-
-interface SelectionContext {
-  readonly filePath: string;
-  readonly selection: EffectiveSelection;
 }
 
 export function getEffectiveSelection(document: TextDocument, selection: Selection): EffectiveSelection | null {
@@ -38,12 +31,6 @@ export function getEffectiveSelection(document: TextDocument, selection: Selecti
     endLine: range.end.line,
     text: document.getText(range),
   };
-}
-
-export function getSelectionContext(document: TextDocument, selection: Selection): SelectionContext | null {
-  const effective = getEffectiveSelection(document, selection);
-  if (!effective) return null;
-  return { filePath: toRelativePath(document.uri), selection: effective };
 }
 
 export interface MappedDiagnostic {

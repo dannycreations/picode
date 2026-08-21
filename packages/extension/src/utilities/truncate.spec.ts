@@ -1,7 +1,7 @@
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES } from '@earendil-works/pi-coding-agent';
 import { describe, expect, it } from 'vitest';
 
-import { formatTruncationNotice, shareOutputLimits, toOutputLimits, truncateOutput } from '@pi-code/extension/utilities/truncate';
+import { shareOutputLimits, toOutputLimits, truncateOutput } from '@pi-code/extension/utilities/truncate';
 import { DEFAULT_SETTINGS } from '@pi-code/shared/core/settings';
 
 import type { AppSettings } from '@pi-code/shared/core/settings';
@@ -94,12 +94,5 @@ describe('truncateOutput', () => {
 
     expect(truncation.firstLineExceedsLimit).toBe(true);
     expect(text).toBe('[Truncated: the first line on its own exceeds the 100B output limit, so no content could be shown.]');
-  });
-});
-
-describe('formatTruncationNotice', () => {
-  it('returns undefined when nothing was dropped', () => {
-    const { truncation } = truncateOutput('short', { limits });
-    expect(formatTruncationNotice(truncation)).toBeUndefined();
   });
 });

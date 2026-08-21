@@ -95,7 +95,7 @@ export class AgentRunner {
 
     try {
       const { session, envDetails } = await this.prepareSession(path);
-      const { services } = await createAgentResources(getWorkspaceCwd());
+      const services = await createAgentResources(getWorkspaceCwd());
       const skills = services.resourceLoader.getSkills().skills;
 
       const expanded = await expandMentions(promptText, getWorkspaceCwd());
@@ -204,7 +204,7 @@ export class AgentRunner {
       await this.session?.reload();
       window.showInformationMessage('Reloaded skills, context files, and configuration.');
 
-      const { services } = await createAgentResources(getWorkspaceCwd());
+      const services = await createAgentResources(getWorkspaceCwd());
       const commands = collectCommands(services.resourceLoader);
       this.messenger.post({ type: 'commands_data', payload: { commands } });
     } catch (err) {

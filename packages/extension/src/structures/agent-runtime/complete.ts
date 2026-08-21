@@ -5,7 +5,7 @@ import { createAgentResources } from '@pi-code/extension/structures/agent-runtim
 import { logger } from '@pi-code/shared/core/logger';
 
 export async function completePrompt(cwd: string, prompt: string): Promise<string> {
-  const runtime = (await createAgentResources(cwd)).services.modelRuntime;
+  const runtime = (await createAgentResources(cwd)).modelRuntime;
   const { id, provider } = await getDefaultModelSelection(cwd);
 
   const model = (provider && id && runtime.getModel(provider, id)) || runtime.getAvailableSnapshot()[0];

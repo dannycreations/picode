@@ -47,7 +47,7 @@ export function shareOutputLimits(limits: OutputLimits, count: number): OutputLi
   };
 }
 
-export function formatTruncationNotice(truncation: TruncationResult, keep: TruncateKeep = 'head', hint?: string): string | undefined {
+function formatTruncationNotice(truncation: TruncationResult, keep: TruncateKeep = 'head', hint?: string): string | undefined {
   if (!truncation.truncated) return undefined;
 
   const suffix = hint ? ` ${hint}` : '';

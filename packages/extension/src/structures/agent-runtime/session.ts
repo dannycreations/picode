@@ -27,7 +27,8 @@ const CUSTOM_TOOLS = [
 
 export async function createSession(cwd: string, sessionPath?: string): Promise<AgentSession> {
   const sessionManager = sessionPath ? SessionManager.open(sessionPath) : SessionManager.create(cwd);
-  const { settings, services } = await createAgentResources(cwd);
+  const services = await createAgentResources(cwd);
+  const settings = readAppSettings();
 
   const disabledTools: Set<ToolName> = new Set();
   if (!settings.enableTodoTool) disabledTools.add('update_todo');

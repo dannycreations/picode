@@ -80,8 +80,8 @@ const HANDLER_MAP: HandlerMap = {
   init: async (_, ctx) => {
     historyEpoch = 0;
 
-    const resources = await createAgentResources(ctx.cwd);
-    const data = await getInitData(ctx.cwd, resources);
+    const services = await createAgentResources(ctx.cwd);
+    const data = await getInitData(ctx.cwd, services);
     // Send init_data before the history stream so the webview resets its epoch
     // bookkeeping before the first history_data chunk arrives.
     ctx.postMessage({ type: 'init_data', payload: data });
@@ -89,7 +89,7 @@ const HANDLER_MAP: HandlerMap = {
     // The local catalog is enough to render the chat view, so refresh the
     // remote catalog in the background and push the merged models once it lands.
     // Reuse the runtime we just built instead of re-resolving resources.
-    void refreshModelCatalog(resources.services.modelRuntime, (models) => {
+    void refreshModelCatalog(services.modelRuntime, (models) => {
       ctx.postMessage({ type: 'models_data', payload: { models } });
     });
   },
@@ -139,9 +139,9 @@ const HANDLER_MAP: HandlerMap = {
         // Force a network refresh of the shared model runtime so both the webview
         // (via the pushed models_data) and the agent runtime read the newest catalog.
         window.showInformationMessage('Updating model catalog...');
-        const resources = await createAgentResources(ctx.cwd);
+        const services = await createAgentResources(ctx.cwd);
         void refreshModelCatalog(
-          resources.services.modelRuntime,
+          services.modelRuntime,
           (models) => {
             ctx.postMessage({ type: 'models_data', payload: { models } });
             window.showInformationMessage('Model catalog updated.');

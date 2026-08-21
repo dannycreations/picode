@@ -5,16 +5,10 @@ import { createToolPolicyExtension } from '@pi-code/extension/structures/agent-r
 import { isProjectTrusted } from '@pi-code/extension/utilities/vscode';
 
 import type { AgentSessionServices, ModelRuntime, ResourceDiagnostic, Skill } from '@earendil-works/pi-coding-agent';
-import type { AppSettings } from '@pi-code/shared/core/settings';
 
 interface SkillsResult {
   readonly skills: Skill[];
   readonly diagnostics: ResourceDiagnostic[];
-}
-
-export interface AgentResources {
-  readonly settings: AppSettings;
-  readonly services: AgentSessionServices;
 }
 
 interface LoaderConfig {
@@ -73,7 +67,7 @@ async function createServices(cwd: string, config: LoaderConfig): Promise<AgentS
   return services;
 }
 
-export async function createAgentResources(cwd: string): Promise<AgentResources> {
+export async function createAgentResources(cwd: string): Promise<AgentSessionServices> {
   const settings = readAppSettings();
   const config: LoaderConfig = {
     noContextFiles: !settings.enableAgentRules,
@@ -92,5 +86,5 @@ export async function createAgentResources(cwd: string): Promise<AgentResources>
     });
   }
 
-  return { settings, services: await cached.services };
+  return await cached.services;
 }

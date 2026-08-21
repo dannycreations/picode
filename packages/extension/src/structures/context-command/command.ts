@@ -3,9 +3,9 @@ import { commands, languages, ProgressLocation, Range, window } from 'vscode';
 
 import { completePrompt } from '@pi-code/extension/structures/agent-runtime/complete';
 import { ChatViewProvider } from '@pi-code/extension/structures/agent-webview/provider';
-import { getSelectionContext, mapDiagnostics } from '@pi-code/extension/structures/context-command/helpers';
+import { getEffectiveSelection, mapDiagnostics } from '@pi-code/extension/structures/context-command/helpers';
 import { extractCodeFenceMessage } from '@pi-code/extension/utilities/markdown';
-import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
+import { getWorkspaceCwd, toRelativePath } from '@pi-code/extension/utilities/vscode';
 import { logger } from '@pi-code/shared/core/logger';
 
 import type { Diagnostic, Disposable } from 'vscode';
@@ -27,15 +27,19 @@ function resolveSelection(args: any[]): ResolvedSelection | null {
   const editor = window.activeTextEditor;
   if (!editor) return null;
 
-  const context = getSelectionContext(editor.document, editor.selection);
-  if (!context) return null;
+  const effective = getEffectiveSelection(editor.document, editor.selection);
+  if (!effective) return null;
 
   return {
-    filePath: context.filePath,
-    startLine: context.selection.startLine + 1,
-    endLine: context.selection.endLine + 1,
-    selectedText: context.selection.text,
+    filePath: toRelativePath(editor.document.uri),
+    startLine: effective.startLine + 1,
+    endLine: effective.endLine + 1,
+    selectedText: effective.text,
   };
+}
+
+function formatSelectionBlock(selection: ResolvedSelection): string {
+  return `${selection.filePath}:${selection.startLine}-${selection.endLine}\n\`\`\`\n${selection.selectedText}\n\`\`\`\n\n`;
 }
 
 function getDiagnosticText(args: unknown[], selection: ResolvedSelection): string {
@@ -52,7 +56,7 @@ export function registerAddToContextCommand(chatViewProvider: ChatViewProvider):
 
     await commands.executeCommand('pi-code.chatView.focus');
 
-    const prompt = `${selection.filePath}:${selection.startLine}-${selection.endLine}\n\`\`\`\n${selection.selectedText}\n\`\`\`\n\n`;
+    const prompt = formatSelectionBlock(selection);
     chatViewProvider.postMessage({ type: 'set_chat_input', payload: { text: prompt } });
   });
 }
@@ -176,9 +180,6 @@ export function registerFixCodeCommand(): Disposable {
       'Fix the issues in the following code. Replace it with corrected code that resolves the problems listed below. ' +
       'Preserve the original indentation of the replaced lines. Return only the replacement code, with no explanations.\n\n' +
       `${diagnosticText ? `${diagnosticText}\n\n` : ''}` +
-      `${selection.filePath}:${selection.startLine}-${selection.endLine}\n` +
-      '```\n' +
-      `${selection.selectedText}\n` +
-      '```\n\n',
+      formatSelectionBlock(selection),
   );
 }

@@ -125,7 +125,7 @@ async function createChildSession(cwd: string, agent: SubagentDefinition, toolCa
   // Services are cached per workspace, so a child session reuses the parent's
   // model runtime, credentials, and tool policy extension instead of rebuilding
   // them. Only the transcript is separate, which is the point of delegation.
-  const { services } = await createAgentResources(cwd);
+  const services = await createAgentResources(cwd);
 
   const { session } = await createAgentSessionFromServices({
     services,

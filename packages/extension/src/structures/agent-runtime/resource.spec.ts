@@ -39,7 +39,7 @@ describe('createAgentResources cache', () => {
     const first = await createAgentResources('/project-a');
     const second = await createAgentResources('/project-a');
 
-    expect(second.services.resourceLoader).toBe(first.services.resourceLoader);
+    expect(second.resourceLoader).toBe(first.resourceLoader);
   });
 
   it('reuses the cached services without recreating on a cache hit', async () => {
@@ -48,7 +48,7 @@ describe('createAgentResources cache', () => {
     const first = await createAgentResources('/project-b');
     const second = await createAgentResources('/project-b');
 
-    expect(second.services).toBe(first.services);
+    expect(second).toBe(first);
   });
 
   it('recreates the services when a loader-relevant setting flips', async () => {
@@ -58,7 +58,7 @@ describe('createAgentResources cache', () => {
     mocks.readAppSettings.mockReturnValue({ ...BASE_SETTINGS, enableSkillDiscovery: false });
     const second = await createAgentResources('/project-c');
 
-    expect(second.services.resourceLoader).not.toBe(first.services.resourceLoader);
+    expect(second.resourceLoader).not.toBe(first.resourceLoader);
   });
 
   it('recreates the services when workspace trust changes', async () => {
@@ -68,6 +68,6 @@ describe('createAgentResources cache', () => {
     mocks.isProjectTrusted.mockReturnValue(true);
     const second = await createAgentResources('/project-d');
 
-    expect(second.services.resourceLoader).not.toBe(first.services.resourceLoader);
+    expect(second.resourceLoader).not.toBe(first.resourceLoader);
   });
 });
