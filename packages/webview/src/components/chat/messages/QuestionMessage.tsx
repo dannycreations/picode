@@ -1,13 +1,11 @@
 import { cn } from 'cnfast';
 import { ClipboardCopy, CornerDownRight, MessageCircleQuestionMark, ShieldAlert } from 'lucide-react';
 
-import { findOccurrences } from '@pi-code/shared/utilities/common';
-import { parseQuestionData } from '@pi-code/webview/components/chat/helpers/question';
-import { localActiveIndex } from '@pi-code/webview/components/chat/helpers/search';
 import { Markdown } from '@pi-code/webview/components/chat/markdown/Markdown';
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
-import { Highlight } from '@pi-code/webview/components/shared/Highlight';
+import { locateOccurrences, SearchableText } from '@pi-code/webview/components/shared/Highlight';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
+import { parseQuestionData } from '@pi-code/webview/helpers/questions';
 
 import type { FC, MouseEvent } from 'react';
 import type { ChatMessage } from '@pi-code/shared/core/types';
@@ -33,10 +31,10 @@ export const QuestionMessage: FC<QuestionMessageProps> = ({ message, search, onA
   const isCancelled = message.toolStatus === 'denied';
   const answer = isCancelled ? '' : (message.diff ?? '');
 
-  const query = search?.query ?? '';
-  const questionCount = findOccurrences(question, query).length;
-  const answerCount = findOccurrences(answer, query).length;
-  const answerActive = search ? localActiveIndex(search.globalOffset + questionCount, answerCount, search.activeIndex) : -1;
+  const questionMatch = locateOccurrences(question, search);
+  // The answer's matches continue the message-wide numbering after the
+  // question's, so its base shifts by the question's match count.
+  const answerSearch = search ? { ...search, globalOffset: search.globalOffset + questionMatch.count } : undefined;
 
   const handleSuggestionClick = (event: MouseEvent<HTMLButtonElement>, suggestion: string) => {
     // Shift-click mirrors the chat conventions: stage the suggestion in the
@@ -109,7 +107,7 @@ export const QuestionMessage: FC<QuestionMessageProps> = ({ message, search, onA
                 isCancelled ? 'text-vscode-descriptionForeground' : 'text-vscode-foreground',
               )}
             >
-              <Highlight text={isCancelled ? 'No response was provided.' : answer} query={query} activeOccurrence={answerActive} />
+              <SearchableText text={isCancelled ? 'No response was provided.' : answer} search={answerSearch} />
             </span>
           </div>
         )}

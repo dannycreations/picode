@@ -2,11 +2,9 @@ import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
 import { toolResult } from '@pi-code/extension/structures/tool-call/helpers/result';
+import { TODO_STATUSES } from '@pi-code/shared/utilities/todo';
 
 import type { ToolName } from '@pi-code/shared/core/types';
-import type { TodoItem, TodoStatus } from '@pi-code/shared/utilities/todo';
-
-const TODO_STATUSES: readonly TodoStatus[] = ['pending', 'progress', 'completed'];
 
 export const updateTodoTool = defineTool({
   name: 'update_todo' as ToolName,
@@ -25,6 +23,6 @@ export const updateTodoTool = defineTool({
     ),
   }),
   async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
-    return toolResult('Todo list updated.', { todos: params.todos as TodoItem[] });
+    return toolResult('Todo list updated.', { todos: params.todos });
   },
 });

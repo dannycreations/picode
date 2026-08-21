@@ -1,7 +1,7 @@
 import { contentText, uuidv7 } from '@earendil-works/pi-ai';
 import { calculateContextTokens, getLastAssistantUsage } from '@earendil-works/pi-coding-agent';
 
-import { getApprovalDuration } from '@pi-code/extension/structures/agent-runtime/policy';
+import { getApprovalDuration } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
 import { toBase64DataUrl } from '@pi-code/extension/utilities/codec';
 import { logger } from '@pi-code/shared/core/logger';
 import { elapsedSeconds, EMPTY_STATS } from '@pi-code/shared/utilities/common';

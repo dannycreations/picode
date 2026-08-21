@@ -1,8 +1,7 @@
+import { MENTION_PATTERN } from '@pi-code/shared/core/constants';
 import { splitCommand } from '@pi-code/webview/components/chat/helpers/command';
 
 import type { CommandItem } from '@pi-code/shared/core/protocol';
-
-const MENTION_PATTERN = /(?<=^|\s)@(\S+)/g;
 
 interface InputSegment {
   readonly text: string;

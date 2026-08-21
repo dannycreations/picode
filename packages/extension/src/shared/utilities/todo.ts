@@ -1,4 +1,6 @@
-export type TodoStatus = 'pending' | 'progress' | 'completed';
+export const TODO_STATUSES = ['pending', 'progress', 'completed'] as const;
+
+export type TodoStatus = (typeof TODO_STATUSES)[number];
 
 export interface TodoItem {
   readonly content: string;

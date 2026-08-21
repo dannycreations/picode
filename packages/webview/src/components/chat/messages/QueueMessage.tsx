@@ -1,31 +1,23 @@
 import { Pencil, Trash2, User } from 'lucide-react';
 import { useState } from 'react';
 
-import { findOccurrences } from '@pi-code/shared/utilities/common';
-import { localActiveIndex } from '@pi-code/webview/components/chat/helpers/search';
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
-import { Highlight } from '@pi-code/webview/components/shared/Highlight';
-import { ImageThumb } from '@pi-code/webview/components/shared/ImageThumb';
+import { SearchableText } from '@pi-code/webview/components/shared/Highlight';
+import { ImageThumbRow } from '@pi-code/webview/components/shared/ImageThumb';
 import { useChatStore } from '@pi-code/webview/stores/useChatStore';
 
 import type { FC } from 'react';
-import type { ChatMessage } from '@pi-code/shared/core/types';
+import type { QueueChatMessage } from '@pi-code/shared/core/types';
 import type { SearchContext } from '@pi-code/webview/components/shared/Highlight';
 
 interface QueueMessageProps {
-  readonly message: ChatMessage;
+  readonly message: QueueChatMessage;
   readonly search?: SearchContext;
 }
 
 export const QueueMessage: FC<QueueMessageProps> = ({ message, search }) => {
-  if (message.sender !== 'queue') return null;
-
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(message.text);
-
-  const query = search?.query ?? '';
-  const textCount = findOccurrences(message.text, query).length;
-  const active = search ? localActiveIndex(search.globalOffset, textCount, search.activeIndex) : -1;
 
   const handleSave = (): void => {
     const trimmed = editText.trim();
@@ -64,14 +56,8 @@ export const QueueMessage: FC<QueueMessageProps> = ({ message, search }) => {
         </div>
       ) : (
         <div className="message-surface whitespace-pre-wrap leading-normal select-text">
-          <Highlight text={message.text.trim()} query={query} activeOccurrence={active} />
-          {message.images && message.images.length > 0 && (
-            <div className="image-row">
-              {message.images.map((img, idx) => (
-                <ImageThumb key={idx} url={img} />
-              ))}
-            </div>
-          )}
+          <SearchableText text={message.text.trim()} search={search} />
+          <ImageThumbRow images={message.images ?? []} />
           <div className="flex justify-end gap-3.5 mt-3 pt-2.5 border-t border-vscode-panel-border/50 text-xs select-none">
             <button
               onClick={() => {

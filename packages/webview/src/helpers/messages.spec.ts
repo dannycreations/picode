@@ -8,7 +8,7 @@ import {
   resolveApproval,
   settlePendingTurns,
   upsertToolMessage,
-} from '@pi-code/webview/components/chat/helpers/message';
+} from '@pi-code/webview/helpers/messages';
 
 import type { ChatMessage, ToolChatMessage, ToolName } from '@pi-code/shared/core/types';
 

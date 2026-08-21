@@ -3,8 +3,9 @@ import { dirname } from 'node:path';
 import { defineTool, resolvePath, withFileMutationQueue } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
+import { readOutputLimits } from '@pi-code/extension/core/settings';
 import { toolErrorFrom } from '@pi-code/extension/structures/tool-call/helpers/result';
-import { checkReadableFile } from '@pi-code/extension/structures/tool-call/read-file';
+import { checkReadableFile } from '@pi-code/extension/utilities/fs';
 import { stripCodeFence } from '@pi-code/extension/utilities/markdown';
 import { buildFileChangeResult } from '@pi-code/extension/utilities/truncate';
 import { logger } from '@pi-code/shared/core/logger';
@@ -41,6 +42,7 @@ export const writeFileTool = defineTool({
         await writeFile(resolvedPath, finalContent, 'utf8');
 
         return buildFileChangeResult({
+          limits: readOutputLimits(),
           oldContent,
           newContent: finalContent,
           successMessage: `Wrote ${params.path}`,

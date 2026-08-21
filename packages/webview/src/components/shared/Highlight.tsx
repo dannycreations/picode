@@ -1,11 +1,30 @@
-import { findOccurrences } from '@pi-code/shared/utilities/common';
+import { findOccurrences, splitOnOccurrences } from '@pi-code/shared/utilities/common';
 
-import type { FC, ReactNode } from 'react';
+import type { FC } from 'react';
 
 export interface SearchContext {
   readonly query: string;
   readonly globalOffset: number;
   readonly activeIndex: number;
+}
+
+interface OccurrenceStats {
+  // How many times the query appears in one message's text.
+  readonly count: number;
+  // The query occurrence search currently points at, local to this text; -1 when none.
+  readonly active: number;
+}
+
+function localActiveIndex(base: number, count: number, activeIndex: number): number {
+  if (activeIndex < base || activeIndex >= base + count) return -1;
+  return activeIndex - base;
+}
+
+// Counts matches in one message's text and translates the global active index
+// into a local one, so renderers know which occurrence to emphasize.
+export function locateOccurrences(text: string, search: SearchContext | undefined): OccurrenceStats {
+  const count = findOccurrences(text, search?.query ?? '').length;
+  return { count, active: search ? localActiveIndex(search.globalOffset, count, search.activeIndex) : -1 };
 }
 
 interface HighlightProps {
@@ -17,26 +36,30 @@ interface HighlightProps {
 export const Highlight: FC<HighlightProps> = ({ text, query, activeOccurrence }) => {
   if (!query) return <>{text}</>;
 
-  const needle = query.toLowerCase();
-  const positions = findOccurrences(text, needle);
+  const segments = splitOnOccurrences(text, query);
+  if (segments.length === 1 && segments[0].matchIndex === null) return <>{text}</>;
 
-  if (positions.length === 0) return <>{text}</>;
+  return (
+    <>
+      {segments.map((segment) =>
+        segment.matchIndex === null ? (
+          segment.text
+        ) : (
+          <mark key={segment.matchIndex} className={segment.matchIndex === activeOccurrence ? 'search-hit search-hit-active' : 'search-hit'}>
+            {segment.text}
+          </mark>
+        ),
+      )}
+    </>
+  );
+};
 
-  const nodes: ReactNode[] = [];
-  let cursor = 0;
-  let local = 0;
-  for (const pos of positions) {
-    if (pos > cursor) nodes.push(text.slice(cursor, pos));
-    const isActive = local === activeOccurrence;
-    nodes.push(
-      <mark key={`${pos}-${local}`} className={isActive ? 'search-hit search-hit-active' : 'search-hit'}>
-        {text.slice(pos, pos + needle.length)}
-      </mark>,
-    );
-    local++;
-    cursor = pos + needle.length;
-  }
-  if (cursor < text.length) nodes.push(text.slice(cursor));
+interface SearchableTextProps {
+  readonly text: string;
+  readonly search?: SearchContext;
+}
 
-  return <>{nodes}</>;
+export const SearchableText: FC<SearchableTextProps> = ({ text, search }) => {
+  const { active } = locateOccurrences(text, search);
+  return <Highlight text={text} query={search?.query ?? ''} activeOccurrence={active} />;
 };

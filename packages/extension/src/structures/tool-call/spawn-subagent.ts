@@ -3,10 +3,11 @@ import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
 import { SUBAGENTS } from '@pi-code/extension/core/prompt';
+import { readOutputLimits } from '@pi-code/extension/core/settings';
 import { mapEvent, notifySubagentEvent } from '@pi-code/extension/structures/agent-runtime/event';
 import { recordSubagentUsage, spawnSubagent } from '@pi-code/extension/structures/agent-runtime/subagent';
 import { toolError, toolResult } from '@pi-code/extension/structures/tool-call/helpers/result';
-import { getOutputLimits, truncateOutput } from '@pi-code/extension/utilities/truncate';
+import { truncateOutput } from '@pi-code/extension/utilities/truncate';
 
 import type { SubagentOutcome, SubagentUsage } from '@pi-code/extension/structures/agent-runtime/subagent';
 import type { CustomToolResult } from '@pi-code/extension/types/extension';
@@ -28,7 +29,7 @@ function formatUsage(usage: SubagentUsage): string {
 
 function renderOutcome(outcome: SubagentOutcome, state: 'completed' | 'error'): string {
   const { text } = truncateOutput(outcome.text, {
-    limits: getOutputLimits(),
+    limits: readOutputLimits(),
     keep: 'head',
     hint: `Re-run the "${outcome.agent}" sub-agent with a narrower brief to get the rest.`,
   });

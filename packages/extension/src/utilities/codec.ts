@@ -1,5 +1,3 @@
-import { open } from 'node:fs/promises';
-
 const BASE64_DATA_URL_PATTERN = /^data:([^;,]+)((?:;[^;,]+)*);base64,(.+)$/;
 
 const DEFAULT_MIME_TYPE = 'image/png';
@@ -39,15 +37,4 @@ export function extensionForMimeType(mimeType: string): string {
   // Strip structured-syntax suffixes (`+xml`) and vendor trees (`vnd.foo`).
   const cleaned = subtype.split('+')[0].split('.').pop() ?? '';
   return /^[a-z0-9]+$/.test(cleaned) ? cleaned : DEFAULT_EXTENSION;
-}
-
-export async function isBinaryFile(filePath: string, sampleBytes = 4096): Promise<boolean> {
-  const buffer = Buffer.alloc(sampleBytes);
-  const handle = await open(filePath, 'r');
-  try {
-    const { bytesRead } = await handle.read(buffer, 0, sampleBytes, 0);
-    return buffer.subarray(0, bytesRead).includes(0);
-  } finally {
-    await handle.close();
-  }
 }

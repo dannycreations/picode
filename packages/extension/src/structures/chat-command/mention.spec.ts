@@ -5,14 +5,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { expandMentions, toMentionText } from './mention';
 
-// expandMentions reads output limits from app settings, which depend on the
-// VS Code API. Stub just that one function so the logic can run in isolation.
+// expandMentions reads its truncation budget from app settings, which depend on
+// the VS Code API. Stub just that one function so the logic can run in isolation.
 vi.mock('@pi-code/extension/core/settings', () => ({
-  readAppSettings: () =>
-    ({
-      maxToolOutputLines: 2000,
-      maxToolOutputSizeKb: 512,
-    }) as unknown as import('@pi-code/shared/core/settings').AppSettings,
+  readOutputLimits: () => ({ maxLines: 2000, maxBytes: 512 * 1024 }),
 }));
 
 let cwd: string;

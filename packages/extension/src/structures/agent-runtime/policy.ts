@@ -1,6 +1,7 @@
 import { SUBAGENT_MESSAGE_PROMPT } from '@pi-code/extension/core/prompt';
 import { readAppSettings } from '@pi-code/extension/core/settings';
 import { requestApproval } from '@pi-code/extension/structures/agent-runtime/brokers/approval';
+import { getSubagentSession, recordApprovalDuration } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
 import {
   applyYoloDecision,
   resolveCommandAction,
@@ -68,35 +69,6 @@ function evaluateToolCall(toolName: ToolName, cwd: string, input: unknown): Appr
   return applyYoloDecision(settings, decision);
 }
 
-interface SubagentSessionInfo {
-  readonly name: string;
-  readonly toolCallId?: string;
-}
-
-const subagentBySession = new Map<string, SubagentSessionInfo>();
-
-export function registerSubagentSession(sessionId: string, name: string, toolCallId?: string): void {
-  subagentBySession.set(sessionId, { name, toolCallId });
-}
-
-export function unregisterSubagentSession(sessionId: string): void {
-  subagentBySession.delete(sessionId);
-}
-
-export function getSubagentSessionName(sessionId: string): string | undefined {
-  return subagentBySession.get(sessionId)?.name;
-}
-
-const approvalDurations = new Map<string, number>();
-
-export function getApprovalDuration(toolCallId: string): number | undefined {
-  return approvalDurations.get(toolCallId);
-}
-
-export function recordApprovalDuration(toolCallId: string, durationMs: number): void {
-  approvalDurations.set(toolCallId, durationMs);
-}
-
 const ALLOW: ToolCallEventResult = { block: false };
 
 export function createToolPolicyExtension(): InlineExtension {
@@ -123,7 +95,7 @@ export function createToolPolicyExtension(): InlineExtension {
           return { block: true, reason: decision.reason };
         }
 
-        const sessionInfo = subagentBySession.get(ctx.sessionManager.getSessionId());
+        const sessionInfo = getSubagentSession(ctx.sessionManager.getSessionId());
         const approvalStart = Date.now();
         const approved = await requestApproval(toolName, event.toolCallId, event.input, sessionInfo?.name, sessionInfo?.toolCallId);
         const approvalDuration = Date.now() - approvalStart;

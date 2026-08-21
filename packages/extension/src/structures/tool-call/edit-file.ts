@@ -3,8 +3,9 @@ import { dirname } from 'node:path';
 import { defineTool, detectLineEnding, normalizeToLF, resolvePath, restoreLineEndings, withFileMutationQueue } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
+import { readOutputLimits } from '@pi-code/extension/core/settings';
 import { toolError, toolErrorFrom } from '@pi-code/extension/structures/tool-call/helpers/result';
-import { checkReadableFile } from '@pi-code/extension/structures/tool-call/read-file';
+import { checkReadableFile } from '@pi-code/extension/utilities/fs';
 import { buildFileChangeResult } from '@pi-code/extension/utilities/truncate';
 import { findOccurrences } from '@pi-code/shared/utilities/common';
 
@@ -176,6 +177,7 @@ export const editFileTool = defineTool({
         }
 
         return buildFileChangeResult({
+          limits: readOutputLimits(),
           oldContent: originalContent,
           newContent,
           successMessage: `Updated ${file_path}`,

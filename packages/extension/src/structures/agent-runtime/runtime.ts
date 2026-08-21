@@ -5,21 +5,22 @@ import { getSettingsManager, readAppSettings } from '@pi-code/extension/core/set
 import { cancelAllApprovals } from '@pi-code/extension/structures/agent-runtime/brokers/approval';
 import { cancelAllQuestions } from '@pi-code/extension/structures/agent-runtime/brokers/question';
 import { mapEvent } from '@pi-code/extension/structures/agent-runtime/event';
+import { Messenger } from '@pi-code/extension/structures/agent-runtime/messenger';
 import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { applyCompactionSettings, createSession } from '@pi-code/extension/structures/agent-runtime/session';
 import { injectSkillMessages } from '@pi-code/extension/structures/agent-runtime/skill';
-import { WebviewMessenger } from '@pi-code/extension/structures/agent-runtime/webview';
 import { collectCommands } from '@pi-code/extension/structures/chat-command/command';
 import { expandMentions } from '@pi-code/extension/structures/chat-command/mention';
-import { getEnvironmentDetails, getLatestTodoList, withTodoProgress } from '@pi-code/extension/structures/chat-session/environment';
+import { getEnvironmentDetails } from '@pi-code/extension/structures/chat-session/environment';
+import { getLatestTodoList, withTodoProgress } from '@pi-code/extension/structures/chat-session/reminder';
 import { loadSessionTranscript } from '@pi-code/extension/structures/chat-session/session';
 import { parseBase64DataUrl } from '@pi-code/extension/utilities/codec';
 import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
 import { logger } from '@pi-code/shared/core/logger';
-import { EMPTY_STATS } from '@pi-code/shared/utilities/common';
+import { resolveContextLimit } from '@pi-code/shared/utilities/common';
 
 import type { ImageContent, ModelThinkingLevel, TextContent } from '@earendil-works/pi-ai';
-import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent';
+import type { AgentSession, AgentSessionEvent, AgentSessionServices } from '@earendil-works/pi-coding-agent';
 import type { Webview } from 'vscode';
 import type { ExtensionToWebviewMessage, ModelSelection } from '@pi-code/shared/core/protocol';
 import type { ChatMessage, StatsData } from '@pi-code/shared/core/types';
@@ -38,7 +39,7 @@ function parseImageAttachments(images?: string[]): ImageContent[] | undefined {
     .filter((item): item is ImageContent => item !== null);
 }
 
-export class AgentRunner {
+export class Runtime {
   private session: AgentSession | null = null;
   private unsubscribeSessionEvents: (() => void) | null = null;
   private replyQueue: ChatMessage[] = [];
@@ -46,10 +47,10 @@ export class AgentRunner {
   private compacting = false;
   private continueAfterCompaction = false;
 
-  private readonly messenger = new WebviewMessenger();
+  private readonly messenger: Messenger;
 
   public constructor(webview: Webview) {
-    this.messenger.attach(webview);
+    this.messenger = new Messenger(webview);
   }
 
   public postMessage(message: ExtensionToWebviewMessage): void {
@@ -83,7 +84,7 @@ export class AgentRunner {
     this.broadcastReplyQueue();
   }
 
-  public broadcastReplyQueue(): void {
+  private broadcastReplyQueue(): void {
     this.messenger.post({
       type: 'reply_queue_data',
       payload: { queue: this.replyQueue },
@@ -94,8 +95,7 @@ export class AgentRunner {
     this.clearReplyQueue();
 
     try {
-      const { session, envDetails } = await this.prepareSession(path);
-      const services = await createAgentResources(getWorkspaceCwd());
+      const { session, envDetails, services } = await this.prepareSession(path);
       const skills = services.resourceLoader.getSkills().skills;
 
       const expanded = await expandMentions(promptText, getWorkspaceCwd());
@@ -165,7 +165,7 @@ export class AgentRunner {
       // Returns the compacted transcript and its stats so the caller can refresh the
       // webview from the in-memory session instead of re-opening the file on disk.
       const entries = session.sessionManager.buildContextEntries();
-      const transcript = loadSessionTranscript(entries, session.model?.contextWindow ?? EMPTY_STATS.contextLimit);
+      const transcript = loadSessionTranscript(entries, resolveContextLimit(session.model?.contextWindow));
       // loadSessionTranscript derives contextTokens from the last assistant usage,
       // which is the pre-compaction size once the context is rebuilt. Use the
       // library's post-compaction estimate so the header reflects the shrink
@@ -259,17 +259,24 @@ export class AgentRunner {
     return this.session?.sessionFile;
   }
 
-  private async prepareSession(path: string | undefined): Promise<{ session: AgentSession; envDetails: string }> {
+  private async prepareSession(path: string | undefined): Promise<{
+    session: AgentSession;
+    envDetails: string;
+    services: AgentSessionServices;
+  }> {
     this.prepareRun();
     const cwd = getWorkspaceCwd();
 
+    // Skills come from the same cached resources the session was built with,
+    // so one fetch serves both instead of resolving resources twice.
     const session = await this.getOrCreateSession(path, cwd);
+    const services = await createAgentResources(cwd);
 
     await this.setModelAndThinking(session);
 
     const isNewSession = session.agent.state.messages.length === 0;
     const envDetails = await getEnvironmentDetails(cwd, isNewSession);
-    return { session, envDetails };
+    return { session, envDetails, services };
   }
 
   private async getOrCreateSession(path: string | undefined, cwd: string): Promise<AgentSession> {

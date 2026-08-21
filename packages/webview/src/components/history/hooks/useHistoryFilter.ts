@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { Dispatch, SetStateAction } from 'react';
 import type { HistoryItem } from '@pi-code/shared/core/protocol';
@@ -15,6 +15,7 @@ export interface UseHistoryFilterReturn {
   readonly totalPages: number;
   readonly filteredHistory: HistoryItem[];
   readonly paginatedItems: HistoryItem[];
+  readonly reset: () => void;
 }
 
 export const useHistoryFilter = (history: HistoryItem[], itemsPerPage: number): UseHistoryFilterReturn => {
@@ -54,6 +55,14 @@ export const useHistoryFilter = (history: HistoryItem[], itemsPerPage: number): 
     setCurrentPage((prev) => Math.min(prev, totalPages));
   }, [totalPages]);
 
+  // Clears every list state at once, for when the view is left entirely
+  // rather than merely filtered or re-sorted.
+  const reset = useCallback((): void => {
+    setSearchQuery('');
+    setSortBy('newest');
+    setCurrentPage(1);
+  }, []);
+
   const paginatedItems = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     return filteredHistory.slice(startIndex, startIndex + itemsPerPage);
@@ -69,5 +78,6 @@ export const useHistoryFilter = (history: HistoryItem[], itemsPerPage: number): 
     totalPages,
     filteredHistory,
     paginatedItems,
+    reset,
   };
 };

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { findPendingQuestion, parseQuestionData } from '@pi-code/webview/components/chat/helpers/question';
+import { findPendingQuestion, parseQuestionData } from '@pi-code/webview/helpers/questions';
 
 import type { ChatMessage, ToolArguments } from '@pi-code/shared/core/types';
 

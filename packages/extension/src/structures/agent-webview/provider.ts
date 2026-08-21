@@ -4,7 +4,7 @@ import { Disposable, Uri, workspace } from 'vscode';
 import { invalidateAppSettings, readAppSettings } from '@pi-code/extension/core/settings';
 import { setApprovalPresenter } from '@pi-code/extension/structures/agent-runtime/brokers/approval';
 import { setSubagentEventCallback } from '@pi-code/extension/structures/agent-runtime/event';
-import { AgentRunner } from '@pi-code/extension/structures/agent-runtime/runner';
+import { Runtime } from '@pi-code/extension/structures/agent-runtime/runtime';
 import { dispatch } from '@pi-code/extension/structures/agent-webview/dispatcher';
 import { WorkspaceService } from '@pi-code/extension/structures/agent-webview/workspace';
 import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
@@ -65,7 +65,7 @@ export class ChatViewProvider implements WebviewViewProvider {
   public static readonly viewType = CHAT_VIEW_TYPE;
 
   private readonly workspace: WorkspaceService;
-  private agent: AgentRunner | null = null;
+  private runtime: Runtime | null = null;
   private activeWebview: Webview | null = null;
 
   public constructor(private readonly context: ExtensionContext) {
@@ -74,7 +74,7 @@ export class ChatViewProvider implements WebviewViewProvider {
 
   // Global command → webview channel (show_settings, set_chat_input) used by
   // extension commands that run independently of any agent. Per-agent streaming
-  // events travel through the AgentRunner's WebviewMessenger instead.
+  // events travel through the Runtime Messenger instead.
   public postMessage(message: ExtensionToWebviewMessage): void {
     void this.activeWebview?.postMessage(message);
   }
@@ -90,15 +90,15 @@ export class ChatViewProvider implements WebviewViewProvider {
 
     webview.html = buildChatViewHtml(webview, this.context.extensionUri);
 
-    this.agent?.dispose();
-    this.agent = new AgentRunner(webview);
+    this.runtime?.dispose();
+    this.runtime = new Runtime(webview);
 
     const cwd = getWorkspaceCwd();
 
     const disposeApprovalPresenter = setApprovalPresenter((request) => {
       // Route approval through the agent messenger so it shares the same sink
       // and coalescing buffer as the rest of the tool lifecycle.
-      this.agent?.postMessage({
+      this.runtime?.postMessage({
         type: 'tool_approval_request',
         payload: {
           id: request.id,
@@ -113,14 +113,14 @@ export class ChatViewProvider implements WebviewViewProvider {
     const disposeSubagentEventCallback = setSubagentEventCallback((msg) => {
       // Route sub-agent events through the agent's WebviewMessenger so they
       // share the same 16 ms coalescing buffer as the main-agent stream.
-      this.agent?.postMessage(msg);
+      this.runtime?.postMessage(msg);
     });
 
     const handlerContext: MessageHandlerContext = {
       cwd,
-      agent: this.agent!,
+      runtime: this.runtime!,
       workspace: this.workspace,
-      postMessage: (msg) => this.agent!.postMessage(msg),
+      historyEpoch: 0,
     };
 
     const subscriptions = Disposable.from(
@@ -143,7 +143,7 @@ export class ChatViewProvider implements WebviewViewProvider {
       if (this.activeWebview === webview) {
         this.activeWebview = null;
       }
-      this.agent?.dispose();
+      this.runtime?.dispose();
     });
   }
 }

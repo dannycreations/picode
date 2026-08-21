@@ -3,7 +3,8 @@ import { StringDecoder } from 'node:string_decoder';
 import { defineTool, formatSize, resolvePath, stripAnsi } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
-import { getOutputLimits, truncateOutput } from '@pi-code/extension/utilities/truncate';
+import { readOutputLimits } from '@pi-code/extension/core/settings';
+import { truncateOutput } from '@pi-code/extension/utilities/truncate';
 
 import type { CustomToolResult } from '@pi-code/extension/types/extension';
 import type { ToolName } from '@pi-code/shared/core/types';
@@ -65,7 +66,7 @@ export const executeCommandTool = defineTool({
     timeout: Type.Optional(Type.Integer({ minimum: 1, description: 'Optional timeout in milliseconds; defaults to 120000 ms (2 minutes).' })),
   }),
   async execute(_toolCallId, params, signal, onUpdate, ctx) {
-    const limits = getOutputLimits();
+    const limits = readOutputLimits();
     const retainedBytes = limits.maxBytes * 2;
     const effectiveTimeout = resolveTimeout(params.timeout);
 

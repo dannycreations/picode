@@ -13,10 +13,10 @@ import { useChatStore } from '@pi-code/webview/stores/useChatStore';
 import { formatDuration } from '@pi-code/webview/utilities/common';
 
 import type { FC } from 'react';
-import type { ChatMessage, ToolSection } from '@pi-code/shared/core/types';
+import type { ToolChatMessage, ToolSection } from '@pi-code/shared/core/types';
 
 interface ToolMessageProps {
-  readonly message: ChatMessage;
+  readonly message: ToolChatMessage;
   readonly onApproveTool: (msgId: string) => void;
   readonly onDenyTool: (msgId: string) => void;
 }
@@ -173,8 +173,6 @@ function appendElapsed(subtitle: string | undefined, duration: number): string {
 }
 
 export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDenyTool }) => {
-  if (message.sender !== 'tool') return null;
-
   const { title, icon } = getFileToolMeta(message.toolName, message.toolStatus);
   const sections: ReadonlyArray<ToolSection> = message.toolSections ?? buildToolSections(message);
   const hiddenCount = sections.length > 0 ? sections.length - 1 : 0;

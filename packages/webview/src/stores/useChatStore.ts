@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 
 import { DEFAULT_APP_ID } from '@pi-code/shared/core/constants';
-import { logger } from '@pi-code/shared/core/logger';
 import { HISTORY_SCOPES } from '@pi-code/shared/core/protocol';
 import { defaultThinkingLevel, elapsedSeconds } from '@pi-code/shared/utilities/common';
 import {
@@ -13,8 +12,8 @@ import {
   rebuildToolSections,
   settlePendingTurns,
   upsertToolMessage,
-} from '@pi-code/webview/components/chat/helpers/message';
-import { findPendingQuestion } from '@pi-code/webview/components/chat/helpers/question';
+} from '@pi-code/webview/helpers/messages';
+import { findPendingQuestion } from '@pi-code/webview/helpers/questions';
 
 import type { RefObject } from 'react';
 import type { WebviewApi as InternalWebviewApi } from 'vscode-webview';
@@ -27,7 +26,7 @@ import type {
   WebviewToExtensionMessage,
 } from '@pi-code/shared/core/protocol';
 import type { AppSettings } from '@pi-code/shared/core/settings';
-import type { ActiveTaskState, ApiRequestChatMessage, ChatMessage, ModelThinkingLevel } from '@pi-code/shared/core/types';
+import type { ActiveTaskState, ApiRequestChatMessage, ChatMessage, ModelThinkingLevel, ToolChatMessage } from '@pi-code/shared/core/types';
 
 interface WebviewApi extends Omit<InternalWebviewApi<unknown>, 'postMessage'> {
   postMessage(message: WebviewToExtensionMessage): void;
@@ -35,15 +34,18 @@ interface WebviewApi extends Omit<InternalWebviewApi<unknown>, 'postMessage'> {
 
 const vscode: WebviewApi | null = typeof acquireVsCodeApi === 'function' ? acquireVsCodeApi() : null;
 
-function zeroEpochs(): Record<HistoryScope, number> {
-  const record = {} as Record<HistoryScope, number>;
-  for (const scope of HISTORY_SCOPES) record[scope] = 0;
-  return record;
+// Holds the composer's textarea ref without making it reactive store state:
+// the element identity never changes per mount, so nothing should re-render
+// when it is registered.
+let composerTextarea: RefObject<HTMLTextAreaElement | null> | null = null;
+
+export function setComposerTextarea(ref: RefObject<HTMLTextAreaElement | null> | null): void {
+  composerTextarea = ref;
 }
 
-function emptyHistoryByScope(): Record<HistoryScope, HistoryItem[]> {
-  const record = {} as Record<HistoryScope, HistoryItem[]>;
-  for (const scope of HISTORY_SCOPES) record[scope] = [];
+function scopedRecord<T>(fill: (scope: HistoryScope) => T): Record<HistoryScope, T> {
+  const record = {} as Record<HistoryScope, T>;
+  for (const scope of HISTORY_SCOPES) record[scope] = fill(scope);
   return record;
 }
 
@@ -53,13 +55,23 @@ type ExtensionMessageMap = {
   readonly [T in ExtensionToWebviewMessage['type']]: ExtensionMessageHandler<T>;
 };
 
+// Applies a change to the open task; events arriving with no task open are dropped.
+function patchActiveTask(state: ChatState, patch: (task: ActiveTaskState) => ActiveTaskState): Partial<ChatState> {
+  return state.activeTask ? { activeTask: patch(state.activeTask) } : {};
+}
+
+// Approval and start events create or refresh one tool row, settling any turns
+// still marked running before it.
+function applyToolUpsert(task: ActiveTaskState, id: string, patch: Partial<ToolChatMessage>): ActiveTaskState {
+  return { ...task, messages: rebuildToolSections(upsertToolMessage(settlePendingTurns(task.messages), id, patch), id) };
+}
+
 interface ChatState {
   readonly activeTask: ActiveTaskState | null;
   readonly isRunning: boolean;
   readonly isCompacting: boolean;
   readonly view: 'chat' | 'history' | 'settings';
   readonly inputValue: string;
-  readonly textareaRef: RefObject<HTMLTextAreaElement | null> | null;
   readonly models: ModelItem[];
   readonly settings: AppSettings | null;
   readonly commands: CommandItem[];
@@ -85,7 +97,6 @@ interface ChatState {
   readonly setIsRunning: (value: boolean) => void;
   readonly setView: (view: ChatState['view']) => void;
   readonly setInputValue: (value: string) => void;
-  readonly setTextareaRef: (ref: RefObject<HTMLTextAreaElement | null> | null) => void;
   readonly appendToInput: (text: string) => void;
   readonly setScope: (scope: HistoryScope) => void;
 }
@@ -99,192 +110,149 @@ export const useChatStore = create<ChatState>((set, get) => {
       set({ isCompacting: true });
     },
     compaction_end: (msg) => {
-      set((state) => ({
-        isCompacting: false,
-        activeTask: state.activeTask ? { ...state.activeTask, ...msg.payload } : state.activeTask,
-      }));
+      set((state) => ({ isCompacting: false, ...patchActiveTask(state, (task) => ({ ...task, ...msg.payload })) }));
     },
     reply_queue_data: (msg) => {
-      set((state) => ({
-        activeTask: state.activeTask
-          ? { ...state.activeTask, messages: [...state.activeTask.messages.filter((m) => m.sender !== 'queue'), ...msg.payload.queue] }
-          : state.activeTask,
-      }));
+      set((state) =>
+        patchActiveTask(state, (task) => ({
+          ...task,
+          messages: [...task.messages.filter((m) => m.sender !== 'queue'), ...msg.payload.queue],
+        })),
+      );
     },
     reply_queue_delivered: (msg) => {
-      set((state) => ({
-        activeTask: state.activeTask
-          ? { ...state.activeTask, messages: deliverQueuedReplies(state.activeTask.messages, msg.payload.messages) }
-          : state.activeTask,
-      }));
+      set((state) => patchActiveTask(state, (task) => ({ ...task, messages: deliverQueuedReplies(task.messages, msg.payload.messages) })));
     },
     agent_start: (msg) => {
       const { path, stats } = msg.payload;
       set((state) => ({
         isRunning: true,
-        activeTask: state.activeTask ? { ...state.activeTask, path: path ?? state.activeTask.path, ...stats } : state.activeTask,
+        ...patchActiveTask(state, (task) => ({ ...task, path: path ?? task.path, ...stats })),
       }));
     },
     message_start: (msg) => {
       const { timestamp } = msg.payload;
-      set((state) => ({
-        isRunning: true,
-        activeTask: state.activeTask
-          ? {
-              ...state.activeTask,
-              messages: [
-                ...settlePendingTurns(state.activeTask.messages),
-                { id: `assistant-${timestamp}`, sender: 'assistant', text: '', ts: timestamp, toolStatus: 'running' },
-              ],
-            }
-          : state.activeTask,
-      }));
+      set((state) =>
+        patchActiveTask(state, (task) => ({
+          ...task,
+          messages: [
+            ...settlePendingTurns(task.messages),
+            { id: `assistant-${timestamp}`, sender: 'assistant', text: '', ts: timestamp, toolStatus: 'running' },
+          ],
+        })),
+      );
     },
     api_request_start: (msg) => {
       const { id, timestamp } = msg.payload;
-      set((state) => ({
-        isRunning: true,
-        activeTask: state.activeTask
-          ? {
-              ...state.activeTask,
-              messages: state.activeTask.messages.some((m) => m.id === id)
-                ? state.activeTask.messages
-                : [
-                    ...settlePendingTurns(state.activeTask.messages),
-                    { id, sender: 'api_request', text: 'API Request', ts: timestamp, toolStatus: 'running' },
-                  ],
-            }
-          : state.activeTask,
-      }));
+      set((state) =>
+        patchActiveTask(state, (task) => ({
+          ...task,
+          messages: task.messages.some((m) => m.id === id)
+            ? task.messages
+            : [...settlePendingTurns(task.messages), { id, sender: 'api_request', text: 'API Request', ts: timestamp, toolStatus: 'running' }],
+        })),
+      );
     },
     api_request_end: (msg) => {
       const { id, cost, error, stats } = msg.payload;
-      set((state) => {
-        if (!state.activeTask) return {};
-        const target = state.activeTask.messages.find((m) => m.id === id && m.sender === 'api_request') as ApiRequestChatMessage | undefined;
-        let messages = target
-          ? patchMessage(state.activeTask.messages, id, {
-              toolStatus: error ? 'denied' : 'completed',
-              cost: cost ?? target.cost,
-              errorMessage: error ?? target.errorMessage,
-            })
-          : settlePendingTurns(state.activeTask.messages, { cost, error });
-        if (error) {
-          messages = appendOnce(messages, { id: `${id}-error`, sender: 'error', text: error, errorMessage: error, ts: Date.now() });
-        }
-        return { activeTask: { ...state.activeTask, messages, ...stats } };
-      });
+      set((state) =>
+        patchActiveTask(state, (task) => {
+          const target = task.messages.find((m) => m.id === id && m.sender === 'api_request') as ApiRequestChatMessage | undefined;
+          let messages = target
+            ? patchMessage(task.messages, id, {
+                toolStatus: error ? 'denied' : 'completed',
+                cost: cost ?? target.cost,
+                errorMessage: error ?? target.errorMessage,
+              })
+            : settlePendingTurns(task.messages, { cost, error });
+          if (error) {
+            messages = appendOnce(messages, { id: `${id}-error`, sender: 'error', text: error, errorMessage: error, ts: Date.now() });
+          }
+          return { ...task, messages, ...stats };
+        }),
+      );
     },
     message_end: (msg) => {
       const { cost, stats } = msg.payload;
-      set((state) => ({
-        activeTask: state.activeTask
-          ? {
-              ...state.activeTask,
-              messages: patchLastAssistant(state.activeTask.messages, (message) => ({
-                toolStatus: 'completed',
-                cost: cost ?? message.cost,
-              })),
-              ...stats,
-            }
-          : state.activeTask,
-      }));
+      set((state) =>
+        patchActiveTask(state, (task) => ({
+          ...task,
+          messages: patchLastAssistant(task.messages, (message) => ({
+            toolStatus: 'completed',
+            cost: cost ?? message.cost,
+          })),
+          ...stats,
+        })),
+      );
     },
     stream_delta: (msg) => {
       const { text, thinking } = msg.payload;
-      set((state) => ({
-        activeTask: state.activeTask
-          ? {
-              ...state.activeTask,
-              messages: patchLastAssistant(state.activeTask.messages, (message) => ({
-                text: text ? message.text + text : message.text,
-                reasoning: thinking ? (message.reasoning || '') + thinking : message.reasoning,
-              })),
-            }
-          : state.activeTask,
-      }));
+      set((state) =>
+        patchActiveTask(state, (task) => ({
+          ...task,
+          messages: patchLastAssistant(task.messages, (message) => ({
+            text: text ? message.text + text : message.text,
+            reasoning: thinking ? (message.reasoning || '') + thinking : message.reasoning,
+          })),
+        })),
+      );
     },
     tool_approval_request: (msg) => {
       const { id, tool_name, arguments: toolArgs, subagent, toolCallId } = msg.payload;
-      set((state) => ({
-        activeTask: state.activeTask
-          ? {
-              ...state.activeTask,
-              messages: rebuildToolSections(
-                upsertToolMessage(settlePendingTurns(state.activeTask.messages), id, {
-                  text: tool_name,
-                  toolName: tool_name,
-                  toolArgs,
-                  toolStatus: 'approval',
-                  subagent,
-                  toolCallId,
-                  pausedAt: Date.now(),
-                }),
-                id,
-              ),
-            }
-          : state.activeTask,
-      }));
+      set((state) =>
+        patchActiveTask(state, (task) =>
+          applyToolUpsert(task, id, {
+            text: tool_name,
+            toolName: tool_name,
+            toolArgs,
+            toolStatus: 'approval',
+            subagent,
+            toolCallId,
+            pausedAt: Date.now(),
+          }),
+        ),
+      );
     },
     tool_execution_start: (msg) => {
       const { id, tool_name, arguments: toolArgs, subagent } = msg.payload;
       set((state) => ({
         isRunning: true,
-        activeTask: state.activeTask
-          ? {
-              ...state.activeTask,
-              messages: ignoreUnknownSubagent(state.activeTask.messages, subagent, id)
-                ? state.activeTask.messages
-                : rebuildToolSections(
-                    upsertToolMessage(settlePendingTurns(state.activeTask.messages), id, {
-                      text: tool_name,
-                      toolName: tool_name,
-                      toolArgs,
-                      toolStatus: 'running',
-                      subagent,
-                    }),
-                    id,
-                  ),
-            }
-          : state.activeTask,
+        ...patchActiveTask(state, (task) =>
+          ignoreUnknownSubagent(task.messages, subagent, id)
+            ? task
+            : applyToolUpsert(task, id, { text: tool_name, toolName: tool_name, toolArgs, toolStatus: 'running', subagent }),
+        ),
       }));
     },
     tool_execution_update: (msg) => {
       const { id, result, subagent, subtitle } = msg.payload;
-      set((state) => {
-        if (!state.activeTask) return {};
-        const messages = state.activeTask.messages;
-        if (ignoreUnknownSubagent(messages, subagent, id)) return { activeTask: state.activeTask };
-        const target = messages.find((m) => m.id === id);
-        if (target?.sender === 'tool' && target.toolName === 'execute_command') {
-          return {
-            activeTask: {
-              ...state.activeTask,
-              messages: rebuildToolSections(patchMessage(messages, id, { diff: `${target.diff ?? ''}${result}`, subtitle }), id),
-            },
-          };
-        }
-        const isSubagent = target?.sender === 'tool' && target.toolName === 'spawn_subagent';
-        const startedNow = isSubagent && target.diff === undefined;
-        const patch = startedNow ? { diff: result, subtitle, ts: Date.now() } : { diff: result, subtitle };
-        return {
-          activeTask: { ...state.activeTask, messages: rebuildToolSections(patchMessage(messages, id, patch), id) },
-        };
-      });
+      set((state) =>
+        patchActiveTask(state, (task) => {
+          if (ignoreUnknownSubagent(task.messages, subagent, id)) return task;
+          const target = task.messages.find((m) => m.id === id);
+          if (target?.sender === 'tool' && target.toolName === 'execute_command') {
+            return {
+              ...task,
+              messages: rebuildToolSections(patchMessage(task.messages, id, { diff: `${target.diff ?? ''}${result}`, subtitle }), id),
+            };
+          }
+          const startedNow = target?.sender === 'tool' && target.toolName === 'spawn_subagent' && target.diff === undefined;
+          const patch = startedNow ? { diff: result, subtitle, ts: Date.now() } : { diff: result, subtitle };
+          return { ...task, messages: rebuildToolSections(patchMessage(task.messages, id, patch), id) };
+        }),
+      );
     },
     tool_execution_end: (msg) => {
       const { id, result, todos, files, is_error, subagent, subtitle } = msg.payload;
-      set((state) => {
-        if (!state.activeTask) return {};
-        const messages = state.activeTask.messages;
-        if (ignoreUnknownSubagent(messages, subagent, id)) return { activeTask: state.activeTask };
-        const existing = messages.find((m) => m.id === id);
-        const duration = existing ? elapsedSeconds(existing.ts) : undefined;
-        return {
-          activeTask: {
-            ...state.activeTask,
+      set((state) =>
+        patchActiveTask(state, (task) => {
+          if (ignoreUnknownSubagent(task.messages, subagent, id)) return task;
+          const existing = task.messages.find((m) => m.id === id);
+          const duration = existing ? elapsedSeconds(existing.ts) : undefined;
+          return {
+            ...task,
             messages: rebuildToolSections(
-              patchMessage(messages, id, {
+              patchMessage(task.messages, id, {
                 todos,
                 files,
                 toolStatus: is_error ? 'denied' : 'completed',
@@ -294,36 +262,31 @@ export const useChatStore = create<ChatState>((set, get) => {
               }),
               id,
             ),
-          },
-        };
-      });
+          };
+        }),
+      );
     },
     agent_error: (msg) => {
       const { message } = msg.payload;
-      set((state) => {
-        if (!state.activeTask) return { isRunning: false };
-        return {
-          isRunning: false,
-          activeTask: {
-            ...state.activeTask,
-            messages: appendOnce(settlePendingTurns(state.activeTask.messages, { error: message }), {
-              id: crypto.randomUUID(),
-              sender: 'error',
-              text: message,
-              errorMessage: message,
-              ts: Date.now(),
-            }),
-          },
-        };
-      });
+      set((state) => ({
+        isRunning: false,
+        ...patchActiveTask(state, (task) => ({
+          ...task,
+          messages: appendOnce(settlePendingTurns(task.messages, { error: message }), {
+            id: crypto.randomUUID(),
+            sender: 'error',
+            text: message,
+            errorMessage: message,
+            ts: Date.now(),
+          }),
+        })),
+      }));
     },
     agent_settled: (msg) => {
       set((state) => ({
         isRunning: false,
         isCompacting: false,
-        activeTask: state.activeTask
-          ? { ...state.activeTask, messages: settlePendingTurns(state.activeTask.messages), ...msg.payload }
-          : state.activeTask,
+        ...patchActiveTask(state, (task) => ({ ...task, messages: settlePendingTurns(task.messages), ...msg.payload })),
       }));
     },
     archive_result: (msg) => {
@@ -360,7 +323,7 @@ export const useChatStore = create<ChatState>((set, get) => {
         selectedModel: default_model || models[0]?.id || DEFAULT_APP_ID,
         selectedThinkingLevel: default_thinking_level ?? null,
         fetchedScopes: new Set<HistoryScope>(['current']),
-        latestEpoch: zeroEpochs(),
+        latestEpoch: scopedRecord(() => 0),
       });
     },
     commands_data: (msg) => {
@@ -398,17 +361,16 @@ export const useChatStore = create<ChatState>((set, get) => {
     isCompacting: false,
     view: 'chat',
     inputValue: '',
-    textareaRef: null,
     models: [],
     settings: null,
     commands: [],
     selectedModel: DEFAULT_APP_ID,
     selectedThinkingLevel: null,
     scope: 'current',
-    historyByScope: emptyHistoryByScope(),
+    historyByScope: scopedRecord<HistoryItem[]>(() => []),
     searchResults: [],
     openedSettingsFromHistory: false,
-    latestEpoch: zeroEpochs(),
+    latestEpoch: scopedRecord(() => 0),
     fetchedScopes: new Set<HistoryScope>(['current']),
     searchRequestId: '',
 
@@ -466,12 +428,7 @@ export const useChatStore = create<ChatState>((set, get) => {
     },
 
     applyMessage: (msg) => {
-      const handler = messageHandlers[msg.type] as ExtensionMessageHandler<typeof msg.type>;
-      if (!handler) {
-        logger.warn(`Unhandled webview message type: ${msg.type}`, msg);
-        return;
-      }
-      handler(msg);
+      (messageHandlers[msg.type] as ExtensionMessageHandler<typeof msg.type>)(msg);
     },
 
     setActiveTask: (value) =>
@@ -485,14 +442,13 @@ export const useChatStore = create<ChatState>((set, get) => {
 
     setInputValue: (value) => set({ inputValue: value }),
 
-    setTextareaRef: (ref) => set({ textareaRef: ref }),
-
     appendToInput: (text) => {
-      const textarea = get().textareaRef?.current;
+      const textarea = composerTextarea?.current;
       if (!textarea) {
         set((state) => ({ inputValue: state.inputValue ? `${state.inputValue}\n${text}` : text }));
         return;
       }
+
       const caret = textarea.selectionStart;
       set((state) => ({ inputValue: `${state.inputValue.slice(0, caret)}${text}${state.inputValue.slice(caret)}` }));
       const nextCaret = caret + text.length;

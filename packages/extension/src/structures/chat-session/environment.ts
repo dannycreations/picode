@@ -1,75 +1,17 @@
 import { basename } from 'node:path';
-import { contentText } from '@earendil-works/pi-ai';
 import ignore from 'ignore';
 import { FileType, TabInputText, Uri, window, workspace } from 'vscode';
 
 import { readAppSettings } from '@pi-code/extension/core/settings';
-import { readDirectoryChildren } from '@pi-code/extension/utilities/fs';
+import { excludeVcsEntries } from '@pi-code/extension/utilities/fs';
 import { getGitRepository, getIgnoredPaths } from '@pi-code/extension/utilities/git';
 import { toRelativePath, toWorkspaceRelativePath } from '@pi-code/extension/utilities/vscode';
 
-import type { AgentMessage } from '@earendil-works/pi-agent-core';
 import type { Change, Repository } from '@pi-code/extension/types/git';
 import type { FileChild } from '@pi-code/extension/utilities/fs';
-import type { TodoItem } from '@pi-code/shared/utilities/todo';
-
-const STATUS_MAP: Record<TodoItem['status'], string> = {
-  pending: 'Pending',
-  progress: 'In Progress',
-  completed: 'Completed',
-};
-
-const TODO_REMINDER_SECTION = '## Todo Reminders';
 
 const MAX_WALK_DEPTH = 64;
 const WALK_CONCURRENCY = 10;
-
-export function formatTodoReminder(todoList?: TodoItem[]): string {
-  const lines: string[] = [TODO_REMINDER_SECTION, ''];
-
-  if (!todoList || todoList.length === 0) {
-    lines.push('You have not created a todo list yet. Create one with `update_todo` if your task is complex or involves multiple steps.');
-    lines.push("You can safely ignore this reminder if it isn't needed yet, and don't cite it anywhere.");
-    return lines.join('\n').trim();
-  }
-
-  lines.push('Below is a list of your current reminders for this task. Keep them updated or expand as you progress.', '');
-  lines.push('| # | Content | Status |');
-  lines.push('|---|---------|--------|');
-  todoList.forEach((item, idx) => {
-    const escapedContent = item.content.replace(/\\/g, '\\\\').replace(/\|/g, '\\|');
-    lines.push(`| ${idx + 1} | ${escapedContent} | ${STATUS_MAP[item.status] || item.status} |`);
-  });
-  lines.push('');
-
-  lines.push('IMPORTANT: When task status changes, remember to call the `update_todo` tool to track your progress.');
-  return lines.join('\n').trim();
-}
-
-export function hasReminders(msg: AgentMessage): boolean {
-  return msg.role === 'user' && contentText(msg.content).trimStart().startsWith(TODO_REMINDER_SECTION);
-}
-
-export function withTodoProgress(messages: readonly AgentMessage[], todoList?: TodoItem[]): AgentMessage[] {
-  const injected: AgentMessage = {
-    role: 'user',
-    content: [{ type: 'text', text: formatTodoReminder(todoList) }],
-    timestamp: Date.now(),
-  };
-  const filtered = messages.filter((msg) => !hasReminders(msg));
-  return [...filtered, injected];
-}
-
-export function getLatestTodoList(messages: readonly AgentMessage[]): TodoItem[] | undefined {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const msg = messages[i];
-    if (msg.role === 'toolResult' && msg.toolName === 'update_todo') {
-      const details: { todos?: TodoItem[] } | undefined = msg.details;
-      if (details?.todos) return details.todos;
-    }
-  }
-  return undefined;
-}
 
 interface LocalIgnore {
   readonly relativeDir: string;
@@ -81,6 +23,12 @@ interface UriNode {
   readonly relative: string;
   readonly depth: number;
   readonly ignores: readonly LocalIgnore[];
+}
+
+interface WalkEntry {
+  readonly child: FileChild;
+  readonly uri: Uri;
+  readonly fsPath: string;
 }
 
 const textDecoder = new TextDecoder();
@@ -174,72 +122,66 @@ export async function walkWorkspace(
   const processNode = async (node: UriNode): Promise<UriNode[]> => {
     const { uri, relative, depth, ignores } = node;
 
-    const children = await readDirectoryChildren(uri.fsPath, async (dir) => {
-      const raw = await workspace.fs.readDirectory(Uri.file(dir));
-      return raw.map(([name, type]): FileChild => ({
-        name,
-        isDir: !!(type & FileType.Directory),
-        isFile: !!(type & FileType.File),
-        isSymlink: !!(type & FileType.SymbolicLink),
-      }));
-    });
+    let children: FileChild[];
+    try {
+      const raw = await workspace.fs.readDirectory(uri);
+      children = excludeVcsEntries(
+        raw.map(([name, type]): FileChild => ({
+          name,
+          isDir: !!(type & FileType.Directory),
+          isFile: !!(type & FileType.File),
+          isSymlink: !!(type & FileType.SymbolicLink),
+        })),
+      );
+    } catch {
+      return [];
+    }
 
     const childCount = children.length;
     if (childCount === 0) return [];
 
-    const names: string[] = [];
-    const isDirFlags: boolean[] = [];
-    const isFileFlags: boolean[] = [];
-    const isSymlinkFlags: boolean[] = [];
-    const childUris: Uri[] = [];
-    const fsPaths: string[] = [];
-
-    for (let i = 0; i < childCount; i++) {
-      const child = children[i];
+    const entries: WalkEntry[] = children.map((child) => {
       const childUri = Uri.joinPath(uri, child.name);
-      names.push(child.name);
-      isDirFlags.push(child.isDir);
-      isFileFlags.push(child.isFile);
-      isSymlinkFlags.push(child.isSymlink);
-      childUris.push(childUri);
-      fsPaths.push(childUri.fsPath);
-    }
+      return { child, uri: childUri, fsPath: childUri.fsPath };
+    });
 
     let localIgnores = ignores;
     if (useLocalGitignore) {
-      const gitignoreIndex = names.indexOf('.gitignore');
-      if (gitignoreIndex !== -1 && isFileFlags[gitignoreIndex]) {
-        const filter = await loadGitignoreFilter(childUris[gitignoreIndex]);
+      const gitignore = entries.find((entry) => entry.child.name === '.gitignore' && entry.child.isFile);
+      if (gitignore) {
+        const filter = await loadGitignoreFilter(gitignore.uri);
         if (filter) localIgnores = [...ignores, { relativeDir: relative, filter }];
       }
     }
 
-    const ignoredPaths = repo && fsPaths.length > 0 ? await getIgnoredPaths(repo, fsPaths) : null;
+    const ignoredPaths =
+      repo && childCount > 0
+        ? await getIgnoredPaths(
+            repo,
+            entries.map((entry) => entry.fsPath),
+          )
+        : null;
 
     const nextNodes: UriNode[] = [];
     const relativePrefix = relative === '' ? '' : `${relative}/`;
-    const canDescend = depth < MAX_WALK_DEPTH;
-    const hasLocalIgnores = localIgnores.length > 0;
 
-    for (let i = 0; i < childCount; i++) {
-      const childUri = childUris[i];
-      const isDir = isDirFlags[i];
-      const childRelative = relativePrefix + names[i];
+    for (const { child, uri: childUri, fsPath } of entries) {
+      const childRelative = relativePrefix + child.name;
 
       if (repo) {
-        if (ignoredPaths?.has(fsPaths[i])) continue;
-      } else if (excludeIgnoredFiles && hasLocalIgnores) {
-        if (isIgnoredByLocalRules(childRelative, isDir, localIgnores)) continue;
+        if (ignoredPaths?.has(fsPath)) continue;
+      } else if (excludeIgnoredFiles && localIgnores.length > 0) {
+        if (isIgnoredByLocalRules(childRelative, child.isDir, localIgnores)) continue;
       }
 
-      if (isDir) {
-        if (canDescend && !isSymlinkFlags[i]) {
+      if (child.isDir) {
+        if (depth < MAX_WALK_DEPTH && !child.isSymlink) {
           nextNodes.push({ uri: childUri, relative: childRelative, depth: depth + 1, ignores: localIgnores });
         }
         continue;
       }
 
-      if (isFileFlags[i]) fileResults.push(childRelative);
+      if (child.isFile) fileResults.push(childRelative);
     }
 
     return nextNodes;

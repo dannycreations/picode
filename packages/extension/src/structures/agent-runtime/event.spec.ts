@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { registerSubagentSession, unregisterSubagentSession } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
 import { mapEvent, toolResultText } from '@pi-code/extension/structures/agent-runtime/event';
-import { registerSubagentSession, unregisterSubagentSession } from '@pi-code/extension/structures/agent-runtime/policy';
 
 describe('toolResultText', () => {
   it('passes a plain string result through unchanged', () => {

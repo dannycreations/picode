@@ -29,10 +29,11 @@ export const useChatConfig = (): UseChatConfigReturn => {
   const setSelectedModel = useChatStore((state) => state.setSelectedModel);
   const setSelectedThinkingLevel = useChatStore((state) => state.setSelectedThinkingLevel);
 
-  const thinkingLevels = useMemo<readonly ModelThinkingLevel[]>(
-    () => models.find((m) => m.id === selectedModel)?.thinkingLevels ?? [],
-    [models, selectedModel],
-  );
+  const selectedModelItem = useMemo(() => models.find((model) => model.id === selectedModel), [models, selectedModel]);
+
+  const thinkingLevels = selectedModelItem?.thinkingLevels ?? [];
+  const supportsImages = selectedModelItem?.supportsImages ?? false;
+  const selectedModelContextWindow = selectedModelItem?.contextWindow ?? EMPTY_STATS.contextLimit;
 
   // Keep the displayed level valid for the selected model; drop to a default
   // only when the current choice is unsupported (e.g. after a model switch).
@@ -41,13 +42,6 @@ export const useChatConfig = (): UseChatConfigReturn => {
     const next = thinkingLevels.length === 0 ? null : current && thinkingLevels.includes(current) ? current : defaultThinkingLevel(thinkingLevels);
     useChatStore.getState().syncSelectedThinkingLevel(next);
   }, [thinkingLevels]);
-
-  const supportsImages = useMemo<boolean>(() => models.find((model) => model.id === selectedModel)?.supportsImages ?? false, [models, selectedModel]);
-
-  const selectedModelContextWindow = useMemo<number>(
-    () => models.find((model) => model.id === selectedModel)?.contextWindow ?? EMPTY_STATS.contextLimit,
-    [models, selectedModel],
-  );
 
   return {
     models,

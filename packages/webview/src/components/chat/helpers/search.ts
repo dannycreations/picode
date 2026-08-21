@@ -1,15 +1,10 @@
 import { visit } from 'unist-util-visit';
 
-import { findOccurrences } from '@pi-code/shared/utilities/common';
-import { parseQuestionData } from '@pi-code/webview/components/chat/helpers/question';
+import { splitOnOccurrences } from '@pi-code/shared/utilities/common';
+import { parseQuestionData } from '@pi-code/webview/helpers/questions';
 
 import type { ChatMessage } from '@pi-code/shared/core/types';
 import type { SearchContext } from '@pi-code/webview/components/shared/Highlight';
-
-export function localActiveIndex(base: number, count: number, activeIndex: number): number {
-  if (activeIndex < base || activeIndex >= base + count) return -1;
-  return activeIndex - base;
-}
 
 export function getMessageSearchText(message: ChatMessage): string {
   switch (message.sender) {
@@ -38,7 +33,7 @@ export function getMessageSearchText(message: ChatMessage): string {
 export function createSearchHighlightPlugin(search: SearchContext | undefined): (() => (tree: unknown) => void) | undefined {
   if (!search?.query) return undefined;
 
-  const query = search.query.toLowerCase();
+  const query = search.query;
 
   return () => (tree: unknown) => {
     visit(tree as Parameters<typeof visit>[0], 'text', (node, key, parent) => {
@@ -47,25 +42,21 @@ export function createSearchHighlightPlugin(search: SearchContext | undefined): 
       const parentNode = parent as { children: Array<Record<string, unknown>> } | undefined;
       if (!parentNode) return;
 
-      const positions = findOccurrences(text, query);
-      if (positions.length === 0) return;
+      const segments = splitOnOccurrences(text, query);
+      if (segments.every((segment) => segment.matchIndex === null)) return;
 
-      const newNodes: Array<Record<string, unknown>> = [];
-      let cursor = 0;
-      let local = 0;
-      for (const pos of positions) {
-        if (pos > cursor) newNodes.push({ type: 'text', value: text.slice(cursor, pos) });
-        const isActive = search.globalOffset + local === search.activeIndex;
-        newNodes.push({
-          type: 'element',
-          tagName: 'mark',
-          properties: { className: isActive ? ['search-hit', 'search-hit-active'] : ['search-hit'] },
-          children: [{ type: 'text', value: text.slice(pos, pos + query.length) }],
-        });
-        local++;
-        cursor = pos + query.length;
-      }
-      if (cursor < text.length) newNodes.push({ type: 'text', value: text.slice(cursor) });
+      const newNodes: Array<Record<string, unknown>> = segments.map((segment) =>
+        segment.matchIndex === null
+          ? { type: 'text', value: segment.text }
+          : {
+              type: 'element',
+              tagName: 'mark',
+              properties: {
+                className: search.globalOffset + segment.matchIndex === search.activeIndex ? ['search-hit', 'search-hit-active'] : ['search-hit'],
+              },
+              children: [{ type: 'text', value: segment.text }],
+            },
+      );
 
       const position = Number(key);
       parentNode.children.splice(position, 1, ...newNodes);

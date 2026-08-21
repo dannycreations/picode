@@ -190,15 +190,10 @@ export const ChatInput: FC<ChatInputProps> = ({
         )}
       >
         {command.isOpen && (
-          <CommandMenu
-            commands={command.matches}
-            selectedIndex={command.selectedIndex}
-            onSelect={command.select}
-            onHover={command.setSelectedIndex}
-          />
+          <CommandMenu commands={command.items} selectedIndex={command.selectedIndex} onSelect={command.select} onHover={command.setSelectedIndex} />
         )}
         {mention.isOpen && (
-          <MentionMenu results={mention.results} selectedIndex={mention.selectedIndex} onSelect={mention.select} onHover={mention.setSelectedIndex} />
+          <MentionMenu items={mention.items} selectedIndex={mention.selectedIndex} onSelect={mention.select} onHover={mention.setSelectedIndex} />
         )}
         <div className="relative flex" onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
           <div

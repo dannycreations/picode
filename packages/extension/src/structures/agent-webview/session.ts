@@ -1,7 +1,6 @@
-import { createReadStream, existsSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { dirname, join, resolve, sep } from 'node:path';
-import { createInterface } from 'node:readline';
-import { getSupportedThinkingLevels } from '@earendil-works/pi-ai';
+import { contentText, getSupportedThinkingLevels } from '@earendil-works/pi-ai';
 import { getAgentDir, SessionManager } from '@earendil-works/pi-coding-agent';
 import { FileType, Uri, window, workspace } from 'vscode';
 
@@ -9,10 +8,11 @@ import { getDefaultModelSelection, getSettingsManager, readAppSettings } from '@
 import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { collectCommands } from '@pi-code/extension/structures/chat-command/command';
 import { convertSessionEntries, loadSessionTranscript } from '@pi-code/extension/structures/chat-session/session';
+import { streamLines } from '@pi-code/extension/utilities/fs';
 import { logger } from '@pi-code/shared/core/logger';
-import { EMPTY_STATS } from '@pi-code/shared/utilities/common';
+import { resolveContextLimit } from '@pi-code/shared/utilities/common';
 
-import type { Api, Model, ModelThinkingLevel } from '@earendil-works/pi-ai';
+import type { Api, Model, ModelThinkingLevel, TextContent } from '@earendil-works/pi-ai';
 import type { AgentSessionServices, ModelRuntime } from '@earendil-works/pi-coding-agent';
 import type { ExtensionToWebviewMessage, HistoryItem, HistoryScope, ModelItem } from '@pi-code/shared/core/protocol';
 import type { ChatMessage, StatsData } from '@pi-code/shared/core/types';
@@ -66,27 +66,13 @@ function parseSessionLine(line: string): Record<string, unknown> | null {
   }
 }
 
-function extractUserText(content: unknown): string {
-  if (typeof content === 'string') return content;
-  if (!Array.isArray(content)) return '';
-  return content
-    .filter(
-      (block): block is { type: string; text: string } =>
-        typeof block === 'object' && block !== null && (block as { type?: unknown }).type === 'text',
-    )
-    .map((block) => block.text)
-    .join(' ');
-}
-
 async function readSessionPreview(filePath: string, mtime: number): Promise<HistoryItem | null> {
   try {
-    const stream = createReadStream(filePath, 'utf8');
-    const rl = createInterface({ input: stream, crlfDelay: Infinity });
     let id = '';
     let created = '';
     let firstMessage = '';
     let lines = 0;
-    for await (const line of rl) {
+    for await (const line of streamLines(filePath)) {
       if (++lines > MAX_PREVIEW_LINES) break;
       const entry = parseSessionLine(line);
       if (!entry) continue;
@@ -97,11 +83,11 @@ async function readSessionPreview(filePath: string, mtime: number): Promise<Hist
         continue;
       }
       if (entry['type'] === 'message' && (entry as { message?: { role?: unknown } }).message?.role === 'user') {
-        firstMessage = extractUserText((entry as { message?: { content?: unknown } }).message?.content);
+        const content = (entry as { message?: { content?: unknown } }).message?.content;
+        firstMessage = contentText(content as string | readonly TextContent[]);
         break;
       }
     }
-    rl.close();
     if (!id) return null;
     let ts: number;
     if (mtime > 0) {
@@ -159,9 +145,8 @@ export async function archiveSession(sourcePath: string): Promise<{ path: string
   return { path: target, archived };
 }
 
-export async function getInitData(cwd: string, services?: AgentSessionServices): Promise<SessionInitData> {
-  const resolved = services ?? (await createAgentResources(cwd));
-  const [models, defaultModel] = await Promise.all([listSelectableModels(resolved.modelRuntime), getDefaultModelSelection(cwd)]);
+export async function getInitData(cwd: string, services: AgentSessionServices): Promise<SessionInitData> {
+  const [models, defaultModel] = await Promise.all([listSelectableModels(services.modelRuntime), getDefaultModelSelection(cwd)]);
 
   const thinkingLevel = getSettingsManager(cwd).getDefaultThinkingLevel() ?? undefined;
 
@@ -170,7 +155,7 @@ export async function getInitData(cwd: string, services?: AgentSessionServices):
     default_model: resolveDefaultModelId(models, defaultModel),
     default_thinking_level: thinkingLevel,
     settings: readAppSettings(),
-    commands: collectCommands(resolved.resourceLoader),
+    commands: collectCommands(services.resourceLoader),
   };
 }
 
@@ -213,7 +198,7 @@ export async function loadSessionDetails(
     model = modelRuntime.getModels().find((candidate) => candidate.id === sessionModelId);
   }
 
-  return loadSessionTranscript(entries, model?.contextWindow ?? EMPTY_STATS.contextLimit);
+  return loadSessionTranscript(entries, resolveContextLimit(model?.contextWindow));
 }
 
 export async function* streamHistory(cwd: string, scope: HistoryScope): AsyncGenerator<HistoryItem[]> {

@@ -1,80 +1,16 @@
-import { createReadStream } from 'node:fs';
-import { stat } from 'node:fs/promises';
-import { createInterface } from 'node:readline';
 import { formatThrownValue } from '@earendil-works/pi-ai';
 import { defineTool, resolvePath } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
 import { readAppSettings } from '@pi-code/extension/core/settings';
 import { toolError, toolErrorFrom, toolResult } from '@pi-code/extension/structures/tool-call/helpers/result';
-import { isBinaryFile } from '@pi-code/extension/utilities/codec';
+import { checkReadableFile, numberLines, readLines } from '@pi-code/extension/utilities/fs';
 import { shareOutputLimits, toOutputLimits, truncateOutput } from '@pi-code/extension/utilities/truncate';
 
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
 import type { ToolName } from '@pi-code/shared/core/types';
 
-const MEGABYTE = 1024 * 1024;
-const MAX_FILE_SIZE_BYTES = 10 * MEGABYTE;
 const DEFAULT_MAX_CONCURRENT_READS = 5;
-
-export async function checkReadableFile(path: string): Promise<{ ok: true } | { ok: false; body: string }> {
-  try {
-    const fileStat = await stat(path);
-    if (!fileStat.isFile()) {
-      return { ok: false, body: `Error: "${path}" is not a regular file.` };
-    }
-    if (fileStat.size > MAX_FILE_SIZE_BYTES) {
-      return {
-        ok: false,
-        body: `Error: ${path} exceeds the ${MAX_FILE_SIZE_BYTES / MEGABYTE} MB size limit (${(fileStat.size / MEGABYTE).toFixed(2)} MB).`,
-      };
-    }
-    if (await isBinaryFile(path)) {
-      return { ok: false, body: `Error: ${path} is binary and cannot be read as text.` };
-    }
-    return { ok: true };
-  } catch (err) {
-    // A missing file is an expected, non-error outcome for callers that probe
-    // existence, so report it as not-found instead of throwing.
-    if ((err as NodeJS.ErrnoException)?.code === 'ENOENT') {
-      return { ok: false, body: `Error: "${path}" does not exist.` };
-    }
-    throw err;
-  }
-}
-
-export async function readFileTextContent(resolvedPath: string, limits: OutputLimits): Promise<string> {
-  const path = resolvePath(resolvedPath);
-
-  const check = await checkReadableFile(path);
-  if (!check.ok) {
-    throw new Error(check.body);
-  }
-
-  const lines = await readLines(path, limits.maxLines > 0 ? limits.maxLines : undefined);
-  const { text } = truncateOutput(numberLines(lines, undefined), { limits, keep: 'head' });
-  return text;
-}
-
-async function readLines(filePath: string, maxLines?: number): Promise<string[]> {
-  const stream = createReadStream(filePath, { encoding: 'utf8' });
-  const rl = createInterface({ input: stream, crlfDelay: Infinity });
-
-  const lines: string[] = [];
-  try {
-    for await (const line of rl) {
-      lines.push(line);
-      if (maxLines !== undefined && lines.length >= maxLines) {
-        break;
-      }
-    }
-  } finally {
-    rl.close();
-    stream.destroy();
-  }
-
-  return lines;
-}
 
 function nextLineAfter(text: string): number | undefined {
   const lastBreak = text.lastIndexOf('\n');
@@ -93,28 +29,6 @@ interface FileSection {
   readonly header: string;
   readonly body: string;
   readonly hasError: boolean;
-}
-
-function numberLines(lines: readonly string[], ranges: FileRequest['line_ranges']): string {
-  if (!ranges || ranges.length === 0) {
-    return lines.map((line, index) => `${index + 1}|${line}`).join('\n');
-  }
-
-  const parts: string[] = [];
-  for (const range of ranges) {
-    const start = Math.max(1, range[0]);
-    const end = Math.min(lines.length, range[1]);
-
-    if (start > end) {
-      parts.push(`Invalid range: ${start}-${end}`);
-      continue;
-    }
-
-    for (let i = start; i <= end; i++) {
-      parts.push(`${i}|${lines[i - 1]}`);
-    }
-  }
-  return parts.join('\n');
 }
 
 async function readFileSection(cwd: string, file: FileRequest, limits: OutputLimits): Promise<FileSection> {
@@ -204,11 +118,10 @@ export const readFileTool = defineTool({
         return toolError('Error: read operation was aborted.');
       }
 
-      const safeSections = sections.filter((section): section is FileSection => section !== undefined);
-      const text = safeSections.map((section) => (section.hasError ? section.body : `${section.header}\n${section.body}`)).join('\n\n');
+      const text = sections.map((section) => (section.hasError ? section.body : `${section.header}\n${section.body}`)).join('\n\n');
 
-      const files = safeSections.map((section) => ({ path: section.path, content: section.body }));
-      const allFailed = safeSections.length > 0 && safeSections.every((section) => section.hasError);
+      const files = sections.map((section) => ({ path: section.path, content: section.body }));
+      const allFailed = sections.length > 0 && sections.every((section) => section.hasError);
       return allFailed ? toolError(text, { files }) : toolResult(text, { files });
     } catch (err) {
       return toolErrorFrom(err, 'reading file');

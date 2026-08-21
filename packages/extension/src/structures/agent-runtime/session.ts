@@ -10,7 +10,7 @@ import { readFileTool } from '@pi-code/extension/structures/tool-call/read-file'
 import { spawnSubagentTool } from '@pi-code/extension/structures/tool-call/spawn-subagent';
 import { updateTodoTool } from '@pi-code/extension/structures/tool-call/update-todo';
 import { writeFileTool } from '@pi-code/extension/structures/tool-call/write-file';
-import { EMPTY_STATS } from '@pi-code/shared/utilities/common';
+import { resolveContextLimit } from '@pi-code/shared/utilities/common';
 
 import type { ToolName } from '@pi-code/shared/core/types';
 
@@ -51,7 +51,7 @@ export async function createSession(cwd: string, sessionPath?: string): Promise<
 
 export function applyCompactionSettings(session: AgentSession): void {
   const settings = readAppSettings();
-  const contextWindow = session.model?.contextWindow ?? EMPTY_STATS.contextLimit;
+  const contextWindow = resolveContextLimit(session.model?.contextWindow);
   const reserveTokens = Math.round(((100 - settings.autoCompactContextPercent) / 100) * contextWindow);
   session.settingsManager.applyOverrides({
     compaction: {

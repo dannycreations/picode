@@ -20,11 +20,12 @@ import { TaskActions } from '@pi-code/webview/components/shared/TaskActions';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 
 import type { FC, KeyboardEvent, MouseEvent } from 'react';
-import type { ChatMessage, StatsData, ToolChatMessage } from '@pi-code/shared/core/types';
+import type { StatsData } from '@pi-code/shared/core/types';
+import type { TodoItem } from '@pi-code/shared/utilities/todo';
 
 interface ChatHeaderProps extends StatsData {
   readonly title: string;
-  readonly messages: ChatMessage[];
+  readonly todos?: TodoItem[];
   readonly onClose: () => void;
   readonly onCompact: () => void;
   readonly onExport?: () => void;
@@ -126,7 +127,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
   totalCost,
   contextTokens,
   contextLimit,
-  messages,
+  todos,
   onClose,
   onCompact,
   onExport,
@@ -154,9 +155,6 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
     if (e.target instanceof Element && e.target.closest('[data-todo-list]')) return;
     setIsExpanded(!isExpanded);
   };
-
-  const todos = (messages.findLast((msg) => msg.sender === 'tool' && msg.toolName === 'update_todo' && msg.todos) as ToolChatMessage | undefined)
-    ?.todos;
 
   if (isSearchOpen) {
     return (

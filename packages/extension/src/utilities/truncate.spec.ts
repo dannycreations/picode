@@ -2,9 +2,11 @@ import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES } from '@earendil-works/pi-coding-
 import { describe, expect, it } from 'vitest';
 
 import { shareOutputLimits, toOutputLimits, truncateOutput } from '@pi-code/extension/utilities/truncate';
-import { DEFAULT_SETTINGS } from '@pi-code/shared/core/settings';
+import { createDefaultSettings } from '@pi-code/shared/core/settings';
 
 import type { AppSettings } from '@pi-code/shared/core/settings';
+
+const DEFAULT_SETTINGS = createDefaultSettings();
 
 const limits = { maxLines: 5, maxBytes: 1024 };
 

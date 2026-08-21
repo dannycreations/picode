@@ -1,9 +1,7 @@
 import { cn } from 'cnfast';
 import { AlertTriangle, Info, RefreshCw } from 'lucide-react';
 
-import { findOccurrences } from '@pi-code/shared/utilities/common';
-import { localActiveIndex } from '@pi-code/webview/components/chat/helpers/search';
-import { Highlight } from '@pi-code/webview/components/shared/Highlight';
+import { SearchableText } from '@pi-code/webview/components/shared/Highlight';
 import { Spinner } from '@pi-code/webview/components/shared/Spinner';
 import { formatTime } from '@pi-code/webview/utilities/common';
 
@@ -51,18 +49,13 @@ export const ApiRequestMessage: FC<{ readonly message: ChatMessage }> = ({ messa
 export const ErrorMessage: FC<{ readonly message: ChatMessage; readonly search?: SearchContext }> = ({ message, search }) => {
   if (message.sender !== 'error') return null;
 
-  const text = message.errorMessage || message.text;
-  const query = search?.query ?? '';
-  const textCount = findOccurrences(text, query).length;
-  const active = search ? localActiveIndex(search.globalOffset, textCount, search.activeIndex) : -1;
-
   return (
     <div className="p-3 rounded-md bg-vscode-editorError-background/10 border border-vscode-editorError-foreground/30 flex gap-2 text-xs text-vscode-editorError-foreground">
       <AlertTriangle size={16} className="shrink-0 mt-0.5" />
       <div className="flex-1 min-w-0">
         <div className="font-semibold text-sm mb-1 select-none">Execution Error</div>
         <div className="font-mono whitespace-pre-wrap break-all leading-normal text-vscode-foreground select-text">
-          <Highlight text={text} query={query} activeOccurrence={active} />
+          <SearchableText text={message.errorMessage || message.text} search={search} />
         </div>
       </div>
     </div>
@@ -70,16 +63,12 @@ export const ErrorMessage: FC<{ readonly message: ChatMessage; readonly search?:
 };
 
 export const InfoMessage: FC<{ readonly message: ChatMessage; readonly search?: SearchContext }> = ({ message, search }) => {
-  const query = search?.query ?? '';
-  const textCount = findOccurrences(message.text, query).length;
-  const active = search ? localActiveIndex(search.globalOffset, textCount, search.activeIndex) : -1;
-
   return (
     <div className="flex items-start justify-between gap-2 text-xs select-none">
       <div className="flex items-start gap-2 text-vscode-foreground min-w-0">
         <Info size={14} className="text-vscode-focusBorder shrink-0 mt-0.5" />
         <span className="font-semibold text-vscode-foreground break-words">
-          <Highlight text={message.text} query={query} activeOccurrence={active} />
+          <SearchableText text={message.text} search={search} />
         </span>
       </div>
       <span className="text-muted font-normal shrink-0 whitespace-nowrap">{formatTime(message.ts)}</span>

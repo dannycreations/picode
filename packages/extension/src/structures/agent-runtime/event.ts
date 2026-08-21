@@ -1,9 +1,9 @@
 import { uuidv7 } from '@earendil-works/pi-ai';
 
-import { getSubagentSessionName } from '@pi-code/extension/structures/agent-runtime/policy';
+import { getSubagentSession } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
 import { takeSubagentUsage } from '@pi-code/extension/structures/agent-runtime/subagent';
 import { logger } from '@pi-code/shared/core/logger';
-import { EMPTY_STATS } from '@pi-code/shared/utilities/common';
+import { resolveContextLimit } from '@pi-code/shared/utilities/common';
 
 import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent';
 import type { ExtensionToWebviewMessage } from '@pi-code/shared/core/protocol';
@@ -66,18 +66,21 @@ interface MappedEvent {
   readonly apiRequestId: string | null;
 }
 
+// Compaction restarts the turn pipeline, so it replays the same header refresh
+// the webview already renders for `agent_start`.
+function agentStart(session: AgentSession, apiRequestId: string | null): MappedEvent {
+  return {
+    message: { type: 'agent_start', payload: { path: session.sessionFile, stats: createStats(session) } },
+    apiRequestId,
+  };
+}
+
 export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiRequestId: string | null): MappedEvent {
-  const subagent = getSubagentSessionName(session.sessionId);
+  const subagent = getSubagentSession(session.sessionId)?.name;
 
   switch (event.type) {
     case 'agent_start':
-      return {
-        message: {
-          type: 'agent_start',
-          payload: { path: session.sessionFile, stats: createStats(session) ?? undefined },
-        },
-        apiRequestId,
-      };
+      return agentStart(session, apiRequestId);
 
     case 'turn_start': {
       const nextId = nextApiRequestId();
@@ -101,7 +104,7 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
             id,
             cost: msg?.usage?.cost?.total,
             error: isError ? msg.errorMessage || 'The API request failed.' : undefined,
-            stats: createStats(session) ?? undefined,
+            stats: createStats(session),
           },
         },
         apiRequestId: null,
@@ -140,7 +143,7 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
           type: 'message_end',
           payload: {
             cost: event.message.usage?.cost?.total,
-            stats: createStats(session) ?? undefined,
+            stats: createStats(session),
           },
         },
         apiRequestId,
@@ -223,13 +226,7 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
     }
 
     case 'compaction_start':
-      return {
-        message: {
-          type: 'agent_start',
-          payload: { path: session.sessionFile, stats: createStats(session) ?? undefined },
-        },
-        apiRequestId,
-      };
+      return agentStart(session, apiRequestId);
 
     case 'compaction_end': {
       const stats = createStats(session);
@@ -241,7 +238,7 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
   }
 }
 
-function createStats(session: AgentSession): StatsData | null {
+function createStats(session: AgentSession): StatsData | undefined {
   try {
     const stats = session.getSessionStats();
     return {
@@ -251,11 +248,11 @@ function createStats(session: AgentSession): StatsData | null {
       cacheWrites: stats.tokens.cacheWrite,
       totalCost: stats.cost,
       contextTokens: stats.contextUsage?.tokens ?? 0,
-      contextLimit: stats.contextUsage?.contextWindow ?? session.model?.contextWindow ?? EMPTY_STATS.contextLimit,
+      contextLimit: resolveContextLimit(stats.contextUsage?.contextWindow ?? session.model?.contextWindow),
     };
   } catch (err) {
     logger.error('Failed to create session stats message:', err);
-    return null;
+    return undefined;
   }
 }
 

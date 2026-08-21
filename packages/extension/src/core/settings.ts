@@ -1,11 +1,13 @@
 import { getAgentDir, SettingsManager } from '@earendil-works/pi-coding-agent';
 import { ConfigurationTarget, workspace } from 'vscode';
 
+import { toOutputLimits } from '@pi-code/extension/utilities/truncate';
 import { isProjectTrusted } from '@pi-code/extension/utilities/vscode';
 import { DEFAULT_APP_ID } from '@pi-code/shared/core/constants';
 import { coerceSetting, coerceSettings, SETTING_KEYS } from '@pi-code/shared/core/settings';
 
 import type { WorkspaceConfiguration } from 'vscode';
+import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
 import type { ModelSelection } from '@pi-code/shared/core/protocol';
 import type { AppSettings } from '@pi-code/shared/core/settings';
 
@@ -28,6 +30,11 @@ export function readAppSettings(): AppSettings {
   }
   cachedSettings = settings as unknown as AppSettings;
   return cachedSettings;
+}
+
+// Every tool result shares one truncation budget derived from the settings snapshot.
+export function readOutputLimits(): OutputLimits {
+  return toOutputLimits(readAppSettings());
 }
 
 function resolveConfigurationTarget(config: WorkspaceConfiguration, key: string): ConfigurationTarget {

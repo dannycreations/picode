@@ -4,12 +4,13 @@ import {
   coerceSetting,
   coerceSettings,
   createDefaultSettings,
-  DEFAULT_SETTINGS,
   getSettingSpec,
   isSettingKey,
   SETTING_KEYS,
   SETTINGS_SCHEMA,
 } from '@pi-code/shared/core/settings';
+
+const DEFAULT_SETTINGS = createDefaultSettings();
 
 describe('settings schema', () => {
   it('derives keys and defaults from the schema', () => {

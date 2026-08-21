@@ -9,7 +9,6 @@ import { ChatBody } from '@pi-code/webview/components/chat/ChatBody';
 import { ChatFooter } from '@pi-code/webview/components/chat/ChatFooter';
 import { ChatHeader } from '@pi-code/webview/components/chat/ChatHeader';
 import { ChatInput } from '@pi-code/webview/components/chat/ChatInput';
-import { ESTIMATED_ROW_HEIGHT, groupToolMessages, hasPendingApproval, isRenderableMessage } from '@pi-code/webview/components/chat/helpers/message';
 import { getMessageSearchText } from '@pi-code/webview/components/chat/helpers/search';
 import { useChatActions } from '@pi-code/webview/components/chat/hooks/useChatActions';
 import { useChatConfig } from '@pi-code/webview/components/chat/hooks/useChatConfig';
@@ -20,12 +19,26 @@ import { SettingsView } from '@pi-code/webview/components/setting/SettingsView';
 import { ConfirmDialog } from '@pi-code/webview/components/shared/ConfirmDialog';
 import { Spinner } from '@pi-code/webview/components/shared/Spinner';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
+import { groupToolMessages, hasPendingApproval, isRenderableMessage, latestTodos } from '@pi-code/webview/helpers/messages';
 import { useAutoScroll } from '@pi-code/webview/hooks/useAutoScroll';
-import { selectPendingQuestion, useChatStore } from '@pi-code/webview/stores/useChatStore';
+import { selectPendingQuestion, setComposerTextarea, useChatStore } from '@pi-code/webview/stores/useChatStore';
 
 import type { FC } from 'react';
 import type { HistoryItem } from '@pi-code/shared/core/protocol';
-import type { SearchContext } from '@pi-code/webview/components/shared/Highlight';
+import type { ChatMessage } from '@pi-code/shared/core/types';
+
+// Rough per-sender heights for the virtualizer's first estimate; measured row
+// sizes replace them once rows mount.
+const ESTIMATED_ROW_HEIGHT: Record<ChatMessage['sender'], number> = {
+  api_request: 44,
+  checkpoint: 44,
+  info: 44,
+  error: 96,
+  user: 96,
+  queue: 96,
+  tool: 120,
+  assistant: 200,
+};
 
 export const ChatView: FC = () => {
   const [historyExpanded, setHistoryExpanded] = useState(true);
@@ -39,8 +52,8 @@ export const ChatView: FC = () => {
   const appendToInput = useChatStore((state) => state.appendToInput);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   useEffect(() => {
-    useChatStore.getState().setTextareaRef(textareaRef);
-    return () => useChatStore.getState().setTextareaRef(null);
+    setComposerTextarea(textareaRef);
+    return () => setComposerTextarea(null);
   }, []);
 
   const scope = useChatStore((state) => state.scope);
@@ -115,18 +128,16 @@ export const ChatView: FC = () => {
   // Leaving the history list for the recent tasks screen clears its scope and
   // every in-list state (search, sort, pagination, selection) so it starts
   // fresh next time.
-  const { setSearchQuery: resetHistorySearch, setSortBy: resetHistorySort, setCurrentPage: resetHistoryPage } = historyFilter;
+  const { reset: resetHistoryFilter } = historyFilter;
 
   const handleHistoryDone = useCallback(() => {
-    resetHistorySearch('');
-    resetHistorySort('newest');
-    resetHistoryPage(1);
+    resetHistoryFilter();
     setIsHistorySelectionMode(false);
     setHistorySelectedPaths([]);
     setScope('current');
     setView('chat');
     taskFromHistoryRef.current = false;
-  }, [resetHistorySearch, resetHistorySort, resetHistoryPage, setIsHistorySelectionMode, setHistorySelectedPaths, setScope, setView]);
+  }, [resetHistoryFilter, setIsHistorySelectionMode, setHistorySelectedPaths, setScope, setView]);
 
   // Closing settings returns to the history list when it was opened from there
   // (state preserved); otherwise it returns to the chat.
@@ -298,13 +309,21 @@ export const ChatView: FC = () => {
   // free text instead of picking one of the suggestions.
   const isAwaitingApproval = activeTask ? hasPendingApproval(activeTask.messages) : false;
   const isInputDisabled = !pendingQuestion && isAwaitingApproval;
+  const activeTaskTodos = activeTask ? latestTodos(activeTask.messages) : undefined;
 
   return (
     <div className="view-container">
       {/* Task Header / Welcome Header */}
       {activeTask ? (
         <ChatHeader
-          {...activeTask}
+          title={activeTask.title}
+          tokensIn={activeTask.tokensIn}
+          tokensOut={activeTask.tokensOut}
+          cacheWrites={activeTask.cacheWrites}
+          cacheReads={activeTask.cacheReads}
+          totalCost={activeTask.totalCost}
+          contextTokens={activeTask.contextTokens}
+          todos={activeTaskTodos}
           contextLimit={config.selectedModelContextWindow}
           onClose={handleCloseTaskReturn}
           onCompact={() => useChatStore.getState().compact()}
@@ -364,7 +383,7 @@ export const ChatView: FC = () => {
                   commands={commands}
                   search={
                     searchOpen && searchQuery
-                      ? ({ query: searchQuery, globalOffset: globalOffsets[item.index] ?? 0, activeIndex: activeMatch } as SearchContext)
+                      ? { query: searchQuery, globalOffset: globalOffsets[item.index] ?? 0, activeIndex: activeMatch }
                       : undefined
                   }
                   onApproveTool={handleApproveTool}

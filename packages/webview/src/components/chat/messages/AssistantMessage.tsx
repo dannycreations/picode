@@ -2,12 +2,10 @@ import { cn } from 'cnfast';
 import { ChevronUp, Lightbulb, MessageCircle } from 'lucide-react';
 import { useState } from 'react';
 
-import { findOccurrences } from '@pi-code/shared/utilities/common';
-import { localActiveIndex } from '@pi-code/webview/components/chat/helpers/search';
 import { Markdown } from '@pi-code/webview/components/chat/markdown/Markdown';
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
 import { Accordion } from '@pi-code/webview/components/shared/Accordion';
-import { Highlight } from '@pi-code/webview/components/shared/Highlight';
+import { locateOccurrences, SearchableText } from '@pi-code/webview/components/shared/Highlight';
 import { Spinner } from '@pi-code/webview/components/shared/Spinner';
 
 import type { FC } from 'react';
@@ -27,9 +25,7 @@ export const AssistantMessage: FC<AssistantMessageProps> = ({ message, search })
   const reasoning = message.reasoning?.trim() ?? '';
   const hasReasoning = reasoning !== '';
   const hasText = message.text.trim() !== '';
-  const query = search?.query ?? '';
-  const reasoningCount = findOccurrences(reasoning, query).length;
-  const reasoningActive = search ? localActiveIndex(search.globalOffset, reasoningCount, search.activeIndex) : -1;
+  const { count: reasoningCount, active: reasoningActive } = locateOccurrences(reasoning, search);
   // Reveal the reasoning block when the active match lives inside it, so the
   // highlight is visible; collapse it again once the match moves elsewhere
   // (unless the user opened it manually).
@@ -55,7 +51,7 @@ export const AssistantMessage: FC<AssistantMessageProps> = ({ message, search })
           </MessageHeader>
           <Accordion open={showReasoning}>
             <div className="ml-6 border-l border-vscode-descriptionForeground/20 pl-4 pb-1 text-muted whitespace-pre-wrap break-words leading-relaxed select-text">
-              <Highlight text={reasoning} query={query} activeOccurrence={reasoningActive} />
+              <SearchableText text={reasoning} search={search} />
             </div>
           </Accordion>
         </div>

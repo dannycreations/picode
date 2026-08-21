@@ -245,8 +245,6 @@ export function createDefaultSettings(): AppSettings {
   return Object.fromEntries(SETTING_KEYS.map((key) => [key, defaultValue(key)])) as AppSettings;
 }
 
-export const DEFAULT_SETTINGS: AppSettings = createDefaultSettings();
-
 export function coerceSetting<K extends SettingKey>(key: K, value: unknown): AppSettings[K] {
   const spec = getSettingSpec(key);
   const fallback = defaultValue(key) as AppSettings[K];

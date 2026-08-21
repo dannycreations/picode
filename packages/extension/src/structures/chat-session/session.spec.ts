@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { recordApprovalDuration } from '@pi-code/extension/structures/agent-runtime/policy';
+import { recordApprovalDuration } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
 import { convertSessionEntries } from '@pi-code/extension/structures/chat-session/session';
 
 import type { AssistantMessage, ToolResultMessage, UserMessage } from '@earendil-works/pi-ai';

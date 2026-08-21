@@ -10,7 +10,9 @@ import {
   resolvePathAction,
   resolveReadPath,
 } from '@pi-code/extension/structures/agent-runtime/policy-action';
-import { DEFAULT_SETTINGS } from '@pi-code/shared/core/settings';
+import { createDefaultSettings } from '@pi-code/shared/core/settings';
+
+const DEFAULT_SETTINGS = createDefaultSettings();
 
 vi.mock('shell-quote', async () => {
   const actual = await vi.importActual<typeof import('shell-quote')>('shell-quote');

@@ -92,15 +92,15 @@ export const CommandMenu = ({ commands, selectedIndex, onSelect, onHover }: Comm
 };
 
 interface MentionMenuProps {
-  readonly results: readonly string[];
+  readonly items: readonly string[];
   readonly selectedIndex: number;
   readonly onSelect: (path: string) => void;
   readonly onHover: (index: number) => void;
 }
 
-export const MentionMenu = ({ results, selectedIndex, onSelect, onHover }: MentionMenuProps) => (
+export const MentionMenu = ({ items, selectedIndex, onSelect, onHover }: MentionMenuProps) => (
   <SuggestionMenu<string>
-    items={results}
+    items={items}
     selectedIndex={selectedIndex}
     onSelect={onSelect}
     onHover={onHover}

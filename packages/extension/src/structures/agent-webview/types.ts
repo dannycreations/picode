@@ -1,10 +1,10 @@
-import type { AgentRunner } from '@pi-code/extension/structures/agent-runtime/runner';
+import type { Runtime } from '@pi-code/extension/structures/agent-runtime/runtime';
 import type { WorkspaceService } from '@pi-code/extension/structures/agent-webview/workspace';
-import type { ExtensionToWebviewMessage } from '@pi-code/shared/core/protocol';
 
 export interface MessageHandlerContext {
   readonly cwd: string;
-  readonly agent: AgentRunner;
+  readonly runtime: Runtime;
   readonly workspace: WorkspaceService;
-  readonly postMessage: (msg: ExtensionToWebviewMessage) => void;
+  // Monotonic epoch for history_data chunks; reset when the webview re-inits.
+  historyEpoch: number;
 }

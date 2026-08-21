@@ -2,13 +2,13 @@ import { formatThrownValue } from '@earendil-works/pi-ai';
 import { commands, languages, ProgressLocation, Range, window } from 'vscode';
 
 import { completePrompt } from '@pi-code/extension/structures/agent-runtime/complete';
-import { ChatViewProvider } from '@pi-code/extension/structures/agent-webview/provider';
 import { getEffectiveSelection, mapDiagnostics } from '@pi-code/extension/structures/context-command/helpers';
 import { extractCodeFenceMessage } from '@pi-code/extension/utilities/markdown';
 import { getWorkspaceCwd, toRelativePath } from '@pi-code/extension/utilities/vscode';
 import { logger } from '@pi-code/shared/core/logger';
 
 import type { Diagnostic, Disposable } from 'vscode';
+import type { ChatViewProvider } from '@pi-code/extension/structures/agent-webview/provider';
 import type { MappedDiagnostic } from '@pi-code/extension/structures/context-command/helpers';
 
 interface ResolvedSelection {
@@ -49,29 +49,30 @@ function getDiagnosticText(args: unknown[], selection: ResolvedSelection): strin
     : collectSelectionDiagnostics(selection);
 }
 
-export function registerAddToContextCommand(chatViewProvider: ChatViewProvider): Disposable {
-  return commands.registerCommand('pi-code.addToContext', async (...args: any[]) => {
+function registerChatInputCommand(
+  sender: ChatViewProvider,
+  id: string,
+  buildPrompt: (selection: ResolvedSelection, args: any[]) => string,
+): Disposable {
+  return commands.registerCommand(id, async (...args: any[]) => {
     const selection = resolveSelection(args);
     if (!selection) return;
 
-    await commands.executeCommand('pi-code.chatView.focus');
+    const prompt = buildPrompt(selection, args);
 
-    const prompt = formatSelectionBlock(selection);
-    chatViewProvider.postMessage({ type: 'set_chat_input', payload: { text: prompt } });
+    await commands.executeCommand('pi-code.chatView.focus');
+    sender.postMessage({ type: 'set_chat_input', payload: { text: prompt } });
   });
 }
 
-export function registerAddProblemToContextCommand(chatViewProvider: ChatViewProvider): Disposable {
-  return commands.registerCommand('pi-code.addProblemToContext', async (...args: any[]) => {
-    const selection = resolveSelection(args);
-    if (!selection) return;
+export function registerAddToContextCommand(sender: ChatViewProvider): Disposable {
+  return registerChatInputCommand(sender, 'pi-code.addToContext', (selection) => formatSelectionBlock(selection));
+}
 
+export function registerAddProblemToContextCommand(sender: ChatViewProvider): Disposable {
+  return registerChatInputCommand(sender, 'pi-code.addProblemToContext', (selection, args) => {
     const diagnosticText = getDiagnosticText(args, selection);
-
-    await commands.executeCommand('pi-code.chatView.focus');
-
-    const prompt = `${diagnosticText}\n\n${selection.filePath}:${selection.startLine}-${selection.endLine}\n\`\`\`\n${selection.selectedText}\n\`\`\`\n\n`;
-    chatViewProvider.postMessage({ type: 'set_chat_input', payload: { text: prompt } });
+    return `${diagnosticText}\n\n${formatSelectionBlock(selection)}`;
   });
 }
 

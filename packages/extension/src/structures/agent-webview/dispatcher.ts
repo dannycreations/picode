@@ -21,6 +21,7 @@ import { ACTIVE_TASK_ID } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
 import { HISTORY_SCOPES } from '@pi-code/shared/core/protocol';
 
+import type { ModelRuntime } from '@earendil-works/pi-coding-agent';
 import type { MessageHandlerContext } from '@pi-code/extension/structures/agent-webview/types';
 import type { HistoryScope, WebviewToExtensionMessage } from '@pi-code/shared/core/protocol';
 import type { ChatMessage, StatsData } from '@pi-code/shared/core/types';
@@ -33,11 +34,6 @@ type CommandHandler<T extends WebviewToExtensionMessage['type']> = (
 type HandlerMap = {
   [T in WebviewToExtensionMessage['type']]: CommandHandler<T>;
 };
-
-// Monotonic per-session counter for history refreshes. The webview applies
-// only the highest epoch per scope, so a stale or out-of-order history_data
-// chunk from an earlier refresh cannot corrupt the list.
-let historyEpoch = 0;
 
 interface TranscriptDetails {
   readonly messages: ChatMessage[];
@@ -52,7 +48,7 @@ async function postSession(
   details: TranscriptDetails,
 ): Promise<void> {
   const isArchived = path ? isArchivedPath(path) : false;
-  ctx.postMessage({
+  ctx.runtime.postMessage({
     type: 'session_loaded',
     payload: {
       id: id || ACTIVE_TASK_ID,
@@ -66,39 +62,53 @@ async function postSession(
 }
 
 async function postHistory(ctx: MessageHandlerContext, scope: HistoryScope): Promise<void> {
-  const epoch = ++historyEpoch;
+  // Monotonic per-webview counter for history refreshes. The webview applies
+  // only the highest epoch per scope, so a stale or out-of-order history_data
+  // chunk from an earlier refresh cannot corrupt the list.
+  const epoch = ++ctx.historyEpoch;
   try {
     for await (const items of streamHistory(ctx.cwd, scope)) {
-      ctx.postMessage({ type: 'history_data', payload: { scope, epoch, items } });
+      ctx.runtime.postMessage({ type: 'history_data', payload: { scope, epoch, items } });
     }
   } catch (error) {
     logger.warn(`History stream for "${scope}" failed; the list may be incomplete.`, error);
   }
 }
 
+// Refreshes the shared model runtime's catalog and pushes the merged list to
+// the webview. `force` hits the network instead of trusting the cached catalog.
+function pushModelCatalog(ctx: MessageHandlerContext, modelRuntime: ModelRuntime, force = false, onUpdated?: () => void): void {
+  void refreshModelCatalog(
+    modelRuntime,
+    (models) => {
+      ctx.runtime.postMessage({ type: 'models_data', payload: { models } });
+      onUpdated?.();
+    },
+    force,
+  );
+}
+
 const HANDLER_MAP: HandlerMap = {
   init: async (_, ctx) => {
-    historyEpoch = 0;
+    ctx.historyEpoch = 0;
 
     const services = await createAgentResources(ctx.cwd);
     const data = await getInitData(ctx.cwd, services);
     // Send init_data before the history stream so the webview resets its epoch
     // bookkeeping before the first history_data chunk arrives.
-    ctx.postMessage({ type: 'init_data', payload: data });
+    ctx.runtime.postMessage({ type: 'init_data', payload: data });
     void postHistory(ctx, 'current');
     // The local catalog is enough to render the chat view, so refresh the
     // remote catalog in the background and push the merged models once it lands.
     // Reuse the runtime we just built instead of re-resolving resources.
-    void refreshModelCatalog(services.modelRuntime, (models) => {
-      ctx.postMessage({ type: 'models_data', payload: { models } });
-    });
+    pushModelCatalog(ctx, services.modelRuntime);
   },
   send_message: (msg, ctx) => {
-    void ctx.agent.startTask(msg.text, msg.images, msg.path);
+    void ctx.runtime.startTask(msg.text, msg.images, msg.path);
   },
   search_files: async (msg, ctx) => {
     const paths = await searchWorkspaceFiles(msg.query, ctx.cwd);
-    ctx.postMessage({ type: 'search_results', payload: { requestId: msg.requestId, paths } });
+    ctx.runtime.postMessage({ type: 'search_results', payload: { requestId: msg.requestId, paths } });
   },
   insert_mentions: (msg, ctx) => {
     const text = msg.paths
@@ -107,19 +117,19 @@ const HANDLER_MAP: HandlerMap = {
       .map((path) => toMentionText(path, ctx.cwd))
       .join(' ');
     if (text.length === 0) return;
-    ctx.postMessage({ type: 'set_chat_input', payload: { text: `${text} ` } });
+    ctx.runtime.postMessage({ type: 'set_chat_input', payload: { text: `${text} ` } });
   },
   add_to_reply_queue: (msg, ctx) => {
-    ctx.agent.addToReplyQueue(msg.text, msg.images);
+    ctx.runtime.addToReplyQueue(msg.text, msg.images);
   },
   edit_reply_queue: (msg, ctx) => {
-    ctx.agent.editReplyQueue(msg.id, msg.text);
+    ctx.runtime.editReplyQueue(msg.id, msg.text);
   },
   remove_from_reply_queue: (msg, ctx) => {
-    ctx.agent.removeFromReplyQueue(msg.id);
+    ctx.runtime.removeFromReplyQueue(msg.id);
   },
   continue_task: (msg, ctx) => {
-    void ctx.agent.continueTask(msg.path || '');
+    void ctx.runtime.continueTask(msg.path || '');
   },
   tool_response: (msg) => {
     if (msg.approved) approveApproval(msg.approval_id);
@@ -127,37 +137,30 @@ const HANDLER_MAP: HandlerMap = {
   },
   question_response: (msg) => answerQuestion(msg.question_id, msg.text),
   cancel_task: async (_, ctx) => {
-    await ctx.agent.cancelTask();
+    await ctx.runtime.cancelTask();
     await postHistory(ctx, 'current');
   },
   builtin_command: async (msg, ctx) => {
     switch (msg.command) {
       case 'reload':
-        void ctx.agent.reload();
+        void ctx.runtime.reload();
         return;
       case 'update': {
         // Force a network refresh of the shared model runtime so both the webview
         // (via the pushed models_data) and the agent runtime read the newest catalog.
         window.showInformationMessage('Updating model catalog...');
         const services = await createAgentResources(ctx.cwd);
-        void refreshModelCatalog(
-          services.modelRuntime,
-          (models) => {
-            ctx.postMessage({ type: 'models_data', payload: { models } });
-            window.showInformationMessage('Model catalog updated.');
-          },
-          true,
-        );
+        pushModelCatalog(ctx, services.modelRuntime, true, () => window.showInformationMessage('Model catalog updated.'));
         return;
       }
       case 'compact': {
-        const path = msg.path || ctx.agent.getSessionFile();
+        const path = msg.path || ctx.runtime.getSessionFile();
         if (!path) {
           window.showInformationMessage('Open or start a task before using /compact.');
           return;
         }
 
-        const details = await ctx.agent.compact(path);
+        const details = await ctx.runtime.compact(path);
         if (!details) return;
 
         // Refresh the webview from the in-memory session we just compacted instead
@@ -175,7 +178,7 @@ const HANDLER_MAP: HandlerMap = {
     await postSession(ctx, msg.id, msg.title, msg.path, details);
   },
   view_raw_task: async (msg, ctx) => {
-    const path = msg.path || ctx.agent.getSessionFile();
+    const path = msg.path || ctx.runtime.getSessionFile();
     await ctx.workspace.openRawTask(path);
   },
   export_session: async (msg) => {
@@ -184,7 +187,7 @@ const HANDLER_MAP: HandlerMap = {
   },
   archive_session: async (msg, ctx) => {
     const { path, archived } = await archiveSession(msg.path);
-    ctx.postMessage({ type: 'archive_result', payload: { path, archived, id: msg.id, title: msg.title } });
+    ctx.runtime.postMessage({ type: 'archive_result', payload: { path, archived, id: msg.id, title: msg.title } });
   },
   open_file: async (msg, ctx) => {
     if (msg.values?.diff) {
@@ -205,9 +208,9 @@ const HANDLER_MAP: HandlerMap = {
   delete_sessions: async (msg, ctx) => {
     // Stop the running agent only when we are deleting the task it is on, so a
     // list deletion never cancels an unrelated active session.
-    const activePath = ctx.agent.getSessionFile();
+    const activePath = ctx.runtime.getSessionFile();
     if (activePath && msg.paths.includes(activePath)) {
-      await ctx.agent.cancelTask();
+      await ctx.runtime.cancelTask();
     }
     await deleteSessions(msg.paths);
     // Re-stream every scope after the files are gone so the webview receives an
@@ -223,7 +226,7 @@ const HANDLER_MAP: HandlerMap = {
     await writeAppSettings(msg.settings);
   },
   set_model: (msg, ctx) => {
-    ctx.agent.applyModelAndThinking(msg.model, msg.thinkingLevel);
+    ctx.runtime.applyModelAndThinking(msg.model, msg.thinkingLevel);
   },
 };
 

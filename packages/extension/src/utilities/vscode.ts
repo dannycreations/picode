@@ -3,13 +3,12 @@ import { Uri, workspace } from 'vscode';
 
 import { normalizeSeparators } from '@pi-code/extension/utilities/fs';
 
-export function getWorkspaceCwd(): string {
-  const workspaceFolders = workspace?.workspaceFolders;
-  return workspaceFolders && workspaceFolders.length > 0 ? workspaceFolders[0].uri.fsPath : process.cwd();
+export function getWorkspaceUri(): Uri | undefined {
+  return workspace?.workspaceFolders?.[0]?.uri;
 }
 
-export function getWorkspaceUri(): Uri | undefined {
-  return workspace.workspaceFolders?.[0]?.uri;
+export function getWorkspaceCwd(): string {
+  return getWorkspaceUri()?.fsPath ?? process.cwd();
 }
 
 function toUri(target: Uri | string): Uri {

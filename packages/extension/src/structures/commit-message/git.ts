@@ -2,7 +2,7 @@ import { formatThrownValue } from '@earendil-works/pi-ai';
 import { generateUnifiedPatch } from '@earendil-works/pi-coding-agent';
 import { Uri, workspace } from 'vscode';
 
-import { isBinaryFile } from '@pi-code/extension/utilities/codec';
+import { isBinaryFile } from '@pi-code/extension/utilities/fs';
 import { GIT_STATUS } from '@pi-code/extension/utilities/git';
 import { toRelativePath } from '@pi-code/extension/utilities/vscode';
 

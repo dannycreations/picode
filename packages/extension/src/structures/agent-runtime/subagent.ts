@@ -1,7 +1,7 @@
 import { contentText } from '@earendil-works/pi-ai';
 import { createAgentSessionFromServices, SessionManager } from '@earendil-works/pi-coding-agent';
 
-import { registerSubagentSession, unregisterSubagentSession } from '@pi-code/extension/structures/agent-runtime/policy';
+import { registerSubagentSession, unregisterSubagentSession } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
 import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { executeCommandTool } from '@pi-code/extension/structures/tool-call/execute-command';
 import { readFileTool } from '@pi-code/extension/structures/tool-call/read-file';

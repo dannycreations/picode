@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { AgentRunner } from '@pi-code/extension/structures/agent-runtime/runner';
+import { Runtime } from '@pi-code/extension/structures/agent-runtime/runtime';
 import { logger } from '@pi-code/shared/core/logger';
 
 import type { AgentSession } from '@earendil-works/pi-coding-agent';
@@ -34,41 +34,41 @@ function makeFakeSession(steer: () => void, appendMessage: ReturnType<typeof vi.
   } as unknown as AgentSession;
 }
 
-describe('AgentRunner reply queue', () => {
+describe('Runtime reply queue', () => {
   it('adds, edits, removes, and clears reply queue messages', () => {
-    const runner = new AgentRunner(makeFakeWebview());
+    const runtime = new Runtime(makeFakeWebview());
 
-    expect(runner['replyQueue']).toEqual([]);
+    expect(runtime['replyQueue']).toEqual([]);
 
-    runner.addToReplyQueue('Hello World');
-    expect(runner['replyQueue'].length).toBe(1);
-    expect(runner['replyQueue'][0].text).toBe('Hello World');
+    runtime.addToReplyQueue('Hello World');
+    expect(runtime['replyQueue'].length).toBe(1);
+    expect(runtime['replyQueue'][0].text).toBe('Hello World');
 
-    const msgId = runner['replyQueue'][0].id;
+    const msgId = runtime['replyQueue'][0].id;
 
-    runner.editReplyQueue(msgId, 'Hello Edited');
-    expect(runner['replyQueue'][0].text).toBe('Hello Edited');
+    runtime.editReplyQueue(msgId, 'Hello Edited');
+    expect(runtime['replyQueue'][0].text).toBe('Hello Edited');
 
-    runner.addToReplyQueue('Second Message');
-    expect(runner['replyQueue'].length).toBe(2);
+    runtime.addToReplyQueue('Second Message');
+    expect(runtime['replyQueue'].length).toBe(2);
 
-    runner.removeFromReplyQueue(msgId);
-    expect(runner['replyQueue'].length).toBe(1);
-    expect(runner['replyQueue'][0].text).toBe('Second Message');
+    runtime.removeFromReplyQueue(msgId);
+    expect(runtime['replyQueue'].length).toBe(1);
+    expect(runtime['replyQueue'][0].text).toBe('Second Message');
 
-    runner.clearReplyQueue();
-    expect(runner['replyQueue']).toEqual([]);
+    runtime.clearReplyQueue();
+    expect(runtime['replyQueue']).toEqual([]);
   });
 
   it('drains queued replies into the running session via steer on the next turn', async () => {
     const steer = vi.fn();
     const session = makeFakeSession(steer);
     const webview = makeFakeWebview();
-    const runner = new AgentRunner(webview);
+    const runtime = new Runtime(webview);
 
-    runner.addToReplyQueue('Hello World');
-    runner.addToReplyQueue('Second Message');
-    runner['setupSessionHook'](session);
+    runtime.addToReplyQueue('Hello World');
+    runtime.addToReplyQueue('Second Message');
+    runtime['setupSessionHook'](session);
 
     const prepare = session.agent.prepareNextTurnWithContext!;
     await prepare({} as Parameters<typeof prepare>[0], new AbortController().signal);
@@ -77,7 +77,7 @@ describe('AgentRunner reply queue', () => {
     expect(steer.mock.calls[0][0].role).toBe('user');
     expect(steer.mock.calls[0][0].content[0].text).toBe('Hello World');
     expect(steer.mock.calls[1][0].content[0].text).toBe('Second Message');
-    expect(runner['replyQueue']).toEqual([]);
+    expect(runtime['replyQueue']).toEqual([]);
 
     const delivered = (webview.postMessage as ReturnType<typeof vi.fn>).mock.calls
       .map((call) => call[0])
@@ -99,28 +99,28 @@ describe('AgentRunner reply queue', () => {
     });
     const logError = vi.spyOn(logger, 'error').mockImplementation(() => {});
     const session = makeFakeSession(steer);
-    const runner = new AgentRunner(makeFakeWebview());
+    const runtime = new Runtime(makeFakeWebview());
 
-    runner.addToReplyQueue('Stays');
-    runner['setupSessionHook'](session);
+    runtime.addToReplyQueue('Stays');
+    runtime['setupSessionHook'](session);
 
     const prepare = session.agent.prepareNextTurnWithContext!;
     await prepare({} as Parameters<typeof prepare>[0], new AbortController().signal);
 
     expect(steer).toHaveBeenCalledTimes(1);
-    expect(runner['replyQueue'].map((m) => m.text)).toEqual(['Stays']);
+    expect(runtime['replyQueue'].map((m) => m.text)).toEqual(['Stays']);
     expect(logError).toHaveBeenCalledTimes(1);
   });
 
   it('does not persist an assistant message aborted by a task cancel', () => {
     const appendMessage = vi.fn(() => 'persisted-id');
     const session = makeFakeSession(vi.fn(), appendMessage);
-    const runner = new AgentRunner(makeFakeWebview());
+    const runtime = new Runtime(makeFakeWebview());
 
-    runner['setupSessionHook'](session);
+    runtime['setupSessionHook'](session);
 
-    // After cancelTask, AgentRunner.session is null.
-    runner['session'] = null;
+    // After cancelTask, Runtime.session is null.
+    runtime['session'] = null;
     session.sessionManager.appendMessage!({
       role: 'assistant',
       stopReason: 'aborted',
@@ -133,9 +133,9 @@ describe('AgentRunner reply queue', () => {
   it('persists non-aborted messages through the real appendMessage', () => {
     const appendMessage = vi.fn(() => 'persisted-id');
     const session = makeFakeSession(vi.fn(), appendMessage);
-    const runner = new AgentRunner(makeFakeWebview());
+    const runtime = new Runtime(makeFakeWebview());
 
-    runner['setupSessionHook'](session);
+    runtime['setupSessionHook'](session);
 
     session.sessionManager.appendMessage!({ role: 'user', content: 'hi' } as never);
 

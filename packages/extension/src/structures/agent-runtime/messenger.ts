@@ -12,15 +12,15 @@ interface CoalescedToolUpdate {
   subtitle?: string;
 }
 
-export class WebviewMessenger {
-  private webview: Webview | null = null;
+export class Messenger {
   private isDisposed = false;
   private textBuffer = '';
   private thinkingBuffer = '';
   private toolUpdates = new Map<string, CoalescedToolUpdate>();
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
+  private webview: Webview | null;
 
-  public attach(webview: Webview): void {
+  public constructor(webview: Webview) {
     this.webview = webview;
   }
 
@@ -42,8 +42,7 @@ export class WebviewMessenger {
       const entry = this.toolUpdates.get(message.payload.id) ?? { result: '', subagent: undefined, subtitle: undefined };
       entry.toolName = message.payload.tool_name;
       this.toolUpdates.set(message.payload.id, entry);
-      this.flush();
-      void this.webview.postMessage(message);
+      this.send(message);
       return;
     }
 
@@ -61,13 +60,11 @@ export class WebviewMessenger {
 
     if (message.type === 'tool_execution_end') {
       this.toolUpdates.delete(message.payload.id);
-      this.flush();
-      void this.webview.postMessage(message);
+      this.send(message);
       return;
     }
 
-    this.flush();
-    void this.webview.postMessage(message);
+    this.send(message);
   }
 
   public postError(err: unknown): void {
@@ -83,6 +80,11 @@ export class WebviewMessenger {
   private scheduleFlush(): void {
     if (this.flushTimer !== null) return;
     this.flushTimer = setTimeout(() => this.flush(), FLUSH_INTERVAL_MS);
+  }
+
+  private send(message: ExtensionToWebviewMessage): void {
+    this.flush();
+    void this.webview?.postMessage(message);
   }
 
   private flush(): void {

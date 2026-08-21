@@ -3,14 +3,12 @@ import { resolve } from 'node:path';
 import { formatThrownValue } from '@earendil-works/pi-ai';
 import { formatPathRelativeToCwdOrAbsolute } from '@earendil-works/pi-coding-agent';
 
-import { readAppSettings } from '@pi-code/extension/core/settings';
-import { readFileTextContent } from '@pi-code/extension/structures/tool-call/read-file';
-import { walkDirectory } from '@pi-code/extension/utilities/fs';
-import { toOutputLimits } from '@pi-code/extension/utilities/truncate';
+import { readOutputLimits } from '@pi-code/extension/core/settings';
+import { MENTION_PATTERN } from '@pi-code/extension/shared/core/constants';
+import { checkReadableFile, numberLines, readLines, walkDirectory } from '@pi-code/extension/utilities/fs';
+import { truncateOutput } from '@pi-code/extension/utilities/truncate';
 
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
-
-const MENTION_PATTERN = /(?:^|(?<=[\s]))@(\S+)/g;
 
 // A dropped file arrives as an absolute path or a `file://` URI. Collapse it to
 // the workspace-relative `@token` the mention parser expects, so a Shift-drag
@@ -22,6 +20,17 @@ export function toMentionText(path: string, cwd: string): string {
 const FOLDER_MAX_FILES = 50;
 const FOLDER_MAX_DEPTH = 2;
 const FOLDER_CHAR_CAP = 20_000;
+
+async function readFileText(path: string, limits: OutputLimits): Promise<string> {
+  const check = await checkReadableFile(path);
+  if (!check.ok) {
+    throw new Error(check.body);
+  }
+
+  const lines = await readLines(path, limits.maxLines > 0 ? limits.maxLines : undefined);
+  const { text } = truncateOutput(numberLines(lines, undefined), { limits, keep: 'head' });
+  return text;
+}
 
 interface ResolvedMention {
   readonly kind: 'file' | 'folder';
@@ -41,7 +50,7 @@ export async function expandMentions(text: string, cwd: string): Promise<Expande
   const matches = [...text.matchAll(MENTION_PATTERN)];
   if (matches.length === 0) return { text, mentionContent: '' };
 
-  const limits = toOutputLimits(readAppSettings());
+  const limits = readOutputLimits();
 
   const resolved = new Map<string, ResolvedMention | null>();
   const uniqueMentions = [...new Set(matches.map((match) => match[1]))];
@@ -74,7 +83,7 @@ async function resolveMention(raw: string, cwd: string, limits: OutputLimits): P
   }
   if (info.isFile()) {
     try {
-      return { kind: 'file', content: await readFileTextContent(target, limits) };
+      return { kind: 'file', content: await readFileText(target, limits) };
     } catch (err) {
       return { kind: 'file', content: formatThrownValue(err) };
     }

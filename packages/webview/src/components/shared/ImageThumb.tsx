@@ -14,3 +14,15 @@ export const ImageThumb: FC<ImageThumbProps> = ({ url }) => (
     </div>
   </Tooltip>
 );
+
+export const ImageThumbRow: FC<{ readonly images: readonly string[] }> = ({ images }) => {
+  if (images.length === 0) return null;
+
+  return (
+    <div className="image-row">
+      {images.map((img, idx) => (
+        <ImageThumb key={idx} url={img} />
+      ))}
+    </div>
+  );
+};

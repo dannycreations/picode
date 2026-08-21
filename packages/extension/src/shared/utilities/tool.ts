@@ -1,4 +1,4 @@
-import type { ChatMessage, ToolArguments, ToolChatMessage, ToolName, ToolSection } from '@pi-code/shared/core/types';
+import type { ChatMessage, ToolArguments, ToolChatMessage, ToolName, ToolSection, ToolStatus } from '@pi-code/shared/core/types';
 
 interface ToolMeta {
   readonly fileIcon: string;
@@ -193,7 +193,7 @@ export function buildToolSections(message: ChatMessage): ToolSection[] {
   ];
 }
 
-export function getFileToolMeta(toolName: string | undefined, status?: string): { title: string; icon: string } {
+export function getFileToolMeta(toolName: string | undefined, status?: ToolStatus): { title: string; icon: string } {
   const meta = toolMeta(toolName);
 
   let title: string;

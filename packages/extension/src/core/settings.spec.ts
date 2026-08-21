@@ -1,7 +1,6 @@
-import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES } from '@earendil-works/pi-coding-agent';
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULT_SETTINGS, SETTING_KEYS, SETTINGS_SCHEMA } from '@pi-code/shared/core/settings';
+import { SETTING_KEYS, SETTINGS_SCHEMA } from '@pi-code/shared/core/settings';
 import manifest from '../../package.json' with { type: 'json' };
 import { buildManifestSettings } from '../../scripts/settings.ts';
 
@@ -32,10 +31,5 @@ describe('schema defaults', () => {
       expect(spec.default, key).toBeGreaterThanOrEqual(spec.minimum);
       expect(spec.default, key).toBeLessThanOrEqual(spec.maximum);
     }
-  });
-
-  it('mirrors the agent tool output limits', () => {
-    expect(DEFAULT_SETTINGS.maxToolOutputLines).toBe(DEFAULT_MAX_LINES);
-    expect(DEFAULT_SETTINGS.maxToolOutputSizeKb).toBe(DEFAULT_MAX_BYTES / 1024);
   });
 });

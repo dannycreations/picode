@@ -1,7 +1,5 @@
 import { formatSize, generateDiffString, truncateHead, truncateTail } from '@earendil-works/pi-coding-agent';
 
-import { readAppSettings } from '@pi-code/extension/core/settings';
-
 import type { TruncationResult } from '@earendil-works/pi-coding-agent';
 import type { CustomToolResult } from '@pi-code/extension/types/extension';
 import type { AppSettings } from '@pi-code/shared/core/settings';
@@ -33,10 +31,6 @@ export function toOutputLimits(settings: AppSettings): OutputLimits {
     maxLines: settings.maxToolOutputLines,
     maxBytes: settings.maxToolOutputSizeKb * BYTES_PER_KILOBYTE,
   };
-}
-
-export function getOutputLimits(): OutputLimits {
-  return toOutputLimits(readAppSettings());
 }
 
 export function shareOutputLimits(limits: OutputLimits, count: number): OutputLimits {
@@ -87,6 +81,7 @@ export function truncateOutput(content: string, options: TruncateOutputOptions):
 }
 
 interface FileChangeResultOptions {
+  readonly limits: OutputLimits;
   readonly oldContent: string;
   readonly newContent: string;
   readonly successMessage: string;
@@ -96,7 +91,7 @@ interface FileChangeResultOptions {
 export function buildFileChangeResult(opts: FileChangeResultOptions): CustomToolResult<{ diff: string }> {
   const diffResult = generateDiffString(opts.oldContent, opts.newContent);
   const { text } = truncateOutput(diffResult.diff || opts.successMessage, {
-    limits: getOutputLimits(),
+    limits: opts.limits,
     keep: 'head',
     hint: opts.hint,
   });

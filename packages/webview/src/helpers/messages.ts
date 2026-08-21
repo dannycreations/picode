@@ -1,17 +1,7 @@
 import { buildToolSections, GROUP_TOOLS } from '@pi-code/shared/utilities/tool';
 
 import type { AssistantChatMessage, ChatMessage, ToolChatMessage, ToolSection } from '@pi-code/shared/core/types';
-
-export const ESTIMATED_ROW_HEIGHT: Record<ChatMessage['sender'], number> = {
-  api_request: 44,
-  checkpoint: 44,
-  info: 44,
-  error: 96,
-  user: 96,
-  queue: 96,
-  tool: 120,
-  assistant: 200,
-};
+import type { TodoItem } from '@pi-code/shared/utilities/todo';
 
 function hasContent(value: string | undefined): boolean {
   return value !== undefined && value.trim() !== '';
@@ -136,6 +126,17 @@ export function hasPendingApproval(messages: ReadonlyArray<ChatMessage>): boolea
     (message) =>
       (message.sender === 'tool' || message.sender === 'assistant' || message.sender === 'api_request') && message.toolStatus === 'approval',
   );
+}
+
+// The newest update_todo row holds the checklist the task header should show.
+export function latestTodos(messages: ReadonlyArray<ChatMessage>): TodoItem[] | undefined {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i];
+    if (message.sender === 'tool' && message.toolName === 'update_todo' && message.todos) {
+      return message.todos;
+    }
+  }
+  return undefined;
 }
 
 // Sub-agent events can arrive before the webview has rendered the parent tool
