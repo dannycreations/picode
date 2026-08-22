@@ -91,6 +91,38 @@ describe('Runtime reply queue steering', () => {
   });
 });
 
+describe('Runtime reply queue on settle', () => {
+  const fakeEvent = (session: AgentSession) => session as unknown as Parameters<Runtime['handleSessionEvent']>[1];
+
+  it('keeps queued replies when the run ended with an API error', () => {
+    const runtime = new Runtime(makeFakeWebview());
+    runtime.replyQueue.add('Survives');
+    runtime['session'] = makeFakeSession(vi.fn());
+
+    runtime['handleSessionEvent'](
+      {
+        type: 'agent_end',
+        messages: [{ role: 'assistant', stopReason: 'error', errorMessage: 'boom' } as never],
+        willRetry: false,
+      },
+      fakeEvent(runtime['session']),
+    );
+
+    expect(runtime.replyQueue.all().map((m) => m.text)).toEqual(['Survives']);
+  });
+
+  it('clears queued replies when the run settles without an error', () => {
+    const runtime = new Runtime(makeFakeWebview());
+    runtime.replyQueue.add('Cleared');
+    runtime['session'] = makeFakeSession(vi.fn());
+
+    runtime['handleSessionEvent']({ type: 'agent_end', messages: [], willRetry: false }, fakeEvent(runtime['session']));
+    runtime['handleSessionEvent']({ type: 'agent_settled' }, fakeEvent(runtime['session']));
+
+    expect(runtime.replyQueue.all()).toEqual([]);
+  });
+});
+
 describe('Runtime cancellation persistence', () => {
   it('does not persist an assistant message aborted by a task cancel', () => {
     const appendMessage = vi.fn(() => 'persisted-id');

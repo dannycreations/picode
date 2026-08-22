@@ -43,6 +43,7 @@ export class Runtime {
   private apiRequestId: string | null = null;
   private compacting = false;
   private continueAfterCompaction = false;
+  private runEndedWithError = false;
 
   private readonly messenger: Messenger;
   public readonly replyQueue: ReplyQueue;
@@ -291,6 +292,10 @@ export class Runtime {
       this.continueAfterCompaction = true;
     }
 
+    if (event.type === 'agent_end') {
+      this.runEndedWithError = event.messages.some((m) => m.role === 'assistant' && m.stopReason === 'error');
+    }
+
     if (event.type === 'agent_settled' || event.type === 'agent_end') {
       if (this.continueAfterCompaction && this.session?.sessionFile) {
         this.continueAfterCompaction = false;
@@ -298,9 +303,10 @@ export class Runtime {
         // work. The re-triggered turn delivers any queued replies and clears
         // the queue on its own settle, so leave it intact here.
         void this.continueTask(this.session.sessionFile);
-      } else {
+      } else if (!this.runEndedWithError) {
         this.replyQueue.clear();
       }
+      this.runEndedWithError = false;
     }
 
     if (this.compacting && (event.type === 'compaction_start' || event.type === 'compaction_end')) {
