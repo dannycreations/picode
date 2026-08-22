@@ -10,6 +10,12 @@ export function collectCommands(loader: ResourceLoader): CommandItem[] {
     description: command.description,
   }));
 
+  const prompts = loader.getPrompts().prompts.map<CommandItem>((prompt) => ({
+    name: `prompt:${prompt.name}`,
+    source: 'prompt',
+    description: prompt.description,
+  }));
+
   const skills = loader.getSkills().skills.map<CommandItem>((skill) => ({
     name: `skill:${skill.name}`,
     source: 'skill',
@@ -17,11 +23,5 @@ export function collectCommands(loader: ResourceLoader): CommandItem[] {
     detail: skill.filePath,
   }));
 
-  const prompts = loader.getPrompts().prompts.map<CommandItem>((prompt) => ({
-    name: prompt.name,
-    source: 'prompt',
-    description: prompt.description,
-  }));
-
-  return [...builtins, ...skills, ...prompts].sort((a, b) => a.name.localeCompare(b.name));
+  return [...builtins, ...prompts, ...skills].sort((a, b) => a.name.localeCompare(b.name));
 }

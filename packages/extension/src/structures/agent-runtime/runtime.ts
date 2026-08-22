@@ -7,8 +7,8 @@ import { applyPersistedModelAndThinking } from '@pi-code/extension/structures/ag
 import { initSessionHooks } from '@pi-code/extension/structures/agent-runtime/hooks';
 import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { createSession } from '@pi-code/extension/structures/agent-runtime/session';
-import { injectSkillMessages } from '@pi-code/extension/structures/agent-runtime/skill';
 import { collectCommands } from '@pi-code/extension/structures/chat-command/command';
+import { injectResourceMessages } from '@pi-code/extension/structures/chat-command/invocation';
 import { expandMentions } from '@pi-code/extension/structures/chat-command/mention';
 import { getEnvironmentDetails } from '@pi-code/extension/structures/chat-session/environment';
 import { loadSessionTranscript } from '@pi-code/extension/structures/chat-session/session';
@@ -64,8 +64,12 @@ export class Runtime {
     try {
       const { session, envDetails, services } = await this.prepareSession(path);
       const skills = services.resourceLoader.getSkills().skills;
-
+      const prompts = services.resourceLoader.getPrompts().prompts;
       const expanded = await expandMentions(promptText, getWorkspaceCwd());
+
+      // Send `/skill:` and `/prompt:` command content as hidden messages
+      // before the user turn; the user message itself is passed through.
+      await injectResourceMessages(session, { skills, prompts }, expanded.text);
 
       // The mention content reaches the model but stays out of the rendered
       // transcript, so the user's message keeps the clean `@token`.
@@ -91,13 +95,8 @@ export class Runtime {
         { deliverAs: 'nextTurn' },
       );
 
-      // Move any `/skill:name` invocation into its own hidden message before the
-      // user turn, leaving the user message clean. The returned text is the
-      // skill args (or the original text when there is no skill invocation).
-      const userText = await injectSkillMessages(session, skills, expanded.text);
-
       const attachments = parseImageAttachments(images);
-      void session.prompt(userText, { images: attachments }).catch((err) => {
+      void session.prompt(expanded.text, { images: attachments, expandPromptTemplates: false }).catch((err) => {
         this.messenger.postError(err);
       });
     } catch (err) {
