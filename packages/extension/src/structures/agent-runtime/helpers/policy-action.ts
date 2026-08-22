@@ -19,9 +19,11 @@ const DANGEROUS_PATTERNS: readonly RegExp[] = [
   /\$\{([^}]*@[PQEAak][^}]*)\}/, // Parameter expansion flags
   /\$\{([^}]*[=+\-?][^}]*\\(?:[0-7]{3}|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}))[^}]*\}/i, // Escapes in parameter defaults
   /\$\{![^}]+\}/, // Indirect parameter expansion
-  /\$\(\(/, // Arithmetic expansions
+  /\$\(/, // Command and arithmetic substitution
+  /`/, // Backtick command substitution
   /<<<\s*(?:\$\(|`)/, // Here-string command substitutions
   /=\([^)]+\)/, // Zsh process substitution
+  /[<>]\(/, // Bash and zsh process substitution
   /[*?+@!]\(e:[^:]+:\)/, // Zsh glob evaluation
   /\0/, // Null bytes
 ];
