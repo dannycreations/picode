@@ -217,12 +217,14 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
             const isDone = !isRunning && section.duration !== undefined;
             const subagentDone = isSubagent && isDone;
             const showTimer = message.toolName === 'execute_command' || (isSubagent && section.content !== undefined);
+            const isDeleted = message.toolName === 'delete_file';
             const displaySection = subagentDone ? { ...section, subtitle: appendElapsed(section.subtitle, section.duration) } : section;
+            const renderedSection = isDeleted ? { ...displaySection, openPath: undefined } : displaySection;
 
             const item = (
               <Fragment key={index}>
                 <ToolSection
-                  section={displaySection}
+                  section={renderedSection}
                   defaultOpen={false}
                   isFirst={index === 0}
                   isLast={index === (isExpanded ? sections.length - 1 : 0) && !hasMore && !hasSecApproval}
