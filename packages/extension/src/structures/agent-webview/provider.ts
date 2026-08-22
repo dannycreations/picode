@@ -11,7 +11,6 @@ import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
 import { CHAT_VIEW_TYPE, DEFAULT_APP_ID } from '@pi-code/shared/core/constants';
 
 import type { CancellationToken, ExtensionContext, Webview, WebviewView, WebviewViewProvider, WebviewViewResolveContext } from 'vscode';
-import type { MessageHandlerContext } from '@pi-code/extension/structures/agent-webview/types';
 import type { ExtensionToWebviewMessage, WebviewToExtensionMessage } from '@pi-code/shared/core/protocol';
 import type { ToolArguments } from '@pi-code/shared/core/types';
 
@@ -117,16 +116,9 @@ export class ChatViewProvider implements WebviewViewProvider {
       this.runtime?.postMessage(msg);
     });
 
-    const handlerContext: MessageHandlerContext = {
-      cwd,
-      runtime,
-      workspace: this.workspace,
-      historyEpoch: 0,
-    };
-
     const subscriptions = Disposable.from(
       webview.onDidReceiveMessage((message: WebviewToExtensionMessage) => {
-        void dispatch(message, handlerContext);
+        void dispatch(message, { runtime, workspace: this.workspace, cwd, historyEpoch: 0 });
       }),
       Disposable.from({ dispose: disposeApprovalPresenter }),
       Disposable.from({ dispose: disposeSubagentEventCallback }),

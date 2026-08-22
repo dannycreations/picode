@@ -3,9 +3,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { isProjectTrusted } from '@pi-code/extension/utilities/vscode';
+import { getWorkspaceUri, isProjectTrusted, setSelectedWorkspace } from '@pi-code/extension/utilities/vscode';
 
 let mockIsTrusted = false;
+let mockWorkspaceFolders: Array<{ uri: { fsPath: string } }> = [];
 
 vi.mock('vscode', () => {
   return {
@@ -13,6 +14,9 @@ vi.mock('vscode', () => {
     workspace: {
       get isTrusted() {
         return mockIsTrusted;
+      },
+      get workspaceFolders() {
+        return mockWorkspaceFolders;
       },
       asRelativePath: (target: { fsPath: string }) => target.fsPath,
       getWorkspaceFolder: () => undefined,
@@ -35,7 +39,33 @@ async function makeTempProject(): Promise<string> {
 
 afterEach(async () => {
   mockIsTrusted = false;
+  mockWorkspaceFolders = [];
+  setSelectedWorkspace(undefined);
   await Promise.all(tempProjects.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
+});
+
+describe('getWorkspaceUri', () => {
+  it('should return the first workspace folder when no folder is selected', () => {
+    mockWorkspaceFolders = [{ uri: { fsPath: '/first' } }, { uri: { fsPath: '/second' } }];
+    expect(getWorkspaceUri()?.fsPath).toBe('/first');
+  });
+
+  it('should return undefined when no workspace folders exist', () => {
+    expect(getWorkspaceUri()).toBeUndefined();
+  });
+
+  it('should return the selected folder over the first one', () => {
+    mockWorkspaceFolders = [{ uri: { fsPath: '/first' } }, { uri: { fsPath: '/second' } }];
+    setSelectedWorkspace({ fsPath: '/second' } as never);
+    expect(getWorkspaceUri()?.fsPath).toBe('/second');
+  });
+
+  it('should fall back to the first folder after the selection is cleared', () => {
+    mockWorkspaceFolders = [{ uri: { fsPath: '/first' } }, { uri: { fsPath: '/second' } }];
+    setSelectedWorkspace({ fsPath: '/second' } as never);
+    setSelectedWorkspace(undefined);
+    expect(getWorkspaceUri()?.fsPath).toBe('/first');
+  });
 });
 
 describe('isProjectTrusted', () => {

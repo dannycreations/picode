@@ -24,6 +24,7 @@ import type {
   HistoryScope,
   ModelItem,
   WebviewToExtensionMessage,
+  WorkspaceFolderItem,
 } from '@pi-code/shared/core/protocol';
 import type { AppSettings } from '@pi-code/shared/core/settings';
 import type { ActiveTaskState, ApiRequestChatMessage, ChatMessage, ModelThinkingLevel, ToolChatMessage } from '@pi-code/shared/core/types';
@@ -84,6 +85,8 @@ interface ChatState {
   readonly latestEpoch: Record<HistoryScope, number>;
   readonly fetchedScopes: Set<HistoryScope>;
   readonly searchRequestId: string;
+  readonly activeWorkspace: string;
+  readonly workspaceFolders: WorkspaceFolderItem[];
 
   readonly send: (message: WebviewToExtensionMessage) => void;
   readonly compact: () => void;
@@ -99,6 +102,7 @@ interface ChatState {
   readonly setInputValue: (value: string) => void;
   readonly appendToInput: (text: string) => void;
   readonly setScope: (scope: HistoryScope) => void;
+  readonly selectWorkspace: (path: string) => void;
 }
 
 export const useChatStore = create<ChatState>((set, get) => {
@@ -353,6 +357,9 @@ export const useChatStore = create<ChatState>((set, get) => {
         set({ searchResults: msg.payload.paths });
       }
     },
+    workspace_data: (msg) => {
+      set({ workspaceFolders: msg.payload.folders, activeWorkspace: msg.payload.active });
+    },
   };
 
   return {
@@ -373,6 +380,8 @@ export const useChatStore = create<ChatState>((set, get) => {
     latestEpoch: scopedRecord(() => 0),
     fetchedScopes: new Set<HistoryScope>(['current']),
     searchRequestId: '',
+    activeWorkspace: '',
+    workspaceFolders: [],
 
     send: (message) => vscode?.postMessage(message),
 
@@ -459,6 +468,16 @@ export const useChatStore = create<ChatState>((set, get) => {
     },
 
     setScope: (scope) => set({ scope }),
+
+    // Switching folders invalidates everything scoped to the old cwd: cached
+    // history lists and file-search results. The re-init refetches models,
+    // settings, commands, and history for the new folder.
+    selectWorkspace: (path) => {
+      if (path === get().activeWorkspace) return;
+      set({ activeWorkspace: path, historyByScope: scopedRecord<HistoryItem[]>(() => []), searchResults: [] });
+      get().send({ type: 'select_workspace', path });
+      get().send({ type: 'init' });
+    },
   };
 });
 

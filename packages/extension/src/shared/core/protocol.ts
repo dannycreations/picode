@@ -39,6 +39,11 @@ export interface CommandItem {
   readonly detail?: string;
 }
 
+export interface WorkspaceFolderItem {
+  readonly name: string;
+  readonly path: string;
+}
+
 export type WebviewToExtensionMessage =
   | { type: 'init' }
   | { type: 'get_history'; scope: HistoryScope }
@@ -63,7 +68,8 @@ export type WebviewToExtensionMessage =
   | { type: 'add_to_reply_queue'; text: string; images?: string[] }
   | { type: 'edit_reply_queue'; id: string; text: string }
   | { type: 'remove_from_reply_queue'; id: string }
-  | { type: 'insert_mentions'; paths: string[] };
+  | { type: 'insert_mentions'; paths: string[] }
+  | { type: 'select_workspace'; path: string };
 
 export type ExtensionToWebviewMessage =
   | {
@@ -114,4 +120,5 @@ export type ExtensionToWebviewMessage =
   | { type: 'search_results'; payload: { requestId: string; paths: string[] } }
   | { type: 'reply_queue_data'; payload: { queue: ChatMessage[] } }
   | { type: 'reply_queue_delivered'; payload: { messages: ChatMessage[] } }
-  | { type: 'stream_delta'; payload: { text?: string; thinking?: string } };
+  | { type: 'stream_delta'; payload: { text?: string; thinking?: string } }
+  | { type: 'workspace_data'; payload: { folders: WorkspaceFolderItem[]; active: string } };

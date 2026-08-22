@@ -1,5 +1,5 @@
 import { formatThrownValue } from '@earendil-works/pi-ai';
-import { window } from 'vscode';
+import { Uri, window, workspace } from 'vscode';
 
 import { writeAppSettings } from '@pi-code/extension/core/settings';
 import { approveApproval, denyApproval } from '@pi-code/extension/structures/agent-runtime/brokers/approval';
@@ -18,13 +18,14 @@ import {
 } from '@pi-code/extension/structures/agent-webview/session';
 import { toMentionText } from '@pi-code/extension/structures/chat-command/mention';
 import { searchWorkspaceFiles } from '@pi-code/extension/utilities/fs';
+import { getWorkspaceCwd, setSelectedWorkspace } from '@pi-code/extension/utilities/vscode';
 import { ACTIVE_TASK_ID } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
 import { HISTORY_SCOPES } from '@pi-code/shared/core/protocol';
 
 import type { ModelRuntime } from '@earendil-works/pi-coding-agent';
 import type { MessageHandlerContext } from '@pi-code/extension/structures/agent-webview/types';
-import type { HistoryScope, WebviewToExtensionMessage } from '@pi-code/shared/core/protocol';
+import type { ExtensionToWebviewMessage, HistoryScope, WebviewToExtensionMessage } from '@pi-code/shared/core/protocol';
 import type { ChatMessage, StatsData } from '@pi-code/shared/core/types';
 
 type CommandHandler<T extends WebviewToExtensionMessage['type']> = (
@@ -61,13 +62,21 @@ async function postHistory(ctx: MessageHandlerContext, scope: HistoryScope): Pro
   // only the highest epoch per scope, so a stale or out-of-order history_data
   // chunk from an earlier refresh cannot corrupt the list.
   const epoch = ++ctx.historyEpoch;
+  const cwd = ctx.cwd;
   try {
-    for await (const items of streamHistory(ctx.cwd, scope)) {
+    for await (const items of streamHistory(cwd, scope)) {
+      // A workspace switch mid-stream must not mix sessions across folders.
+      if (ctx.cwd !== cwd) return;
       ctx.runtime.postMessage({ type: 'history_data', payload: { scope, epoch, items } });
     }
   } catch (error) {
     logger.warn(`History stream for "${scope}" failed; the list may be incomplete.`, error);
   }
+}
+
+function buildWorkspaceData(): Extract<ExtensionToWebviewMessage, { type: 'workspace_data' }>['payload'] {
+  const folders = (workspace.workspaceFolders ?? []).map((folder) => ({ name: folder.name, path: folder.uri.fsPath }));
+  return { folders, active: getWorkspaceCwd() };
 }
 
 // Refreshes the shared model runtime's catalog and pushes the merged list to
@@ -92,6 +101,7 @@ const HANDLER_MAP: HandlerMap = {
     // Send init_data before the history stream so the webview resets its epoch
     // bookkeeping before the first history_data chunk arrives.
     ctx.runtime.postMessage({ type: 'init_data', payload: data });
+    ctx.runtime.postMessage({ type: 'workspace_data', payload: buildWorkspaceData() });
     void postHistory(ctx, 'current');
     // The local catalog is enough to render the chat view, so refresh the
     // remote catalog in the background and push the merged models once it lands.
@@ -226,6 +236,13 @@ const HANDLER_MAP: HandlerMap = {
   },
   set_model: (msg) => {
     persistModelAndThinking(msg.model, msg.thinkingLevel);
+  },
+  // Deliberately synchronous: the webview sends select_workspace immediately
+  // followed by init, and init must observe the rewritten cwd.
+  select_workspace: (msg, ctx) => {
+    setSelectedWorkspace(Uri.file(msg.path));
+    ctx.cwd = msg.path;
+    ctx.runtime.postMessage({ type: 'workspace_data', payload: buildWorkspaceData() });
   },
 };
 

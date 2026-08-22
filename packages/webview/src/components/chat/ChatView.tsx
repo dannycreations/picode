@@ -12,6 +12,7 @@ import { ChatInput } from '@pi-code/webview/components/chat/ChatInput';
 import { getMessageSearchText } from '@pi-code/webview/components/chat/helpers/search';
 import { useChatActions } from '@pi-code/webview/components/chat/hooks/useChatActions';
 import { useChatConfig } from '@pi-code/webview/components/chat/hooks/useChatConfig';
+import { WorkspacePicker } from '@pi-code/webview/components/chat/WorkspacePicker';
 import { HistoryPreview } from '@pi-code/webview/components/history/HistoryPreview';
 import { HistoryView } from '@pi-code/webview/components/history/HistoryView';
 import { useHistoryFilter } from '@pi-code/webview/components/history/hooks/useHistoryFilter';
@@ -355,6 +356,7 @@ export const ChatView: FC = () => {
               <span className="text-xs">Recent Tasks</span>
             </button>
           </Tooltip>
+          <WorkspacePicker />
         </div>
       )}
 

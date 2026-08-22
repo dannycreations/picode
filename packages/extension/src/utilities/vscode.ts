@@ -3,8 +3,16 @@ import { Uri, workspace } from 'vscode';
 
 import { normalizeSeparators } from '@pi-code/extension/utilities/fs';
 
+// Session-level choice of which workspace folder Pi targets; undefined means
+// "no explicit pick", so resolution falls back to the first folder.
+let selectedWorkspaceUri: Uri | undefined;
+
+export function setSelectedWorkspace(uri: Uri | undefined): void {
+  selectedWorkspaceUri = uri;
+}
+
 export function getWorkspaceUri(): Uri | undefined {
-  return workspace?.workspaceFolders?.[0]?.uri;
+  return selectedWorkspaceUri ?? workspace?.workspaceFolders?.[0]?.uri;
 }
 
 export function getWorkspaceCwd(): string {

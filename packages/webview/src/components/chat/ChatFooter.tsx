@@ -1,11 +1,11 @@
-import { cn } from 'cnfast';
 import { ChevronDown, Sparkles } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
+import { DropdownMenu, DropdownMenuItem } from '@pi-code/webview/components/shared/DropdownMenu';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { useClickOutside } from '@pi-code/webview/hooks/useClickOutside';
 
-import type { FC, ReactNode, Ref } from 'react';
+import type { FC } from 'react';
 import type { ModelItem } from '@pi-code/shared/core/protocol';
 import type { ModelThinkingLevel } from '@pi-code/shared/core/types';
 
@@ -23,48 +23,6 @@ interface ModelDropdownMenuProps {
   readonly currentModel: string;
   readonly onSelectModel: (modelId: string) => void;
 }
-
-interface DropdownMenuItemProps {
-  readonly label: string;
-  readonly selected: boolean;
-  readonly onSelect: () => void;
-  readonly className?: string;
-  readonly buttonRef?: Ref<HTMLButtonElement>;
-}
-
-const DropdownMenuItem: FC<DropdownMenuItemProps> = ({ label, selected, onSelect, className = '', buttonRef }) => (
-  <button
-    ref={buttonRef}
-    onClick={onSelect}
-    className={cn(
-      'w-full text-left px-3 py-1.5 border-none cursor-pointer flex items-center justify-between text-xs transition-colors shrink-0',
-      className,
-      selected
-        ? 'bg-vscode-list-hoverBackground text-vscode-foreground'
-        : 'bg-transparent text-vscode-descriptionForeground hover:bg-vscode-list-hoverBackground/50 hover:text-vscode-foreground',
-    )}
-  >
-    <span className="truncate mr-2">{label}</span>
-  </button>
-);
-
-interface DropdownMenuProps {
-  readonly side: 'left' | 'right';
-  readonly widthClass: string;
-  readonly children: ReactNode;
-}
-
-const DropdownMenu: FC<DropdownMenuProps> = ({ side, widthClass, children }) => (
-  <div
-    className={cn(
-      'absolute bottom-full mb-1 bg-vscode-dropdown-background border border-vscode-panel-border/50 rounded-md shadow-lg overflow-hidden flex flex-col z-50',
-      side === 'left' ? 'left-0' : 'right-0',
-      widthClass,
-    )}
-  >
-    {children}
-  </div>
-);
 
 const ModelDropdownMenu: FC<ModelDropdownMenuProps> = ({ models, currentModel, onSelectModel }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -117,23 +75,6 @@ const ModelDropdownMenu: FC<ModelDropdownMenuProps> = ({ models, currentModel, o
           <div className="px-3 py-2 text-muted text-center">No models found</div>
         )}
       </div>
-    </DropdownMenu>
-  );
-};
-
-interface ThinkingLevelMenuProps {
-  readonly levels: readonly ModelThinkingLevel[];
-  readonly currentLevel: ModelThinkingLevel;
-  readonly onSelectLevel: (level: ModelThinkingLevel) => void;
-}
-
-const ThinkingLevelMenu: FC<ThinkingLevelMenuProps> = ({ levels, currentLevel, onSelectLevel }) => {
-  return (
-    <DropdownMenu side="right" widthClass="w-32 py-1">
-      {levels.map((level) => {
-        const isSelected = currentLevel === level;
-        return <DropdownMenuItem key={level} label={level} selected={isSelected} onSelect={() => onSelectLevel(level)} className="capitalize" />;
-      })}
     </DropdownMenu>
   );
 };
@@ -204,14 +145,20 @@ export const ChatFooter: FC<ChatFooterProps> = ({
           </Tooltip>
 
           {showThinkingMenu && (
-            <ThinkingLevelMenu
-              levels={thinkingLevels}
-              currentLevel={currentThinkingLevel}
-              onSelectLevel={(level) => {
-                onChangeThinkingLevel(level);
-                setShowThinkingMenu(false);
-              }}
-            />
+            <DropdownMenu side="right" widthClass="w-32 py-1">
+              {thinkingLevels.map((level) => (
+                <DropdownMenuItem
+                  key={level}
+                  label={level}
+                  selected={currentThinkingLevel === level}
+                  onSelect={() => {
+                    onChangeThinkingLevel(level);
+                    setShowThinkingMenu(false);
+                  }}
+                  className="capitalize"
+                />
+              ))}
+            </DropdownMenu>
           )}
         </div>
       )}
