@@ -1,3 +1,6 @@
+import { resolve } from 'node:path';
+import { getCwdRelativePath, resolvePath } from '@earendil-works/pi-coding-agent';
+
 import { SUBAGENT_MESSAGE_PROMPT } from '@pi-code/extension/core/prompt';
 import { readAppSettings } from '@pi-code/extension/core/settings';
 import { requestApproval } from '@pi-code/extension/structures/agent-runtime/brokers/approval';
@@ -7,10 +10,10 @@ import {
   resolveCommandAction,
   resolvePathAction,
   resolveReadPath,
-} from '@pi-code/extension/structures/agent-runtime/policy-action';
+} from '@pi-code/extension/structures/agent-runtime/helpers/policy-action';
 
 import type { BeforeAgentStartEventResult, InlineExtension, ToolCallEventResult } from '@earendil-works/pi-coding-agent';
-import type { ApprovalDecision } from '@pi-code/extension/structures/agent-runtime/policy-action';
+import type { ApprovalDecision } from '@pi-code/extension/structures/agent-runtime/helpers/policy-action';
 import type { ToolName } from '@pi-code/shared/core/types';
 
 interface ToolCallArgs {
@@ -18,12 +21,21 @@ interface ToolCallArgs {
   readonly path?: string;
   readonly file_path?: string;
   readonly command?: string;
+  readonly cwd?: string | null;
 }
 
 // Tools that reach the user or the model without touching the workspace. A
 // sub-agent run is included because every tool it uses is policed on its own,
 // so gating the delegation itself would only add a redundant prompt.
 const SELF_APPROVING_TOOLS: ReadonlySet<ToolName> = new Set<ToolName>(['update_todo', 'ask_question', 'spawn_subagent']);
+
+// A command prefix allowlist approves commands meant to run in the user's
+// workspace; any other execution directory needs an explicit human yes.
+function commandCwdEscapesWorkspace(requestedCwd: string | null | undefined, workspaceCwd: string): boolean {
+  const requested = typeof requestedCwd === 'string' ? requestedCwd.trim() : '';
+  if (requested === '') return false;
+  return getCwdRelativePath(resolvePath(requested, workspaceCwd), resolve(workspaceCwd)) === undefined;
+}
 
 function evaluateToolCall(toolName: ToolName, cwd: string, input: unknown): ApprovalDecision {
   if (SELF_APPROVING_TOOLS.has(toolName)) {
@@ -59,10 +71,14 @@ function evaluateToolCall(toolName: ToolName, cwd: string, input: unknown): Appr
       action = resolvePathAction(cwd, args.path ?? '', settings.autoApproveDelete, settings.allowedDeletePaths, settings.deniedDeletePaths);
       denyReason = 'Access to delete this file path is explicitly denied by settings.';
       break;
-    case 'execute_command':
+    case 'execute_command': {
       action = resolveCommandAction(args.command ?? '', settings.autoApproveExecute, settings.allowedExecuteCommands, settings.deniedExecuteCommands);
+      if (action === 'approve' && commandCwdEscapesWorkspace(args.cwd, cwd)) {
+        action = 'confirm';
+      }
       denyReason = 'Execution of this command is explicitly denied by settings.';
       break;
+    }
   }
 
   const decision: ApprovalDecision = action === 'deny' ? { action, reason: denyReason } : { action };

@@ -1,7 +1,7 @@
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
-import { toolResult } from '@pi-code/extension/structures/tool-call/helpers/result';
+import { toolResult } from '@pi-code/extension/structures/tool-call/helpers';
 import { TODO_STATUSES } from '@pi-code/shared/utilities/todo';
 
 import type { ToolName } from '@pi-code/shared/core/types';

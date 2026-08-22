@@ -7,8 +7,7 @@ import { resolveContextLimit } from '@pi-code/shared/utilities/common';
 
 import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent';
 import type { ExtensionToWebviewMessage } from '@pi-code/shared/core/protocol';
-import type { ReadFileSection, StatsData, ToolName } from '@pi-code/shared/core/types';
-import type { TodoItem } from '@pi-code/shared/utilities/todo';
+import type { StatsData, ToolName, ToolResultDetails } from '@pi-code/shared/core/types';
 
 type SubagentEventCallback = (event: ExtensionToWebviewMessage) => void;
 let subagentEventCallback: SubagentEventCallback | null = null;
@@ -177,15 +176,7 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
     }
 
     case 'tool_execution_end': {
-      const toolResult = event.result as
-        | {
-            details?: {
-              todos?: TodoItem[];
-              files?: ReadonlyArray<ReadFileSection>;
-              subtitle?: string;
-            };
-          }
-        | undefined;
+      const toolResult = event.result as { details?: ToolResultDetails } | undefined;
       return {
         message: {
           type: 'tool_execution_end',

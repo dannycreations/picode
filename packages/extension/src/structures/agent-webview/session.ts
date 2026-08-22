@@ -22,6 +22,8 @@ type SessionInitData = Extract<ExtensionToWebviewMessage, { type: 'init_data' }>
 const ARCHIVES_DIR_NAME = 'archives';
 const SESSIONS_DIR_NAME = 'sessions';
 
+export const SESSION_FILE_UNAVAILABLE = 'The session file for this task is not available yet.';
+
 const MAX_PREVIEW_LINES = 2000;
 const HISTORY_PREVIEW_CHUNK = 12;
 
@@ -254,7 +256,7 @@ export async function exportSession(sessionPath: string, defaultId?: string): Pr
   try {
     chatMessages = convertSessionEntries(SessionManager.open(sessionPath).buildContextEntries());
   } catch {
-    window.showWarningMessage('The session file for this task is not available yet.');
+    window.showWarningMessage(SESSION_FILE_UNAVAILABLE);
     return false;
   }
 

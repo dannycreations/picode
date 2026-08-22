@@ -22,8 +22,9 @@ function makeFakeWebview(): Webview {
 function makeFakeSession(steer: () => void, appendMessage: ReturnType<typeof vi.fn> = vi.fn(() => 'persisted-id')): AgentSession {
   return {
     agent: {
-      prepareNextTurnWithContext: undefined,
       steer,
+      shouldStopAfterTurn: undefined,
+      prepareNextTurnWithContext: undefined,
     },
     sessionManager: {
       appendMessage,
@@ -34,41 +35,18 @@ function makeFakeSession(steer: () => void, appendMessage: ReturnType<typeof vi.
   } as unknown as AgentSession;
 }
 
-describe('Runtime reply queue', () => {
-  it('adds, edits, removes, and clears reply queue messages', () => {
-    const runtime = new Runtime(makeFakeWebview());
-
-    expect(runtime['replyQueue']).toEqual([]);
-
-    runtime.addToReplyQueue('Hello World');
-    expect(runtime['replyQueue'].length).toBe(1);
-    expect(runtime['replyQueue'][0].text).toBe('Hello World');
-
-    const msgId = runtime['replyQueue'][0].id;
-
-    runtime.editReplyQueue(msgId, 'Hello Edited');
-    expect(runtime['replyQueue'][0].text).toBe('Hello Edited');
-
-    runtime.addToReplyQueue('Second Message');
-    expect(runtime['replyQueue'].length).toBe(2);
-
-    runtime.removeFromReplyQueue(msgId);
-    expect(runtime['replyQueue'].length).toBe(1);
-    expect(runtime['replyQueue'][0].text).toBe('Second Message');
-
-    runtime.clearReplyQueue();
-    expect(runtime['replyQueue']).toEqual([]);
-  });
-
+// Queue CRUD lives in reply-queue.spec.ts; these cover how Runtime delivers
+// queued replies into a live turn through the installed session hooks.
+describe('Runtime reply queue steering', () => {
   it('drains queued replies into the running session via steer on the next turn', async () => {
     const steer = vi.fn();
     const session = makeFakeSession(steer);
     const webview = makeFakeWebview();
     const runtime = new Runtime(webview);
 
-    runtime.addToReplyQueue('Hello World');
-    runtime.addToReplyQueue('Second Message');
-    runtime['setupSessionHook'](session);
+    runtime.replyQueue.add('Hello World');
+    runtime.replyQueue.add('Second Message');
+    runtime['bindSessionHooks'](session);
 
     const prepare = session.agent.prepareNextTurnWithContext!;
     await prepare({} as Parameters<typeof prepare>[0], new AbortController().signal);
@@ -77,7 +55,7 @@ describe('Runtime reply queue', () => {
     expect(steer.mock.calls[0][0].role).toBe('user');
     expect(steer.mock.calls[0][0].content[0].text).toBe('Hello World');
     expect(steer.mock.calls[1][0].content[0].text).toBe('Second Message');
-    expect(runtime['replyQueue']).toEqual([]);
+    expect(runtime.replyQueue.all()).toEqual([]);
 
     const delivered = (webview.postMessage as ReturnType<typeof vi.fn>).mock.calls
       .map((call) => call[0])
@@ -101,23 +79,25 @@ describe('Runtime reply queue', () => {
     const session = makeFakeSession(steer);
     const runtime = new Runtime(makeFakeWebview());
 
-    runtime.addToReplyQueue('Stays');
-    runtime['setupSessionHook'](session);
+    runtime.replyQueue.add('Stays');
+    runtime['bindSessionHooks'](session);
 
     const prepare = session.agent.prepareNextTurnWithContext!;
     await prepare({} as Parameters<typeof prepare>[0], new AbortController().signal);
 
     expect(steer).toHaveBeenCalledTimes(1);
-    expect(runtime['replyQueue'].map((m) => m.text)).toEqual(['Stays']);
+    expect(runtime.replyQueue.all().map((m) => m.text)).toEqual(['Stays']);
     expect(logError).toHaveBeenCalledTimes(1);
   });
+});
 
+describe('Runtime cancellation persistence', () => {
   it('does not persist an assistant message aborted by a task cancel', () => {
     const appendMessage = vi.fn(() => 'persisted-id');
     const session = makeFakeSession(vi.fn(), appendMessage);
     const runtime = new Runtime(makeFakeWebview());
 
-    runtime['setupSessionHook'](session);
+    runtime['bindSessionHooks'](session);
 
     // After cancelTask, Runtime.session is null.
     runtime['session'] = null;
@@ -135,7 +115,7 @@ describe('Runtime reply queue', () => {
     const session = makeFakeSession(vi.fn(), appendMessage);
     const runtime = new Runtime(makeFakeWebview());
 
-    runtime['setupSessionHook'](session);
+    runtime['bindSessionHooks'](session);
 
     session.sessionManager.appendMessage!({ role: 'user', content: 'hi' } as never);
 

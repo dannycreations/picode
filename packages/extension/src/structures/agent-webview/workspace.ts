@@ -1,6 +1,7 @@
 import { isAbsolute } from 'node:path';
 import { commands, Position, Range, Selection, TextEditorRevealType, Uri, window, workspace } from 'vscode';
 
+import { SESSION_FILE_UNAVAILABLE } from '@pi-code/extension/structures/agent-webview/session';
 import { extensionForMimeType, parseBase64DataUrl } from '@pi-code/extension/utilities/codec';
 
 import type { TextEditor } from 'vscode';
@@ -49,7 +50,7 @@ export class WorkspaceService {
       const doc = await workspace.openTextDocument(Uri.file(sessionFilePath));
       await window.showTextDocument(doc);
     } catch {
-      window.showWarningMessage('The session file for this task is not available yet.');
+      window.showWarningMessage(SESSION_FILE_UNAVAILABLE);
     }
   }
 

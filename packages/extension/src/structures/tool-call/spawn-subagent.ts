@@ -6,7 +6,7 @@ import { SUBAGENTS } from '@pi-code/extension/core/prompt';
 import { readOutputLimits } from '@pi-code/extension/core/settings';
 import { mapEvent, notifySubagentEvent } from '@pi-code/extension/structures/agent-runtime/event';
 import { recordSubagentUsage, spawnSubagent } from '@pi-code/extension/structures/agent-runtime/subagent';
-import { toolError, toolResult } from '@pi-code/extension/structures/tool-call/helpers/result';
+import { toolError, toolResult } from '@pi-code/extension/structures/tool-call/helpers';
 import { truncateOutput } from '@pi-code/extension/utilities/truncate';
 
 import type { SubagentOutcome, SubagentUsage } from '@pi-code/extension/structures/agent-runtime/subagent';

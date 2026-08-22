@@ -1,5 +1,6 @@
+import { randomUUID } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { open, readdir, stat } from 'node:fs/promises';
+import { open, readdir, rename, stat, unlink, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { formatPathRelativeToCwdOrAbsolute } from '@earendil-works/pi-coding-agent';
@@ -148,6 +149,29 @@ export async function checkReadableFile(path: string): Promise<{ ok: true } | { 
     if ((err as NodeJS.ErrnoException)?.code === 'ENOENT') {
       return { ok: false, body: `Error: "${path}" does not exist.` };
     }
+    throw err;
+  }
+}
+
+export async function pathExists(path: string): Promise<boolean> {
+  try {
+    await stat(path);
+    return true;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException)?.code === 'ENOENT') {
+      return false;
+    }
+    throw err;
+  }
+}
+
+export async function writeFileAtomic(filePath: string, content: string): Promise<void> {
+  const tempPath = `${filePath}.${randomUUID()}.tmp`;
+  try {
+    await writeFile(tempPath, content, 'utf8');
+    await rename(tempPath, filePath);
+  } catch (err) {
+    await unlink(tempPath).catch(() => {});
     throw err;
   }
 }

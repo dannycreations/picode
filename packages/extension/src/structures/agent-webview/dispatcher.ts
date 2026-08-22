@@ -4,6 +4,7 @@ import { window } from 'vscode';
 import { writeAppSettings } from '@pi-code/extension/core/settings';
 import { approveApproval, denyApproval } from '@pi-code/extension/structures/agent-runtime/brokers/approval';
 import { answerQuestion } from '@pi-code/extension/structures/agent-runtime/brokers/question';
+import { persistModelAndThinking } from '@pi-code/extension/structures/agent-runtime/helpers/model-selection';
 import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import {
   archiveSession,
@@ -40,13 +41,7 @@ interface TranscriptDetails {
   readonly stats: StatsData;
 }
 
-async function postSession(
-  ctx: MessageHandlerContext,
-  id: string,
-  title: string,
-  path: string | undefined,
-  details: TranscriptDetails,
-): Promise<void> {
+function postSession(ctx: MessageHandlerContext, id: string, title: string, path: string | undefined, details: TranscriptDetails): void {
   const isArchived = path ? isArchivedPath(path) : false;
   ctx.runtime.postMessage({
     type: 'session_loaded',
@@ -120,13 +115,13 @@ const HANDLER_MAP: HandlerMap = {
     ctx.runtime.postMessage({ type: 'set_chat_input', payload: { text: `${text} ` } });
   },
   add_to_reply_queue: (msg, ctx) => {
-    ctx.runtime.addToReplyQueue(msg.text, msg.images);
+    ctx.runtime.replyQueue.add(msg.text, msg.images);
   },
   edit_reply_queue: (msg, ctx) => {
-    ctx.runtime.editReplyQueue(msg.id, msg.text);
+    ctx.runtime.replyQueue.edit(msg.id, msg.text);
   },
   remove_from_reply_queue: (msg, ctx) => {
-    ctx.runtime.removeFromReplyQueue(msg.id);
+    ctx.runtime.replyQueue.remove(msg.id);
   },
   continue_task: (msg, ctx) => {
     void ctx.runtime.continueTask(msg.path || '');
@@ -142,9 +137,13 @@ const HANDLER_MAP: HandlerMap = {
   },
   builtin_command: async (msg, ctx) => {
     switch (msg.command) {
-      case 'reload':
-        void ctx.runtime.reload();
+      case 'reload': {
+        const outcome = await ctx.runtime.reload();
+        window.showInformationMessage(
+          outcome === 'busy' ? 'Wait for the current task to finish before reloading.' : 'Reloaded skills, context files, and configuration.',
+        );
         return;
+      }
       case 'update': {
         // Force a network refresh of the shared model runtime so both the webview
         // (via the pushed models_data) and the agent runtime read the newest catalog.
@@ -165,7 +164,7 @@ const HANDLER_MAP: HandlerMap = {
 
         // Refresh the webview from the in-memory session we just compacted instead
         // of re-opening and re-parsing the same session file a second time.
-        await postSession(ctx, msg.id || ACTIVE_TASK_ID, msg.title || '', path, details);
+        postSession(ctx, msg.id || ACTIVE_TASK_ID, msg.title || '', path, details);
         // Compaction rewrites the session file, so refresh the current sessions
         // list the way cancelTask does after it mutates the file on disk.
         await postHistory(ctx, 'current');
@@ -225,8 +224,8 @@ const HANDLER_MAP: HandlerMap = {
     // settings back to the webview; no need to read them back here.
     await writeAppSettings(msg.settings);
   },
-  set_model: (msg, ctx) => {
-    ctx.runtime.applyModelAndThinking(msg.model, msg.thinkingLevel);
+  set_model: (msg) => {
+    persistModelAndThinking(msg.model, msg.thinkingLevel);
   },
 };
 

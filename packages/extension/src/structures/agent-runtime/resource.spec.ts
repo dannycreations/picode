@@ -7,15 +7,6 @@ const mocks = vi.hoisted(() => ({
   isProjectTrusted: vi.fn(() => false),
 }));
 
-vi.mock('@earendil-works/pi-coding-agent', () => ({
-  createAgentSessionServices: async () => ({
-    modelRuntime: {},
-    settingsManager: {},
-    resourceLoader: { __loader: Math.random() },
-    diagnostics: [],
-  }),
-}));
-
 vi.mock('@pi-code/extension/core/settings', () => ({
   readAppSettings: mocks.readAppSettings,
   getSettingsManager: () => ({ setProjectTrusted: vi.fn() }),
@@ -24,6 +15,20 @@ vi.mock('@pi-code/extension/core/settings', () => ({
 vi.mock('@pi-code/extension/utilities/vscode', () => ({
   isProjectTrusted: mocks.isProjectTrusted,
 }));
+
+// Vitest 4 cannot intercept natively loaded node_modules, so instead of
+// mocking @earendil-works/pi-coding-agent these tests inject a stub factory;
+// every call yields a distinct service object, which keeps the identity
+// assertions meaningful.
+type CreateServices = Parameters<typeof createAgentResources>[1];
+let creations = 0;
+
+function makeStubFactory(): CreateServices {
+  return vi.fn(async () => {
+    creations += 1;
+    return { modelRuntime: {}, settingsManager: {}, resourceLoader: { creation: creations }, diagnostics: [] };
+  }) as unknown as CreateServices;
+}
 
 const BASE_SETTINGS = { enableAgentRules: true, enableSkillDiscovery: true };
 
@@ -35,38 +40,43 @@ afterEach(() => {
 describe('createAgentResources cache', () => {
   it('returns the cached services when the loader-relevant config is unchanged', async () => {
     mocks.readAppSettings.mockReturnValue({ ...BASE_SETTINGS });
+    const factory = makeStubFactory();
 
-    const first = await createAgentResources('/project-a');
-    const second = await createAgentResources('/project-a');
+    const first = await createAgentResources('/project-a', factory);
+    const second = await createAgentResources('/project-a', factory);
 
     expect(second.resourceLoader).toBe(first.resourceLoader);
   });
 
   it('reuses the cached services without recreating on a cache hit', async () => {
     mocks.readAppSettings.mockReturnValue({ ...BASE_SETTINGS });
+    const factory = makeStubFactory();
 
-    const first = await createAgentResources('/project-b');
-    const second = await createAgentResources('/project-b');
+    const first = await createAgentResources('/project-b', factory);
+    const second = await createAgentResources('/project-b', factory);
 
     expect(second).toBe(first);
+    expect(factory).toHaveBeenCalledTimes(1);
   });
 
   it('recreates the services when a loader-relevant setting flips', async () => {
     mocks.readAppSettings.mockReturnValue({ ...BASE_SETTINGS });
-    const first = await createAgentResources('/project-c');
+    const factory = makeStubFactory();
+    const first = await createAgentResources('/project-c', factory);
 
     mocks.readAppSettings.mockReturnValue({ ...BASE_SETTINGS, enableSkillDiscovery: false });
-    const second = await createAgentResources('/project-c');
+    const second = await createAgentResources('/project-c', factory);
 
     expect(second.resourceLoader).not.toBe(first.resourceLoader);
   });
 
   it('recreates the services when workspace trust changes', async () => {
     mocks.readAppSettings.mockReturnValue({ ...BASE_SETTINGS });
-    const first = await createAgentResources('/project-d');
+    const factory = makeStubFactory();
+    const first = await createAgentResources('/project-d', factory);
 
     mocks.isProjectTrusted.mockReturnValue(true);
-    const second = await createAgentResources('/project-d');
+    const second = await createAgentResources('/project-d', factory);
 
     expect(second.resourceLoader).not.toBe(first.resourceLoader);
   });

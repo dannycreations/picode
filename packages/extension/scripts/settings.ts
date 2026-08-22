@@ -9,7 +9,7 @@ import type { SettingKey } from '@pi-code/shared/core/settings';
 const packageDir = resolve(import.meta.dirname, '..');
 const manifestPath = join(packageDir, 'package.json');
 
-export interface ConfigurationProperty {
+interface ConfigurationProperty {
   readonly type: 'boolean' | 'number' | 'array';
   readonly items?: { readonly type: 'string' };
   readonly default: unknown;

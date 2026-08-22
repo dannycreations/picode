@@ -86,6 +86,13 @@ const __importMetaResolve = (specifier, parentUrl) =>
       alias: {
         vscode: 'data:text/javascript,export const window={};',
       },
+      // Vi.mock factories cannot intercept packages Node loads natively;
+      // inlining routes these through the transformable module graph.
+      server: {
+        deps: {
+          inline: ['@earendil-works/pi-coding-agent'],
+        },
+      },
     },
   };
 });

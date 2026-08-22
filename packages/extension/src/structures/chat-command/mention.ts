@@ -4,9 +4,9 @@ import { formatThrownValue } from '@earendil-works/pi-ai';
 import { formatPathRelativeToCwdOrAbsolute } from '@earendil-works/pi-coding-agent';
 
 import { readOutputLimits } from '@pi-code/extension/core/settings';
-import { MENTION_PATTERN } from '@pi-code/extension/shared/core/constants';
 import { checkReadableFile, numberLines, readLines, walkDirectory } from '@pi-code/extension/utilities/fs';
 import { truncateOutput } from '@pi-code/extension/utilities/truncate';
+import { MENTION_PATTERN } from '@pi-code/shared/core/constants';
 
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
 

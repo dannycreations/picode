@@ -1,22 +1,15 @@
 import { formatThrownValue } from '@earendil-works/pi-ai';
 import { commands, languages, ProgressLocation, Range, window } from 'vscode';
 
-import { completePrompt } from '@pi-code/extension/structures/agent-runtime/complete';
-import { getEffectiveSelection, mapDiagnostics } from '@pi-code/extension/structures/context-command/helpers';
+import { completePrompt } from '@pi-code/extension/structures/agent-runtime/helpers/complete';
+import { mapDiagnostics, resolveSelectionFromDocument } from '@pi-code/extension/structures/context-command/helpers';
 import { extractCodeFenceMessage } from '@pi-code/extension/utilities/markdown';
-import { getWorkspaceCwd, toRelativePath } from '@pi-code/extension/utilities/vscode';
+import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
 import { logger } from '@pi-code/shared/core/logger';
 
 import type { Diagnostic, Disposable } from 'vscode';
 import type { ChatViewProvider } from '@pi-code/extension/structures/agent-webview/provider';
-import type { MappedDiagnostic } from '@pi-code/extension/structures/context-command/helpers';
-
-interface ResolvedSelection {
-  readonly filePath: string;
-  readonly selectedText: string;
-  readonly startLine: number;
-  readonly endLine: number;
-}
+import type { MappedDiagnostic, ResolvedSelection } from '@pi-code/extension/structures/context-command/helpers';
 
 function resolveSelection(args: any[]): ResolvedSelection | null {
   if (args.length >= 4) {
@@ -27,15 +20,7 @@ function resolveSelection(args: any[]): ResolvedSelection | null {
   const editor = window.activeTextEditor;
   if (!editor) return null;
 
-  const effective = getEffectiveSelection(editor.document, editor.selection);
-  if (!effective) return null;
-
-  return {
-    filePath: toRelativePath(editor.document.uri),
-    startLine: effective.startLine + 1,
-    endLine: effective.endLine + 1,
-    selectedText: effective.text,
-  };
+  return resolveSelectionFromDocument(editor.document, editor.selection);
 }
 
 function formatSelectionBlock(selection: ResolvedSelection): string {
@@ -166,10 +151,7 @@ export function registerFillCodeCommand(): Disposable {
     (selection) =>
       'Replace the following code with a complete, working implementation that preserves and satisfies the specified contract and requirements. ' +
       'Preserve the original indentation of the replaced lines. Return only the replacement code, with no explanations.\n\n' +
-      `${selection.filePath}:${selection.startLine}-${selection.endLine}\n` +
-      '```\n' +
-      `${selection.selectedText}\n` +
-      '```\n\n',
+      formatSelectionBlock(selection),
   );
 }
 

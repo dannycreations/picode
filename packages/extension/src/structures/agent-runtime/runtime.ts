@@ -1,28 +1,26 @@
-import { uuidv7 } from '@earendil-works/pi-ai';
-import { window } from 'vscode';
-
-import { getSettingsManager, readAppSettings } from '@pi-code/extension/core/settings';
 import { cancelAllApprovals } from '@pi-code/extension/structures/agent-runtime/brokers/approval';
 import { cancelAllQuestions } from '@pi-code/extension/structures/agent-runtime/brokers/question';
+import { Messenger } from '@pi-code/extension/structures/agent-runtime/core/messenger';
+import { ReplyQueue } from '@pi-code/extension/structures/agent-runtime/core/reply-queue';
 import { mapEvent } from '@pi-code/extension/structures/agent-runtime/event';
-import { Messenger } from '@pi-code/extension/structures/agent-runtime/messenger';
+import { applyPersistedModelAndThinking } from '@pi-code/extension/structures/agent-runtime/helpers/model-selection';
+import { initSessionHooks } from '@pi-code/extension/structures/agent-runtime/hooks';
 import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
-import { applyCompactionSettings, createSession } from '@pi-code/extension/structures/agent-runtime/session';
+import { createSession } from '@pi-code/extension/structures/agent-runtime/session';
 import { injectSkillMessages } from '@pi-code/extension/structures/agent-runtime/skill';
 import { collectCommands } from '@pi-code/extension/structures/chat-command/command';
 import { expandMentions } from '@pi-code/extension/structures/chat-command/mention';
 import { getEnvironmentDetails } from '@pi-code/extension/structures/chat-session/environment';
-import { getLatestTodoList, withTodoProgress } from '@pi-code/extension/structures/chat-session/reminder';
 import { loadSessionTranscript } from '@pi-code/extension/structures/chat-session/session';
 import { parseBase64DataUrl } from '@pi-code/extension/utilities/codec';
 import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
 import { logger } from '@pi-code/shared/core/logger';
 import { resolveContextLimit } from '@pi-code/shared/utilities/common';
 
-import type { ImageContent, ModelThinkingLevel, TextContent } from '@earendil-works/pi-ai';
+import type { ImageContent, TextContent } from '@earendil-works/pi-ai';
 import type { AgentSession, AgentSessionEvent, AgentSessionServices } from '@earendil-works/pi-coding-agent';
 import type { Webview } from 'vscode';
-import type { ExtensionToWebviewMessage, ModelSelection } from '@pi-code/shared/core/protocol';
+import type { ExtensionToWebviewMessage } from '@pi-code/shared/core/protocol';
 import type { ChatMessage, StatsData } from '@pi-code/shared/core/types';
 
 const COMPACTION_ABORT_ERROR_NAME = 'AbortError';
@@ -42,57 +40,26 @@ function parseImageAttachments(images?: string[]): ImageContent[] | undefined {
 export class Runtime {
   private session: AgentSession | null = null;
   private unsubscribeSessionEvents: (() => void) | null = null;
-  private replyQueue: ChatMessage[] = [];
   private apiRequestId: string | null = null;
   private compacting = false;
   private continueAfterCompaction = false;
 
   private readonly messenger: Messenger;
+  public readonly replyQueue: ReplyQueue;
 
   public constructor(webview: Webview) {
     this.messenger = new Messenger(webview);
+    this.replyQueue = new ReplyQueue((messages) => {
+      this.messenger.post({ type: 'reply_queue_data', payload: { queue: [...messages] } });
+    });
   }
 
   public postMessage(message: ExtensionToWebviewMessage): void {
     this.messenger.post(message);
   }
 
-  public addToReplyQueue(text: string, images?: string[]): void {
-    const msg: ChatMessage = {
-      id: uuidv7(),
-      sender: 'queue',
-      text,
-      images,
-      ts: Date.now(),
-    };
-    this.replyQueue.push(msg);
-    this.broadcastReplyQueue();
-  }
-
-  public editReplyQueue(id: string, text: string): void {
-    this.replyQueue = this.replyQueue.map((m) => (m.id === id ? { ...m, text } : m));
-    this.broadcastReplyQueue();
-  }
-
-  public removeFromReplyQueue(id: string): void {
-    this.replyQueue = this.replyQueue.filter((m) => m.id !== id);
-    this.broadcastReplyQueue();
-  }
-
-  public clearReplyQueue(): void {
-    this.replyQueue = [];
-    this.broadcastReplyQueue();
-  }
-
-  private broadcastReplyQueue(): void {
-    this.messenger.post({
-      type: 'reply_queue_data',
-      payload: { queue: this.replyQueue },
-    });
-  }
-
   public async startTask(promptText: string, images?: string[], path?: string): Promise<void> {
-    this.clearReplyQueue();
+    this.replyQueue.clear();
 
     try {
       const { session, envDetails, services } = await this.prepareSession(path);
@@ -192,39 +159,22 @@ export class Runtime {
     }
   }
 
-  public async reload(): Promise<void> {
+  public async reload(): Promise<'busy' | 'reloaded'> {
     if (this.session?.isStreaming || this.session?.isCompacting) {
-      window.showInformationMessage('Wait for the current task to finish before reloading.');
-      return;
+      return 'busy';
     }
 
-    window.showInformationMessage('Reloading skills, context files, and configuration...');
+    await this.session?.reload();
 
-    try {
-      await this.session?.reload();
-      window.showInformationMessage('Reloaded skills, context files, and configuration.');
-
-      const services = await createAgentResources(getWorkspaceCwd());
-      const commands = collectCommands(services.resourceLoader);
-      this.messenger.post({ type: 'commands_data', payload: { commands } });
-    } catch (err) {
-      this.messenger.postError(err);
-    }
-  }
-
-  public applyModelAndThinking(selection: ModelSelection, level?: ModelThinkingLevel): void {
-    const manager = getSettingsManager(getWorkspaceCwd());
-    if (selection.id && selection.provider) {
-      manager.setDefaultModelAndProvider(selection.provider, selection.id);
-    }
-    if (level) {
-      manager.setDefaultThinkingLevel(level);
-    }
+    const services = await createAgentResources(getWorkspaceCwd());
+    const commands = collectCommands(services.resourceLoader);
+    this.messenger.post({ type: 'commands_data', payload: { commands } });
+    return 'reloaded';
   }
 
   public async cancelTask(): Promise<void> {
     this.cleanupPending();
-    this.clearReplyQueue();
+    this.replyQueue.clear();
     this.continueAfterCompaction = false;
     if (!this.session) return;
 
@@ -246,7 +196,7 @@ export class Runtime {
     this.messenger.dispose();
     this.cleanupSession();
     this.cleanupPending();
-    this.clearReplyQueue();
+    this.replyQueue.clear();
   }
 
   private prepareRun(): void {
@@ -272,7 +222,7 @@ export class Runtime {
     const session = await this.getOrCreateSession(path, cwd);
     const services = await createAgentResources(cwd);
 
-    await this.setModelAndThinking(session);
+    await applyPersistedModelAndThinking(session);
 
     const isNewSession = session.agent.state.messages.length === 0;
     const envDetails = await getEnvironmentDetails(cwd, isNewSession);
@@ -289,10 +239,49 @@ export class Runtime {
     const session = await createSession(cwd, path);
     this.session = session;
 
-    this.setupSessionHook(session);
+    this.bindSessionHooks(session);
     this.unsubscribeSessionEvents = session.subscribe((event) => this.handleSessionEvent(event, session));
 
     return session;
+  }
+
+  private bindSessionHooks(session: AgentSession): void {
+    initSessionHooks(session, {
+      isTaskCancelled: () => !this.session,
+      prepareTurn: (target) => applyPersistedModelAndThinking(target),
+      contextPrepared: (target) => this.drainQueuedReplies(target),
+    });
+  }
+
+  private async drainQueuedReplies(session: AgentSession): Promise<void> {
+    const pending = this.replyQueue.all();
+    if (pending.length === 0) return;
+
+    const cwd = getWorkspaceCwd();
+    const undelivered: ChatMessage[] = [];
+    const delivered: ChatMessage[] = [];
+
+    for (const msg of pending) {
+      if (msg.sender !== 'queue') {
+        undelivered.push(msg);
+        continue;
+      }
+
+      if (await this.steerQueuedReply(msg, cwd, session, msg.images)) {
+        delivered.push({ id: msg.id, sender: 'user', text: msg.text, images: msg.images, ts: msg.ts });
+      } else {
+        undelivered.push(msg);
+      }
+    }
+
+    // Surface the consumed replies as user messages so they render live
+    if (delivered.length > 0) {
+      this.messenger.post({ type: 'reply_queue_delivered', payload: { messages: delivered } });
+    }
+
+    // Only drop the messages that were actually delivered; failed ones
+    // stay queued and are retried on the next turn.
+    this.replyQueue.retain(undelivered);
   }
 
   private handleSessionEvent(event: AgentSessionEvent, session: AgentSession): void {
@@ -311,7 +300,7 @@ export class Runtime {
         // the queue on its own settle, so leave it intact here.
         void this.continueTask(this.session.sessionFile);
       } else {
-        this.clearReplyQueue();
+        this.replyQueue.clear();
       }
     }
 
@@ -325,74 +314,6 @@ export class Runtime {
     if (message) {
       this.messenger.post(message);
     }
-  }
-
-  private setupSessionHook(session: AgentSession): void {
-    const sessionManager = session.sessionManager;
-    const baseAppendMessage = sessionManager.appendMessage.bind(sessionManager);
-    sessionManager.appendMessage = (message): string => {
-      // Ignore "Request aborted" message triggered by cancelTask() > abort()
-      if (!this.session && message.role === 'assistant' && message.stopReason === 'aborted') {
-        return uuidv7();
-      }
-      return baseAppendMessage(message);
-    };
-
-    const baseShouldStop = session.agent.shouldStopAfterTurn;
-    session.agent.shouldStopAfterTurn = (context, signal): boolean | Promise<boolean> => {
-      if (!this.session || signal?.aborted) return true;
-      return baseShouldStop?.(context) ?? false;
-    };
-
-    const basePrepareContext = session.agent.prepareNextTurnWithContext;
-    session.agent.prepareNextTurnWithContext = async (context, signal) => {
-      await this.setModelAndThinking(session);
-
-      const snapshot = await basePrepareContext?.(context, signal);
-      const cwd = getWorkspaceCwd();
-
-      if (this.replyQueue.length > 0) {
-        const undelivered: ChatMessage[] = [];
-        const delivered: ChatMessage[] = [];
-
-        for (const msg of this.replyQueue) {
-          if (msg.sender !== 'queue') {
-            undelivered.push(msg);
-            continue;
-          }
-
-          if (await this.steerQueuedReply(msg, cwd, session, msg.images)) {
-            delivered.push({ id: msg.id, sender: 'user', text: msg.text, images: msg.images, ts: msg.ts });
-          } else {
-            undelivered.push(msg);
-          }
-        }
-
-        // Surface the consumed replies as user messages so they render live
-        if (delivered.length > 0) {
-          this.messenger.post({ type: 'reply_queue_delivered', payload: { messages: delivered } });
-        }
-
-        // Only drop the messages that were actually delivered; failed ones
-        // stay queued and are retried on the next turn.
-        this.replyQueue = undelivered;
-        this.broadcastReplyQueue();
-      }
-
-      // Keep the agent aware of the current todo list every turn without
-      // polluting session history: inject a small, current-state reminder as a
-      // transient message (stripped before the next turn) into this request's
-      // context only. It is never persisted, so history stays clean.
-      const baseContext = snapshot?.context ?? context.context;
-      if (baseContext?.messages) {
-        const settings = readAppSettings();
-        const todoList = settings.enableTodoTool ? getLatestTodoList(context.context.messages) : undefined;
-        const messages = withTodoProgress(baseContext.messages, todoList);
-        return { ...(snapshot ?? {}), context: { ...baseContext, messages } };
-      }
-
-      return snapshot;
-    };
   }
 
   private async steerQueuedReply(msg: ChatMessage, cwd: string, session: AgentSession, images: string[] | undefined): Promise<boolean> {
@@ -415,36 +336,6 @@ export class Runtime {
       logger.error('Failed to steer queued reply, keeping it for later:', err);
       return false;
     }
-  }
-
-  private async setModelAndThinking(session: AgentSession): Promise<void> {
-    // Honor whatever the footer shows rather than a transient selection: read
-    // the persisted model and thinking level and apply them to the session.
-    const manager = getSettingsManager(getWorkspaceCwd());
-
-    const provider = manager.getDefaultProvider();
-    const modelId = manager.getDefaultModel();
-    if (provider && modelId && (session.model?.id !== modelId || session.model?.provider !== provider)) {
-      const model = session.modelRuntime.getModel(provider, modelId);
-      if (model) {
-        try {
-          await session.setModel(model);
-        } catch (err) {
-          logger.warn(`Could not apply persisted model ${provider}/${modelId}:`, err);
-        }
-      }
-    }
-
-    const level = manager.getDefaultThinkingLevel();
-    if (level && session.thinkingLevel !== level) {
-      try {
-        session.setThinkingLevel(level);
-      } catch (err) {
-        logger.warn(`Could not apply persisted thinking level ${level}:`, err);
-      }
-    }
-
-    applyCompactionSettings(session);
   }
 
   private cleanupSession(): void {

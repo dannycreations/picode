@@ -1,5 +1,5 @@
-import { isAbsolute, join, relative, resolve } from 'node:path';
-import { CONFIG_DIR_NAME, getAgentDir, getCwdRelativePath } from '@earendil-works/pi-coding-agent';
+import { join, resolve } from 'node:path';
+import { CONFIG_DIR_NAME, getAgentDir, getCwdRelativePath, resolvePath } from '@earendil-works/pi-coding-agent';
 import { minimatch } from 'minimatch';
 import { parse } from 'shell-quote';
 
@@ -32,39 +32,68 @@ export function matchesGlob(pattern: string, filePath: string): boolean {
   return minimatch(normalizedFile, pattern, { nocase: true, dot: true });
 }
 
-function matchesPathPattern(pattern: string, filePath: string): boolean {
-  return pattern === '*' || matchesGlob(pattern, filePath);
+function looksAbsolute(path: string): boolean {
+  const normalized = normalizeSeparators(path);
+  return normalized.startsWith('/') || /^[a-z]:\//i.test(normalized);
 }
 
-function resolveAllowDeny(
+// Strips a Windows drive prefix so POSIX-style patterns compare against
+// drive-rooted resolutions the same way on every platform.
+function comparableForm(path: string): string {
+  return normalizeSeparators(path).replace(/^[a-z]:/i, '');
+}
+
+// Patterns judge the same spellings a tool executor will act on. Absolute
+// patterns (a leading "/" or drive letter, including an expanded "~") match
+// the resolved location itself; relative patterns match workspace-facing
+// spellings only, so "**/*.ts" can never bless "/etc/cron.d/x.ts". Denial is
+// fail-closed: relative deny patterns also reach the resolved location.
+function matchesPathForms(
+  pattern: string,
+  filePath: string,
+  absoluteFile: string | undefined,
+  insideRelative: string | undefined,
+  denyBreadth: boolean,
+): boolean {
+  if (!pattern) return false;
+  if (pattern === '*') return true;
+
+  const expandedForm = normalizeSeparators(pattern.startsWith('~') ? resolvePath(pattern) : pattern);
+  const patternForMatch = comparableForm(expandedForm);
+  if (looksAbsolute(expandedForm)) {
+    return absoluteFile !== undefined && matchesGlob(patternForMatch, comparableForm(absoluteFile));
+  }
+
+  // Workspace-facing spellings only: the raw input when relative, plus the
+  // cwd-relative form of wherever it resolves.
+  if (!looksAbsolute(filePath) && matchesGlob(patternForMatch, normalizeSeparators(filePath))) return true;
+  if (insideRelative !== undefined && matchesGlob(patternForMatch, normalizeSeparators(insideRelative))) return true;
+  // Denial is fail-closed, so deny patterns also reach the resolved location.
+  return denyBreadth && absoluteFile !== undefined && matchesGlob(patternForMatch, comparableForm(absoluteFile));
+}
+
+function decidePathAction(
+  cwd: string | undefined,
+  filePath: string,
   allowedPatterns: readonly string[],
   deniedPatterns: readonly string[],
-  isMatch: (pattern: string) => boolean,
 ): ApprovalDecision['action'] {
-  let maxAllowedLen = -1;
-  let maxDeniedLen = -1;
-  let hasAllowedMatch = false;
-  let hasDeniedMatch = false;
+  // One resolution shared by matching and by the tools themselves, so approval
+  // and execution never see different paths for one input.
+  const absoluteFile = cwd ? resolvePath(filePath, cwd) : undefined;
+  const insideRelative = cwd && absoluteFile ? getCwdRelativePath(absoluteFile, resolve(cwd)) : undefined;
 
-  for (const pat of allowedPatterns) {
-    if (isMatch(pat)) {
-      hasAllowedMatch = true;
-      if (pat.length > maxAllowedLen) maxAllowedLen = pat.length;
-    }
+  if (deniedPatterns.some((pattern) => matchesPathForms(pattern, filePath, absoluteFile, insideRelative, true))) {
+    return 'deny';
+  }
+  if (allowedPatterns.some((pattern) => matchesPathForms(pattern, filePath, absoluteFile, insideRelative, false))) {
+    return 'approve';
   }
 
-  for (const pat of deniedPatterns) {
-    if (isMatch(pat)) {
-      hasDeniedMatch = true;
-      if (pat.length > maxDeniedLen) maxDeniedLen = pat.length;
-    }
+  if (insideRelative !== undefined) {
+    return 'approve';
   }
 
-  if (hasAllowedMatch && hasDeniedMatch) {
-    return maxDeniedLen >= maxAllowedLen ? 'deny' : 'approve';
-  }
-  if (hasDeniedMatch) return 'deny';
-  if (hasAllowedMatch) return 'approve';
   return 'confirm';
 }
 
@@ -83,29 +112,7 @@ export function resolvePathAction(
     return 'deny';
   }
 
-  const normalizedPath = normalizeSeparators(filePath);
-  const action = resolveAllowDeny(allowedPatterns, deniedPatterns, (pat) => matchesPathPattern(pat, normalizedPath));
-  if (action !== 'confirm') {
-    return action;
-  }
-
-  if (!cwd) {
-    return 'confirm';
-  }
-
-  try {
-    const absoluteCwd = resolve(cwd);
-    const absoluteFile = resolve(cwd, filePath);
-    const relativePath = relative(absoluteCwd, absoluteFile);
-    const isInside = !relativePath.startsWith('..') && !isAbsolute(relativePath);
-    if (isInside) {
-      return 'approve';
-    }
-  } catch {
-    return 'confirm';
-  }
-
-  return 'confirm';
+  return decidePathAction(cwd, filePath, allowedPatterns, deniedPatterns);
 }
 
 export function resolveCommandAction(
@@ -113,6 +120,7 @@ export function resolveCommandAction(
   approveEnabled: boolean,
   allowedPatterns: readonly string[],
   deniedPatterns: readonly string[],
+  tokenize: Tokenizer = parse,
 ): ApprovalDecision['action'] {
   if (!approveEnabled) {
     return 'confirm';
@@ -124,7 +132,7 @@ export function resolveCommandAction(
 
   let subCommands: string[];
   try {
-    subCommands = parseCommand(command);
+    subCommands = parseCommand(command, tokenize);
   } catch {
     return 'confirm';
   }
@@ -162,14 +170,17 @@ function evaluateSubCommand(subCmd: string, allowedPatterns: readonly string[], 
   return getSingleCommandDecision(cmdWithoutRedirection, allowedPatterns, deniedPatterns);
 }
 
-export function parseCommand(command: string): string[] {
+// Injectable for tests; production always uses shell-quote's parse.
+type Tokenizer = (command: string) => unknown[];
+
+export function parseCommand(command: string, tokenize: Tokenizer = parse): string[] {
   if (!command || !command.trim()) {
     return [];
   }
 
   let tokens: unknown[];
   try {
-    tokens = parse(command);
+    tokens = tokenize(command);
   } catch {
     throw new Error('Command could not be parsed into tokens.');
   }
@@ -286,12 +297,10 @@ function getSingleCommandDecision(
     return 'approve';
   }
 
-  const action = resolveAllowDeny(allowedPatterns, deniedPatterns, (pat) => matchesCommandPattern(pat, trimmedCmd));
-  if (action !== 'confirm') {
-    return action;
+  if (deniedPatterns.some((pat) => matchesCommandPattern(pat, trimmedCmd))) {
+    return 'deny';
   }
-
-  if (allowedPatterns.length === 0) {
+  if (allowedPatterns.some((pat) => matchesCommandPattern(pat, trimmedCmd))) {
     return 'approve';
   }
 
@@ -303,15 +312,20 @@ function getSkillDirectories(cwd: string): readonly string[] {
 }
 
 export function resolveReadPath(cwd: string, filePath: string, settings: AppSettings): ApprovalDecision['action'] {
-  const normalizedPath = normalizeSeparators(filePath);
-  const isDenied = settings.deniedReadPaths.some((pat) => matchesPathPattern(pat, normalizedPath));
-  if (isDenied) return 'deny';
+  const base = decidePathAction(cwd, filePath, settings.allowedReadPaths, settings.deniedReadPaths);
+  if (base === 'deny') {
+    return 'deny';
+  }
 
-  if (settings.autoApproveRead && settings.autoApproveSkillReads) {
-    const resolved = resolve(cwd, filePath);
-    const insideSkillDir = getSkillDirectories(cwd).some((dir) => getCwdRelativePath(resolved, dir) !== undefined);
+  if (!settings.autoApproveRead) {
+    return 'confirm';
+  }
+
+  if (settings.autoApproveSkillReads) {
+    const absoluteFile = resolvePath(filePath, cwd);
+    const insideSkillDir = getSkillDirectories(cwd).some((dir) => getCwdRelativePath(absoluteFile, dir) !== undefined);
     if (insideSkillDir) return 'approve';
   }
 
-  return resolvePathAction(cwd, filePath, settings.autoApproveRead, settings.allowedReadPaths, settings.deniedReadPaths);
+  return base;
 }

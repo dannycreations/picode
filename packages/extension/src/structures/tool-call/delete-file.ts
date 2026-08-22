@@ -1,11 +1,19 @@
 import { rm, stat, unlink } from 'node:fs/promises';
+import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { defineTool, resolvePath, withFileMutationQueue } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
-import { toolError, toolErrorFrom, toolResult } from '@pi-code/extension/structures/tool-call/helpers/result';
+import { toolError, toolErrorFrom, toolResult } from '@pi-code/extension/structures/tool-call/helpers';
 
 import type { Stats } from 'node:fs';
 import type { ToolName } from '@pi-code/shared/core/types';
+
+// True when the workspace root itself sits at or under `candidate`, meaning
+// deleting `candidate` would take the workspace with it.
+function containsWorkspace(candidate: string, workspace: string): boolean {
+  const rel = relative(candidate, workspace);
+  return rel === '' || (!rel.startsWith(`..${sep}`) && rel !== '..' && !isAbsolute(rel));
+}
 
 export const deleteFileTool = defineTool({
   name: 'delete_file' as ToolName,
@@ -16,6 +24,11 @@ export const deleteFileTool = defineTool({
   }),
   async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
     const resolvedPath = resolvePath(params.path, ctx.cwd);
+
+    if (containsWorkspace(resolvedPath, resolve(ctx.cwd))) {
+      return toolError(`Error: refusing to delete "${params.path}" because it contains the workspace root.`);
+    }
+
     return withFileMutationQueue(resolvedPath, async () => {
       try {
         let stats: Stats;

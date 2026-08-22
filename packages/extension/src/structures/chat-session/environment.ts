@@ -229,7 +229,7 @@ export function buildFileTree(paths: readonly string[]): FileTreeNode {
 function sortTreeNodes(nodes: FileTreeNode[]): FileTreeNode[] {
   return [...nodes].sort((a, b) => {
     if (a.isDir !== b.isDir) return a.isDir ? -1 : 1;
-    return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+    return pathCollator.compare(a.name, b.name);
   });
 }
 

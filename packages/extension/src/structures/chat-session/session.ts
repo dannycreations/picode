@@ -9,18 +9,9 @@ import { buildToolSections } from '@pi-code/shared/utilities/tool';
 
 import type { ImageContent, TextContent, ThinkingContent, ToolCall, Usage } from '@earendil-works/pi-ai';
 import type { SessionEntry } from '@earendil-works/pi-coding-agent';
-import type { ChatMessage, ReadFileSection, StatsData, ToolArguments, ToolName } from '@pi-code/shared/core/types';
-import type { TodoItem } from '@pi-code/shared/utilities/todo';
+import type { ChatMessage, StatsData, ToolArguments, ToolName, ToolResultDetails } from '@pi-code/shared/core/types';
 
 type MessageContentPart = TextContent | ThinkingContent | ToolCall | ImageContent;
-
-interface ToolResultDetails {
-  readonly diff?: string;
-  readonly todos?: TodoItem[];
-  readonly files?: ReadonlyArray<ReadFileSection>;
-  readonly duration?: number;
-  readonly subtitle?: string;
-}
 
 function toContentParts(content: string | readonly MessageContentPart[]): readonly MessageContentPart[] {
   if (typeof content === 'string') {

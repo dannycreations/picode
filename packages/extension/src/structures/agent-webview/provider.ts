@@ -91,7 +91,8 @@ export class ChatViewProvider implements WebviewViewProvider {
     webview.html = buildChatViewHtml(webview, this.context.extensionUri);
 
     this.runtime?.dispose();
-    this.runtime = new Runtime(webview);
+    const runtime = new Runtime(webview);
+    this.runtime = runtime;
 
     const cwd = getWorkspaceCwd();
 
@@ -118,7 +119,7 @@ export class ChatViewProvider implements WebviewViewProvider {
 
     const handlerContext: MessageHandlerContext = {
       cwd,
-      runtime: this.runtime!,
+      runtime,
       workspace: this.workspace,
       historyEpoch: 0,
     };

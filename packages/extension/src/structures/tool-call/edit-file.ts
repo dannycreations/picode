@@ -1,11 +1,11 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { defineTool, detectLineEnding, normalizeToLF, resolvePath, restoreLineEndings, withFileMutationQueue } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
 import { readOutputLimits } from '@pi-code/extension/core/settings';
-import { toolError, toolErrorFrom } from '@pi-code/extension/structures/tool-call/helpers/result';
-import { checkReadableFile } from '@pi-code/extension/utilities/fs';
+import { toolError, toolErrorFrom } from '@pi-code/extension/structures/tool-call/helpers';
+import { checkReadableFile, pathExists, writeFileAtomic } from '@pi-code/extension/utilities/fs';
 import { buildFileChangeResult } from '@pi-code/extension/utilities/truncate';
 import { findOccurrences } from '@pi-code/shared/utilities/common';
 
@@ -138,24 +138,25 @@ export const editFileTool = defineTool({
     const resolvedPath = resolvePath(file_path, ctx.cwd);
     return withFileMutationQueue(resolvedPath, async () => {
       try {
-        let originalContent = '';
+        let originalContent: string | null = null;
         const check = await checkReadableFile(resolvedPath);
         if (check.ok) {
+          if (old_string === '') {
+            return toolError(`Error: "file_path" already exists: ${file_path}. Use a non-empty "old_string" to modify it.`);
+          }
           originalContent = await readFile(resolvedPath, 'utf8');
-        } else if (old_string !== '') {
+        } else if (old_string !== '' || (await pathExists(resolvedPath))) {
+          // A present-but-unreadable file must never fall through to creation,
+          // which would overwrite it with "new_string".
           return toolError(`${check.body} Use "write_file" to overwrite this file, or "read_file" with "line_ranges" to inspect a portion.`);
-        }
-
-        if (check.ok && old_string === '') {
-          return toolError(`Error: "file_path" already exists: ${file_path}. Use a non-empty "old_string" to modify it.`);
         }
 
         let newContent: string;
 
-        if (!check.ok) {
+        if (originalContent === null) {
           newContent = new_string;
           await mkdir(dirname(resolvedPath), { recursive: true });
-          await writeFile(resolvedPath, newContent, 'utf8');
+          await writeFileAtomic(resolvedPath, newContent);
         } else {
           const originalEol = detectLineEnding(originalContent);
           const originalLF = normalizeToLF(originalContent);
@@ -173,12 +174,12 @@ export const editFileTool = defineTool({
           }
 
           newContent = restoreLineEndings(outcome.content, originalEol);
-          await writeFile(resolvedPath, newContent, 'utf8');
+          await writeFileAtomic(resolvedPath, newContent);
         }
 
         return buildFileChangeResult({
           limits: readOutputLimits(),
-          oldContent: originalContent,
+          oldContent: originalContent ?? '',
           newContent,
           successMessage: `Updated ${file_path}`,
           hint: `Edit applied; read "${file_path}" to verify the remaining changes.`,

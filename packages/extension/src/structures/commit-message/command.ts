@@ -2,7 +2,7 @@ import { formatThrownValue } from '@earendil-works/pi-ai';
 import { commands, ProgressLocation, window } from 'vscode';
 
 import { COMMIT_MESSAGE_PROMPT } from '@pi-code/extension/core/prompt';
-import { completePrompt } from '@pi-code/extension/structures/agent-runtime/complete';
+import { completePrompt } from '@pi-code/extension/structures/agent-runtime/helpers/complete';
 import { buildGitContext, getGitChanges, getGitDiffContext, getRepoContext } from '@pi-code/extension/structures/commit-message/git';
 import { getGitRepository } from '@pi-code/extension/utilities/git';
 import { extractCodeFenceMessage } from '@pi-code/extension/utilities/markdown';

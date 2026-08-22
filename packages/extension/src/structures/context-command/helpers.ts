@@ -1,5 +1,7 @@
 import { Range } from 'vscode';
 
+import { toRelativePath } from '@pi-code/extension/utilities/vscode';
+
 import type { Diagnostic, Selection, TextDocument } from 'vscode';
 
 interface EffectiveSelection {
@@ -50,4 +52,23 @@ export function mapDiagnostics(diagnostics: readonly Diagnostic[]): MappedDiagno
           : diagnostic.code
         : undefined,
   }));
+}
+
+export interface ResolvedSelection {
+  readonly filePath: string;
+  readonly selectedText: string;
+  readonly startLine: number;
+  readonly endLine: number;
+}
+
+export function resolveSelectionFromDocument(document: TextDocument, selection: Selection): ResolvedSelection | null {
+  const effective = getEffectiveSelection(document, selection);
+  if (!effective) return null;
+
+  return {
+    filePath: toRelativePath(document.uri),
+    startLine: effective.startLine + 1,
+    endLine: effective.endLine + 1,
+    selectedText: effective.text,
+  };
 }

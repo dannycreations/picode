@@ -48,6 +48,14 @@ export interface ReadFileSection {
   readonly content: string;
 }
 
+export interface ToolResultDetails {
+  readonly diff?: string;
+  readonly todos?: TodoItem[];
+  readonly files?: ReadonlyArray<ReadFileSection>;
+  readonly duration?: number;
+  readonly subtitle?: string;
+}
+
 export interface ToolSection {
   readonly id?: string;
   readonly title: string;

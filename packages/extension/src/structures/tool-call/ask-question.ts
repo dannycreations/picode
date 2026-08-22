@@ -2,7 +2,7 @@ import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
 import { askQuestion } from '@pi-code/extension/structures/agent-runtime/brokers/question';
-import { toolError, toolErrorFrom, toolResult } from '@pi-code/extension/structures/tool-call/helpers/result';
+import { toolError, toolErrorFrom, toolResult } from '@pi-code/extension/structures/tool-call/helpers';
 
 import type { ToolName } from '@pi-code/shared/core/types';
 

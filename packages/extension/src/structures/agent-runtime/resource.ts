@@ -30,11 +30,13 @@ export function invalidateAgentResources(): void {
 
 let sharedModelRuntime: ModelRuntime | undefined;
 
-async function createServices(cwd: string, config: LoaderConfig): Promise<AgentSessionServices> {
+type ServicesFactory = typeof createAgentSessionServices;
+
+async function createServices(cwd: string, config: LoaderConfig, createSessionServices: ServicesFactory): Promise<AgentSessionServices> {
   const settingsManager = getSettingsManager(cwd);
   settingsManager.setProjectTrusted(config.projectTrusted);
 
-  const services = await createAgentSessionServices({
+  const services = await createSessionServices({
     cwd,
     modelRuntime: sharedModelRuntime,
     settingsManager,
@@ -67,7 +69,10 @@ async function createServices(cwd: string, config: LoaderConfig): Promise<AgentS
   return services;
 }
 
-export async function createAgentResources(cwd: string): Promise<AgentSessionServices> {
+export async function createAgentResources(
+  cwd: string,
+  createSessionServices: ServicesFactory = createAgentSessionServices,
+): Promise<AgentSessionServices> {
   const settings = readAppSettings();
   const config: LoaderConfig = {
     noContextFiles: !settings.enableAgentRules,
@@ -78,7 +83,7 @@ export async function createAgentResources(cwd: string): Promise<AgentSessionSer
   const key = [config.noContextFiles, config.disableSkillInvocation, config.projectTrusted].join('|');
   let cached = resourceCache.get(cwd);
   if (!cached || cached.key !== key) {
-    cached = { key, services: createServices(cwd, config) };
+    cached = { key, services: createServices(cwd, config, createSessionServices) };
     resourceCache.set(cwd, cached);
     // A rejected creation must not poison the cache for later attempts.
     cached.services.catch(() => {

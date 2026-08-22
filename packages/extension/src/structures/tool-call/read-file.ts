@@ -3,7 +3,7 @@ import { defineTool, resolvePath } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
 import { readAppSettings } from '@pi-code/extension/core/settings';
-import { toolError, toolErrorFrom, toolResult } from '@pi-code/extension/structures/tool-call/helpers/result';
+import { toolError, toolErrorFrom, toolResult } from '@pi-code/extension/structures/tool-call/helpers';
 import { checkReadableFile, numberLines, readLines } from '@pi-code/extension/utilities/fs';
 import { shareOutputLimits, toOutputLimits, truncateOutput } from '@pi-code/extension/utilities/truncate';
 
