@@ -1,4 +1,4 @@
-import type { ChatMessage, ToolArguments } from '@pi-code/shared/core/types';
+import type { ChatMessage, ToolArguments, ToolChatMessage } from '@pi-code/shared/core/types';
 
 interface QuestionData {
   readonly question: string;
@@ -20,6 +20,21 @@ export function parseQuestionData(toolArgs?: ToolArguments): QuestionData | unde
     .filter((text): text is string => typeof text === 'string' && text.trim() !== '');
 
   return { question: parsed.question, suggestions };
+}
+
+interface QuestionView {
+  readonly question: string;
+  readonly suggestions: string[];
+  readonly answer: string;
+}
+
+export function getQuestionView(message: ToolChatMessage): QuestionView {
+  const data = parseQuestionData(message.toolArgs);
+  return {
+    question: data?.question ?? message.text,
+    suggestions: data?.suggestions ?? [],
+    answer: message.toolStatus === 'denied' ? '' : (message.diff ?? ''),
+  };
 }
 
 export function findPendingQuestion(messages: readonly ChatMessage[]): ChatMessage | undefined {

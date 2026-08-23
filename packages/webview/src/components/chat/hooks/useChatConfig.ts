@@ -39,7 +39,7 @@ export const useChatConfig = (): UseChatConfigReturn => {
   // only when the current choice is unsupported (e.g. after a model switch).
   useEffect(() => {
     const current = useChatStore.getState().selectedThinkingLevel;
-    const next = thinkingLevels.length === 0 ? null : current && thinkingLevels.includes(current) ? current : defaultThinkingLevel(thinkingLevels);
+    const next = current && thinkingLevels.includes(current) ? current : defaultThinkingLevel(thinkingLevels);
     useChatStore.getState().syncSelectedThinkingLevel(next);
   }, [thinkingLevels]);
 

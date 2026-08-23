@@ -8,7 +8,7 @@ export const BUILTIN_COMMANDS = [
 
 const BUILTIN_COMMAND_NAMES = new Set<string>(BUILTIN_COMMANDS.map((command) => command.name));
 
-type BuiltinCommandName = (typeof BUILTIN_COMMANDS)[number]['name'];
+export type BuiltinCommandName = (typeof BUILTIN_COMMANDS)[number]['name'];
 
 export function parseBuiltinCommand(text: string): BuiltinCommandName | null {
   const match = BUILTIN_COMMAND_PATTERN.exec(text.trim());

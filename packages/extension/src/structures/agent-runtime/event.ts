@@ -45,19 +45,12 @@ export function toolResultText(result: unknown): string {
   return parts.map((part) => part.text).join('\n');
 }
 
-function extractLatestSubagentStep(text: string): string | undefined {
-  if (!text) return undefined;
-  const splitIndex = text.indexOf('\n\n');
-  const stepsPart = splitIndex !== -1 ? text.slice(splitIndex + 2) : text;
-  const lines = stepsPart
+function latestStep(steps: string | undefined): string | undefined {
+  const lines = (steps ?? '')
     .split('\n')
-    .map((l) => l.trim())
+    .map((line) => line.trim())
     .filter(Boolean);
-  const lastLine = lines[lines.length - 1];
-  if (lastLine && !lastLine.startsWith('Running the ')) {
-    return lastLine;
-  }
-  return undefined;
+  return lines.length > 0 ? lines[lines.length - 1] : undefined;
 }
 
 interface MappedEvent {
@@ -165,7 +158,8 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
 
     case 'tool_execution_update': {
       const result = toolResultText(event.partialResult);
-      const subtitle = event.toolName === 'spawn_subagent' ? extractLatestSubagentStep(result) : undefined;
+      const steps = (event.partialResult as { details?: { steps?: string } } | undefined)?.details?.steps;
+      const subtitle = event.toolName === 'spawn_subagent' ? latestStep(steps) : undefined;
       return {
         message: {
           type: 'tool_execution_update',

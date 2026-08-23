@@ -41,7 +41,7 @@ export function findOccurrences(haystack: string, needle: string, caseSensitive 
   return positions;
 }
 
-export interface OccurrenceSegment {
+interface OccurrenceSegment {
   readonly text: string;
   // Match ordinal when this segment is a needle occurrence; null for the text
   // between occurrences.

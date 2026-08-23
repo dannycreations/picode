@@ -4,7 +4,7 @@ import { calculateContextTokens, getLastAssistantUsage } from '@earendil-works/p
 import { getApprovalDuration } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
 import { toBase64DataUrl } from '@pi-code/extension/utilities/codec';
 import { logger } from '@pi-code/shared/core/logger';
-import { elapsedSeconds, EMPTY_STATS } from '@pi-code/shared/utilities/common';
+import { elapsedSeconds } from '@pi-code/shared/utilities/common';
 import { buildToolSections } from '@pi-code/shared/utilities/tool';
 
 import type { ImageContent, TextContent, ThinkingContent, ToolCall, Usage } from '@earendil-works/pi-ai';
@@ -170,7 +170,7 @@ function patchToolCall(result: ChatMessage[], msg: Extract<SessionMessage, { rol
   };
 }
 
-function calculateSessionStats(entries: readonly SessionEntry[], contextLimit: number = EMPTY_STATS.contextLimit): StatsData {
+function calculateSessionStats(entries: readonly SessionEntry[], contextLimit: number): StatsData {
   let tokensIn = 0;
   let tokensOut = 0;
   let cacheWrites = 0;

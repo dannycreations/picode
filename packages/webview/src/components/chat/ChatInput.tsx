@@ -103,16 +103,18 @@ export const ChatInput: FC<ChatInputProps> = ({
     mention.handleChange(e);
   };
 
+  const attachImage = async (file: File): Promise<void> => {
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      setSelectedImages((prev) => [...prev, dataUrl]);
+    } catch (err) {
+      logger.error('Failed to attach image:', err);
+    }
+  };
+
   const handleAttachImage = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      try {
-        const dataUrl = await readFileAsDataUrl(file);
-        setSelectedImages((prev) => [...prev, dataUrl]);
-      } catch (err) {
-        logger.error('Failed to attach image:', err);
-      }
-    }
+    if (file) await attachImage(file);
   };
 
   const handlePaste = async (e: ClipboardEvent<HTMLTextAreaElement>) => {
@@ -121,18 +123,11 @@ export const ChatInput: FC<ChatInputProps> = ({
     if (!items) return;
 
     for (let i = 0; i < items.length; i++) {
-      if (items[i].type.includes('image')) {
-        const file = items[i].getAsFile();
-        if (file) {
-          e.preventDefault();
-          try {
-            const dataUrl = await readFileAsDataUrl(file);
-            setSelectedImages((prev) => [...prev, dataUrl]);
-          } catch (err) {
-            logger.error('Failed to paste image:', err);
-          }
-        }
-      }
+      if (!items[i].type.includes('image')) continue;
+      const file = items[i].getAsFile();
+      if (!file) continue;
+      e.preventDefault();
+      await attachImage(file);
     }
   };
 

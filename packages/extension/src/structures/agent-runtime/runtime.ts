@@ -186,9 +186,7 @@ export class Runtime {
     } catch (err) {
       logger.warn('Failed to abort session on cancel:', err);
     } finally {
-      this.unsubscribeSessionEvents?.();
-      this.unsubscribeSessionEvents = null;
-      session.dispose();
+      this.cleanupSession(session);
     }
   }
 
@@ -343,24 +341,24 @@ export class Runtime {
     }
   }
 
-  private cleanupSession(): void {
-    if (this.unsubscribeSessionEvents) {
+  private cleanupSession(session?: AgentSession): void {
+    const unsubscribe = this.unsubscribeSessionEvents;
+    this.unsubscribeSessionEvents = null;
+
+    if (unsubscribe) {
       try {
-        this.unsubscribeSessionEvents();
+        unsubscribe();
       } catch (err) {
         logger.error('Failed to unsubscribe session events during cleanup:', err);
       }
-      this.unsubscribeSessionEvents = null;
     }
 
-    if (this.session) {
-      try {
-        this.session.dispose();
-      } catch (err) {
-        logger.error('Failed to dispose session during cleanup:', err);
-      }
-      this.session = null;
+    try {
+      session?.dispose();
+    } catch (err) {
+      logger.error('Failed to dispose session during cleanup:', err);
     }
+    this.session = null;
   }
 
   private cleanupPending(): void {

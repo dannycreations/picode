@@ -2,7 +2,7 @@ import { visit } from 'unist-util-visit';
 
 import { splitOnOccurrences } from '@pi-code/shared/utilities/common';
 import { SEARCH_HIT_ACTIVE_CLASS, SEARCH_HIT_CLASS } from '@pi-code/webview/components/shared/Highlight';
-import { parseQuestionData } from '@pi-code/webview/helpers/questions';
+import { getQuestionView } from '@pi-code/webview/helpers/questions';
 
 import type { ChatMessage } from '@pi-code/shared/core/types';
 import type { SearchContext } from '@pi-code/webview/components/shared/Highlight';
@@ -20,9 +20,8 @@ export function getMessageSearchText(message: ChatMessage): string {
       // tool renders through ToolMessage, which gets no search context), so
       // counting the others would send navigation to unhighlighted rows.
       if (message.toolName !== 'ask_question') return '';
-      const question = parseQuestionData(message.toolArgs)?.question ?? message.text;
-      const answer = message.toolStatus === 'denied' ? '' : (message.diff ?? '');
-      return [question, answer].filter(Boolean).join('\n');
+      const view = getQuestionView(message);
+      return [view.question, view.answer].filter(Boolean).join('\n');
     }
     case 'error':
       return message.errorMessage || message.text || '';

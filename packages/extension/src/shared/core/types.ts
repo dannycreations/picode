@@ -90,16 +90,16 @@ export interface AssistantChatMessage extends ChatMessageBase {
   readonly cost?: number;
 }
 
-export interface CheckpointChatMessage extends ChatMessageBase {
+interface CheckpointChatMessage extends ChatMessageBase {
   readonly sender: 'checkpoint';
 }
 
-export interface ErrorChatMessage extends ChatMessageBase {
+interface ErrorChatMessage extends ChatMessageBase {
   readonly sender: 'error';
   readonly errorMessage?: string;
 }
 
-export interface InfoChatMessage extends ChatMessageBase {
+interface InfoChatMessage extends ChatMessageBase {
   readonly sender: 'info';
 }
 
@@ -125,7 +125,7 @@ export interface ToolChatMessage extends ChatMessageBase {
   readonly toolSections?: ReadonlyArray<ToolSection>;
 }
 
-export interface UserChatMessage extends ChatMessageBase {
+interface UserChatMessage extends ChatMessageBase {
   readonly sender: 'user';
   readonly images?: string[];
 }

@@ -5,7 +5,7 @@ import { Markdown } from '@pi-code/webview/components/chat/markdown/Markdown';
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
 import { locateOccurrences, SearchableText } from '@pi-code/webview/components/shared/Highlight';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
-import { parseQuestionData } from '@pi-code/webview/helpers/questions';
+import { getQuestionView } from '@pi-code/webview/helpers/questions';
 
 import type { FC, MouseEvent } from 'react';
 import type { ChatMessage } from '@pi-code/shared/core/types';
@@ -21,15 +21,12 @@ interface QuestionMessageProps {
 export const QuestionMessage: FC<QuestionMessageProps> = ({ message, search, onAnswerQuestion, onCopyToInput }) => {
   if (message.sender !== 'tool') return null;
 
-  const data = parseQuestionData(message.toolArgs);
-  const question = data?.question ?? message.text;
-  const suggestions = data?.suggestions ?? [];
+  const { question, suggestions, answer } = getQuestionView(message);
 
   // The tool call stays in flight until the user replies, so its status is the
   // single source of truth for whether the card is still interactive.
   const isPending = message.toolStatus === 'running';
   const isCancelled = message.toolStatus === 'denied';
-  const answer = isCancelled ? '' : (message.diff ?? '');
 
   const questionMatch = locateOccurrences(question, search);
   // The answer's matches continue the message-wide numbering after the
