@@ -70,6 +70,28 @@ describe('searchWorkspaceFiles', () => {
 
     expect(results[0]).toBe('patches.ts');
   });
+
+  it('lists bare @ candidates in environment discovery order', async () => {
+    await write('file10.txt');
+    await write('file2.txt');
+    await write('notes.md');
+
+    const results = await searchWorkspaceFiles('', cwd);
+
+    // Numeric collation puts file2 ahead of file10, as the workspace listing shows.
+    expect(results).toEqual(['file2.txt', 'file10.txt', 'notes.md']);
+  });
+
+  it('breaks ranking ties in discovery order, not locale order', async () => {
+    await write('q10zz.txt');
+    await write('q2aaa.txt');
+
+    const results = await searchWorkspaceFiles('q', cwd);
+
+    // Equal rank on every closeness field; the collator puts q2 first while
+    // localeCompare would put q10 first.
+    expect(results).toEqual(['q2aaa.txt', 'q10zz.txt']);
+  });
 });
 
 describe('isBinaryFile', () => {

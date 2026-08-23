@@ -3,7 +3,7 @@ import ignore from 'ignore';
 import { FileType, TabInputText, Uri, window, workspace } from 'vscode';
 
 import { readAppSettings } from '@pi-code/extension/core/settings';
-import { excludeVcsEntries } from '@pi-code/extension/utilities/fs';
+import { excludeVcsEntries, pathCollator } from '@pi-code/extension/utilities/fs';
 import { getGitRepository, getIgnoredPaths } from '@pi-code/extension/utilities/git';
 import { toRelativePath, toWorkspaceRelativePath } from '@pi-code/extension/utilities/vscode';
 
@@ -32,7 +32,6 @@ interface WalkEntry {
 }
 
 const textDecoder = new TextDecoder();
-const pathCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
 async function loadGitignoreFilter(gitignoreUri: Uri): Promise<ReturnType<typeof ignore> | null> {
   try {

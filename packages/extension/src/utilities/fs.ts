@@ -55,6 +55,8 @@ export async function* walkDirectory(start: string, maxDepth: number, root: stri
   yield* walk(start, 0);
 }
 
+export const pathCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
 interface PathRank {
   // Basename starts with the query: 0. Match elsewhere in the basename: 1.
   readonly prefix: number;
@@ -86,7 +88,7 @@ function rankPaths(paths: readonly string[], needle: string): string[] {
     if (ra.baseIndex !== rb.baseIndex) return ra.baseIndex - rb.baseIndex;
     if (ra.depth !== rb.depth) return ra.depth - rb.depth;
     if (ra.pathLength !== rb.pathLength) return ra.pathLength - rb.pathLength;
-    return a.localeCompare(b);
+    return pathCollator.compare(a, b);
   });
 }
 
@@ -101,13 +103,12 @@ export async function searchWorkspaceFiles(query: string, cwd: string): Promise<
   const needle = namePart.toLowerCase();
   const start = dirPart ? resolve(cwd, dirPart) : cwd;
 
-  // With no name fragment, list the immediate children of the anchor directory.
   if (needle === '') {
     const entries: string[] = [];
     for await (const { rel, entry } of walkDirectory(start, 0, cwd)) {
       if (entry.isFile || entry.isDir) entries.push(rel);
     }
-    return entries.slice(0, MAX_RESULTS);
+    return entries.sort((a, b) => pathCollator.compare(a, b)).slice(0, MAX_RESULTS);
   }
 
   const matches: string[] = [];
