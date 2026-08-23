@@ -143,6 +143,7 @@ vite.config.ts.timestamp-*
 .vite/
 
 bin/
+debug/
 context/
 
 # Mirrored from the workspace root when packaging the extension

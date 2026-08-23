@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run Pi Code",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": ["--extensionDevelopmentPath=${workspaceFolder}/packages/extension"],
+      "outFiles": ["${workspaceFolder}/packages/extension/dist/**/*.cjs", "${workspaceFolder}/packages/extension/dist/**/*.js"],
+      "env": { "PI_CODE_DEBUG_HTTP": "1" }
+    }
+  ]
+}

@@ -11,11 +11,20 @@ import {
   registerFixCodeCommand,
 } from '@pi-code/extension/structures/context-command/command';
 import { PiCodeActionProvider } from '@pi-code/extension/structures/context-command/provider';
+import { installFetchInterceptor } from '@pi-code/extension/utilities/interceptor';
+import { getWorkspaceUri } from '@pi-code/extension/utilities/vscode';
 import { logger } from '@pi-code/shared/core/logger';
 
 import type { ExtensionContext } from 'vscode';
 
 export function activate(context: ExtensionContext): void {
+  if (process.env['PI_CODE_DEBUG_HTTP']) {
+    const workspaceUri = getWorkspaceUri();
+    if (workspaceUri) {
+      installFetchInterceptor(workspaceUri.fsPath);
+    }
+  }
+
   registerSessionResourceCleanup(() => {});
 
   const output = window.createOutputChannel('Pi Code', { log: true });
