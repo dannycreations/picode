@@ -63,7 +63,8 @@ export const ChatInput: FC<ChatInputProps> = ({
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
-  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const selectedImages = useChatStore((state) => state.inputImages);
+  const setSelectedImages = useChatStore((state) => state.setInputImages);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const matchRef = useRef<HTMLDivElement>(null);
 

@@ -73,6 +73,7 @@ interface ChatState {
   readonly isCompacting: boolean;
   readonly view: 'chat' | 'history' | 'settings';
   readonly inputValue: string;
+  readonly inputImages: string[];
   readonly models: ModelItem[];
   readonly settings: AppSettings | null;
   readonly commands: CommandItem[];
@@ -100,6 +101,7 @@ interface ChatState {
   readonly setIsRunning: (value: boolean) => void;
   readonly setView: (view: ChatState['view']) => void;
   readonly setInputValue: (value: string) => void;
+  readonly setInputImages: (value: string[] | ((prev: string[]) => string[])) => void;
   readonly appendToInput: (text: string) => void;
   readonly setScope: (scope: HistoryScope) => void;
   readonly selectWorkspace: (path: string) => void;
@@ -368,6 +370,7 @@ export const useChatStore = create<ChatState>((set, get) => {
     isCompacting: false,
     view: 'chat',
     inputValue: '',
+    inputImages: [],
     models: [],
     settings: null,
     commands: [],
@@ -450,6 +453,8 @@ export const useChatStore = create<ChatState>((set, get) => {
     setView: (value) => set({ view: value }),
 
     setInputValue: (value) => set({ inputValue: value }),
+
+    setInputImages: (value) => set((state) => ({ inputImages: typeof value === 'function' ? value(state.inputImages) : value })),
 
     appendToInput: (text) => {
       const textarea = composerTextarea?.current;
