@@ -267,6 +267,20 @@ async function getGitStatusLines(cwd: string, sharedRepo?: Repository | null): P
   ];
 }
 
+function appendPathSection(details: string, title: string, noun: string, paths: readonly string[], limit: number): string {
+  if (paths.length === 0) return details;
+
+  let section = `\n\n### ${title}\n\n`;
+  section += paths
+    .slice(0, limit)
+    .map((path) => `- ${path}`)
+    .join('\n');
+  if (paths.length > limit) {
+    section += `\n*(Truncated. Showing first ${limit} of ${paths.length} ${noun})*`;
+  }
+  return details + section;
+}
+
 export async function getEnvironmentDetails(cwd: string, includeFileDetails = false): Promise<string> {
   let details = '';
   const settings = readAppSettings();
@@ -274,40 +288,19 @@ export async function getEnvironmentDetails(cwd: string, includeFileDetails = fa
   const maxOpenTabsContext = settings.maxOpenTabsContext;
 
   if (maxOpenTabsContext > 0) {
-    // VS Code Visible Files
-    const allVisibleFilePaths = window.visibleTextEditors
+    const visibleFiles = window.visibleTextEditors
       .map((editor) => editor.document?.uri)
       .filter((uri) => uri !== undefined)
       .map((uri) => toWorkspaceRelativePath(uri))
       .filter((path) => path !== undefined);
+    details = appendPathSection(details, 'VS Code Visible Files', 'visible files', visibleFiles, maxOpenTabsContext);
 
-    if (allVisibleFilePaths.length > 0) {
-      const visibleFilePaths = allVisibleFilePaths.slice(0, maxOpenTabsContext);
-      details += '\n\n### VS Code Visible Files\n\n';
-      details += visibleFilePaths.map((p) => `- ${p}`).join('\n');
-      if (allVisibleFilePaths.length > maxOpenTabsContext) {
-        details += `\n*(Truncated. Showing first ${maxOpenTabsContext} of ${allVisibleFilePaths.length} visible files)*`;
-      }
-    }
-
-    // VS Code Open Tabs
-    let openTabPaths = window.tabGroups.all
+    const openTabs = window.tabGroups.all
       .flatMap((group) => group.tabs)
       .filter((tab) => tab.input instanceof TabInputText)
       .map((tab) => toWorkspaceRelativePath((tab.input as TabInputText).uri))
       .filter((path) => path !== undefined);
-
-    if (openTabPaths.length > 0) {
-      const totalOpenTabs = openTabPaths.length;
-      if (openTabPaths.length > maxOpenTabsContext) {
-        openTabPaths = openTabPaths.slice(0, maxOpenTabsContext);
-      }
-      details += '\n\n### VS Code Open Tabs\n\n';
-      details += openTabPaths.map((p) => `- ${p}`).join('\n');
-      if (totalOpenTabs > maxOpenTabsContext) {
-        details += `\n*(Truncated. Showing first ${maxOpenTabsContext} of ${totalOpenTabs} open tabs)*`;
-      }
-    }
+    details = appendPathSection(details, 'VS Code Open Tabs', 'open tabs', openTabs, maxOpenTabsContext);
   }
 
   // Current Time

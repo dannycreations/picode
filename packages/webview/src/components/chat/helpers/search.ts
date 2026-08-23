@@ -1,6 +1,7 @@
 import { visit } from 'unist-util-visit';
 
 import { splitOnOccurrences } from '@pi-code/shared/utilities/common';
+import { SEARCH_HIT_ACTIVE_CLASS, SEARCH_HIT_CLASS } from '@pi-code/webview/components/shared/Highlight';
 import { parseQuestionData } from '@pi-code/webview/helpers/questions';
 
 import type { ChatMessage } from '@pi-code/shared/core/types';
@@ -52,7 +53,8 @@ export function createSearchHighlightPlugin(search: SearchContext | undefined): 
               type: 'element',
               tagName: 'mark',
               properties: {
-                className: search.globalOffset + segment.matchIndex === search.activeIndex ? ['search-hit', 'search-hit-active'] : ['search-hit'],
+                className:
+                  search.globalOffset + segment.matchIndex === search.activeIndex ? [SEARCH_HIT_CLASS, SEARCH_HIT_ACTIVE_CLASS] : [SEARCH_HIT_CLASS],
               },
               children: [{ type: 'text', value: segment.text }],
             },

@@ -19,7 +19,7 @@ interface UseSuggestionProps<T> {
   // Resolves the candidates for the active query. Adapters backed by external
   // state (mentions) return a closure over that state; it must change identity
   // whenever the underlying results change.
-  readonly resolveItems?: (query: string) => readonly T[];
+  readonly resolveItems: (query: string) => readonly T[];
 }
 
 interface UseSuggestionReturn<T> {
@@ -49,7 +49,7 @@ const useSuggestion = <T>(props: UseSuggestionProps<T>): UseSuggestionReturn<T> 
 
   const query = useMemo(() => readQuery(value, Math.min(caret, value.length)), [value, caret, readQuery]);
 
-  const items = useMemo<readonly T[]>(() => (query !== null && resolveItems ? resolveItems(query) : []), [resolveItems, query]);
+  const items = useMemo<readonly T[]>(() => (query !== null ? resolveItems(query) : []), [resolveItems, query]);
 
   const isOpen = !isDismissed && query !== null && items.length > 0;
 

@@ -20,11 +20,7 @@ export function applyMention(text: string, caret: number, path: string): Mention
   const before = text.slice(0, caret);
   const after = text.slice(caret);
   const match = MENTION_PATTERN.exec(before);
-
-  if (!match) {
-    const inserted = `@${path} `;
-    return { text: `${before}${inserted}${after}`, caret: before.length + inserted.length };
-  }
+  if (!match) return { text, caret };
 
   const at = match.index;
   const newBefore = `${before.slice(0, at)}@${path} `;

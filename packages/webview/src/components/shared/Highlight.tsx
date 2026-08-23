@@ -2,6 +2,9 @@ import { findOccurrences, splitOnOccurrences } from '@pi-code/shared/utilities/c
 
 import type { FC } from 'react';
 
+export const SEARCH_HIT_CLASS = 'search-hit';
+export const SEARCH_HIT_ACTIVE_CLASS = 'search-hit-active';
+
 export interface SearchContext {
   readonly query: string;
   readonly globalOffset: number;
@@ -45,7 +48,10 @@ const Highlight: FC<HighlightProps> = ({ text, query, activeOccurrence }) => {
         segment.matchIndex === null ? (
           segment.text
         ) : (
-          <mark key={segment.matchIndex} className={segment.matchIndex === activeOccurrence ? 'search-hit search-hit-active' : 'search-hit'}>
+          <mark
+            key={segment.matchIndex}
+            className={segment.matchIndex === activeOccurrence ? `${SEARCH_HIT_CLASS} ${SEARCH_HIT_ACTIVE_CLASS}` : SEARCH_HIT_CLASS}
+          >
             {segment.text}
           </mark>
         ),

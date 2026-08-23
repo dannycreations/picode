@@ -18,6 +18,7 @@ import { HistoryView } from '@pi-code/webview/components/history/HistoryView';
 import { useHistoryFilter } from '@pi-code/webview/components/history/hooks/useHistoryFilter';
 import { SettingsView } from '@pi-code/webview/components/setting/SettingsView';
 import { ConfirmDialog } from '@pi-code/webview/components/shared/ConfirmDialog';
+import { SEARCH_HIT_ACTIVE_CLASS } from '@pi-code/webview/components/shared/Highlight';
 import { Spinner } from '@pi-code/webview/components/shared/Spinner';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { groupToolMessages, hasPendingApproval, isRenderableMessage, latestTodos } from '@pi-code/webview/helpers/messages';
@@ -216,7 +217,7 @@ export const ChatView: FC = () => {
     const outerRaf = requestAnimationFrame(() => {
       virtualizer.scrollToIndex(itemIndex, { align: 'center' });
       innerRaf = requestAnimationFrame(() => {
-        document.querySelector('.search-hit-active')?.scrollIntoView({ block: 'center', inline: 'nearest' });
+        document.querySelector(`.${SEARCH_HIT_ACTIVE_CLASS}`)?.scrollIntoView({ block: 'center', inline: 'nearest' });
       });
     });
     return () => {
@@ -227,18 +228,10 @@ export const ChatView: FC = () => {
 
   // Acting on a row means the user is engaged with the newest output, so
   // re-engage bottom-follow before the response to that action arrives.
-  const handleApproveTool = useCallback(
-    (msgId: string) => {
+  const handleRespondToTool = useCallback(
+    (msgId: string, approved: boolean) => {
       scrollToBottom();
-      handleToolResponse(msgId, true);
-    },
-    [scrollToBottom, handleToolResponse],
-  );
-
-  const handleDenyTool = useCallback(
-    (msgId: string) => {
-      scrollToBottom();
-      handleToolResponse(msgId, false);
+      handleToolResponse(msgId, approved);
     },
     [scrollToBottom, handleToolResponse],
   );
@@ -388,8 +381,7 @@ export const ChatView: FC = () => {
                       ? { query: searchQuery, globalOffset: globalOffsets[item.index] ?? 0, activeIndex: activeMatch }
                       : undefined
                   }
-                  onApproveTool={handleApproveTool}
-                  onDenyTool={handleDenyTool}
+                  onRespondTool={handleRespondToTool}
                   onAnswerQuestion={handleAnswer}
                   onCopyToInput={appendToInput}
                 />

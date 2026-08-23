@@ -2,7 +2,7 @@ import { cn } from 'cnfast';
 import { Play, X } from 'lucide-react';
 import { Fragment, useEffect, useState } from 'react';
 
-import { buildToolSections, getDiffStat, getFileToolMeta, getFirstDiffLine } from '@pi-code/shared/utilities/tool';
+import { buildToolSections, getDiffStat, getFirstDiffLine, getToolHeaderMeta } from '@pi-code/shared/utilities/tool';
 import { CodeBlock } from '@pi-code/webview/components/chat/CodeBlock';
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
 import { Accordion } from '@pi-code/webview/components/shared/Accordion';
@@ -17,8 +17,7 @@ import type { ToolChatMessage, ToolSection } from '@pi-code/shared/core/types';
 
 interface ToolMessageProps {
   readonly message: ToolChatMessage;
-  readonly onApproveTool: (msgId: string) => void;
-  readonly onDenyTool: (msgId: string) => void;
+  readonly onRespondTool: (msgId: string, approved: boolean) => void;
 }
 
 const ElapsedTimer: FC<{ startTs: number; isRunning: boolean; isActive: boolean; duration?: number; revealOnHover?: boolean }> = ({
@@ -172,8 +171,8 @@ function appendElapsed(subtitle: string | undefined, duration: number): string {
   return subtitle ? `${subtitle} · ${elapsed}` : elapsed;
 }
 
-export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDenyTool }) => {
-  const { title, icon } = getFileToolMeta(message.toolName, message.toolStatus);
+export const ToolMessage: FC<ToolMessageProps> = ({ message, onRespondTool }) => {
+  const { title, icon } = getToolHeaderMeta(message.toolName, message.toolStatus);
   const sections: ReadonlyArray<ToolSection> = message.toolSections ?? buildToolSections(message);
   const hiddenCount = sections.length > 0 ? sections.length - 1 : 0;
   const hasMore = hiddenCount > 0;
@@ -240,10 +239,10 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onApproveTool, onDe
                 {approvalMessage && (
                   <div className="p-2 bg-vscode-editorWarning-background/10 flex flex-col gap-2">
                     <div className="flex items-center gap-2 select-none">
-                      <button onClick={() => onApproveTool(approvalMessage.id)} className="action-button flex-1">
+                      <button onClick={() => onRespondTool(approvalMessage.id, true)} className="action-button flex-1">
                         <Play size={12} fill="currentColor" /> Approve
                       </button>
-                      <button onClick={() => onDenyTool(approvalMessage.id)} className="action-button action-button-secondary flex-1">
+                      <button onClick={() => onRespondTool(approvalMessage.id, false)} className="action-button action-button-secondary flex-1">
                         <X size={12} /> Deny
                       </button>
                     </div>

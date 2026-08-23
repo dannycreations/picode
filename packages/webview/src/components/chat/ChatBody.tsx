@@ -15,13 +15,12 @@ interface ChatBodyProps {
   readonly message: ChatMessage;
   readonly commands: readonly CommandItem[];
   readonly search?: SearchContext;
-  readonly onApproveTool: (msgId: string) => void;
-  readonly onDenyTool: (msgId: string) => void;
+  readonly onRespondTool: (msgId: string, approved: boolean) => void;
   readonly onAnswerQuestion: (questionId: string, text: string) => void;
   readonly onCopyToInput: (text: string) => void;
 }
 
-export const ChatBody = memo<ChatBodyProps>(({ message, commands, search, onApproveTool, onDenyTool, onAnswerQuestion, onCopyToInput }) => {
+export const ChatBody = memo<ChatBodyProps>(({ message, commands, search, onRespondTool, onAnswerQuestion, onCopyToInput }) => {
   const renderMessageContent = () => {
     switch (message.sender) {
       case 'user':
@@ -34,7 +33,7 @@ export const ChatBody = memo<ChatBodyProps>(({ message, commands, search, onAppr
         if (message.toolName === 'ask_question') {
           return <QuestionMessage message={message} search={search} onAnswerQuestion={onAnswerQuestion} onCopyToInput={onCopyToInput} />;
         }
-        return <ToolMessage message={message} onApproveTool={onApproveTool} onDenyTool={onDenyTool} />;
+        return <ToolMessage message={message} onRespondTool={onRespondTool} />;
       case 'api_request':
         return <ApiRequestMessage message={message} />;
       case 'error':

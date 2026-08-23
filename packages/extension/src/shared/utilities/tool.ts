@@ -193,21 +193,10 @@ export function buildToolSections(message: ChatMessage): ToolSection[] {
   ];
 }
 
-export function getFileToolMeta(toolName: string | undefined, status?: ToolStatus): { title: string; icon: string } {
+export function getToolHeaderMeta(toolName: string | undefined, status?: ToolStatus): { title: string; icon: string } {
   const meta = toolMeta(toolName);
-
-  let title: string;
-  if (status === 'running') {
-    title = meta.fileTitle.running;
-  } else if (status === 'approval') {
-    title = meta.fileTitle.approval;
-  } else if (status === 'denied') {
-    title = meta.fileTitle.denied;
-  } else {
-    title = meta.fileTitle.done;
-  }
-
-  return { title, icon: meta.fileIcon };
+  const state = status === undefined || status === 'completed' ? 'done' : status;
+  return { title: meta.fileTitle[state], icon: meta.fileIcon };
 }
 
 interface DiffStat {

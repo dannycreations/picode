@@ -13,6 +13,7 @@ import { useInViewport } from '@pi-code/webview/hooks/useInViewport';
 import { useChatStore } from '@pi-code/webview/stores/useChatStore';
 
 import type { FC, MouseEvent } from 'react';
+import type { ViewMode } from '@pi-code/webview/components/chat/markdown/MermaidModal';
 
 interface MermaidBlockProps {
   readonly code: string;
@@ -21,7 +22,7 @@ interface MermaidBlockProps {
 export const MermaidBlock: FC<MermaidBlockProps> = ({ code: originalCode }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [showModal, setShowModal] = useState(false);
-  const [modalViewMode, setModalViewMode] = useState<'diagram' | 'code'>('diagram');
+  const [modalViewMode, setModalViewMode] = useState<ViewMode>('diagram');
   const [isErrorExpanded, setIsErrorExpanded] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
 

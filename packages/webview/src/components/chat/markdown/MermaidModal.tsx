@@ -6,7 +6,7 @@ import { IconButton } from '@pi-code/webview/components/shared/IconButton';
 
 import type { FC, MouseEvent, WheelEvent } from 'react';
 
-type ViewMode = 'diagram' | 'code';
+export type ViewMode = 'diagram' | 'code';
 
 interface MermaidModalProps {
   readonly code: string;
