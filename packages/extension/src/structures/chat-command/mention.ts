@@ -57,10 +57,10 @@ export async function expandMentions(text: string, cwd: string): Promise<Expande
 
   const blocks = [...resolved.entries()]
     .filter((entry): entry is [string, ResolvedMention] => entry[1] !== null)
-    .map(([raw, mention]) =>
+    .map(([path, mention]) =>
       mention.kind === 'folder'
-        ? `<folder_content path="${raw}">\n${mention.content}\n</folder_content>`
-        : `<file_content path="${raw}">\n${mention.content}\n</file_content>`,
+        ? [`## Folder Content: ${path}`, '', mention.content].join('\n')
+        : [`## File Content: ${path}`, '', mention.content].join('\n'),
     );
   const mentionContent = blocks.length === 0 ? '' : blocks.join('\n\n');
   return { text, mentionContent };

@@ -53,3 +53,8 @@ export function extractCodeFenceMessage(raw: string): string {
   const body = readFencedBody(raw, false) ?? raw;
   return body.trim().replace(SURROUNDING_QUOTES, '').trim();
 }
+
+export function fencedMarkdown(content: string): string {
+  const fence = content.includes('```') ? '````' : '```';
+  return [`${fence}markdown`, content.trim(), fence].join('\n');
+}

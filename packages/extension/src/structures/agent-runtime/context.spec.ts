@@ -144,8 +144,7 @@ describe('composeSystemPrompt', () => {
       contextFiles: [{ path: '/p/AGENTS.md', content: 'rules' }],
     };
     const prompt = composeSystemContext(options);
-    const expected =
-      'CUSTOM\n\n<project_context>\n\nProject-specific instructions and guidelines:\n\n<project_instructions path="/p/AGENTS.md">\nrules\n</project_instructions>\n\n</project_context>';
+    const expected = 'CUSTOM\n\n## Project Context\n\nProject-specific instructions and guidelines:\n\n### /p/AGENTS.md\n\n```markdown\nrules\n```';
     expect(prompt).toBe(expected);
     expect(prompt).not.toContain('Current working directory');
     expect(prompt).not.toContain('/workspace');
@@ -156,7 +155,7 @@ describe('composeSystemPrompt', () => {
     expect(composeSystemContext({ cwd: '/w' })).toBe('');
   });
 
-  it('renders skills as XML only when the read tool is selected', () => {
+  it('renders skills as markdown only when the read tool is selected', () => {
     const skills = [makeSkill('review')];
     expect(composeSystemContext({ cwd: '/w', selectedTools: ['read_file'], skills })).toBe(
       [
@@ -164,13 +163,10 @@ describe('composeSystemPrompt', () => {
         "Use the read tool to load a skill's file when the task matches its description.",
         'When a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.',
         '',
-        '<available_skills>',
-        '  <skill>',
-        '    <name>review</name>',
-        '    <description>desc-review</description>',
-        '    <location>/skills/review/SKILL.md</location>',
-        '  </skill>',
-        '</available_skills>',
+        '## Available Skills',
+        '',
+        '- **review**: desc-review',
+        '  Location: `/skills/review/SKILL.md`',
       ].join('\n'),
     );
     expect(composeSystemContext({ cwd: '/w', selectedTools: ['execute_command'], skills })).toBe('');
@@ -182,13 +178,13 @@ describe('composeSystemPrompt', () => {
     expect(composeSystemContext({ customPrompt: 'C', cwd: '/w', selectedTools: ['read_file'] })).not.toContain('Sub-Agent Delegation');
   });
 
-  it('escapes XML entities and hides skills flagged as invocation-disabled', () => {
+  it('renders skill fields verbatim and hides skills flagged as invocation-disabled', () => {
     const broken = { ...makeSkill('broken'), description: 'a & b <c>' };
     const manual = { ...makeSkill('manual'), disableModelInvocation: true };
     const prompt = composeSystemContext({ cwd: '/w', selectedTools: ['read_file'], skills: [broken, manual] });
 
-    expect(prompt).toContain('<name>broken</name>');
-    expect(prompt).toContain('<description>a &amp; b &lt;c&gt;</description>');
-    expect(prompt).not.toContain('<name>manual</name>');
+    expect(prompt).toContain('- **broken**: a & b <c>');
+    expect(prompt).toContain('Location: `/skills/broken/SKILL.md`');
+    expect(prompt).not.toContain('- **manual**:');
   });
 });

@@ -45,20 +45,20 @@ describe('expandMentions', () => {
     // The visible prompt keeps the tokens, nothing about the file is inlined.
     expect(result.text).toBe('Review @secret.txt and @readme.md');
     // The file bodies go to the hidden channel the model reads instead.
-    expect(result.mentionContent).toContain('<file_content path="secret.txt">');
+    expect(result.mentionContent).toContain('## File Content: secret.txt');
     expect(result.mentionContent).toContain('hidden treasure');
-    expect(result.mentionContent).toContain('<file_content path="readme.md">');
+    expect(result.mentionContent).toContain('## File Content: readme.md');
     expect(result.mentionContent).toContain('project docs');
-    expect(result.text).not.toContain('<file_content');
+    expect(result.text).not.toContain('File Content');
   });
 
-  it('expands an existing folder into a folder_content block listing only entry names', async () => {
+  it('expands an existing folder into a markdown block listing only entry names', async () => {
     await write('src/index.ts', 'console.log(1)');
     await write('src/util.ts', 'export const x = 2');
 
     const result = await expandMentions('Look at @src', cwd);
 
-    expect(result.mentionContent).toContain('<folder_content path="src">');
+    expect(result.mentionContent).toContain('## Folder Content: src');
     expect(result.mentionContent).toContain('src/index.ts');
     expect(result.mentionContent).toContain('src/util.ts');
     // File contents are not inlined; only the entry names are listed.
@@ -72,7 +72,7 @@ describe('expandMentions', () => {
 
     const result = await expandMentions('Look at @project', cwd);
 
-    expect(result.mentionContent).toContain('<folder_content path="project">');
+    expect(result.mentionContent).toContain('## Folder Content: project');
     expect(result.mentionContent).toContain('project/src/index.ts');
     // The .git directory must stay out of the listing entirely.
     expect(result.mentionContent).not.toContain('.git');
@@ -84,7 +84,7 @@ describe('expandMentions', () => {
 
     const result = await expandMentions('@dup.ts then @dup.ts', cwd);
 
-    expect(result.mentionContent.match(/<file_content path="dup.ts">/g)).toHaveLength(1);
+    expect(result.mentionContent.match(/## File Content: dup\.ts/g)).toHaveLength(1);
   });
 });
 

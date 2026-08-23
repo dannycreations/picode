@@ -36,15 +36,10 @@ function renderOutcome(outcome: SubagentOutcome, state: 'completed' | 'error'): 
 
   const body =
     state === 'error'
-      ? [
-          ...(outcome.steps ? ['<steps>', outcome.steps, '</steps>'] : []),
-          '<error>',
-          outcome.error ?? 'The sub-agent produced no report.',
-          '</error>',
-        ]
-      : ['<result>', text, '</result>'];
+      ? [...(outcome.steps ? ['### Steps Taken', '', outcome.steps, ''] : []), '### Error', '', outcome.error ?? 'The sub-agent produced no report.']
+      : ['### Result', '', text];
 
-  return [`<subagent name="${outcome.agent}" state="${state}">`, ...body, formatUsage(outcome.usage), '</subagent>'].join('\n');
+  return [`## Sub-agent ${outcome.agent} (${state})`, '', ...body, '', formatUsage(outcome.usage)].join('\n');
 }
 
 const SUBAGENT_NAMES = SUBAGENTS.map((agent) => agent.name);

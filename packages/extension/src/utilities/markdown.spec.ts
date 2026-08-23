@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { extractCodeFenceMessage, stripCodeFence } from '@pi-code/extension/utilities/markdown';
+import { extractCodeFenceMessage, fencedMarkdown, stripCodeFence } from '@pi-code/extension/utilities/markdown';
 
 describe('stripCodeFence', () => {
   it('returns unfenced content verbatim', () => {
@@ -33,6 +33,16 @@ describe('stripCodeFence', () => {
   it('leaves content that merely ends with a fence untouched', () => {
     const content = 'const a = 1;\n```';
     expect(stripCodeFence(content)).toBe(content);
+  });
+});
+
+describe('fencedMarkdown', () => {
+  it('wraps a plain body in a markdown-tagged fence', () => {
+    expect(fencedMarkdown('  Read the diff.\n')).toBe('```markdown\nRead the diff.\n```');
+  });
+
+  it('upgrades to a four-backtick fence when the body itself contains ```', () => {
+    expect(fencedMarkdown('# Title\n\n```ts\nconst a = 1;\n```')).toBe('````markdown\n# Title\n\n```ts\nconst a = 1;\n```\n````');
   });
 });
 

@@ -62,18 +62,18 @@ describe('matchPromptInvocation', () => {
 });
 
 describe('buildSkillBlock', () => {
-  it('wraps name, path, and body in the skill block', () => {
+  it('renders name, path, and body as markdown', () => {
     const block = buildSkillBlock('review', '/proj/skills/review/SKILL.md', 'Read the diff.');
     expect(block).toBe(
-      '<skill name="review" location="/proj/skills/review/SKILL.md">\nReferences are relative to /proj/skills/review.\n\nRead the diff.\n</skill>',
+      '## Skill: review\n\nLocation: `/proj/skills/review/SKILL.md`\nReferences are relative to /proj/skills/review.\n\n```markdown\nRead the diff.\n```',
     );
   });
 });
 
 describe('buildPromptBlock', () => {
-  it('wraps name, location, and content in the prompt block', () => {
+  it('renders name, location, and content as markdown', () => {
     const block = buildPromptBlock({ name: 'review', filePath: '/proj/prompts/review.md' } as PromptTemplate, 'Check the diff.\n');
-    expect(block).toBe('<prompt name="review" location="/proj/prompts/review.md">\nCheck the diff.\n</prompt>');
+    expect(block).toBe('## Prompt: review\n\nLocation: `/proj/prompts/review.md`\n\n```markdown\nCheck the diff.\n```');
   });
 });
 
@@ -99,7 +99,7 @@ describe('injectResourceMessages', () => {
         expect.objectContaining({
           customType: 'skill_content',
           display: false,
-          content: expect.stringContaining('<skill name="review"'),
+          content: expect.stringContaining('## Skill: review'),
         }),
       );
     } finally {
@@ -134,7 +134,7 @@ describe('injectResourceMessages', () => {
       expect.objectContaining({
         customType: 'prompt_content',
         display: false,
-        content: expect.stringContaining('<prompt name="notes"'),
+        content: expect.stringContaining('## Prompt: notes'),
       }),
     );
   });
@@ -149,7 +149,7 @@ describe('injectResourceMessages', () => {
     expect(sendCustomMessage).toHaveBeenCalledWith(
       expect.objectContaining({
         customType: 'prompt_content',
-        content: '<prompt name="notes" location="/p/notes.md">\nTopic: web cache\nAll: web cache one two\n</prompt>',
+        content: '## Prompt: notes\n\nLocation: `/p/notes.md`\n\n```markdown\nTopic: web cache\nAll: web cache one two\n```',
       }),
     );
   });

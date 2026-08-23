@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { CONFIG_DIR_NAME, getAgentDir, loadProjectContextFiles } from '@earendil-works/pi-coding-agent';
 
 import { SUBAGENT_MESSAGE_PROMPT } from '@pi-code/extension/core/prompt';
+import { fencedMarkdown } from '@pi-code/extension/utilities/markdown';
 
 import type {
   BeforeAgentStartEventResult,
@@ -104,15 +105,8 @@ export function applyResourceContext(loaderOptions: ResourceLoaderOptions, conte
 function renderProjectContext(contextFiles: ReadonlyArray<{ path: string; content: string }> | undefined): string {
   const files = contextFiles ?? [];
   if (files.length === 0) return '';
-  let block = '<project_context>\n\nProject-specific instructions and guidelines:\n\n';
-  for (const { path, content } of files) {
-    block += `<project_instructions path="${path}">\n${content}\n</project_instructions>\n\n`;
-  }
-  return `${block}</project_context>`;
-}
-
-function escapeXml(value: string): string {
-  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+  const sections = files.map((file) => [`### ${file.path}`, '', fencedMarkdown(file.content)].join('\n'));
+  return ['## Project Context', 'Project-specific instructions and guidelines:', ...sections].join('\n\n');
 }
 
 function renderSkills(selectedTools: readonly string[] | undefined, skills: readonly Skill[] | undefined): string {
@@ -120,22 +114,13 @@ function renderSkills(selectedTools: readonly string[] | undefined, skills: read
   // Skills only help when the agent can actually read them.
   if (!selectedTools?.includes('read_file') || visible.length === 0) return '';
 
-  const lines = [
+  const intro = [
     'The following skills provide specialized instructions for specific tasks.',
     "Use the read tool to load a skill's file when the task matches its description.",
     'When a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.',
-    '',
-    '<available_skills>',
   ];
-  for (const skill of visible) {
-    lines.push('  <skill>');
-    lines.push(`    <name>${escapeXml(skill.name)}</name>`);
-    lines.push(`    <description>${escapeXml(skill.description)}</description>`);
-    lines.push(`    <location>${escapeXml(skill.filePath)}</location>`);
-    lines.push('  </skill>');
-  }
-  lines.push('</available_skills>');
-  return lines.join('\n');
+  const entries = visible.map((skill) => `- **${skill.name}**: ${skill.description}\n  Location: \`${skill.filePath}\``);
+  return [...intro, '', '## Available Skills', '', ...entries].join('\n');
 }
 
 function renderSubagentGuidance(selectedTools: readonly string[] | undefined): string {
