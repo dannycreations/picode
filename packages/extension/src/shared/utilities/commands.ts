@@ -1,7 +1,7 @@
 const BUILTIN_COMMAND_PATTERN = /^\/(\S+)$/;
 
 export const BUILTIN_COMMANDS = [
-  { name: 'reload', description: 'Reload skills, context files, and configuration.' },
+  { name: 'reload', description: 'Reload context files, templates, and configuration.' },
   { name: 'compact', description: 'Summarize the current conversation to free up context.' },
   { name: 'update', description: 'Fetch and apply the latest model catalog from providers.' },
 ] as const satisfies ReadonlyArray<{ name: string; description: string }>;
