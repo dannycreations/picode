@@ -94,12 +94,8 @@ function pushModelCatalog(ctx: MessageHandlerContext, modelRuntime: ModelRuntime
 
 const HANDLER_MAP: HandlerMap = {
   init: async (_, ctx) => {
-    ctx.historyEpoch = 0;
-
     const services = await createAgentResources(ctx.cwd);
     const data = await getInitData(ctx.cwd, services);
-    // Send init_data before the history stream so the webview resets its epoch
-    // bookkeeping before the first history_data chunk arrives.
     ctx.runtime.postMessage({ type: 'init_data', payload: data });
     ctx.runtime.postMessage({ type: 'workspace_data', payload: buildWorkspaceData() });
     void postHistory(ctx, 'current');

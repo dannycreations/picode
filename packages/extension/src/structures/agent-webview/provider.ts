@@ -11,6 +11,7 @@ import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
 import { CHAT_VIEW_TYPE, DEFAULT_APP_ID } from '@pi-code/shared/core/constants';
 
 import type { CancellationToken, ExtensionContext, Webview, WebviewView, WebviewViewProvider, WebviewViewResolveContext } from 'vscode';
+import type { MessageHandlerContext } from '@pi-code/extension/structures/agent-webview/types';
 import type { ExtensionToWebviewMessage, WebviewToExtensionMessage } from '@pi-code/shared/core/protocol';
 import type { ToolArguments } from '@pi-code/shared/core/types';
 
@@ -116,9 +117,14 @@ export class ChatViewProvider implements WebviewViewProvider {
       this.runtime?.postMessage(msg);
     });
 
+    // One context per webview connection: historyEpoch must increase across
+    // messages so concurrent history refreshs order themselves, and a
+    // select_workspace must rewrite cwd for every later message.
+    const context: MessageHandlerContext = { runtime, workspace: this.workspace, cwd, historyEpoch: 0 };
+
     const subscriptions = Disposable.from(
       webview.onDidReceiveMessage((message: WebviewToExtensionMessage) => {
-        void dispatch(message, { runtime, workspace: this.workspace, cwd, historyEpoch: 0 });
+        void dispatch(message, context);
       }),
       Disposable.from({ dispose: disposeApprovalPresenter }),
       Disposable.from({ dispose: disposeSubagentEventCallback }),
