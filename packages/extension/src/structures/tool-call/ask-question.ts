@@ -27,11 +27,11 @@ export const askQuestionTool = defineTool({
 
       const response = await askQuestion(toolCallId, signal);
 
-      if (response === null || response.trim() === '') {
+      if (response === null || (response.text.trim() === '' && !response.images?.length)) {
         return toolError('Error: the user provided no response.');
       }
 
-      return toolResult(response, { response });
+      return toolResult(response.text, { response: response.text }, response.images);
     } catch (err) {
       return toolErrorFrom(err, 'asking question');
     }

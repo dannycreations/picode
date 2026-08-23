@@ -1,8 +1,13 @@
 import { createRequestRegistry } from '@pi-code/extension/structures/agent-runtime/brokers/registry';
 
-const questions = createRequestRegistry<string | null>();
+interface QuestionAnswer {
+  readonly text: string;
+  readonly images?: string[];
+}
 
-export function askQuestion(questionId: string, signal?: AbortSignal): Promise<string | null> {
+const questions = createRequestRegistry<QuestionAnswer | null>();
+
+export function askQuestion(questionId: string, signal?: AbortSignal): Promise<QuestionAnswer | null> {
   // Settle any in-flight question that still carries this id.
   questions.resolve(questionId, null);
 
@@ -10,7 +15,7 @@ export function askQuestion(questionId: string, signal?: AbortSignal): Promise<s
     return Promise.resolve(null);
   }
 
-  return new Promise<string | null>((resolve) => {
+  return new Promise<QuestionAnswer | null>((resolve) => {
     const onAbort = (): void => {
       questions.resolve(questionId, null);
     };
@@ -24,8 +29,8 @@ export function askQuestion(questionId: string, signal?: AbortSignal): Promise<s
   });
 }
 
-export function answerQuestion(questionId: string, text: string): boolean {
-  return questions.resolve(questionId, text);
+export function answerQuestion(questionId: string, text: string, images?: string[]): boolean {
+  return questions.resolve(questionId, { text, images });
 }
 
 export function cancelAllQuestions(): void {

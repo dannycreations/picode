@@ -1,3 +1,5 @@
+import type { ImageContent } from '@earendil-works/pi-ai';
+
 const BASE64_DATA_URL_PATTERN = /^data:([^;,]+)((?:;[^;,]+)*);base64,(.+)$/;
 
 const DEFAULT_MIME_TYPE = 'image/png';
@@ -37,4 +39,15 @@ export function extensionForMimeType(mimeType: string): string {
   // Strip structured-syntax suffixes (`+xml`) and vendor trees (`vnd.foo`).
   const cleaned = subtype.split('+')[0].split('.').pop() ?? '';
   return /^[a-z0-9]+$/.test(cleaned) ? cleaned : DEFAULT_EXTENSION;
+}
+
+export function parseImageAttachments(images?: string[]): ImageContent[] | undefined {
+  if (!images || images.length === 0) return undefined;
+
+  return images
+    .map((img) => {
+      const parts = parseBase64DataUrl(img);
+      return parts ? { type: 'image' as const, mimeType: parts.mimeType, data: parts.data } : null;
+    })
+    .filter((item): item is ImageContent => item !== null);
 }

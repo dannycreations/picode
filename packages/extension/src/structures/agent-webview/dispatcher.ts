@@ -136,7 +136,7 @@ const HANDLER_MAP: HandlerMap = {
     if (msg.approved) approveApproval(msg.approval_id);
     else denyApproval(msg.approval_id);
   },
-  question_response: (msg) => answerQuestion(msg.question_id, msg.text),
+  question_response: (msg) => answerQuestion(msg.question_id, msg.text, msg.images),
   cancel_task: async (_, ctx) => {
     await ctx.runtime.cancelTask();
     await postHistory(ctx, 'current');

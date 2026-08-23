@@ -121,6 +121,7 @@ export interface ToolChatMessage extends ChatMessageBase {
   readonly toolCallId?: string;
   readonly duration?: number;
   readonly pausedAt?: number;
+  readonly images?: string[];
   readonly files?: ReadonlyArray<ReadFileSection>;
   readonly toolSections?: ReadonlyArray<ToolSection>;
 }

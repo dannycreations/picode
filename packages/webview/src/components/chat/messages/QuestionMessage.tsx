@@ -4,6 +4,7 @@ import { ClipboardCopy, CornerDownRight, MessageCircleQuestionMark, ShieldAlert 
 import { Markdown } from '@pi-code/webview/components/chat/markdown/Markdown';
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
 import { locateOccurrences, SearchableText } from '@pi-code/webview/components/shared/Highlight';
+import { ImageThumbRow } from '@pi-code/webview/components/shared/ImageThumb';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { getQuestionView } from '@pi-code/webview/helpers/questions';
 
@@ -14,7 +15,7 @@ import type { SearchContext } from '@pi-code/webview/components/shared/Highlight
 interface QuestionMessageProps {
   readonly message: ChatMessage;
   readonly search?: SearchContext;
-  readonly onAnswerQuestion: (questionId: string, text: string) => void;
+  readonly onAnswerQuestion: (questionId: string, text: string, images?: string[]) => void;
   readonly onCopyToInput: (text: string) => void;
 }
 
@@ -106,6 +107,7 @@ export const QuestionMessage: FC<QuestionMessageProps> = ({ message, search, onA
             >
               <SearchableText text={isCancelled ? 'No response was provided.' : answer} search={answerSearch} />
             </span>
+            {!isCancelled && <ImageThumbRow images={message.images ?? []} />}
           </div>
         )}
       </div>

@@ -11,28 +11,41 @@ import type { ChatMessage } from '@pi-code/shared/core/types';
 interface UseChatActionsReturn {
   readonly handleSendPrompt: (text: string, images: string[]) => void;
   readonly handleToolResponse: (msgId: string, approved: boolean) => void;
-  readonly handleAnswerQuestion: (questionId: string, text: string) => void;
+  readonly handleAnswerQuestion: (questionId: string, text: string, images?: string[]) => void;
   readonly handleCloseTask: () => void;
   readonly handleCancelTask: () => void;
   readonly handleDeleteActiveTask: () => void;
 }
 
 export const useChatActions = (): UseChatActionsReturn => {
-  const handleAnswerQuestion = useCallback((questionId: string, text: string): void => {
+  const handleAnswerQuestion = useCallback((questionId: string, text: string, images: string[] = []): void => {
     const answer = text.trim();
     if (!answer) return;
 
     const store = useChatStore.getState();
     store.setActiveTask((prev) =>
-      prev ? { ...prev, messages: patchMessage(prev.messages, questionId, { toolStatus: 'completed', diff: answer }) } : null,
+      prev
+        ? {
+            ...prev,
+            messages: patchMessage(prev.messages, questionId, {
+              toolStatus: 'completed',
+              diff: answer,
+              ...(images.length > 0 && { images }),
+            }),
+          }
+        : null,
     );
     store.setIsRunning(true);
-    store.send({ type: 'question_response', question_id: questionId, text: answer });
+    store.send({ type: 'question_response', question_id: questionId, text: answer, images: images.length > 0 ? images : undefined });
   }, []);
 
   const handleSendPrompt = useCallback(
     (text: string, images: string[]): void => {
       text = text.trim();
+      // Keeps the transcript bubble, task title, and steered turn non-empty
+      // when the user sends attachments without any words.
+      if (!text && images.length > 0) text = '(see attached image)';
+
       const store = useChatStore.getState();
       const { activeTask, isRunning } = store;
       const pendingQuestion = selectPendingQuestion(store);
@@ -40,7 +53,7 @@ export const useChatActions = (): UseChatActionsReturn => {
       // A pending question owns the input box: the reply answers the tool call
       // instead of starting a new turn.
       if (pendingQuestion) {
-        handleAnswerQuestion(pendingQuestion.id, text);
+        handleAnswerQuestion(pendingQuestion.id, text, images);
         return;
       }
 

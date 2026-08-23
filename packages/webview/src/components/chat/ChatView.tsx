@@ -237,9 +237,9 @@ export const ChatView: FC = () => {
   );
 
   const handleAnswer = useCallback(
-    (questionId: string, text: string) => {
+    (questionId: string, text: string, images?: string[]) => {
       scrollToBottom();
-      handleAnswerQuestion(questionId, text);
+      handleAnswerQuestion(questionId, text, images);
     },
     [scrollToBottom, handleAnswerQuestion],
   );

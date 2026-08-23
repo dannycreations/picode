@@ -54,7 +54,7 @@ export type WebviewToExtensionMessage =
   | { type: 'search_files'; query: string; requestId: string }
   | { type: 'continue_task'; path?: string }
   | { type: 'tool_response'; approval_id: string; approved: boolean }
-  | { type: 'question_response'; question_id: string; text: string }
+  | { type: 'question_response'; question_id: string; text: string; images?: string[] }
   | { type: 'view_raw_task'; path?: string }
   | { type: 'export_session'; path: string; id: string }
   | { type: 'archive_session'; path: string; id: string; title: string }

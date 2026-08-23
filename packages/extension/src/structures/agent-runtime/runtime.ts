@@ -12,7 +12,7 @@ import { injectResourceMessages } from '@pi-code/extension/structures/chat-comma
 import { expandMentions } from '@pi-code/extension/structures/chat-command/mention';
 import { getEnvironmentDetails } from '@pi-code/extension/structures/chat-session/environment';
 import { loadSessionTranscript } from '@pi-code/extension/structures/chat-session/session';
-import { parseBase64DataUrl } from '@pi-code/extension/utilities/codec';
+import { parseImageAttachments } from '@pi-code/extension/utilities/codec';
 import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
 import { logger } from '@pi-code/shared/core/logger';
 import { resolveContextLimit } from '@pi-code/shared/utilities/common';
@@ -25,17 +25,6 @@ import type { ChatMessage, StatsData } from '@pi-code/shared/core/types';
 
 const COMPACTION_ABORT_ERROR_NAME = 'AbortError';
 const COMPACTION_CANCEL_MESSAGE = 'Compaction cancelled';
-
-function parseImageAttachments(images?: string[]): ImageContent[] | undefined {
-  if (!images || images.length === 0) return undefined;
-
-  return images
-    .map((img) => {
-      const parts = parseBase64DataUrl(img);
-      return parts ? { type: 'image' as const, mimeType: parts.mimeType, data: parts.data } : null;
-    })
-    .filter((item): item is ImageContent => item !== null);
-}
 
 export class Runtime {
   private session: AgentSession | null = null;
