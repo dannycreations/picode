@@ -3,7 +3,10 @@ import { tmpdir } from 'node:os';
 import { join, sep } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { applyAgentContext, discoverAgentContext } from '@pi-code/extension/structures/agent-runtime/context';
+import { SUBAGENT_MESSAGE_PROMPT } from '@pi-code/extension/core/prompt';
+import { applyResourceContext, composeSystemContext, discoverContext } from '@pi-code/extension/structures/agent-runtime/context';
+
+import type { BuildSystemPromptOptions, Skill } from '@earendil-works/pi-coding-agent';
 
 let roots: string[] = [];
 
@@ -34,7 +37,7 @@ describe('discoverAgentContext', () => {
     writeFile(join(nested, 'AGENTS.override.md'), 'inner-override');
     writeFile(join(nested, 'AGENTS.md'), 'inner-shadowed');
 
-    const context = await discoverAgentContext(nested, { enableAgentRules: true, projectTrusted: false }, agentDir);
+    const context = await discoverContext(nested, { agentRules: true, projectTrusted: false }, agentDir);
 
     expect(context.agentRules[0]).toEqual({ path: join(agentDir, 'AGENTS.md'), content: 'global' });
     const projectRules = context.agentRules.filter((file) => file.path.startsWith(project + sep));
@@ -51,7 +54,7 @@ describe('discoverAgentContext', () => {
     writeFile(join(project, 'AGENTS.md'), 'rules');
     writeFile(join(agentDir, 'SYSTEM.md'), 'system');
 
-    const context = await discoverAgentContext(project, { enableAgentRules: false, projectTrusted: false }, agentDir);
+    const context = await discoverContext(project, { agentRules: false, projectTrusted: false }, agentDir);
 
     expect(context.agentRules).toEqual([]);
     expect(context.systemPrompt).toBe('system');
@@ -66,8 +69,8 @@ describe('discoverAgentContext', () => {
     writeFile(join(agentDir, 'SYSTEM.md'), 'global-system');
     writeFile(join(agentDir, 'APPEND_SYSTEM.md'), 'global-append');
 
-    const trusted = await discoverAgentContext(project, { enableAgentRules: false, projectTrusted: true }, agentDir);
-    const untrusted = await discoverAgentContext(project, { enableAgentRules: false, projectTrusted: false }, agentDir);
+    const trusted = await discoverContext(project, { agentRules: false, projectTrusted: true }, agentDir);
+    const untrusted = await discoverContext(project, { agentRules: false, projectTrusted: false }, agentDir);
 
     expect(trusted.systemPrompt).toBe('project-system');
     expect(trusted.appendSystemPrompt).toEqual(['project-append']);
@@ -78,7 +81,7 @@ describe('discoverAgentContext', () => {
   it('reports absent prompts without error', async () => {
     const root = makeRoot();
 
-    const context = await discoverAgentContext(join(root, 'proj'), { enableAgentRules: true, projectTrusted: true }, join(root, 'agent-dir'));
+    const context = await discoverContext(join(root, 'proj'), { agentRules: true, projectTrusted: true }, join(root, 'agent-dir'));
 
     expect(context.systemPrompt).toBeUndefined();
     expect(context.appendSystemPrompt).toEqual([]);
@@ -87,13 +90,14 @@ describe('discoverAgentContext', () => {
 
 describe('applyAgentContext', () => {
   it('disables loader-side discovery and serves the scanned values through the overrides', () => {
-    const options = applyAgentContext(
+    const options = applyResourceContext(
       { extensionFactories: [] },
       {
         agentRules: [{ path: '/p/AGENTS.md', content: 'rules' }],
         systemPrompt: 'system',
         appendSystemPrompt: ['append'],
       },
+      {},
     );
 
     expect(options.noContextFiles).toBe(true);
@@ -107,8 +111,84 @@ describe('applyAgentContext', () => {
   });
 
   it('serves undefined when no system prompt was discovered', () => {
-    const options = applyAgentContext({}, { agentRules: [], systemPrompt: undefined, appendSystemPrompt: [] });
+    const options = applyResourceContext(
+      {},
+      {
+        agentRules: [],
+        systemPrompt: undefined,
+        appendSystemPrompt: [],
+      },
+      {},
+    );
 
     expect(options.systemPromptOverride?.('loader-base')).toBeUndefined();
+  });
+});
+
+function makeSkill(name: string): Skill {
+  return {
+    name,
+    description: `desc-${name}`,
+    filePath: `/skills/${name}/SKILL.md`,
+    baseDir: `/skills/${name}`,
+    sourceInfo: {} as Skill['sourceInfo'],
+    disableModelInvocation: false,
+  };
+}
+
+describe('composeSystemPrompt', () => {
+  it('joins only the sections pi-code owns and never renders a working directory', () => {
+    const options: BuildSystemPromptOptions = {
+      customPrompt: 'CUSTOM',
+      cwd: '/workspace',
+      contextFiles: [{ path: '/p/AGENTS.md', content: 'rules' }],
+    };
+    const prompt = composeSystemContext(options);
+    const expected =
+      'CUSTOM\n\n<project_context>\n\nProject-specific instructions and guidelines:\n\n<project_instructions path="/p/AGENTS.md">\nrules\n</project_instructions>\n\n</project_context>';
+    expect(prompt).toBe(expected);
+    expect(prompt).not.toContain('Current working directory');
+    expect(prompt).not.toContain('/workspace');
+  });
+
+  it('appends the extra section after the base and collapses empty ones', () => {
+    expect(composeSystemContext({ customPrompt: 'C', appendSystemPrompt: 'EXTRA', cwd: '/w' })).toBe('C\n\nEXTRA');
+    expect(composeSystemContext({ cwd: '/w' })).toBe('');
+  });
+
+  it('renders skills as XML only when the read tool is selected', () => {
+    const skills = [makeSkill('review')];
+    expect(composeSystemContext({ cwd: '/w', selectedTools: ['read_file'], skills })).toBe(
+      [
+        'The following skills provide specialized instructions for specific tasks.',
+        "Use the read tool to load a skill's file when the task matches its description.",
+        'When a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.',
+        '',
+        '<available_skills>',
+        '  <skill>',
+        '    <name>review</name>',
+        '    <description>desc-review</description>',
+        '    <location>/skills/review/SKILL.md</location>',
+        '  </skill>',
+        '</available_skills>',
+      ].join('\n'),
+    );
+    expect(composeSystemContext({ cwd: '/w', selectedTools: ['execute_command'], skills })).toBe('');
+  });
+
+  it('appends delegation guidance only when spawn_subagent is selectable', () => {
+    const delegating = composeSystemContext({ customPrompt: 'C', cwd: '/w', selectedTools: ['read_file', 'spawn_subagent'] });
+    expect(delegating).toBe(`C\n\n${SUBAGENT_MESSAGE_PROMPT}`);
+    expect(composeSystemContext({ customPrompt: 'C', cwd: '/w', selectedTools: ['read_file'] })).not.toContain('Sub-Agent Delegation');
+  });
+
+  it('escapes XML entities and hides skills flagged as invocation-disabled', () => {
+    const broken = { ...makeSkill('broken'), description: 'a & b <c>' };
+    const manual = { ...makeSkill('manual'), disableModelInvocation: true };
+    const prompt = composeSystemContext({ cwd: '/w', selectedTools: ['read_file'], skills: [broken, manual] });
+
+    expect(prompt).toContain('<name>broken</name>');
+    expect(prompt).toContain('<description>a &amp; b &lt;c&gt;</description>');
+    expect(prompt).not.toContain('<name>manual</name>');
   });
 });

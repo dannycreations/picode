@@ -1,22 +1,12 @@
 import { createAgentSessionServices } from '@earendil-works/pi-coding-agent';
 
 import { getSettingsManager, readAppSettings } from '@pi-code/extension/core/settings';
-import { applyAgentContext, discoverAgentContext } from '@pi-code/extension/structures/agent-runtime/context';
-import { createToolPolicyExtension } from '@pi-code/extension/structures/agent-runtime/policy';
+import { applyResourceContext, createContextExtension, discoverContext } from '@pi-code/extension/structures/agent-runtime/context';
+import { createPolicyExtension } from '@pi-code/extension/structures/agent-runtime/policy';
 import { isProjectTrusted } from '@pi-code/extension/utilities/vscode';
 
-import type { AgentSessionServices, ModelRuntime, ResourceDiagnostic, Skill } from '@earendil-works/pi-coding-agent';
-
-interface SkillsResult {
-  readonly skills: Skill[];
-  readonly diagnostics: ResourceDiagnostic[];
-}
-
-interface LoaderConfig {
-  readonly enableAgentRules: boolean;
-  readonly enableSkillInvocation: boolean;
-  readonly projectTrusted: boolean;
-}
+import type { AgentSessionServices, ModelRuntime } from '@earendil-works/pi-coding-agent';
+import type { LoaderConfig } from '@pi-code/extension/structures/agent-runtime/context';
 
 interface CachedResources {
   readonly key: string;
@@ -35,33 +25,11 @@ type ServicesFactory = typeof createAgentSessionServices;
 
 async function createServices(cwd: string, config: LoaderConfig, createSessionServices: ServicesFactory): Promise<AgentSessionServices> {
   const settingsManager = getSettingsManager(cwd);
-  settingsManager.setProjectTrusted(config.projectTrusted);
+  settingsManager.setProjectTrusted(config.projectTrusted!);
 
-  const context = await discoverAgentContext(cwd, config);
-  const services = await createSessionServices({
-    cwd,
-    modelRuntime: sharedModelRuntime,
-    settingsManager,
-    resourceLoaderOptions: applyAgentContext(
-      {
-        extensionFactories: [createToolPolicyExtension()],
-        skillsOverride: config.enableSkillInvocation
-          ? undefined
-          : (base: SkillsResult) => ({
-              ...base,
-              skills: base.skills.map((skill) =>
-                skill.disableModelInvocation
-                  ? skill
-                  : {
-                      ...skill,
-                      disableModelInvocation: true,
-                    },
-              ),
-            }),
-      },
-      context,
-    ),
-  });
+  const context = await discoverContext(cwd, config);
+  const resource = applyResourceContext({ extensionFactories: [createContextExtension(), createPolicyExtension()] }, context, config);
+  const services = await createSessionServices({ cwd, modelRuntime: sharedModelRuntime, settingsManager, resourceLoaderOptions: resource });
 
   for (const diagnostic of services.diagnostics) {
     if (diagnostic.type === 'error') {
@@ -79,12 +47,12 @@ export async function createAgentResources(
 ): Promise<AgentSessionServices> {
   const settings = readAppSettings();
   const config: LoaderConfig = {
-    enableAgentRules: settings.enableAgentRules,
-    enableSkillInvocation: settings.enableSkillDiscovery,
+    agentRules: settings.enableAgentRules,
+    skillInvocation: settings.enableSkillDiscovery,
     projectTrusted: isProjectTrusted(cwd),
   };
 
-  const key = [config.enableAgentRules, config.enableSkillInvocation, config.projectTrusted].join('|');
+  const key = [config.agentRules, config.skillInvocation, config.projectTrusted].join('|');
   let cached = resourceCache.get(cwd);
   if (!cached || cached.key !== key) {
     cached = { key, services: createServices(cwd, config, createSessionServices) };

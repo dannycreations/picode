@@ -1,7 +1,6 @@
 import { resolve } from 'node:path';
 import { getCwdRelativePath, resolvePath } from '@earendil-works/pi-coding-agent';
 
-import { SUBAGENT_MESSAGE_PROMPT } from '@pi-code/extension/core/prompt';
 import { readAppSettings } from '@pi-code/extension/core/settings';
 import { requestApproval } from '@pi-code/extension/structures/agent-runtime/brokers/approval';
 import { getSubagentSession, recordApprovalDuration } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
@@ -12,7 +11,7 @@ import {
   resolveReadPath,
 } from '@pi-code/extension/structures/agent-runtime/helpers/policy-action';
 
-import type { BeforeAgentStartEventResult, InlineExtension, ToolCallEventResult } from '@earendil-works/pi-coding-agent';
+import type { InlineExtension, ToolCallEventResult } from '@earendil-works/pi-coding-agent';
 import type { ApprovalDecision } from '@pi-code/extension/structures/agent-runtime/helpers/policy-action';
 import type { ToolName } from '@pi-code/shared/core/types';
 
@@ -87,19 +86,11 @@ function evaluateToolCall(toolName: ToolName, cwd: string, input: unknown): Appr
 
 const ALLOW: ToolCallEventResult = { block: false };
 
-export function createToolPolicyExtension(): InlineExtension {
+export function createPolicyExtension(): InlineExtension {
   return {
     name: 'pi-code-tool-policy',
     hidden: true,
     factory: (pi) => {
-      pi.on('before_agent_start', (event): BeforeAgentStartEventResult => {
-        // Only the main agent can delegate. Sub-agents lack the spawn_subagent tool,
-        // so skipping keeps their context free of guidance they cannot act on.
-        if (!event.systemPromptOptions.selectedTools?.includes('spawn_subagent')) {
-          return {};
-        }
-        return { systemPrompt: `${event.systemPrompt}\n\n${SUBAGENT_MESSAGE_PROMPT}` };
-      });
       pi.on('tool_call', async (event, ctx): Promise<ToolCallEventResult> => {
         const toolName = event.toolName as ToolName;
         const decision = evaluateToolCall(toolName, ctx.cwd, event.input);
