@@ -51,7 +51,7 @@ function registerChatInputCommand(
 }
 
 export function registerAddToContextCommand(sender: ChatViewProvider): Disposable {
-  return registerChatInputCommand(sender, 'pi-code.addToContext', (selection) => formatSelectionBlock(selection));
+  return registerChatInputCommand(sender, 'pi-code.addToContext', formatSelectionBlock);
 }
 
 export function registerAddProblemToContextCommand(sender: ChatViewProvider): Disposable {

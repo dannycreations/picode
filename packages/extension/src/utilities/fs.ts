@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { open, readdir, rename, stat, unlink, writeFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { mkdir, open, readdir, rename, stat, unlink, writeFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { formatPathRelativeToCwdOrAbsolute } from '@earendil-works/pi-coding-agent';
 
@@ -166,6 +166,8 @@ export async function pathExists(path: string): Promise<boolean> {
 }
 
 export async function writeFileAtomic(filePath: string, content: string): Promise<void> {
+  await mkdir(dirname(filePath), { recursive: true });
+
   const tempPath = `${filePath}.${randomUUID()}.tmp`;
   try {
     await writeFile(tempPath, content, 'utf8');

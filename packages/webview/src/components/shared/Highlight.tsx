@@ -33,7 +33,7 @@ interface HighlightProps {
   readonly activeOccurrence: number;
 }
 
-export const Highlight: FC<HighlightProps> = ({ text, query, activeOccurrence }) => {
+const Highlight: FC<HighlightProps> = ({ text, query, activeOccurrence }) => {
   if (!query) return <>{text}</>;
 
   const segments = splitOnOccurrences(text, query);

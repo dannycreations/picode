@@ -1,5 +1,7 @@
 import { formatSize, generateDiffString, truncateHead, truncateTail } from '@earendil-works/pi-coding-agent';
 
+import { numberLines, readLines } from '@pi-code/extension/utilities/fs';
+
 import type { TruncationResult } from '@earendil-works/pi-coding-agent';
 import type { CustomToolResult } from '@pi-code/extension/types/extension';
 import type { AppSettings } from '@pi-code/shared/core/settings';
@@ -78,6 +80,25 @@ export function truncateOutput(content: string, options: TruncateOutputOptions):
 
   const text = truncation.content ? `${truncation.content}\n\n${notice}` : notice;
   return { text, truncation };
+}
+
+interface ReadNumberedTextOptions {
+  readonly ranges?: readonly (readonly [number, number])[];
+  readonly hint?: TruncationHint;
+}
+
+export async function readNumberedText(filePath: string, limits: OutputLimits, options?: ReadNumberedTextOptions): Promise<string> {
+  const ranges = options?.ranges;
+  const maxLines =
+    ranges !== undefined && ranges.length > 0
+      ? Math.max(...ranges.map((range) => Math.max(1, range[1])))
+      : limits.maxLines > 0
+        ? limits.maxLines
+        : undefined;
+
+  const lines = await readLines(filePath, maxLines);
+  const { text } = truncateOutput(numberLines(lines, ranges), { limits, keep: 'head', hint: options?.hint });
+  return text;
 }
 
 interface FileChangeResultOptions {

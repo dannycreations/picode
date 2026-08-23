@@ -4,8 +4,8 @@ import { Type } from 'typebox';
 
 import { readAppSettings } from '@pi-code/extension/core/settings';
 import { toolError, toolErrorFrom, toolResult } from '@pi-code/extension/structures/tool-call/helpers';
-import { checkReadableFile, numberLines, readLines } from '@pi-code/extension/utilities/fs';
-import { shareOutputLimits, toOutputLimits, truncateOutput } from '@pi-code/extension/utilities/truncate';
+import { checkReadableFile } from '@pi-code/extension/utilities/fs';
+import { readNumberedText, shareOutputLimits, toOutputLimits } from '@pi-code/extension/utilities/truncate';
 
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
 import type { ToolName } from '@pi-code/shared/core/types';
@@ -41,19 +41,10 @@ async function readFileSection(cwd: string, file: FileRequest, limits: OutputLim
     }
 
     const ranges = file.line_ranges;
-    const hasRanges = ranges !== undefined && ranges.length > 0;
+    const header = ranges !== undefined && ranges.length > 0 ? `File: ${file.path} (Ranges: ${JSON.stringify(ranges)})` : `File: ${file.path}`;
 
-    // With ranges, stop streaming at the highest requested line number.
-    // Without ranges, cap the read at the output line budget so a plain head
-    // read of a large file does not load the whole file into memory before
-    // truncation (the `head` keep still keeps the first N lines).
-    const maxLines = hasRanges ? Math.max(...ranges.map((range) => Math.max(1, range[1]))) : limits.maxLines > 0 ? limits.maxLines : undefined;
-    const lines = await readLines(resolvedPath, maxLines);
-
-    const header = hasRanges ? `File: ${file.path} (Ranges: ${JSON.stringify(ranges)})` : `File: ${file.path}`;
-    const { text } = truncateOutput(numberLines(lines, ranges), {
-      limits,
-      keep: 'head',
+    const numbered = await readNumberedText(resolvedPath, limits, {
+      ranges,
       hint: (truncation) => {
         const next = nextLineAfter(truncation.content);
         return next === undefined
@@ -61,7 +52,7 @@ async function readFileSection(cwd: string, file: FileRequest, limits: OutputLim
           : `Use "line_ranges" starting at line ${next} on "${file.path}" to continue.`;
       },
     });
-    return { path: file.path, header, body: text, hasError: false };
+    return { path: file.path, header, body: numbered, hasError: false };
   } catch (err) {
     return { path: file.path, header: '', body: `Error reading file ${file.path}: ${formatThrownValue(err)}`, hasError: true };
   }

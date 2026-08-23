@@ -4,8 +4,8 @@ import { formatThrownValue } from '@earendil-works/pi-ai';
 import { formatPathRelativeToCwdOrAbsolute } from '@earendil-works/pi-coding-agent';
 
 import { readOutputLimits } from '@pi-code/extension/core/settings';
-import { checkReadableFile, numberLines, readLines, walkDirectory } from '@pi-code/extension/utilities/fs';
-import { truncateOutput } from '@pi-code/extension/utilities/truncate';
+import { checkReadableFile, walkDirectory } from '@pi-code/extension/utilities/fs';
+import { readNumberedText } from '@pi-code/extension/utilities/truncate';
 import { MENTION_PATTERN } from '@pi-code/shared/core/constants';
 
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
@@ -27,9 +27,7 @@ async function readFileText(path: string, limits: OutputLimits): Promise<string>
     throw new Error(check.body);
   }
 
-  const lines = await readLines(path, limits.maxLines > 0 ? limits.maxLines : undefined);
-  const { text } = truncateOutput(numberLines(lines, undefined), { limits, keep: 'head' });
-  return text;
+  return readNumberedText(path, limits);
 }
 
 interface ResolvedMention {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react';
 
-import { defaultThinkingLevel, EMPTY_STATS } from '@pi-code/shared/utilities/common';
+import { defaultThinkingLevel, resolveContextLimit } from '@pi-code/shared/utilities/common';
 import { useChatStore } from '@pi-code/webview/stores/useChatStore';
 
 import type { CommandItem, ModelItem } from '@pi-code/shared/core/protocol';
@@ -33,7 +33,7 @@ export const useChatConfig = (): UseChatConfigReturn => {
 
   const thinkingLevels = selectedModelItem?.thinkingLevels ?? [];
   const supportsImages = selectedModelItem?.supportsImages ?? false;
-  const selectedModelContextWindow = selectedModelItem?.contextWindow ?? EMPTY_STATS.contextLimit;
+  const selectedModelContextWindow = resolveContextLimit(selectedModelItem?.contextWindow);
 
   // Keep the displayed level valid for the selected model; drop to a default
   // only when the current choice is unsupported (e.g. after a model switch).

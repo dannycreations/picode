@@ -19,17 +19,10 @@ export class WorkspaceService {
   public async openFileInChanges(cwd: string, relativePath: string, line?: number): Promise<void> {
     const uri = this.resolveTargetUri(cwd, relativePath);
 
-    try {
-      await commands.executeCommand('git.openChange', uri);
-    } catch {
-      // Git extension unavailable: fall back to a plain editor open.
-      await this.openFile(cwd, relativePath, line);
-      return;
-    }
-
-    const editor = await this.findEditorForUri(uri, 10, 50);
+    const editor = await this.findOpenChangeEditor(uri);
     if (!editor) {
-      // The diff didn't open (e.g. untracked file with no changes): fall back.
+      // No diff view appeared (Git extension unavailable, or nothing to show
+      // such as an untracked file): fall back to a plain editor open.
       await this.openFile(cwd, relativePath, line);
       return;
     }
@@ -79,6 +72,16 @@ export class WorkspaceService {
 
   private async writeBase64DataUrl(uri: Uri, data: string): Promise<void> {
     await workspace.fs.writeFile(uri, Buffer.from(data, 'base64'));
+  }
+
+  private async findOpenChangeEditor(uri: Uri): Promise<TextEditor | undefined> {
+    try {
+      await commands.executeCommand('git.openChange', uri);
+    } catch {
+      // Git extension unavailable.
+      return undefined;
+    }
+    return this.findEditorForUri(uri, 10, 50);
   }
 
   private async findEditorForUri(uri: Uri, attempts: number, delayMs: number): Promise<TextEditor | undefined> {
