@@ -1,6 +1,7 @@
 import { createAgentSessionServices } from '@earendil-works/pi-coding-agent';
 
 import { getSettingsManager, readAppSettings } from '@pi-code/extension/core/settings';
+import { applyAgentContext, discoverAgentContext } from '@pi-code/extension/structures/agent-runtime/context';
 import { createToolPolicyExtension } from '@pi-code/extension/structures/agent-runtime/policy';
 import { isProjectTrusted } from '@pi-code/extension/utilities/vscode';
 
@@ -12,8 +13,8 @@ interface SkillsResult {
 }
 
 interface LoaderConfig {
-  readonly noContextFiles: boolean;
-  readonly disableSkillInvocation: boolean;
+  readonly enableAgentRules: boolean;
+  readonly enableSkillInvocation: boolean;
   readonly projectTrusted: boolean;
 }
 
@@ -36,27 +37,30 @@ async function createServices(cwd: string, config: LoaderConfig, createSessionSe
   const settingsManager = getSettingsManager(cwd);
   settingsManager.setProjectTrusted(config.projectTrusted);
 
+  const context = await discoverAgentContext(cwd, config);
   const services = await createSessionServices({
     cwd,
     modelRuntime: sharedModelRuntime,
     settingsManager,
-    resourceLoaderOptions: {
-      noContextFiles: config.noContextFiles,
-      extensionFactories: [createToolPolicyExtension()],
-      skillsOverride: config.disableSkillInvocation
-        ? (base: SkillsResult) => ({
-            ...base,
-            skills: base.skills.map((skill) =>
-              skill.disableModelInvocation
-                ? skill
-                : {
-                    ...skill,
-                    disableModelInvocation: true,
-                  },
-            ),
-          })
-        : undefined,
-    },
+    resourceLoaderOptions: applyAgentContext(
+      {
+        extensionFactories: [createToolPolicyExtension()],
+        skillsOverride: config.enableSkillInvocation
+          ? undefined
+          : (base: SkillsResult) => ({
+              ...base,
+              skills: base.skills.map((skill) =>
+                skill.disableModelInvocation
+                  ? skill
+                  : {
+                      ...skill,
+                      disableModelInvocation: true,
+                    },
+              ),
+            }),
+      },
+      context,
+    ),
   });
 
   for (const diagnostic of services.diagnostics) {
@@ -75,12 +79,12 @@ export async function createAgentResources(
 ): Promise<AgentSessionServices> {
   const settings = readAppSettings();
   const config: LoaderConfig = {
-    noContextFiles: !settings.enableAgentRules,
-    disableSkillInvocation: !settings.enableSkillDiscovery,
+    enableAgentRules: settings.enableAgentRules,
+    enableSkillInvocation: settings.enableSkillDiscovery,
     projectTrusted: isProjectTrusted(cwd),
   };
 
-  const key = [config.noContextFiles, config.disableSkillInvocation, config.projectTrusted].join('|');
+  const key = [config.enableAgentRules, config.enableSkillInvocation, config.projectTrusted].join('|');
   let cached = resourceCache.get(cwd);
   if (!cached || cached.key !== key) {
     cached = { key, services: createServices(cwd, config, createSessionServices) };
