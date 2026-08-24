@@ -97,7 +97,7 @@ describe('applyAgentContext', () => {
         systemPrompt: 'system',
         appendSystemPrompt: ['append'],
       },
-      {},
+      { projectTrusted: false },
     );
 
     expect(options.noContextFiles).toBe(true);
@@ -118,7 +118,7 @@ describe('applyAgentContext', () => {
         systemPrompt: undefined,
         appendSystemPrompt: [],
       },
-      {},
+      { projectTrusted: false },
     );
 
     expect(options.systemPromptOverride?.('loader-base')).toBeUndefined();

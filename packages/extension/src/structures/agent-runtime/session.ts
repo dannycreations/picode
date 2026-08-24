@@ -53,10 +53,5 @@ export function applyCompactionSettings(session: AgentSession): void {
   const settings = readAppSettings();
   const contextWindow = resolveContextLimit(session.model?.contextWindow);
   const reserveTokens = Math.round(((100 - settings.autoCompactContextPercent) / 100) * contextWindow);
-  session.settingsManager.applyOverrides({
-    compaction: {
-      enabled: settings.autoCompactContext,
-      reserveTokens,
-    },
-  });
+  session.settingsManager.applyOverrides({ compaction: { enabled: settings.autoCompactContext, reserveTokens } });
 }

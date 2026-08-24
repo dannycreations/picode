@@ -23,8 +23,9 @@ import type { Webview } from 'vscode';
 import type { ExtensionToWebviewMessage } from '@pi-code/shared/core/protocol';
 import type { ChatMessage, StatsData } from '@pi-code/shared/core/types';
 
-const COMPACTION_ABORT_ERROR_NAME = 'AbortError';
-const COMPACTION_CANCEL_MESSAGE = 'Compaction cancelled';
+function deliverMentionContent(session: AgentSession, content: string, deliverAs: 'nextTurn' | 'steer'): Promise<void> {
+  return session.sendCustomMessage({ customType: 'mention_content', content, display: false }, { deliverAs });
+}
 
 export class Runtime {
   private session: AgentSession | null = null;
@@ -61,17 +62,8 @@ export class Runtime {
       // before the user turn; the user message itself is passed through.
       await injectResourceMessages(session, { skills, prompts }, expanded.text);
 
-      // The mention content reaches the model but stays out of the rendered
-      // transcript, so the user's message keeps the clean `@token`.
       if (expanded.mentionContent) {
-        await session.sendCustomMessage(
-          {
-            customType: 'mention_content',
-            content: expanded.mentionContent,
-            display: false,
-          },
-          { deliverAs: 'nextTurn' },
-        );
+        await deliverMentionContent(session, expanded.mentionContent, 'nextTurn');
       }
 
       // `nextTurn` makes pi attach the details to the upcoming user message, so
@@ -137,7 +129,7 @@ export class Runtime {
       // A user cancel aborts the in-flight compaction, which the session
       // rethrows as an AbortError. Don't surface that as a spurious error
       // bubble: the deliberate stop is already signaled by compaction_end.
-      const isAbort = err instanceof Error && (err.name === COMPACTION_ABORT_ERROR_NAME || err.message === COMPACTION_CANCEL_MESSAGE);
+      const isAbort = err instanceof Error && (err.name === 'AbortError' || err.message === 'Compaction cancelled');
       if (!isAbort) {
         this.messenger.postError(err);
       }
@@ -318,10 +310,8 @@ export class Runtime {
       }
       session.agent.steer({ role: 'user', content, timestamp: msg.ts });
 
-      // Same as startTask: keep the mention content out of the displayed
-      // message by delivering it as a hidden custom message on the same turn.
       if (expanded.mentionContent) {
-        await session.sendCustomMessage({ customType: 'mention_content', content: expanded.mentionContent, display: false }, { deliverAs: 'steer' });
+        await deliverMentionContent(session, expanded.mentionContent, 'steer');
       }
       return true;
     } catch (err) {

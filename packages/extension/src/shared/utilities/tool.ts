@@ -87,7 +87,17 @@ const TOOL_META: Readonly<Record<string, ToolMeta>> = {
   },
 };
 
-export const GROUP_TOOLS: ReadonlySet<ToolName> = new Set(Object.keys(TOOL_META) as ToolName[]);
+// Tools whose result messages render as expandable sections in the webview.
+const GROUP_TOOL_NAMES = [
+  'execute_command',
+  'read_file',
+  'write_file',
+  'edit_file',
+  'delete_file',
+  'spawn_subagent',
+] as const satisfies readonly ToolName[];
+
+export const GROUP_TOOLS: ReadonlySet<ToolName> = new Set(GROUP_TOOL_NAMES);
 
 function toolMeta(toolName?: string): ToolMeta {
   return TOOL_META[toolName ?? ''] ?? DEFAULT_TOOL_META;

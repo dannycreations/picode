@@ -37,7 +37,7 @@ interface SkillsResult {
 export interface LoaderConfig {
   readonly agentRules?: boolean;
   readonly skillInvocation?: boolean;
-  readonly projectTrusted?: boolean;
+  readonly projectTrusted: boolean;
 }
 
 const SYSTEM_PROMPT_FILE = 'SYSTEM.md';

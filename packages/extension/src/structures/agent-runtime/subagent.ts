@@ -42,7 +42,6 @@ interface SubagentInput {
   readonly model?: Model<Api>;
   readonly signal?: AbortSignal;
   readonly toolCallId?: string;
-  readonly onStart?: () => void;
   readonly onProgress?: (steps: string) => void;
   readonly onEvent?: (event: AgentSessionEvent, session: AgentSession) => void;
 }
@@ -146,7 +145,7 @@ async function createChildSession(cwd: string, agent: SubagentDefinition, toolCa
 export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutcome> {
   const release = await acquireSpawnSlot();
   const startTime = Date.now();
-  input.onStart?.();
+  input.onProgress?.('');
   const collected: string[] = [];
 
   const steps = (): string => collected.slice(-10).join('\n');

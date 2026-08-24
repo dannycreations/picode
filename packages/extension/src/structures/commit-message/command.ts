@@ -17,7 +17,7 @@ interface ScmRequest {
 }
 
 const generatingRepos = new Set<string>();
-const lastUserInstructions = new Map<string, string>();
+const lastUserMessages = new Map<string, string>();
 const lastGeneratedMessages = new Map<string, string>();
 
 function resolveRootUri(scmRequest?: ScmRequest): Uri | undefined {
@@ -36,17 +36,17 @@ function resolveRootUri(scmRequest?: ScmRequest): Uri | undefined {
   return uri;
 }
 
-function buildPrompt(gitContext: string, userInstruction: string, rejectedMessage: string): string {
+function buildPrompt(gitContext: string, userContext: string, rejectedMessage: string): string {
   const sections = [COMMIT_MESSAGE_PROMPT.trim()];
 
-  if (userInstruction.trim()) {
-    sections.push(`## User-Provided Context\n\n${userInstruction.trim()}`);
+  if (userContext.trim()) {
+    sections.push(`## User-Provided Context\n\n${userContext.trim()}`);
   }
   if (rejectedMessage.trim()) {
     sections.push(
       '## Rejected Commit Message',
       `Previously generated commit message (which was not accepted):\n\n${rejectedMessage.trim()}`,
-      'Please generate a new, different commit message that follows the same rules.',
+      'Please generate a new, different commit message that follows the same requirements.',
     );
   }
   sections.push(gitContext);
@@ -54,21 +54,21 @@ function buildPrompt(gitContext: string, userInstruction: string, rejectedMessag
   return sections.join('\n\n').trim();
 }
 
-function resolveRegeneration(cwd: string, userMessage: string): { userInstruction: string; rejectedMessage: string } {
+function resolveRegeneration(cwd: string, userMessage: string): { userContext: string; rejectedMessage: string } {
   const previousGenerated = lastGeneratedMessages.get(cwd);
   const isRegeneration = Boolean(previousGenerated && userMessage.trim() === previousGenerated.trim());
 
   if (!isRegeneration) {
-    lastUserInstructions.set(cwd, userMessage);
+    lastUserMessages.set(cwd, userMessage);
     lastGeneratedMessages.delete(cwd);
-    return { userInstruction: userMessage, rejectedMessage: '' };
+    return { userContext: userMessage, rejectedMessage: '' };
   }
 
   // Re-running while the input box still holds the previous suggestion means the
   // user rejected it, so feed it back as a negative example with the instruction.
   logger.info('Input box value matches previously generated message. Treating as a re-generation.');
   return {
-    userInstruction: lastUserInstructions.get(cwd) ?? '',
+    userContext: lastUserMessages.get(cwd) ?? '',
     rejectedMessage: previousGenerated ?? '',
   };
 }
@@ -80,7 +80,7 @@ async function generateAndApply(
   cwd: string,
   changes: ResolvedGitChanges,
   useStaged: boolean,
-  userInstruction: string,
+  userContext: string,
   rejectedMessage: string,
 ): Promise<void> {
   logger.info('Generating diff and repo context...');
@@ -90,7 +90,7 @@ async function generateAndApply(
   logger.info(`Recent Commits count: ${recentCommits.split('\n').filter(Boolean).length}`);
 
   const gitContext = buildGitContext(changes, diff, branch, recentCommits, useStaged);
-  const prompt = buildPrompt(gitContext, userInstruction, rejectedMessage);
+  const prompt = buildPrompt(gitContext, userContext, rejectedMessage);
   logger.info(`Fully assembled prompt (character length: ${prompt.length})`);
 
   const rawMessage = await completePrompt(cwd, prompt);
@@ -141,7 +141,7 @@ export function registerCommitMessageCommand(): Disposable {
         // suggestion means the user rejected it, so feed it back as a negative
         // example along with the instruction that produced it.
         const userMessage = repo.inputBox.value;
-        const { userInstruction, rejectedMessage } = resolveRegeneration(cwd, userMessage);
+        const { userContext, rejectedMessage } = resolveRegeneration(cwd, userMessage);
 
         await window.withProgress(
           {
@@ -150,7 +150,7 @@ export function registerCommitMessageCommand(): Disposable {
             cancellable: false,
           },
           async () => {
-            await generateAndApply(repo, cwd, changes, useStaged, userInstruction, rejectedMessage);
+            await generateAndApply(repo, cwd, changes, useStaged, userContext, rejectedMessage);
           },
         );
       } finally {

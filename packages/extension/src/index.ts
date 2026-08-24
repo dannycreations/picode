@@ -11,7 +11,7 @@ import {
   registerFixCodeCommand,
 } from '@pi-code/extension/structures/context-command/command';
 import { PiCodeActionProvider } from '@pi-code/extension/structures/context-command/provider';
-import { installFetchInterceptor } from '@pi-code/extension/utilities/interceptor';
+import { flushDebugLog, installFetchInterceptor } from '@pi-code/extension/utilities/interceptor';
 import { getWorkspaceUri } from '@pi-code/extension/utilities/vscode';
 import { logger } from '@pi-code/shared/core/logger';
 
@@ -57,6 +57,8 @@ export function activate(context: ExtensionContext): void {
   );
 }
 
-export function deactivate(): void {
+export function deactivate(): Promise<void> {
   cleanupSessionResources();
+  // The debug interceptor queues writes on a promise chain; drain it before the host exits.
+  return flushDebugLog();
 }

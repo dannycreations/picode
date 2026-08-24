@@ -25,7 +25,7 @@ type ServicesFactory = typeof createAgentSessionServices;
 
 async function createServices(cwd: string, config: LoaderConfig, createSessionServices: ServicesFactory): Promise<AgentSessionServices> {
   const settingsManager = getSettingsManager(cwd);
-  settingsManager.setProjectTrusted(config.projectTrusted!);
+  settingsManager.setProjectTrusted(config.projectTrusted);
 
   const context = await discoverContext(cwd, config);
   const resource = applyResourceContext({ extensionFactories: [createContextExtension(), createPolicyExtension()] }, context, config);

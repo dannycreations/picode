@@ -77,13 +77,6 @@ export const spawnSubagentTool = defineTool({
         model: ctx.model,
         signal,
         toolCallId,
-        onStart: onUpdate
-          ? () =>
-              onUpdate({
-                content: [{ type: 'text', text: `Running the ${agent.name} sub-agent...` }],
-                details: { agent: agent.name, description: params.description, steps: '' },
-              })
-          : undefined,
         onProgress: onUpdate
           ? (steps) =>
               onUpdate({
