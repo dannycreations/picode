@@ -2,10 +2,10 @@ import { formatThrownValue } from '@earendil-works/pi-ai';
 import { defineTool, resolvePath } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
-import { readAppSettings } from '@pi-code/extension/core/settings';
+import { readAppSettings, readOutputLimits } from '@pi-code/extension/core/settings';
 import { toolError, toolErrorFrom, toolResult } from '@pi-code/extension/structures/tool-call/helpers';
 import { checkReadableFile } from '@pi-code/extension/utilities/fs';
-import { readNumberedText, shareOutputLimits, toOutputLimits } from '@pi-code/extension/utilities/truncate';
+import { readNumberedText, shareOutputLimits } from '@pi-code/extension/utilities/truncate';
 
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
 import type { ToolName } from '@pi-code/shared/core/types';
@@ -98,7 +98,7 @@ export const readFileTool = defineTool({
     try {
       const settings = readAppSettings();
       const maxConcurrent = settings.maxConcurrentFileReads > 0 ? settings.maxConcurrentFileReads : DEFAULT_MAX_CONCURRENT_READS;
-      const limits = toOutputLimits(settings);
+      const limits = readOutputLimits();
 
       // Split the budget so one large file cannot consume the whole batch.
       const perFileLimits = shareOutputLimits(limits, params.files.length);

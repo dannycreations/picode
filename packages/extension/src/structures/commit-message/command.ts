@@ -77,7 +77,6 @@ type ResolvedGitChanges = Awaited<ReturnType<typeof getGitChanges>>['changes'];
 
 async function generateAndApply(
   repo: Repository,
-  cwd: string,
   changes: ResolvedGitChanges,
   useStaged: boolean,
   userContext: string,
@@ -93,6 +92,7 @@ async function generateAndApply(
   const prompt = buildPrompt(gitContext, userContext, rejectedMessage);
   logger.debug(`Fully assembled prompt (character length: ${prompt.length})`);
 
+  const cwd = repo.rootUri.fsPath;
   const rawMessage = await completePrompt(cwd, prompt);
   logger.trace(`Raw LLM response: ${rawMessage}`);
 
@@ -150,7 +150,7 @@ export function registerCommitMessageCommand(): Disposable {
             cancellable: false,
           },
           async () => {
-            await generateAndApply(repo, cwd, changes, useStaged, userContext, rejectedMessage);
+            await generateAndApply(repo, changes, useStaged, userContext, rejectedMessage);
           },
         );
       } finally {

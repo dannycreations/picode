@@ -7,7 +7,7 @@ import { findOccurrences } from '@pi-code/shared/utilities/common';
 import { ChatAction } from '@pi-code/webview/components/chat/ChatAction';
 import { ChatBody } from '@pi-code/webview/components/chat/ChatBody';
 import { ChatFooter } from '@pi-code/webview/components/chat/ChatFooter';
-import { ChatHeader } from '@pi-code/webview/components/chat/ChatHeader';
+import { ChatHeader, ChatSearchBar } from '@pi-code/webview/components/chat/ChatHeader';
 import { ChatInput } from '@pi-code/webview/components/chat/ChatInput';
 import { getMessageSearchText } from '@pi-code/webview/components/chat/helpers/search';
 import { useChatActions } from '@pi-code/webview/components/chat/hooks/useChatActions';
@@ -309,35 +309,41 @@ export const ChatView: FC = () => {
     <div className="view-container">
       {/* Task Header / Welcome Header */}
       {activeTask ? (
-        <ChatHeader
-          title={activeTask.title}
-          tokensIn={activeTask.tokensIn}
-          tokensOut={activeTask.tokensOut}
-          cacheWrites={activeTask.cacheWrites}
-          cacheReads={activeTask.cacheReads}
-          totalCost={activeTask.totalCost}
-          contextTokens={activeTask.contextTokens}
-          todos={activeTaskTodos}
-          contextLimit={config.selectedModelContextWindow}
-          onClose={handleCloseTaskReturn}
-          onCompact={() => useChatStore.getState().compact()}
-          onExport={activeTask.path ? () => exportSession(activeTask) : undefined}
-          onDelete={activeTask.path ? () => setShowDeleteActiveConfirm(true) : undefined}
-          onViewRaw={() => viewRaw(activeTask.path)}
-          onArchive={handleArchive}
-          isArchived={activeTask?.isArchived}
-          archiveDisabled={isRunning || !activeTask?.path}
-          deleteDisabled={isRunning}
-          isSearchOpen={searchOpen}
-          searchQuery={searchQuery}
-          matchCount={totalMatches}
-          activeMatchNumber={searchOpen && totalMatches > 0 ? activeMatch + 1 : 0}
-          onSearchOpen={() => setSearchOpen(true)}
-          onSearchClose={closeSearch}
-          onSearchChange={setSearchQuery}
-          onPrevMatch={() => goToMatch(-1)}
-          onNextMatch={() => goToMatch(1)}
-        />
+        searchOpen ? (
+          <div className="py-2 px-3.5 border-b border-vscode-editorGroup-border/30 bg-vscode-sideBar-background shrink-0 select-none">
+            <ChatSearchBar
+              query={searchQuery}
+              matchCount={totalMatches}
+              activeMatchNumber={totalMatches > 0 ? activeMatch + 1 : 0}
+              onChange={setSearchQuery}
+              onPrev={() => goToMatch(-1)}
+              onNext={() => goToMatch(1)}
+              onClose={closeSearch}
+            />
+          </div>
+        ) : (
+          <ChatHeader
+            title={activeTask.title}
+            tokensIn={activeTask.tokensIn}
+            tokensOut={activeTask.tokensOut}
+            cacheWrites={activeTask.cacheWrites}
+            cacheReads={activeTask.cacheReads}
+            totalCost={activeTask.totalCost}
+            contextTokens={activeTask.contextTokens}
+            todos={activeTaskTodos}
+            contextLimit={config.selectedModelContextWindow}
+            onClose={handleCloseTaskReturn}
+            onCompact={() => useChatStore.getState().compact()}
+            onExport={activeTask.path ? () => exportSession(activeTask) : undefined}
+            onDelete={activeTask.path ? () => setShowDeleteActiveConfirm(true) : undefined}
+            onViewRaw={() => viewRaw(activeTask.path)}
+            onArchive={handleArchive}
+            isArchived={activeTask?.isArchived}
+            archiveDisabled={isRunning || !activeTask?.path}
+            deleteDisabled={isRunning}
+            onSearchOpen={() => setSearchOpen(true)}
+          />
+        )
       ) : (
         <div className="flex items-center justify-between w-full mx-auto px-3.5 pt-3 shrink-0 select-none">
           <Tooltip content={historyExpanded ? 'Hide recent tasks' : 'Show recent tasks'} side="bottom">

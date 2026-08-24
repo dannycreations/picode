@@ -11,7 +11,7 @@ import type { McpConfig, McpServerConfig } from '@pi-code/extension/structures/a
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
-export interface ToolOutput {
+interface ToolOutput {
   readonly content?: readonly unknown[];
   readonly structuredContent?: unknown;
   readonly toolResult?: unknown;
@@ -46,18 +46,18 @@ export async function connectMcpServer(server: McpServerConfig, cwd: string): Pr
   await client.connect(transport, { timeout: timeoutMs });
 
   return {
-    async listTools() {
+    listTools: async () => {
       const result = await client.listTools(undefined, { timeout: timeoutMs });
       return result.tools;
     },
 
-    callTool(tool, args, signal) {
+    callTool: (tool, args, signal) => {
       return client.callTool({ name: tool, arguments: args }, undefined, { timeout: timeoutMs, signal });
     },
 
     close: () => client.close(),
 
-    onClose(listener) {
+    onClose: (listener) => {
       const previous = client.onclose;
       client.onclose = () => {
         previous?.();
@@ -67,23 +67,16 @@ export async function connectMcpServer(server: McpServerConfig, cwd: string): Pr
   };
 }
 
-export interface DispatchParams {
+interface DispatchParams {
   readonly server?: string;
   readonly tool?: string;
   readonly arguments?: Record<string, unknown>;
 }
 
-export interface DispatchOutcome {
+interface DispatchOutcome {
   readonly text: string;
   readonly isError?: boolean;
   readonly subtitle?: string;
-}
-
-export interface McpGateway {
-  readonly dispatch: (config: McpConfig, cwd: string, params: DispatchParams, signal?: AbortSignal) => Promise<DispatchOutcome>;
-  readonly isConnected: (name: string) => boolean;
-  readonly preconnect: (config: McpConfig, cwd: string) => Promise<void>;
-  readonly closeAll: () => Promise<void>;
 }
 
 interface CacheEntry {
@@ -91,7 +84,7 @@ interface CacheEntry {
   readonly pending: Promise<McpConnection>;
 }
 
-export function createMcpGateway(connect: McpConnector = connectMcpServer): McpGateway {
+export function createMcpGateway(connect: McpConnector = connectMcpServer) {
   const cache = new Map<string, CacheEntry>();
   const live = new Set<string>();
 
@@ -128,39 +121,23 @@ export function createMcpGateway(connect: McpConnector = connectMcpServer): McpG
     return entry.pending;
   }
 
-  async function closeAll(): Promise<void> {
-    const entries = [...cache.values()];
-    cache.clear();
-    live.clear();
-    await Promise.allSettled(
-      entries.map(async (entry) => {
-        const connection = await entry.pending.catch(() => undefined);
-        await connection?.close();
-      }),
-    );
-  }
-
-  // Starts every `autorun` server ahead of its first tool call; a failed
-  // start is logged here and retried by the next dispatch.
-  async function preconnect(config: McpConfig, cwd: string): Promise<void> {
-    const eager = Object.entries(config).filter(([, server]) => server.autorun === true);
-    await Promise.all(
-      eager.map(async ([name, server]) => {
-        try {
-          await getConnection(name, server, cwd);
-        } catch (err) {
-          logger.warn(`Autorun MCP server "${name}" failed to start: ${formatThrownValue(err)}.`);
-        }
-      }),
-    );
-  }
-
   return {
-    isConnected: (name) => live.has(name),
+    isConnected: (name: string): boolean => live.has(name),
 
-    preconnect,
+    preconnect: async (config: McpConfig, cwd: string): Promise<void> => {
+      const eager = Object.entries(config).filter(([, server]) => server.autorun === true);
+      await Promise.all(
+        eager.map(async ([name, server]) => {
+          try {
+            await getConnection(name, server, cwd);
+          } catch (err) {
+            logger.warn(`Autorun MCP server "${name}" failed to start: ${formatThrownValue(err)}.`);
+          }
+        }),
+      );
+    },
 
-    async dispatch(config, cwd, params, signal) {
+    dispatch: async (config: McpConfig, cwd: string, params: DispatchParams, signal?: AbortSignal): Promise<DispatchOutcome> => {
       const names = Object.keys(config);
 
       if (names.length === 0) {
@@ -211,11 +188,21 @@ export function createMcpGateway(connect: McpConnector = connectMcpServer): McpG
       }
     },
 
-    closeAll,
+    closeAll: async (): Promise<void> => {
+      const entries = [...cache.values()];
+      cache.clear();
+      live.clear();
+      await Promise.allSettled(
+        entries.map(async (entry) => {
+          const connection = await entry.pending.catch(() => undefined);
+          await connection?.close();
+        }),
+      );
+    },
   };
 }
 
-export const mcpGateway: McpGateway = createMcpGateway();
+export const mcpGateway = createMcpGateway();
 
 function formatServerCatalog(names: readonly string[], config: McpConfig, live: ReadonlySet<string>): DispatchOutcome {
   const lines = names.map((name) => `- ${name} (${config[name].kind}, ${live.has(name) ? 'running' : 'not started'})`);

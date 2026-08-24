@@ -8,14 +8,14 @@ Write every statement in the message, including the header's summary, each body 
 
 Format: \`<type>(<optional scope>)<!>: <summary>\`
 
-- **type** (required): Identifies the primary intent of the change. Choose one value from the Commit Types list below.
+- **type** (required): Identifies the overall intent of the change. Choose one value from the Commit Types list below.
 - **scope** (optional): A noun in parentheses naming the affected area of the codebase, module, or package.
 - **!** (conditional): Include immediately before the colon if, and only if, the change is a breaking change.
-- **summary** (required): A description of the primary change.
+- **summary** (required): A description of the overall change.
 
 ## Body
 
-If included, separate the body from the header with exactly one blank line. Write each modification as a sentence-case statement, formatted as an unordered list using dashes, with soft line wrapping.
+If included, separate the body from the header with exactly one blank line. Write each primary modification as a sentence-case statement, formatted as an unordered list using dashes, with soft line wrapping.
 
 ## Footer
 

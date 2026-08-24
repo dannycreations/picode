@@ -35,15 +35,7 @@ interface ChatHeaderProps extends StatsData {
   readonly isArchived?: boolean;
   readonly archiveDisabled?: boolean;
   readonly deleteDisabled?: boolean;
-  readonly isSearchOpen: boolean;
-  readonly searchQuery: string;
-  readonly matchCount: number;
-  readonly activeMatchNumber: number;
   readonly onSearchOpen: () => void;
-  readonly onSearchClose: () => void;
-  readonly onSearchChange: (query: string) => void;
-  readonly onPrevMatch: () => void;
-  readonly onNextMatch: () => void;
 }
 
 const ContextProgressBar: FC<{ readonly percentage: number }> = ({ percentage }) => (
@@ -52,7 +44,7 @@ const ContextProgressBar: FC<{ readonly percentage: number }> = ({ percentage })
   </div>
 );
 
-const ChatSearchBar: FC<{
+export const ChatSearchBar: FC<{
   readonly query: string;
   readonly matchCount: number;
   readonly activeMatchNumber: number;
@@ -137,15 +129,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
   isArchived,
   archiveDisabled,
   deleteDisabled,
-  isSearchOpen,
-  searchQuery,
-  matchCount,
-  activeMatchNumber,
   onSearchOpen,
-  onSearchClose,
-  onSearchChange,
-  onPrevMatch,
-  onNextMatch,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -155,22 +139,6 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
     if (e.target instanceof Element && e.target.closest('[data-todo-list]')) return;
     setIsExpanded(!isExpanded);
   };
-
-  if (isSearchOpen) {
-    return (
-      <div className="py-2 px-3.5 border-b border-vscode-editorGroup-border/30 bg-vscode-sideBar-background shrink-0 select-none">
-        <ChatSearchBar
-          query={searchQuery}
-          matchCount={matchCount}
-          activeMatchNumber={activeMatchNumber}
-          onChange={onSearchChange}
-          onPrev={onPrevMatch}
-          onNext={onNextMatch}
-          onClose={onSearchClose}
-        />
-      </div>
-    );
-  }
 
   return (
     <div className="py-2 px-3.5 border-b border-vscode-editorGroup-border/30 bg-vscode-sideBar-background shrink-0 select-none">

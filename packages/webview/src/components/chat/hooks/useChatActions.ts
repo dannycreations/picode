@@ -2,9 +2,9 @@ import { useCallback } from 'react';
 
 import { ACTIVE_TASK_ID } from '@pi-code/shared/core/constants';
 import { parseBuiltinCommand } from '@pi-code/shared/utilities/commands';
+import { createActiveTask } from '@pi-code/shared/utilities/common';
 import { patchMessage, resolveApproval } from '@pi-code/webview/helpers/messages';
 import { selectPendingQuestion, useChatStore } from '@pi-code/webview/stores/useChatStore';
-import { createActiveTask } from '@pi-code/webview/utilities/common';
 
 import type { ChatMessage } from '@pi-code/shared/core/types';
 

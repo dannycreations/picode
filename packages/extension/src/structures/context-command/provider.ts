@@ -22,7 +22,7 @@ export class PiCodeActionProvider implements CodeActionProvider {
     addAction.command = {
       command: 'pi-code.addToContext',
       title: 'Add to Pi Context',
-      arguments: [resolved.filePath, resolved.selectedText, resolved.startLine, resolved.endLine],
+      arguments: [resolved],
     };
     actions.push(addAction);
 
@@ -34,7 +34,7 @@ export class PiCodeActionProvider implements CodeActionProvider {
       fixAction.command = {
         command: 'pi-code.addProblemToContext',
         title: 'Add to Pi Context',
-        arguments: [resolved.filePath, resolved.selectedText, resolved.startLine, resolved.endLine, mappedDiagnostics],
+        arguments: [resolved, mappedDiagnostics],
       };
       fixAction.isPreferred = true;
       actions.push(fixAction);

@@ -11,11 +11,9 @@ import type { Diagnostic, Disposable } from 'vscode';
 import type { ChatViewProvider } from '@pi-code/extension/structures/agent-webview/provider';
 import type { MappedDiagnostic, ResolvedSelection } from '@pi-code/extension/structures/context-command/helpers';
 
-function resolveSelection(args: any[]): ResolvedSelection | null {
-  if (args.length >= 4) {
-    const [filePath, selectedText, startLine, endLine] = args;
-    return { filePath, selectedText, startLine, endLine };
-  }
+function resolveSelection(args: unknown[]): ResolvedSelection | null {
+  const [passed] = args;
+  if (passed) return passed as ResolvedSelection;
 
   const editor = window.activeTextEditor;
   if (!editor) return null;
@@ -28,7 +26,7 @@ function formatSelectionBlock(selection: ResolvedSelection): string {
 }
 
 function getDiagnosticText(args: unknown[], selection: ResolvedSelection): string {
-  const passedDiagnostics = args[4] as MappedDiagnostic[] | undefined;
+  const passedDiagnostics = args[1] as MappedDiagnostic[] | undefined;
   return Array.isArray(passedDiagnostics) && passedDiagnostics.length > 0
     ? formatDiagnosticBlock(passedDiagnostics)
     : collectSelectionDiagnostics(selection);

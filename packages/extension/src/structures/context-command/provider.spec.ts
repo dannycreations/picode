@@ -76,15 +76,12 @@ describe('PiCodeActionProvider', () => {
     expect(actions).toHaveLength(2);
     expect(actions[0].title).toBe('Add to Pi Context');
     expect(actions[0].command?.command).toBe('pi-code.addToContext');
-    expect(actions[0].command?.arguments).toEqual(['test.ts', 'some code', 1, 2]);
+    expect(actions[0].command?.arguments).toEqual([{ filePath: 'test.ts', selectedText: 'some code', startLine: 1, endLine: 2 }]);
 
     expect(actions[1].title).toBe('Add to Pi Context');
     expect(actions[1].command?.command).toBe('pi-code.addProblemToContext');
     expect(actions[1].command?.arguments).toEqual([
-      'test.ts',
-      'some code',
-      1,
-      2,
+      { filePath: 'test.ts', selectedText: 'some code', startLine: 1, endLine: 2 },
       [
         {
           message: 'Error message',

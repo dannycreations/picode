@@ -5,7 +5,7 @@ import { CONFIG_DIR_NAME, getAgentDir } from '@earendil-works/pi-coding-agent';
 
 import { logger } from '@pi-code/shared/core/logger';
 
-export interface LocalMcpServer {
+interface LocalMcpServer {
   readonly kind: 'local';
   readonly command: string;
   readonly args?: readonly string[];
@@ -13,7 +13,7 @@ export interface LocalMcpServer {
   readonly cwd?: string;
 }
 
-export interface RemoteMcpServer {
+interface RemoteMcpServer {
   readonly kind: 'remote';
   readonly url: string;
   readonly headers?: Readonly<Record<string, string>>;
@@ -142,7 +142,7 @@ export function mergeMcpConfigs(globalRaw: unknown, projectRaw: unknown): { conf
   return { config, warnings };
 }
 
-export interface LoadMcpConfigOptions {
+interface LoadMcpConfigOptions {
   readonly trusted: boolean;
   readonly agentDir?: string;
 }
