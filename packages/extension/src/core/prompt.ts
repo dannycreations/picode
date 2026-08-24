@@ -9,7 +9,7 @@ Write every statement in the message, including the header's summary, each body 
 Format: \`<type>(<optional scope>)<!>: <summary>\`
 
 - **type** (required): Identifies the overall intent of the change. Choose one value from the Commit Types list below.
-- **scope** (optional): A noun in parentheses naming the affected area of the codebase, module, or package.
+- **scope** (optional): A single noun in parentheses naming the affected area of the codebase, module, or package.
 - **!** (conditional): Include immediately before the colon if, and only if, the change is a breaking change.
 - **summary** (required): A description of the overall change.
 
@@ -19,7 +19,7 @@ If included, separate the body from the header with exactly one blank line. Writ
 
 ## Footer
 
-If the change is breaking, separate the footer from the preceding content (body or header) with exactly one blank line. Begin the footer with \`BREAKING CHANGE: \` followed by an explanation of what breaks and why.
+If the change is breaking, separate the footer from the preceding content (body or header) with exactly one blank line. Begin the footer with \`BREAKING CHANGE: \` followed by an explanation of what breaks and why. Don't forget to mark **!** in the header.
 
 ## Commit Types
 

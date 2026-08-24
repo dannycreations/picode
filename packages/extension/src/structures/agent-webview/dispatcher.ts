@@ -26,7 +26,7 @@ import { HISTORY_SCOPES } from '@pi-code/shared/core/protocol';
 
 import type { ModelRuntime } from '@earendil-works/pi-coding-agent';
 import type { MessageHandlerContext } from '@pi-code/extension/structures/agent-webview/types';
-import type { ExtensionToWebviewMessage, HistoryScope, WebviewToExtensionMessage } from '@pi-code/shared/core/protocol';
+import type { ExtensionToWebviewMessage, HistoryItem, HistoryScope, WebviewToExtensionMessage } from '@pi-code/shared/core/protocol';
 import type { ChatMessage, StatsData } from '@pi-code/shared/core/types';
 
 type CommandHandler<T extends WebviewToExtensionMessage['type']> = (
@@ -72,6 +72,21 @@ async function postHistory(ctx: MessageHandlerContext, scope: HistoryScope): Pro
     }
   } catch (error) {
     logger.warn(`History stream for "${scope}" failed; the list may be incomplete.`, error);
+  }
+}
+
+async function postHistorySnapshot(ctx: MessageHandlerContext, scope: HistoryScope): Promise<void> {
+  const epoch = ++ctx.historyEpoch;
+  const cwd = ctx.cwd;
+  try {
+    const items: HistoryItem[] = [];
+    for await (const chunk of streamHistory(cwd, scope)) {
+      if (ctx.cwd !== cwd) return;
+      items.push(...chunk);
+    }
+    ctx.runtime.postMessage({ type: 'history_data', payload: { scope, epoch, items } });
+  } catch (error) {
+    logger.warn(`History snapshot for "${scope}" failed; the list may be incomplete.`, error);
   }
 }
 
@@ -224,10 +239,11 @@ const HANDLER_MAP: HandlerMap = {
     }
     await deleteSessions(msg.paths);
     // Re-stream every scope after the files are gone so the webview receives an
-    // authoritative, post-delete snapshot in one awaited pass (no race with a
-    // concurrent re-stream reading the disk before the delete finishes).
+    // authoritative, post-delete snapshot. Each scope is sent whole (not in
+    // chunks) so the webview's list never transiently shrinks, which would drag
+    // its pagination back a page.
     for (const target of HISTORY_SCOPES) {
-      await postHistory(ctx, target);
+      await postHistorySnapshot(ctx, target);
     }
   },
   update_settings: async (msg) => {
