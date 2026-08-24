@@ -32,6 +32,7 @@ export const SETTING_FIELDS: SettingFieldRegistry = {
   enableSubagentTool: { tab: 'ability', label: 'Task Delegation' },
   enableAgentRules: { tab: 'ability', label: 'Project Rules' },
   enableSkillDiscovery: { tab: 'ability', label: 'Skill Discovery' },
+  enableMcpTool: { tab: 'ability', label: 'Model Context Protocol' },
 
   yolo: { tab: 'approval', label: 'YOLO Mode' },
   yoloRespectDenied: { tab: 'approval', label: 'Respect Denied Tools', parent: 'yolo' },

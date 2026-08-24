@@ -85,6 +85,16 @@ const TOOL_META: Readonly<Record<string, ToolMeta>> = {
       done: 'Ran sub-agent',
     },
   },
+  mcp: {
+    ...DEFAULT_TOOL_META,
+    fileIcon: 'plug',
+    fileTitle: {
+      running: 'Calling MCP',
+      approval: 'Wants to call MCP',
+      denied: 'MCP call denied',
+      done: 'Called MCP',
+    },
+  },
 };
 
 // Tools whose result messages render as expandable sections in the webview.
@@ -95,6 +105,7 @@ const GROUP_TOOL_NAMES = [
   'edit_file',
   'delete_file',
   'spawn_subagent',
+  'mcp',
 ] as const satisfies readonly ToolName[];
 
 export const GROUP_TOOLS: ReadonlySet<ToolName> = new Set(GROUP_TOOL_NAMES);
@@ -153,6 +164,23 @@ function subagentSection(message: ToolChatMessage): ToolSection[] {
   return [{ title, subtitle: message.subtitle, content: message.diff, language: 'text' }];
 }
 
+function mcpSection(message: ToolChatMessage): ToolSection[] {
+  const args = message.toolArgs;
+  const server = args && 'server' in args && typeof args.server === 'string' ? args.server : undefined;
+  const tool = args && 'tool' in args && typeof args.tool === 'string' ? args.tool : undefined;
+  const callArguments = args && 'arguments' in args && args.arguments !== undefined ? args.arguments : undefined;
+
+  let title = 'List servers';
+  if (server !== undefined) {
+    title = tool === undefined ? `${server}: list tools` : `${server}: ${tool}`;
+  }
+
+  const pendingPayload = callArguments === undefined ? undefined : JSON.stringify(callArguments, null, 2);
+  const content = message.diff ?? pendingPayload;
+
+  return [{ title, subtitle: message.subtitle, content, language: message.diff === undefined ? 'json' : 'text' }];
+}
+
 function fileToolSections(message: ToolChatMessage): ToolSection[] {
   if (message.files && message.files.length > 0) {
     return message.files.map((file) => ({
@@ -177,6 +205,7 @@ export function buildToolSections(message: ChatMessage): ToolSection[] {
   let sections: ToolSection[];
   if (message.toolName === 'execute_command') sections = commandSection(message);
   else if (message.toolName === 'spawn_subagent') sections = subagentSection(message);
+  else if (message.toolName === 'mcp') sections = mcpSection(message);
   else sections = fileToolSections(message);
 
   const withMeta = sections.map((section) => ({

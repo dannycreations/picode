@@ -66,6 +66,24 @@ describe('mergeMcpConfigs', () => {
     expect(warnings[0]).toContain('"autorun" must be a boolean');
   });
 
+  it('keeps a valid description and silently drops blank or non-string ones', () => {
+    const { config, warnings } = mergeMcpConfigs(
+      {
+        local: { command: 'npx', description: '  Filesystem tools  ' },
+        remote: { url: 'https://mcp.example/mcp', description: 'Web search' },
+        blank: { command: 'npx', description: '   ' },
+        wrong: { command: 'npx', description: 7 },
+      },
+      undefined,
+    );
+
+    expect(warnings).toEqual([]);
+    expect(config['local']).toEqual({ kind: 'local', command: 'npx', description: 'Filesystem tools' });
+    expect(config['remote']).toEqual({ kind: 'remote', url: 'https://mcp.example/mcp', description: 'Web search' });
+    expect(config['blank']).not.toHaveProperty('description');
+    expect(config['wrong']).not.toHaveProperty('description');
+  });
+
   it('drops invalid entries and reports each with a warning', () => {
     const { config, warnings } = mergeMcpConfigs({ broken: {}, conflict: { command: 'x', url: 'https://a.example' }, scalar: 'nope' }, undefined);
 

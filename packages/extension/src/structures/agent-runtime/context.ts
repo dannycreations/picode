@@ -138,7 +138,10 @@ function renderMcpServers(): string {
     'External tools reachable only through the `mcp` tool.',
     'Call it with no parameters to check live connection status, or with one of these server names to list its tools.',
     '',
-    ...entries.map(([name, server]) => `- ${name}: ${server.kind}, ${server.autorun ? 'autorun' : 'on demand'}`),
+    ...entries.map(([name, server]) => {
+      const meta = `${server.kind}, ${server.autorun ? 'autorun' : 'on demand'}`;
+      return server.description ? `- ${name}: ${server.description} (${meta})` : `- ${name}: ${meta}`;
+    }),
   ].join('\n');
 }
 

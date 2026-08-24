@@ -20,8 +20,9 @@ export interface RemoteMcpServer {
 }
 
 export type McpServerConfig = (LocalMcpServer | RemoteMcpServer) & {
-  readonly timeoutMs?: number;
   readonly autorun?: boolean;
+  readonly description?: string;
+  readonly timeoutMs?: number;
 };
 
 export type McpConfig = Readonly<Record<string, McpServerConfig>>;
@@ -48,11 +49,13 @@ export function parseMcpServer(raw: unknown): ParsedServer {
   const record = raw as Record<string, unknown>;
   if (record['disabled'] === true) return { ok: true };
 
-  const timeoutMs = optionalTimeout(record);
   const autorun = record['autorun'];
   if (autorun !== undefined && typeof autorun !== 'boolean') {
     return { ok: false, error: '"autorun" must be a boolean' };
   }
+
+  const description = optionalDescription(record);
+  const timeoutMs = optionalTimeout(record);
   const url = optionalUrl(record);
   const command = typeof record['command'] === 'string' ? record['command'] : undefined;
 
@@ -65,7 +68,17 @@ export function parseMcpServer(raw: unknown): ParsedServer {
     if (record['headers'] !== undefined && headers === undefined) {
       return { ok: false, error: '"headers" must map strings to strings' };
     }
-    return { ok: true, server: { kind: 'remote', url, ...(headers && { headers }), ...(timeoutMs && { timeoutMs }), ...(autorun && { autorun }) } };
+    return {
+      ok: true,
+      server: {
+        kind: 'remote',
+        url,
+        ...(headers && { headers }),
+        ...(timeoutMs && { timeoutMs }),
+        ...(autorun && { autorun }),
+        ...(description && { description }),
+      },
+    };
   }
 
   if (command !== undefined) {
@@ -92,6 +105,7 @@ export function parseMcpServer(raw: unknown): ParsedServer {
         ...(typeof cwd === 'string' && cwd.trim() !== '' && { cwd }),
         ...(timeoutMs && { timeoutMs }),
         ...(autorun && { autorun }),
+        ...(description && { description }),
       },
     };
   }
@@ -168,6 +182,12 @@ async function readRawConfig(path: string, label: string): Promise<{ raw?: unkno
 function optionalTimeout(record: Record<string, unknown>): number | undefined {
   const value = record['timeoutMs'];
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
+function optionalDescription(record: Record<string, unknown>): string | undefined {
+  if (typeof record['description'] !== 'string') return undefined;
+  const trimmed = record['description'].trim();
+  return trimmed === '' ? undefined : trimmed;
 }
 
 function optionalUrl(record: Record<string, unknown>): string | undefined {

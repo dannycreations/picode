@@ -52,6 +52,11 @@ export const SETTINGS_SCHEMA = {
     description:
       'Let the agent pick skills (`SKILL.md` files) on its own. When off, skills stay available and you load one explicitly with `/skill:<name>`.',
   },
+  enableMcpTool: {
+    type: 'boolean',
+    default: false,
+    description: 'Let the agent reach external tools on MCP servers configured in your `mcp.json` (`mcp`).',
+  },
 
   yolo: {
     type: 'boolean',

@@ -206,6 +206,18 @@ describe('composeSystemPrompt MCP section', () => {
     expect(prompt).toContain('- web: remote, on demand');
   });
 
+  it('adds each server description before its startup mode when provided', () => {
+    setActiveMcpConfig({
+      search: { kind: 'remote', url: 'https://mcp.example/mcp', description: 'Web search over SearXNG' },
+      bare: { kind: 'local', command: 'npx' },
+    });
+
+    const prompt = composeSystemContext({ cwd: '/w' });
+
+    expect(prompt).toContain('- search: Web search over SearXNG (remote, on demand)');
+    expect(prompt).toContain('- bare: local, on demand');
+  });
+
   it('omits the section when no servers are active', () => {
     setActiveMcpConfig({});
 

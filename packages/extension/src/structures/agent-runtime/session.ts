@@ -17,6 +17,7 @@ import { isProjectTrusted } from '@pi-code/extension/utilities/vscode';
 import { resolveContextLimit } from '@pi-code/shared/utilities/common';
 
 import type { ToolDefinition } from '@earendil-works/pi-coding-agent';
+import type { McpConfig } from '@pi-code/extension/structures/agent-runtime/mcp/config';
 import type { ToolName } from '@pi-code/shared/core/types';
 
 const CUSTOM_TOOLS = [
@@ -33,17 +34,23 @@ const CUSTOM_TOOLS = [
 export async function createSession(cwd: string, sessionPath?: string): Promise<AgentSession> {
   const sessionManager = sessionPath ? SessionManager.open(sessionPath) : SessionManager.create(cwd);
 
+  const services = await createAgentResources(cwd);
+  const settings = readAppSettings();
+
   // Publishes the loaded servers for the system prompt and spawns autorun
   // servers immediately, in parallel with the rest of session setup. Failed
   // starts are logged and retried by that server's first tool call.
-  const mcpReady = loadMcpConfig(cwd, { trusted: isProjectTrusted(cwd) }).then((servers) => {
-    setActiveMcpConfig(servers);
-    void mcpGateway.preconnect(servers, cwd);
-    return servers;
-  });
-
-  const services = await createAgentResources(cwd);
-  const settings = readAppSettings();
+  let mcpReady: Promise<McpConfig>;
+  if (settings.enableMcpTool) {
+    mcpReady = loadMcpConfig(cwd, { trusted: isProjectTrusted(cwd) }).then((servers) => {
+      setActiveMcpConfig(servers);
+      void mcpGateway.preconnect(servers, cwd);
+      return servers;
+    });
+  } else {
+    setActiveMcpConfig({});
+    mcpReady = Promise.resolve({});
+  }
 
   const disabledTools: Set<ToolName> = new Set();
   if (!settings.enableTodoTool) disabledTools.add('update_todo');

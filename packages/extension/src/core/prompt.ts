@@ -51,7 +51,7 @@ export interface SubagentDefinition {
 export const SUBAGENTS: readonly SubagentDefinition[] = [
   {
     name: 'explore',
-    summary: 'Use it to locate where something lives, trace how a feature works, or answer "where/how" questions across many files.',
+    summary: 'Use this to locate where something lives, trace how a feature works, or answer "where/how" questions across many files.',
     tools: ['read_file', 'execute_command'],
     prompt: `${SUBAGENT_SHARED_RULES}
 
@@ -64,7 +64,7 @@ Your role is reconnaissance: locate the code relevant to the brief and report co
   },
   {
     name: 'review',
-    summary: 'Use it to audit an area or a change for correctness, security, and maintainability defects once the code already exists.',
+    summary: 'Use this to audit an area or a change for correctness, security, and maintainability defects.',
     tools: ['read_file', 'execute_command'],
     prompt: `${SUBAGENT_SHARED_RULES}
 
