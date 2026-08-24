@@ -1,3 +1,7 @@
+import { EMPTY_STATS } from '@pi-code/shared/utilities/common';
+
+import type { ActiveTaskState, ChatMessage, ModelThinkingLevel } from '@pi-code/shared/core/types';
+
 const TIME_AGO = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
 const TIME_DIVISIONS: Array<[Intl.RelativeTimeFormatUnit, number]> = [
   ['year', 60 * 60 * 24 * 365],
@@ -52,4 +56,21 @@ export function readFileAsDataUrl(file: File): Promise<string> {
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(file);
   });
+}
+
+export function createActiveTask(id: string, title: string, messages: ChatMessage[]): ActiveTaskState {
+  return { id, title, messages, ...EMPTY_STATS };
+}
+
+export function defaultThinkingLevel(levels: readonly ModelThinkingLevel[]): ModelThinkingLevel | null {
+  if (levels.length === 0) return null;
+  if (levels.includes('medium')) return 'medium';
+  return levels.find((level) => level !== 'off') ?? levels[0];
+}
+
+export function resolveThinkingLevel(
+  levels: readonly ModelThinkingLevel[],
+  preferred: ModelThinkingLevel | null | undefined,
+): ModelThinkingLevel | null {
+  return preferred && levels.includes(preferred) ? preferred : defaultThinkingLevel(levels);
 }

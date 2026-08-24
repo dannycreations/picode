@@ -75,7 +75,6 @@ async function interceptedFetch(input: RequestInfo | URL, init?: RequestInit): P
 export function installFetchInterceptor(workspaceDir: string): void {
   if (logPath) return;
   logPath = join(workspaceDir, 'debug', `requests_${todayStamp()}.txt`);
-  nativeFetch = globalThis.fetch.bind(globalThis);
   globalThis.fetch = interceptedFetch as typeof globalThis.fetch;
 }
 

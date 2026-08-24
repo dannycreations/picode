@@ -1,4 +1,5 @@
 import { formatThrownValue } from '@earendil-works/pi-ai';
+import { resolvePath, withFileMutationQueue } from '@earendil-works/pi-coding-agent';
 
 import { parseImageAttachments } from '@pi-code/extension/utilities/codec';
 
@@ -16,4 +17,20 @@ export function toolError<T = EmptyDetails>(text: string, details: T = {} as T):
 
 export function toolErrorFrom(err: unknown, action: string): CustomToolResult {
   return toolError(`Error ${action}: ${formatThrownValue(err)}`);
+}
+
+export function runFileMutation(
+  cwd: string,
+  rawPath: string,
+  action: string,
+  mutate: (resolvedPath: string) => Promise<CustomToolResult>,
+): Promise<CustomToolResult> {
+  const resolvedPath = resolvePath(rawPath, cwd);
+  return withFileMutationQueue(resolvedPath, async () => {
+    try {
+      return await mutate(resolvedPath);
+    } catch (err) {
+      return toolErrorFrom(err, action);
+    }
+  });
 }

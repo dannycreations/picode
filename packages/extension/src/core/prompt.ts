@@ -1,38 +1,38 @@
-export const COMMIT_MESSAGE_PROMPT = `Analyze the provided \`git diff\`, then generate exactly one commit message that strictly complies with the Conventional Commits specification.
+export const COMMIT_MESSAGE_PROMPT = `Analyze the provided \`git diff\` and generate exactly one commit message that strictly complies with the Conventional Commits specification. The message consists of a required header, an optional body, and, when applicable, a required footer.
 
-## Structural Rules
+## Style
 
-### 1. Header (Line 1)
+Write every statement in the message, including the header's summary, each body item, and the footer's explanation, as a concise, imperative-mood statement.
 
-**Format:** \`<type>(<optional-scope>)<!-if-breaking>: <summary>\`
+## Header
 
-- **Type** (Required): Identifies the primary intent of the change (must be selected from the **Commit Types** list).
-- **Scope** (Optional): A noun in parentheses specifying the affected codebase area, module, or package.
-- **Breaking Change Indicator \`!\`** (Conditional): If the commit contains a breaking change, place an exclamation mark immediately before the colon.
-- **Summary** (Required): A succinct, imperative-mood description of the primary change.
+Format: \`<type>(<optional scope>)<!>: <summary>\`
 
-### 2. Body (Optional)
+- **type** (required): Identifies the primary intent of the change. Choose one value from the Commit Types list below.
+- **scope** (optional): A noun in parentheses naming the affected area of the codebase, module, or package.
+- **!** (conditional): Include immediately before the colon if, and only if, the change is a breaking change.
+- **summary** (required): A description of the primary change.
 
-- Must be separated from the header by one blank line.
-- Use sentence-case declarations, unordered-list dashes, and soft-wrap to detail specific modifications.
+## Body
 
-### 3. Footer (Conditional)
+If included, separate the body from the header with exactly one blank line. Write each modification as a sentence-case statement, formatted as an unordered list using dashes, with soft line wrapping.
 
-- Must be separated from the preceding content by one blank line.
-- If a breaking change exists, include a footer starting with \`BREAKING CHANGE: \` followed by an explanation of the breaking change.
+## Footer
+
+If the change is breaking, separate the footer from the preceding content (body or header) with exactly one blank line. Begin the footer with \`BREAKING CHANGE: \` followed by an explanation of what breaks and why.
 
 ## Commit Types
 
-- **build**: Modifies build systems, build tooling, or external dependencies.
-- **chore**: Performs routine maintenance (e.g., dependency updates, repository configuration, or legal notice updates).
-- **ci**: Updates continuous integration and continuous delivery workflows or scripts.
-- **docs**: Alters documentation exclusively.
-- **feat**: Adds new codebase functionality or capabilities.
-- **fix**: Corrects a defect, unintended behavior, or bug.
-- **perf**: Improves execution speed, memory efficiency, or resource usage without altering behavior.
-- **refactor**: Restructures existing code without altering external behavior or adding features.
-- **style**: Adjusts code formatting, indentation, or whitespace without affecting logical execution.
-- **test**: Adds missing tests, refactors existing tests, or corrects test suites.`;
+- **build** Changes to the build system, build tooling, or external dependencies.
+- **chore** Routine maintenance, such as dependency updates, repository configuration, or legal notice updates.
+- **ci** Changes to continuous integration/continuous delivery workflows or scripts.
+- **docs** Documentation-only changes.
+- **feat** New functionality or capabilities added to the codebase.
+- **fix** Corrections to defects, bugs, or unintended behavior.
+- **perf** Improvements to execution speed, memory efficiency, or resource usage, without changing behavior.
+- **refactor** Restructuring of existing code that changes neither external behavior nor adds features.
+- **style** Formatting, indentation, or whitespace changes that do not affect logic or execution.
+- **test** Adding missing tests, refactoring existing tests, or correcting test suites.`;
 
 const SUBAGENT_SHARED_RULES = `You are a sub-agent executing one delegated task within a larger session.
 

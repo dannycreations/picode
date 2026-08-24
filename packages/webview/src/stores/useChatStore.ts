@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 import { DEFAULT_APP_ID } from '@pi-code/shared/core/constants';
 import { HISTORY_SCOPES } from '@pi-code/shared/core/protocol';
-import { defaultThinkingLevel, elapsedSeconds } from '@pi-code/shared/utilities/common';
+import { elapsedSeconds } from '@pi-code/shared/utilities/common';
 import {
   appendOnce,
   deliverQueuedReplies,
@@ -14,6 +14,7 @@ import {
   upsertToolMessage,
 } from '@pi-code/webview/helpers/messages';
 import { findPendingQuestion } from '@pi-code/webview/helpers/questions';
+import { resolveThinkingLevel } from '@pi-code/webview/utilities/common';
 
 import type { RefObject } from 'react';
 import type { WebviewApi as InternalWebviewApi } from 'vscode-webview';
@@ -404,7 +405,7 @@ export const useChatStore = create<ChatState>((set, get) => {
       const model = models.find((m) => m.id === id);
       if (!model) return;
       const levels = model.thinkingLevels ?? [];
-      const level = selectedThinkingLevel && levels.includes(selectedThinkingLevel) ? selectedThinkingLevel : defaultThinkingLevel(levels);
+      const level = resolveThinkingLevel(levels, selectedThinkingLevel);
       set({ selectedModel: id, selectedThinkingLevel: level });
       get().send({ type: 'set_model', model: { id: model.id, provider: model.provider }, thinkingLevel: level ?? undefined });
     },
