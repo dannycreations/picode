@@ -1,10 +1,32 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { Runtime } from '@pi-code/extension/structures/agent-runtime/runtime';
 import { logger } from '@pi-code/shared/core/logger';
 
 import type { AgentSession } from '@earendil-works/pi-coding-agent';
 import type { Webview } from 'vscode';
+
+interface Deferred<T> {
+  readonly promise: Promise<T>;
+  readonly resolve: (value: T) => void;
+}
+
+function deferred<T>(): Deferred<T> {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((r) => (resolve = r));
+  return { promise, resolve };
+}
+
+const mocks = vi.hoisted(() => ({
+  createSession: vi.fn(),
+  createAgentResources: vi.fn(async () => ({
+    resourceLoader: { getSkills: () => ({ skills: [] }), getPrompts: () => ({ prompts: [] }) },
+  })),
+  applyPersistedModelAndThinking: vi.fn(async () => {}),
+  getEnvironmentDetails: vi.fn(async () => ''),
+  expandMentions: vi.fn(async (text: string) => ({ text, mentionContent: undefined })),
+  injectResourceMessages: vi.fn(async () => {}),
+}));
 
 vi.mock('@pi-code/extension/core/settings', () => ({
   getSettingsManager: () => ({
@@ -15,9 +37,65 @@ vi.mock('@pi-code/extension/core/settings', () => ({
   readAppSettings: () => ({ enableTodoTool: false }),
 }));
 
+vi.mock('@pi-code/extension/structures/agent-runtime/session', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@pi-code/extension/structures/agent-runtime/session')>()),
+  createSession: mocks.createSession,
+}));
+vi.mock('@pi-code/extension/structures/agent-runtime/resource', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@pi-code/extension/structures/agent-runtime/resource')>()),
+  createAgentResources: mocks.createAgentResources,
+}));
+vi.mock('@pi-code/extension/structures/agent-runtime/helpers/model-selection', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@pi-code/extension/structures/agent-runtime/helpers/model-selection')>()),
+  applyPersistedModelAndThinking: mocks.applyPersistedModelAndThinking,
+}));
+vi.mock('@pi-code/extension/structures/chat-session/environment', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@pi-code/extension/structures/chat-session/environment')>()),
+  getEnvironmentDetails: mocks.getEnvironmentDetails,
+}));
+vi.mock('@pi-code/extension/structures/chat-command/mention', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@pi-code/extension/structures/chat-command/mention')>()),
+  expandMentions: mocks.expandMentions,
+}));
+vi.mock('@pi-code/extension/structures/chat-command/invocation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@pi-code/extension/structures/chat-command/invocation')>()),
+  injectResourceMessages: mocks.injectResourceMessages,
+}));
+
 function makeFakeWebview(): Webview {
   return { postMessage: vi.fn() } as unknown as Webview;
 }
+
+// A session shaped for the start/continue paths: prompt drives the run,
+// subscribe is called during preparation, and the rest satisfy dispose hooks.
+function makeStartableSession(): AgentSession & { prompt: ReturnType<typeof vi.fn>; dispose: ReturnType<typeof vi.fn> } {
+  return {
+    agent: { state: { messages: [] }, steer: vi.fn(), shouldStopAfterTurn: undefined, prepareNextTurnWithContext: undefined },
+    sessionManager: { appendMessage: vi.fn(() => 'persisted-id') },
+    settingsManager: { applyOverrides: vi.fn() },
+    sessionFile: '/tmp/task.json',
+    sessionId: 'session-1',
+    isStreaming: false,
+    subscribe: vi.fn(() => () => {}),
+    sendCustomMessage: vi.fn(async () => undefined),
+    prompt: vi.fn(async () => undefined),
+    abort: vi.fn(async () => undefined),
+    dispose: vi.fn(),
+  } as unknown as AgentSession & { prompt: ReturnType<typeof vi.fn>; dispose: ReturnType<typeof vi.fn> };
+}
+
+// Drain the microtask queue enough for an awaited preparation to resume.
+async function flush(): Promise<void> {
+  for (let i = 0; i < 20; i++) await Promise.resolve();
+}
+
+afterEach(() => {
+  vi.clearAllMocks();
+  mocks.createAgentResources.mockResolvedValue({
+    resourceLoader: { getSkills: () => ({ skills: [] }), getPrompts: () => ({ prompts: [] }) },
+  });
+  mocks.getEnvironmentDetails.mockResolvedValue('');
+});
 
 function makeFakeSession(steer: () => void, appendMessage: ReturnType<typeof vi.fn> = vi.fn(() => 'persisted-id')): AgentSession {
   return {
@@ -152,5 +230,109 @@ describe('Runtime cancellation persistence', () => {
     session.sessionManager.appendMessage!({ role: 'user', content: 'hi' } as never);
 
     expect(appendMessage).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('Runtime cancel during init', () => {
+  it('does not prompt and settles the webview when cancelled before the session exists', async () => {
+    const webview = makeFakeWebview();
+    const runtime = new Runtime(webview);
+    const gate = deferred<AgentSession & { prompt: ReturnType<typeof vi.fn>; dispose: ReturnType<typeof vi.fn> }>();
+    mocks.createSession.mockReturnValue(gate.promise);
+    const session = makeStartableSession();
+
+    void runtime.startTask('hello');
+    // Let startTask reach the session creation await.
+    await flush();
+    expect(mocks.createSession).toHaveBeenCalledTimes(1);
+
+    await runtime.cancelTask();
+
+    gate.resolve(session);
+    await flush();
+
+    expect(session.prompt).not.toHaveBeenCalled();
+    expect(session.dispose).toHaveBeenCalledTimes(1);
+    const messages = (webview.postMessage as ReturnType<typeof vi.fn>).mock.calls.map((call) => call[0]);
+    expect(messages.filter((msg) => msg.type === 'agent_settled')).toHaveLength(1);
+  });
+
+  it('discards the fresh session and settles when cancelled after creation but before prompt', async () => {
+    const webview = makeFakeWebview();
+    const runtime = new Runtime(webview);
+    const envGate = deferred<string>();
+    const session = makeStartableSession();
+    mocks.createSession.mockResolvedValue(session);
+    mocks.getEnvironmentDetails.mockReturnValue(envGate.promise);
+
+    void runtime.startTask('hello');
+    await flush();
+    expect(mocks.getEnvironmentDetails).toHaveBeenCalledTimes(1);
+
+    await runtime.cancelTask();
+
+    envGate.resolve('');
+    await flush();
+
+    expect(session.prompt).not.toHaveBeenCalled();
+    // Disposed once by cancelTask; the stale resume must not dispose again.
+    expect(session.dispose).toHaveBeenCalledTimes(1);
+    expect(session.abort).toHaveBeenCalledTimes(1);
+    const messages = (webview.postMessage as ReturnType<typeof vi.fn>).mock.calls.map((call) => call[0]);
+    expect(messages.filter((msg) => msg.type === 'agent_settled')).toHaveLength(1);
+  });
+
+  it('does not settle the webview when a real run is already streaming', async () => {
+    const webview = makeFakeWebview();
+    const runtime = new Runtime(webview);
+    const session = makeStartableSession() as AgentSession & {
+      prompt: ReturnType<typeof vi.fn>;
+      dispose: ReturnType<typeof vi.fn>;
+      isStreaming: boolean;
+    };
+    session.isStreaming = true;
+    runtime['session'] = session;
+
+    await runtime.cancelTask();
+
+    const messages = (webview.postMessage as ReturnType<typeof vi.fn>).mock.calls.map((call) => call[0]);
+    expect(messages.some((msg) => msg.type === 'agent_settled')).toBe(false);
+    expect(session.abort).toHaveBeenCalledTimes(1);
+    expect(session.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it('drops a continuation when cancelled during its preparation', async () => {
+    const webview = makeFakeWebview();
+    const runtime = new Runtime(webview);
+    const envGate = deferred<string>();
+    const session = makeStartableSession();
+    mocks.createSession.mockResolvedValue(session);
+    mocks.getEnvironmentDetails.mockReturnValue(envGate.promise);
+
+    void runtime.continueTask('/tmp/task.json');
+    await flush();
+    expect(mocks.getEnvironmentDetails).toHaveBeenCalledTimes(1);
+
+    await runtime.cancelTask();
+
+    envGate.resolve('');
+    await flush();
+
+    expect(session.sendCustomMessage).not.toHaveBeenCalled();
+    expect(session.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it('prompts normally when not cancelled', async () => {
+    const webview = makeFakeWebview();
+    const runtime = new Runtime(webview);
+    const session = makeStartableSession();
+    mocks.createSession.mockResolvedValue(session);
+
+    await runtime.startTask('hello');
+    await flush();
+
+    expect(session.prompt).toHaveBeenCalledTimes(1);
+    const messages = (webview.postMessage as ReturnType<typeof vi.fn>).mock.calls.map((call) => call[0]);
+    expect(messages.some((msg) => msg.type === 'agent_settled')).toBe(false);
   });
 });

@@ -34,6 +34,7 @@ export class Runtime {
   private compacting = false;
   private continueAfterCompaction = false;
   private runEndedWithError = false;
+  private taskGeneration = 0;
 
   private readonly messenger: Messenger;
   public readonly replyQueue: ReplyQueue;
@@ -50,11 +51,14 @@ export class Runtime {
   }
 
   public async startTask(promptText: string, images?: string[], path?: string): Promise<void> {
+    const generation = ++this.taskGeneration;
     this.replyQueue.clear();
     logger.debug(`Starting task: ${promptText.length} chars, ${images?.length ?? 0} image(s), session target ${path ?? 'current'}.`);
 
     try {
       const { session, envDetails, services } = await this.prepareSession(path);
+      if (this.discardIfStale(generation, session)) return;
+
       const skills = services.resourceLoader.getSkills().skills;
       const prompts = services.resourceLoader.getPrompts().prompts;
       const expanded = await expandMentions(promptText, getWorkspaceCwd());
@@ -79,18 +83,28 @@ export class Runtime {
       );
 
       const attachments = parseImageAttachments(images);
+
+      if (this.discardIfStale(generation, session)) return;
       void session.prompt(expanded.text, { images: attachments, expandPromptTemplates: false }).catch((err) => {
         this.messenger.postError(err);
       });
     } catch (err) {
+      // A cancel landing mid-preparation makes the disposed session throw here;
+      // that is the deliberate stop already reported by cancelTask.
+      if (generation !== this.taskGeneration) {
+        logger.debug('Task start abandoned after cancel:', err);
+        return;
+      }
       this.messenger.postError(err);
     }
   }
 
   public async continueTask(path: string): Promise<void> {
+    const generation = ++this.taskGeneration;
     logger.debug(`Continuing task from session ${path}.`);
     try {
       const { session, envDetails } = await this.prepareSession(path);
+      if (this.discardIfStale(generation, session)) return;
 
       void session
         .sendCustomMessage({ customType: 'environment_details', content: envDetails, display: false }, { triggerTurn: true })
@@ -98,6 +112,10 @@ export class Runtime {
           this.messenger.postError(err);
         });
     } catch (err) {
+      if (generation !== this.taskGeneration) {
+        logger.debug('Task continuation abandoned after cancel:', err);
+        return;
+      }
       this.messenger.postError(err);
     }
   }
@@ -156,21 +174,32 @@ export class Runtime {
   }
 
   public async cancelTask(): Promise<void> {
+    // Invalidate any task preparation still awaiting its session so it cannot
+    // start prompting after the cancel.
+    this.taskGeneration++;
+    const wasRunning = this.session?.isStreaming ?? false;
+
     this.cleanupPending();
     this.replyQueue.clear();
     this.continueAfterCompaction = false;
-    if (!this.session) return;
 
-    logger.debug('Cancelling task.');
     const session = this.session;
     this.session = null;
+    if (session) {
+      logger.debug('Cancelling task.');
+      try {
+        await session.abort();
+      } catch (err) {
+        logger.warn('Failed to abort session on cancel:', err);
+      } finally {
+        this.cleanupSession(session);
+      }
+    }
 
-    try {
-      await session.abort();
-    } catch (err) {
-      logger.warn('Failed to abort session on cancel:', err);
-    } finally {
-      this.cleanupSession(session);
+    // Aborting an idle session emits no events, so a cancel that lands before
+    // the API request must settle the webview itself.
+    if (!wasRunning) {
+      this.messenger.post({ type: 'agent_settled' });
     }
   }
 
@@ -185,6 +214,12 @@ export class Runtime {
     this.cleanupPending();
     this.apiRequestId = null;
     this.continueAfterCompaction = false;
+  }
+
+  private discardIfStale(generation: number, session: AgentSession): boolean {
+    if (generation === this.taskGeneration) return false;
+    if (this.session === session) this.cleanupSession(session);
+    return true;
   }
 
   public getSessionFile(): string | undefined {
