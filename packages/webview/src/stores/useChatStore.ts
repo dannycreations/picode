@@ -20,6 +20,7 @@ import type { RefObject } from 'react';
 import type { WebviewApi as InternalWebviewApi } from 'vscode-webview';
 import type {
   CommandItem,
+  CommitItem,
   ExtensionToWebviewMessage,
   HistoryItem,
   HistoryScope,
@@ -83,10 +84,12 @@ interface ChatState {
   readonly scope: HistoryScope;
   readonly historyByScope: Record<HistoryScope, HistoryItem[]>;
   readonly searchResults: string[];
+  readonly commitResults: CommitItem[] | null;
   readonly openedSettingsFromHistory: boolean;
   readonly latestEpoch: Record<HistoryScope, number>;
   readonly fetchedScopes: Set<HistoryScope>;
   readonly searchRequestId: string;
+  readonly commitRequestId: string;
   readonly activeWorkspace: string;
   readonly workspaceFolders: WorkspaceFolderItem[];
 
@@ -360,6 +363,11 @@ export const useChatStore = create<ChatState>((set, get) => {
         set({ searchResults: msg.payload.paths });
       }
     },
+    commit_results: (msg) => {
+      if (msg.payload.requestId === get().commitRequestId) {
+        set({ commitResults: msg.payload.commits });
+      }
+    },
     workspace_data: (msg) => {
       set({ workspaceFolders: msg.payload.folders, activeWorkspace: msg.payload.active });
     },
@@ -380,10 +388,12 @@ export const useChatStore = create<ChatState>((set, get) => {
     scope: 'current',
     historyByScope: scopedRecord<HistoryItem[]>(() => []),
     searchResults: [],
+    commitResults: null,
     openedSettingsFromHistory: false,
     latestEpoch: scopedRecord(() => 0),
     fetchedScopes: new Set<HistoryScope>(['current']),
     searchRequestId: '',
+    commitRequestId: '',
     activeWorkspace: '',
     workspaceFolders: [],
 
@@ -480,7 +490,7 @@ export const useChatStore = create<ChatState>((set, get) => {
     // settings, commands, and history for the new folder.
     selectWorkspace: (path) => {
       if (path === get().activeWorkspace) return;
-      set({ activeWorkspace: path, historyByScope: scopedRecord<HistoryItem[]>(() => []), searchResults: [] });
+      set({ activeWorkspace: path, historyByScope: scopedRecord<HistoryItem[]>(() => []), searchResults: [], commitResults: null });
       get().send({ type: 'select_workspace', path });
       get().send({ type: 'init' });
     },

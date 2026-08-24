@@ -47,6 +47,33 @@ describe('splitInputSegments', () => {
     ]);
   });
 
+  it('should highlight a # tag token', () => {
+    expect(splitInputSegments('ship #4e7c64a now', COMMANDS)).toEqual([
+      { text: 'ship ', highlighted: false },
+      { text: '#4e7c64a', highlighted: true },
+      { text: ' now', highlighted: false },
+    ]);
+  });
+
+  it('should highlight a tag next to a mention', () => {
+    expect(splitInputSegments('@src/a.ts #changes', COMMANDS)).toEqual([
+      { text: '@src/a.ts', highlighted: true },
+      { text: ' ', highlighted: false },
+      { text: '#changes', highlighted: true },
+    ]);
+  });
+
+  it('should keep a # inside a mention as part of the mention', () => {
+    expect(splitInputSegments('@a#b c', COMMANDS)).toEqual([
+      { text: '@a#b', highlighted: true },
+      { text: ' c', highlighted: false },
+    ]);
+  });
+
+  it('should not highlight a # glued to a word', () => {
+    expect(splitInputSegments('issue#123 stays plain', COMMANDS)).toEqual([{ text: 'issue#123 stays plain', highlighted: false }]);
+  });
+
   it('should leave plain text unhighlighted', () => {
     expect(splitInputSegments('just text', COMMANDS)).toEqual([{ text: 'just text', highlighted: false }]);
   });

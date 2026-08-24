@@ -40,6 +40,14 @@ export interface CommandItem {
   readonly detail?: string;
 }
 
+export interface CommitItem {
+  readonly hash: string;
+  readonly shortHash: string;
+  readonly subject: string;
+  readonly author?: string;
+  readonly date?: string;
+}
+
 export interface WorkspaceFolderItem {
   readonly name: string;
   readonly path: string;
@@ -52,6 +60,7 @@ export type WebviewToExtensionMessage =
   | { type: 'delete_sessions'; paths: string[] }
   | { type: 'send_message'; text: string; path?: string; images?: string[] }
   | { type: 'search_files'; query: string; requestId: string }
+  | { type: 'search_commits'; query: string; requestId: string }
   | { type: 'continue_task'; path?: string }
   | { type: 'tool_response'; approval_id: string; approved: boolean }
   | { type: 'question_response'; question_id: string; text: string; images?: string[] }
@@ -119,6 +128,7 @@ export type ExtensionToWebviewMessage =
   | { type: 'show_settings' }
   | { type: 'set_chat_input'; payload: { text: string } }
   | { type: 'search_results'; payload: { requestId: string; paths: string[] } }
+  | { type: 'commit_results'; payload: { requestId: string; commits: CommitItem[] } }
   | { type: 'reply_queue_data'; payload: { queue: ChatMessage[] } }
   | { type: 'reply_queue_delivered'; payload: { messages: ChatMessage[] } }
   | { type: 'stream_delta'; payload: { text?: string; thinking?: string } }

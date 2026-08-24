@@ -5,6 +5,7 @@ import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 
 import type { ReactElement, ReactNode } from 'react';
 import type { CommandItem } from '@pi-code/shared/core/protocol';
+import type { CommitTagItem } from '@pi-code/webview/components/chat/helpers/mention';
 
 interface SuggestionMenuProps<T> {
   readonly items: readonly T[];
@@ -105,5 +106,27 @@ export const MentionMenu = ({ items, selectedIndex, onSelect, onHover }: Mention
     onSelect={onSelect}
     onHover={onHover}
     renderItem={(path) => <span className={cn('truncate font-mono text-xs')}>{path}</span>}
+  />
+);
+
+interface CommitMenuProps {
+  readonly items: readonly CommitTagItem[];
+  readonly selectedIndex: number;
+  readonly onSelect: (item: CommitTagItem) => void;
+  readonly onHover: (index: number) => void;
+}
+
+export const CommitMenu = ({ items, selectedIndex, onSelect, onHover }: CommitMenuProps) => (
+  <SuggestionMenu<CommitTagItem>
+    items={items}
+    selectedIndex={selectedIndex}
+    onSelect={onSelect}
+    onHover={onHover}
+    renderItem={(item, isSelected) => (
+      <>
+        <div className="truncate font-semibold text-xs">{item.label}</div>
+        <div className={cn('truncate text-xs', isSelected ? 'opacity-80' : 'text-vscode-descriptionForeground')}>{item.description}</div>
+      </>
+    )}
   />
 );

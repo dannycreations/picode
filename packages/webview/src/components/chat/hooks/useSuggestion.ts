@@ -1,11 +1,19 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { applyCommand, matchCommands, readCommandQuery } from '@pi-code/webview/components/chat/helpers/command';
-import { applyMention, readMentionQuery } from '@pi-code/webview/components/chat/helpers/mention';
+import {
+  applyMention,
+  applyTag,
+  readMentionQuery,
+  readTagQuery,
+  toCommitTagItem,
+  WORKING_CHANGES_ITEM,
+} from '@pi-code/webview/components/chat/helpers/mention';
 import { useChatStore } from '@pi-code/webview/stores/useChatStore';
 
 import type { ChangeEvent, Dispatch, KeyboardEvent, RefObject, SetStateAction } from 'react';
 import type { CommandItem } from '@pi-code/shared/core/protocol';
+import type { CommitTagItem } from '@pi-code/webview/components/chat/helpers/mention';
 
 interface UseSuggestionProps<T> {
   readonly value: string;
@@ -186,6 +194,45 @@ export const useChatMention = ({ value, setValue, textareaRef }: UseMentionProps
     useChatStore.setState({ searchRequestId: requestId });
     const handle = setTimeout(() => {
       useChatStore.getState().send({ type: 'search_files', query, requestId });
+    }, 200);
+    return () => clearTimeout(handle);
+  }, [query]);
+
+  return suggestion;
+};
+
+interface UseChatTagProps {
+  readonly value: string;
+  readonly setValue: (value: string) => void;
+  readonly textareaRef: RefObject<HTMLTextAreaElement | null>;
+}
+
+export const useChatTag = ({ value, setValue, textareaRef }: UseChatTagProps): UseSuggestionReturn<CommitTagItem> => {
+  const commitResults = useChatStore((state) => state.commitResults);
+
+  // Null results mean a search is in flight: no items keep the menu closed
+  // until this query's response lands, so it never renders a half-loaded list.
+  const resolveItems = useCallback(() => (commitResults ? [WORKING_CHANGES_ITEM, ...commitResults.map(toCommitTagItem)] : []), [commitResults]);
+
+  const suggestion = useSuggestion<CommitTagItem>({
+    value,
+    setValue,
+    textareaRef,
+    readQuery: (text, caret) => readTagQuery(text, caret)?.query ?? null,
+    applyInsertion: (text, caret, item) => applyTag(text, caret, item.value),
+    resolveItems,
+  });
+
+  const { query } = suggestion;
+
+  useEffect(() => {
+    if (query === null) return;
+    const requestId = crypto.randomUUID();
+    // Same stale-response guard as file search: register before sending, and
+    // drop previous results so the menu waits for this query's data.
+    useChatStore.setState({ commitRequestId: requestId, commitResults: null });
+    const handle = setTimeout(() => {
+      useChatStore.getState().send({ type: 'search_commits', query, requestId });
     }, 200);
     return () => clearTimeout(handle);
   }, [query]);

@@ -16,6 +16,7 @@ import {
   refreshModelCatalog,
   streamHistory,
 } from '@pi-code/extension/structures/agent-webview/session';
+import { searchCommits } from '@pi-code/extension/structures/chat-command/helpers/git';
 import { toMentionText } from '@pi-code/extension/structures/chat-command/mention';
 import { searchWorkspaceFiles } from '@pi-code/extension/utilities/fs';
 import { getWorkspaceCwd, setSelectedWorkspace } from '@pi-code/extension/utilities/vscode';
@@ -110,6 +111,10 @@ const HANDLER_MAP: HandlerMap = {
   search_files: async (msg, ctx) => {
     const paths = await searchWorkspaceFiles(msg.query, ctx.cwd);
     ctx.runtime.postMessage({ type: 'search_results', payload: { requestId: msg.requestId, paths } });
+  },
+  search_commits: async (msg, ctx) => {
+    const commits = await searchCommits(msg.query, ctx.cwd);
+    ctx.runtime.postMessage({ type: 'commit_results', payload: { requestId: msg.requestId, commits } });
   },
   insert_mentions: (msg, ctx) => {
     const text = msg.paths

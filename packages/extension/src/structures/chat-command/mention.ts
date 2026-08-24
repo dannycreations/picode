@@ -4,9 +4,10 @@ import { formatThrownValue } from '@earendil-works/pi-ai';
 import { formatPathRelativeToCwdOrAbsolute } from '@earendil-works/pi-coding-agent';
 
 import { readOutputLimits } from '@pi-code/extension/core/settings';
+import { resolveCommitTag } from '@pi-code/extension/structures/chat-command/helpers/git';
 import { checkReadableFile, walkDirectory } from '@pi-code/extension/utilities/fs';
 import { readNumberedText } from '@pi-code/extension/utilities/truncate';
-import { MENTION_PATTERN } from '@pi-code/shared/core/constants';
+import { MENTION_PATTERN, TAG_PATTERN } from '@pi-code/shared/core/constants';
 
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
 
@@ -45,25 +46,36 @@ interface ExpandedMentions {
 }
 
 export async function expandMentions(text: string, cwd: string): Promise<ExpandedMentions> {
-  const matches = [...text.matchAll(MENTION_PATTERN)];
-  if (matches.length === 0) return { text, mentionContent: '' };
+  const mentions = [...text.matchAll(MENTION_PATTERN)];
+  const tags = [...text.matchAll(TAG_PATTERN)];
+  if (mentions.length === 0 && tags.length === 0) return { text, mentionContent: '' };
 
   const limits = readOutputLimits();
+  const [mentionBlocks, commitBlocks] = await Promise.all([collectMentionBlocks(mentions, cwd, limits), collectCommitBlocks(tags, cwd, limits)]);
+  return { text, mentionContent: [...mentionBlocks, ...commitBlocks].join('\n\n') };
+}
+
+async function collectMentionBlocks(matches: RegExpMatchArray[], cwd: string, limits: OutputLimits): Promise<string[]> {
+  if (matches.length === 0) return [];
 
   const resolved = new Map<string, ResolvedMention | null>();
   const uniqueMentions = [...new Set(matches.map((match) => match[1]))];
   const resolvedMentions = await Promise.all(uniqueMentions.map((raw) => resolveMention(raw, cwd, limits)));
   uniqueMentions.forEach((raw, index) => resolved.set(raw, resolvedMentions[index]));
 
-  const blocks = [...resolved.entries()]
+  return [...resolved.entries()]
     .filter((entry): entry is [string, ResolvedMention] => entry[1] !== null)
     .map(([path, mention]) =>
       mention.kind === 'folder'
         ? [`## Folder Content: ${path}`, '', mention.content].join('\n')
         : [`## File Content: ${path}`, '', mention.content].join('\n'),
     );
-  const mentionContent = blocks.length === 0 ? '' : blocks.join('\n\n');
-  return { text, mentionContent };
+}
+
+async function collectCommitBlocks(tags: RegExpMatchArray[], cwd: string, limits: OutputLimits): Promise<string[]> {
+  const uniqueTags = [...new Set(tags.map((match) => match[1]))];
+  const blocks = await Promise.all(uniqueTags.map((token) => resolveCommitTag(token, cwd, limits)));
+  return blocks.filter((block): block is string => block !== null);
 }
 
 async function resolveMention(raw: string, cwd: string, limits: OutputLimits): Promise<ResolvedMention | null> {

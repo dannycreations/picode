@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { resolveCommitTag } from '@pi-code/extension/structures/chat-command/helpers/git';
 import { expandMentions, toMentionText } from './mention';
 
 // expandMentions reads its truncation budget from app settings, which depend on
@@ -11,10 +12,16 @@ vi.mock('@pi-code/extension/core/settings', () => ({
   readOutputLimits: () => ({ maxLines: 2000, maxBytes: 512 * 1024 }),
 }));
 
+// Git history is an external process; the tag routing is what is under test here.
+vi.mock('@pi-code/extension/structures/chat-command/helpers/git', () => ({ resolveCommitTag: vi.fn() }));
+
+const resolveCommitTagMock = vi.mocked(resolveCommitTag);
+
 let cwd: string;
 
 beforeEach(async () => {
   cwd = await mkdtemp(join(tmpdir(), 'pi-mention-'));
+  resolveCommitTagMock.mockReset().mockResolvedValue(null);
 });
 
 afterEach(async () => {
@@ -85,6 +92,37 @@ describe('expandMentions', () => {
     const result = await expandMentions('@dup.ts then @dup.ts', cwd);
 
     expect(result.mentionContent.match(/## File Content: dup\.ts/g)).toHaveLength(1);
+  });
+
+  it('leaves ordinary #words such as issue references and headings untouched', async () => {
+    const text = 'fix #12345 and keep the # Heading intact';
+
+    const result = await expandMentions(text, cwd);
+
+    expect(result.text).toBe(text);
+    expect(result.mentionContent).toBe('');
+  });
+
+  it('expands #changes through the git resolver while keeping the token visible', async () => {
+    resolveCommitTagMock.mockResolvedValue('## Working Changes\n\nM src/a.ts');
+
+    const result = await expandMentions('check #changes please', cwd);
+
+    expect(resolveCommitTagMock).toHaveBeenCalledWith('changes', cwd, { maxLines: 2000, maxBytes: 512 * 1024 });
+    expect(result.text).toBe('check #changes please');
+    expect(result.mentionContent).toBe('## Working Changes\n\nM src/a.ts');
+  });
+
+  it('places commit blocks after file blocks in the hidden content', async () => {
+    await write('secret.txt', 'hidden treasure');
+    resolveCommitTagMock.mockResolvedValue('COMMIT BLOCK');
+
+    const result = await expandMentions('compare @secret.txt with #abc1234', cwd);
+
+    const fileAt = result.mentionContent.indexOf('## File Content: secret.txt');
+    const commitAt = result.mentionContent.indexOf('COMMIT BLOCK');
+    expect(fileAt).toBeGreaterThanOrEqual(0);
+    expect(commitAt).toBeGreaterThan(fileAt);
   });
 });
 

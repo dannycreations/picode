@@ -5,8 +5,8 @@ import TextareaAutosize from 'react-textarea-autosize';
 
 import { logger } from '@pi-code/shared/core/logger';
 import { splitInputSegments } from '@pi-code/webview/components/chat/helpers/highlight';
-import { useChatCommand, useChatMention } from '@pi-code/webview/components/chat/hooks/useSuggestion';
-import { CommandMenu, MentionMenu } from '@pi-code/webview/components/chat/SuggestionMenu';
+import { useChatCommand, useChatMention, useChatTag } from '@pi-code/webview/components/chat/hooks/useSuggestion';
+import { CommandMenu, CommitMenu, MentionMenu } from '@pi-code/webview/components/chat/SuggestionMenu';
 import { ImageThumb } from '@pi-code/webview/components/shared/ImageThumb';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { useChatStore } from '@pi-code/webview/stores/useChatStore';
@@ -70,6 +70,7 @@ export const ChatInput: FC<ChatInputProps> = ({
 
   const command = useChatCommand({ commands, value: inputValue, setValue: setInputValue, textareaRef });
   const mention = useChatMention({ value: inputValue, setValue: setInputValue, textareaRef });
+  const commit = useChatTag({ value: inputValue, setValue: setInputValue, textareaRef });
   const segments = useMemo(() => splitInputSegments(inputValue, commands), [inputValue, commands]);
 
   // Drop any staged images when the active model cannot accept them, so the
@@ -90,6 +91,7 @@ export const ChatInput: FC<ChatInputProps> = ({
     // The picker owns navigation and acceptance keys while it is open.
     if (mention.handleKeyDown(e)) return;
     if (command.handleKeyDown(e)) return;
+    if (commit.handleKeyDown(e)) return;
 
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -101,6 +103,7 @@ export const ChatInput: FC<ChatInputProps> = ({
     setInputValue(e.target.value);
     command.handleChange(e);
     mention.handleChange(e);
+    commit.handleChange(e);
   };
 
   const attachImage = async (file: File): Promise<void> => {
@@ -191,6 +194,9 @@ export const ChatInput: FC<ChatInputProps> = ({
         {mention.isOpen && (
           <MentionMenu items={mention.items} selectedIndex={mention.selectedIndex} onSelect={mention.select} onHover={mention.setSelectedIndex} />
         )}
+        {commit.isOpen && (
+          <CommitMenu items={commit.items} selectedIndex={commit.selectedIndex} onSelect={commit.select} onHover={commit.setSelectedIndex} />
+        )}
         <div className="relative flex" onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
           <div
             ref={matchRef}
@@ -223,11 +229,14 @@ export const ChatInput: FC<ChatInputProps> = ({
             onBlur={() => {
               setIsFocused(false);
               command.close();
+              mention.close();
+              commit.close();
             }}
             onKeyDown={handleKeyDown}
             onSelect={() => {
               command.syncCaret();
               mention.syncCaret();
+              commit.syncCaret();
             }}
             onPaste={handlePaste}
             onScroll={(e) => {
