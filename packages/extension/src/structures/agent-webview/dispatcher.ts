@@ -243,6 +243,7 @@ const HANDLER_MAP: HandlerMap = {
 };
 
 export async function dispatch(message: WebviewToExtensionMessage, context: MessageHandlerContext): Promise<void> {
+  logger.trace('Handling webview message:', message.type);
   try {
     const handler = HANDLER_MAP[message.type] as CommandHandler<typeof message.type>;
     await handler(message, context);

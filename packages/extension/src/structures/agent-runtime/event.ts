@@ -219,6 +219,7 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
     }
 
     default:
+      logger.debug(`Ignoring unmapped agent session event: ${event.type}`);
       return { message: null, apiRequestId };
   }
 }

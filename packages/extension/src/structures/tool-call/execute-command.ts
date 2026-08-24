@@ -5,6 +5,7 @@ import { Type } from 'typebox';
 
 import { readOutputLimits } from '@pi-code/extension/core/settings';
 import { truncateOutput } from '@pi-code/extension/utilities/truncate';
+import { logger } from '@pi-code/shared/core/logger';
 
 import type { CustomToolResult } from '@pi-code/extension/types/extension';
 import type { ToolName } from '@pi-code/shared/core/types';
@@ -225,7 +226,11 @@ export const executeCommandTool = defineTool({
             process.kill(-pid, sig);
             cp.kill(sig);
           }
-        } catch {}
+        } catch (err) {
+          // Kill races against an already-exited tree throw expectedly; debug
+          // keeps a trail for stuck-process reports without warning noise.
+          logger.debug(`Failed to signal process tree ${pid} with ${sig}:`, err);
+        }
       };
 
       const escalateKill = (graceMs: number = KILL_GRACE_MS) => {

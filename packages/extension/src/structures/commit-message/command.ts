@@ -22,17 +22,17 @@ const lastGeneratedMessages = new Map<string, string>();
 
 function resolveRootUri(scmRequest?: ScmRequest): Uri | undefined {
   if (scmRequest?.rootUri) {
-    logger.info(`Root URI provided by SCM context: ${scmRequest.rootUri.fsPath}`);
+    logger.debug(`Root URI provided by SCM context: ${scmRequest.rootUri.fsPath}`);
     return scmRequest.rootUri;
   }
 
   const uri = getWorkspaceUri();
   if (!uri) {
-    logger.info('No active workspace folders found.');
+    logger.debug('No active workspace folders found.');
     return undefined;
   }
 
-  logger.info(`Root URI resolved from active workspace folders: ${uri.fsPath}`);
+  logger.debug(`Root URI resolved from active workspace folders: ${uri.fsPath}`);
   return uri;
 }
 
@@ -66,7 +66,7 @@ function resolveRegeneration(cwd: string, userMessage: string): { userContext: s
 
   // Re-running while the input box still holds the previous suggestion means the
   // user rejected it, so feed it back as a negative example with the instruction.
-  logger.info('Input box value matches previously generated message. Treating as a re-generation.');
+  logger.debug('Input box value matches previously generated message. Treating as a re-generation.');
   return {
     userContext: lastUserMessages.get(cwd) ?? '',
     rejectedMessage: previousGenerated ?? '',
@@ -83,21 +83,21 @@ async function generateAndApply(
   userContext: string,
   rejectedMessage: string,
 ): Promise<void> {
-  logger.info('Generating diff and repo context...');
+  logger.debug('Generating diff and repo context...');
   const [diff, { branch, recentCommits }] = await Promise.all([getGitDiffContext(repo, changes, useStaged), getRepoContext(repo)]);
-  logger.info(`Generated diff context (character length: ${diff.length})`);
-  logger.info(`Current Branch: ${branch}`);
-  logger.info(`Recent Commits count: ${recentCommits.split('\n').filter(Boolean).length}`);
+  logger.debug(`Generated diff context (character length: ${diff.length})`);
+  logger.debug(`Current Branch: ${branch}`);
+  logger.debug(`Recent Commits count: ${recentCommits.split('\n').filter(Boolean).length}`);
 
   const gitContext = buildGitContext(changes, diff, branch, recentCommits, useStaged);
   const prompt = buildPrompt(gitContext, userContext, rejectedMessage);
-  logger.info(`Fully assembled prompt (character length: ${prompt.length})`);
+  logger.debug(`Fully assembled prompt (character length: ${prompt.length})`);
 
   const rawMessage = await completePrompt(cwd, prompt);
-  logger.info(`Raw LLM response: ${rawMessage}`);
+  logger.trace(`Raw LLM response: ${rawMessage}`);
 
   const cleanMessage = extractCodeFenceMessage(rawMessage);
-  logger.info(`Extracted commit message: ${cleanMessage}`);
+  logger.debug(`Extracted commit message: ${cleanMessage}`);
   if (!cleanMessage) {
     throw new Error('Empty response received from model.');
   }
@@ -113,26 +113,26 @@ export function registerCommitMessageCommand(): Disposable {
     try {
       const repo = await getGitRepository(resolveRootUri(scmRequest));
       if (!repo) {
-        logger.info('Git repository resolution failed: no Git repository found.');
+        logger.debug('Git repository resolution failed: no Git repository found.');
         window.showErrorMessage('No Git repository found.');
         return;
       }
-      logger.info(`Git repository resolved successfully: ${repo.rootUri.fsPath}`);
+      logger.debug(`Git repository resolved successfully: ${repo.rootUri.fsPath}`);
 
       const cwd = repo.rootUri.fsPath;
 
       if (generatingRepos.has(cwd)) {
-        logger.info(`Already generating commit message for repository: ${cwd}. Ignoring duplicate request.`);
+        logger.debug(`Already generating commit message for repository: ${cwd}. Ignoring duplicate request.`);
         return;
       }
 
       generatingRepos.add(cwd);
       try {
-        logger.info(`Scanning git changes in directory: ${cwd}`);
+        logger.debug(`Scanning git changes in directory: ${cwd}`);
         const { changes, useStaged } = await getGitChanges(repo);
-        logger.info(`Found ${changes.length} change file(s). Staged changes used: ${useStaged}`);
+        logger.debug(`Found ${changes.length} change file(s). Staged changes used: ${useStaged}`);
         if (changes.length === 0) {
-          logger.info('No changes to process. Exiting.');
+          logger.debug('No changes to process. Exiting.');
           window.showInformationMessage('No changes found to commit.');
           return;
         }

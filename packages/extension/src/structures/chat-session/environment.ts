@@ -6,6 +6,7 @@ import { readAppSettings } from '@pi-code/extension/core/settings';
 import { excludeVcsEntries, pathCollator } from '@pi-code/extension/utilities/fs';
 import { getGitRepository, getIgnoredPaths } from '@pi-code/extension/utilities/git';
 import { toRelativePath, toWorkspaceRelativePath } from '@pi-code/extension/utilities/vscode';
+import { logger } from '@pi-code/shared/core/logger';
 
 import type { Change, Repository } from '@pi-code/extension/types/git';
 import type { FileChild } from '@pi-code/extension/utilities/fs';
@@ -132,7 +133,8 @@ export async function walkWorkspace(
           isSymlink: !!(type & FileType.SymbolicLink),
         })),
       );
-    } catch {
+    } catch (err) {
+      logger.debug(`Skipping unreadable directory ${uri.fsPath}:`, err);
       return [];
     }
 

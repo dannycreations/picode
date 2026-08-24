@@ -51,6 +51,7 @@ export class Runtime {
 
   public async startTask(promptText: string, images?: string[], path?: string): Promise<void> {
     this.replyQueue.clear();
+    logger.debug(`Starting task: ${promptText.length} chars, ${images?.length ?? 0} image(s), session target ${path ?? 'current'}.`);
 
     try {
       const { session, envDetails, services } = await this.prepareSession(path);
@@ -87,6 +88,7 @@ export class Runtime {
   }
 
   public async continueTask(path: string): Promise<void> {
+    logger.debug(`Continuing task from session ${path}.`);
     try {
       const { session, envDetails } = await this.prepareSession(path);
 
@@ -159,6 +161,7 @@ export class Runtime {
     this.continueAfterCompaction = false;
     if (!this.session) return;
 
+    logger.debug('Cancelling task.');
     const session = this.session;
     this.session = null;
 
@@ -210,6 +213,7 @@ export class Runtime {
 
   private async getOrCreateSession(path: string | undefined, cwd: string): Promise<AgentSession> {
     if (this.session && (!path || this.session.sessionFile === path)) {
+      logger.debug('Reusing existing agent session.');
       return this.session;
     }
 
@@ -217,6 +221,7 @@ export class Runtime {
 
     const session = await createSession(cwd, path);
     this.session = session;
+    logger.debug(`Created agent session${path ? ` from ${path}` : ' for the workspace'}.`);
 
     this.bindSessionHooks(session);
     this.unsubscribeSessionEvents = session.subscribe((event) => this.handleSessionEvent(event, session));

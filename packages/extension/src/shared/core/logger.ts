@@ -1,12 +1,26 @@
-type LogLevelName = 'trace' | 'debug' | 'info' | 'warn' | 'error';
+export type LogLevelName = 'trace' | 'debug' | 'info' | 'warn' | 'error';
 
-interface LoggerSink {
-  trace(message: string, ...args: unknown[]): void;
-  debug(message: string, ...args: unknown[]): void;
-  info(message: string, ...args: unknown[]): void;
-  warn(message: string, ...args: unknown[]): void;
-  error(message: string | Error, ...args: unknown[]): void;
+export type LevelSetting = LogLevelName | 'off';
+
+export interface LoggerSink {
+  readonly level?: LevelSetting;
+  readonly trace: (message: string, ...args: unknown[]) => void;
+  readonly debug: (message: string, ...args: unknown[]) => void;
+  readonly info: (message: string, ...args: unknown[]) => void;
+  readonly warn: (message: string, ...args: unknown[]) => void;
+  readonly error: (message: string | Error, ...args: unknown[]) => void;
 }
+
+const LEVEL_WEIGHT: Record<LevelSetting, number> = {
+  off: Number.POSITIVE_INFINITY,
+  trace: 10,
+  debug: 20,
+  info: 30,
+  warn: 40,
+  error: 50,
+};
+
+const LEVEL_SETTINGS = Object.keys(LEVEL_WEIGHT) as LevelSetting[];
 
 const consoleSink: LoggerSink = {
   trace: (message, ...args) => console.trace(message, ...args),
@@ -18,7 +32,25 @@ const consoleSink: LoggerSink = {
 
 let sink: LoggerSink = consoleSink;
 
+function parseLevel(raw: string | undefined): LevelSetting | undefined {
+  const name = raw?.trim().toLowerCase();
+  return LEVEL_SETTINGS.find((setting) => setting === name);
+}
+
+function readEnvLevel(): LevelSetting | undefined {
+  // The webview bundle runs without Node's process global; treat the variable as unset there.
+  if (typeof process === 'undefined') return undefined;
+  return parseLevel(process.env['PI_CODE_LOG_LEVEL']);
+}
+
+function isEnabled(level: LogLevelName): boolean {
+  const setting = readEnvLevel() ?? sink.level ?? 'info';
+  return LEVEL_WEIGHT[level] >= LEVEL_WEIGHT[setting];
+}
+
 function forward(level: LogLevelName, args: unknown[]): void {
+  if (!isEnabled(level)) return;
+
   const [head, ...rest] = args;
   if (level === 'error') {
     sink.error(head instanceof Error || typeof head === 'string' ? head : String(head), ...rest);

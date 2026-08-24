@@ -13,11 +13,11 @@ export async function completePrompt(cwd: string, prompt: string): Promise<strin
     throw new Error('No model configured or available. Please configure your model settings in pi-agent.');
   }
 
-  logger.info('Sending completion request to backend...');
+  logger.debug('Sending completion request to backend...');
   const response = await runtime.completeSimple(model, {
     messages: [{ role: 'user' as const, content: prompt, timestamp: Date.now() }],
   });
-  logger.info('Completion response received successfully.');
+  logger.debug('Completion response received successfully.');
 
   const primaryText = contentText(response.content).trim();
   if (primaryText) {
