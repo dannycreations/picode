@@ -66,7 +66,7 @@ export const spawnSubagentTool = defineTool({
     }
 
     if (!params.task.trim()) {
-      return failure('Error: "task" is required and cannot be empty.', agent.name);
+      return failure('Error: `task` is required and cannot be empty.', agent.name);
     }
 
     try {

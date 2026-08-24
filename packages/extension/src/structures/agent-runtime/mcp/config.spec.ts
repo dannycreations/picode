@@ -63,7 +63,7 @@ describe('mergeMcpConfigs', () => {
 
     expect(config).toEqual({});
     expect(warnings[0]).toContain('"typo"');
-    expect(warnings[0]).toContain('"autorun" must be a boolean');
+    expect(warnings[0]).toContain('`autorun` must be a boolean');
   });
 
   it('keeps a valid description and silently drops blank or non-string ones', () => {

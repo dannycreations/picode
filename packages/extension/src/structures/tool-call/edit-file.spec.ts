@@ -98,6 +98,6 @@ describe('editFileTool', () => {
     expect(writeFile).toHaveBeenCalledTimes(1);
     expect(result.isError).toBeFalsy();
     expect(result.content[0].text).toContain('whitespace-tolerant matching');
-    expect(result.content[0].text).toContain('differed from "old_string"');
+    expect(result.content[0].text).toContain('differed from `old_string`');
   });
 });

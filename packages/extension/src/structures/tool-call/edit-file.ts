@@ -122,9 +122,9 @@ function replaceExpected(originalLF: string, oldLF: string, newLF: string, expec
 
   return {
     error:
-      `Error: matched ${exact} occurrence(s) of "old_string" in ${filePath}, but "expected" is ${expected}.\n` +
+      `Error: matched ${exact} occurrence(s) of \`old_string\` in ${filePath}, but \`expected\` is ${expected}.\n` +
       `Exact: ${exact}, whitespace-tolerant: ${whitespace}, token-based: ${token}.\n\n` +
-      `Verify "old_string" matches the target exactly as-is, including whitespace and line endings.`,
+      `Verify \`old_string\` matches the target exactly as-is, including whitespace and line endings.`,
   };
 }
 
@@ -134,7 +134,7 @@ function withMatchNote(
   matched: number,
 ): CustomToolResult<{ diff: string }> {
   const mode = strategy === 'whitespace' ? 'whitespace-tolerant matching' : 'token-based matching';
-  const note = `Note: matched ${matched} occurrence(s) using ${mode}; the file text differed from "old_string" in whitespace.`;
+  const note = `Note: matched ${matched} occurrence(s) using ${mode}; the file text differed from \`old_string\` in whitespace.`;
   return {
     ...result,
     content: result.content.map((part) => (part.type === 'text' ? { ...part, text: `${part.text}\n\n${note}` } : part)),
@@ -148,7 +148,7 @@ export const editFileTool = defineTool({
   parameters: Type.Object({
     file_path: Type.String({ description: 'Workspace-relative path of the file.' }),
     old_string: Type.String({ description: 'Exact literal text to replace; empty creates the file.' }),
-    new_string: Type.String({ description: 'Replacement text for "old_string".' }),
+    new_string: Type.String({ description: 'Replacement text for `old_string`.' }),
     expected: Type.Optional(Type.Integer({ minimum: 1, description: 'Optional expected number of replacements; defaults to 1.' })),
   }),
   async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
@@ -158,13 +158,13 @@ export const editFileTool = defineTool({
       const check = await checkReadableFile(resolvedPath);
       if (check.ok) {
         if (old_string === '') {
-          return toolError(`Error: "file_path" already exists: ${file_path}. Use a non-empty "old_string" to modify it.`);
+          return toolError(`Error: \`file_path\` already exists: ${file_path}. Use a non-empty \`old_string\` to modify it.`);
         }
         originalContent = await readFile(resolvedPath, 'utf8');
       } else if (old_string !== '' || (await pathExists(resolvedPath))) {
         // A present-but-unreadable file must never fall through to creation,
-        // which would overwrite it with "new_string".
-        return toolError(`${check.body} Use "write_file" to overwrite this file, or "read_file" with "line_ranges" to inspect a portion.`);
+        // which would overwrite it with `new_string`.
+        return toolError(`${check.body} Use \`write_file\` to overwrite this file, or \`read_file\` with \`line_ranges\` to inspect a portion.`);
       }
 
       if (originalContent === null) {
@@ -186,7 +186,7 @@ export const editFileTool = defineTool({
       const newLF = normalizeToLF(new_string);
 
       if (oldLF === newLF) {
-        return toolError('Error: "old_string" and "new_string" are identical; nothing to change.');
+        return toolError('Error: `old_string` and `new_string` are identical; nothing to change.');
       }
 
       const expected = params.expected ?? 1;

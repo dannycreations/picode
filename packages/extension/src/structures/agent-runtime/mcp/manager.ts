@@ -140,7 +140,7 @@ export function createMcpGateway(connect: McpConnector = connectMcpServer): McpG
     );
   }
 
-  // Starts every "autorun" server ahead of its first tool call; a failed
+  // Starts every `autorun` server ahead of its first tool call; a failed
   // start is logged here and retried by the next dispatch.
   async function preconnect(config: McpConfig, cwd: string): Promise<void> {
     const eager = Object.entries(config).filter(([, server]) => server.autorun === true);
@@ -204,7 +204,7 @@ export function createMcpGateway(connect: McpConnector = connectMcpServer): McpG
         return {
           text: [
             `Error: MCP tool "${params.tool}" on server "${params.server}" failed: ${formatThrownValue(err)}.`,
-            `Call again with "server" set to "${params.server}" and no "tool" to see this server's available tools.`,
+            `Call again with \`server\` set to "${params.server}" and no \`tool\` to see this server's available tools.`,
           ].join(' '),
           isError: true,
         };
@@ -221,7 +221,7 @@ function formatServerCatalog(names: readonly string[], config: McpConfig, live: 
   const lines = names.map((name) => `- ${name} (${config[name].kind}, ${live.has(name) ? 'running' : 'not started'})`);
   return {
     subtitle: `${names.length} servers`,
-    text: ['## Configured MCP servers', '', ...lines, '', "Call again with `server` set to one name to list that server's tools."].join('\n'),
+    text: ['## Configured MCP servers', '', ...lines, '', `Call again with \`server\` set to one name to list that server's tools.`].join('\n'),
   };
 }
 

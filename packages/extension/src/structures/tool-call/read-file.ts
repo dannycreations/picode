@@ -48,8 +48,8 @@ async function readFileSection(cwd: string, file: FileRequest, limits: OutputLim
       hint: (truncation) => {
         const next = nextLineAfter(truncation.content);
         return next === undefined
-          ? `Use "line_ranges" on "${file.path}" to read a narrower slice.`
-          : `Use "line_ranges" starting at line ${next} on "${file.path}" to continue.`;
+          ? `Use \`line_ranges\` on "${file.path}" to read a narrower slice.`
+          : `Use \`line_ranges\` starting at line ${next} on "${file.path}" to continue.`;
       },
     });
     return { path: file.path, header, body: numbered, hasError: false };

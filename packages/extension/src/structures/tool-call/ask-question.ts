@@ -22,7 +22,7 @@ export const askQuestionTool = defineTool({
       // The chat view renders the question straight from the tool call
       // arguments, so an empty question would surface as an empty card.
       if (!params.question.trim()) {
-        return toolError('Error: "question" is required and cannot be empty.');
+        return toolError('Error: `question` is required and cannot be empty.');
       }
 
       const response = await askQuestion(toolCallId, signal);

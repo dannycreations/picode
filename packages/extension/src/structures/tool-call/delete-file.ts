@@ -33,7 +33,7 @@ export const deleteFileTool = defineTool({
         stats = await stat(resolvedPath);
       } catch (err) {
         if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
-          return toolError(`Error: "path" does not exist: ${params.path}`);
+          return toolError(`Error: \`path\` does not exist: ${params.path}`);
         }
         throw err;
       }

@@ -51,7 +51,7 @@ export function parseMcpServer(raw: unknown): ParsedServer {
 
   const autorun = record['autorun'];
   if (autorun !== undefined && typeof autorun !== 'boolean') {
-    return { ok: false, error: '"autorun" must be a boolean' };
+    return { ok: false, error: '`autorun` must be a boolean' };
   }
 
   const description = optionalDescription(record);
@@ -60,13 +60,13 @@ export function parseMcpServer(raw: unknown): ParsedServer {
   const command = typeof record['command'] === 'string' ? record['command'] : undefined;
 
   if (url !== undefined && command !== undefined) {
-    return { ok: false, error: 'specify either "command" or "url", not both' };
+    return { ok: false, error: 'specify either `command` or `url`, not both' };
   }
 
   if (url !== undefined) {
     const headers = optionalStringMap(record, 'headers');
     if (record['headers'] !== undefined && headers === undefined) {
-      return { ok: false, error: '"headers" must map strings to strings' };
+      return { ok: false, error: '`headers` must map strings to strings' };
     }
     return {
       ok: true,
@@ -82,17 +82,17 @@ export function parseMcpServer(raw: unknown): ParsedServer {
   }
 
   if (command !== undefined) {
-    if (command.trim() === '') return { ok: false, error: '"command" cannot be empty' };
+    if (command.trim() === '') return { ok: false, error: '`command` cannot be empty' };
 
     const args = optionalStrings(record, 'args');
-    if (record['args'] !== undefined && args === undefined) return { ok: false, error: '"args" must be a list of strings' };
+    if (record['args'] !== undefined && args === undefined) return { ok: false, error: '`args` must be a list of strings' };
 
     const env = optionalStringMap(record, 'env');
-    if (record['env'] !== undefined && env === undefined) return { ok: false, error: '"env" must map strings to strings' };
+    if (record['env'] !== undefined && env === undefined) return { ok: false, error: '`env` must map strings to strings' };
 
     const cwd = record['cwd'];
     if (cwd !== undefined && (typeof cwd !== 'string' || cwd.trim() === '')) {
-      return { ok: false, error: '"cwd" must be a non-empty string' };
+      return { ok: false, error: '`cwd` must be a non-empty string' };
     }
 
     return {
@@ -110,7 +110,7 @@ export function parseMcpServer(raw: unknown): ParsedServer {
     };
   }
 
-  return { ok: false, error: 'needs either a local "command" or a remote "url"' };
+  return { ok: false, error: 'needs either a local `command` or a remote `url`' };
 }
 
 export function mergeMcpConfigs(globalRaw: unknown, projectRaw: unknown): { config: McpConfig; warnings: readonly string[] } {
@@ -131,7 +131,7 @@ export function mergeMcpConfigs(globalRaw: unknown, projectRaw: unknown): { conf
         continue;
       }
       // A disabled entry removes the name outright, so a project can switch
-      // off a global server by redefining its name with "disabled": true.
+      // off a global server by redefining its name with `disabled`: true.
       if (parsed.server) config[name] = parsed.server;
       else delete config[name];
     }

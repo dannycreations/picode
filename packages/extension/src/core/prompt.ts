@@ -90,8 +90,8 @@ ${SUBAGENTS.map((agent) => `- ${agent.name}: ${agent.summary}`).join('\n')}
 
 ### Rules for Delegation
 
-1. **Concurrency**: To run multiple independent sub-agents at once, issue multiple "spawn_subagent" calls within a single message.
-2. **Full Context Required**: A sub-agent has no knowledge of your conversation history. Include every necessary path, constraint, and definition of goal directly in the "task" field.
+1. **Concurrency**: To run multiple independent sub-agents at once, issue multiple \`spawn_subagent\` calls within a single message.
+2. **Full Context Required**: A sub-agent has no knowledge of your conversation history. Include every necessary path, constraint, and definition of goal directly in the \`task\` field.
 3. **Explicit Output Requirements**: Clearly specify what the sub-agent must return. Its final message is the *only* information you will receive, nothing else is visible to you.
 4. **User Visibility**: The user cannot see the sub-agent's work in progress. You are responsible for summarizing any relevant findings or actions for the user afterward.
 5. **Sub-Agent Limitations**: A sub-agent cannot ask clarifying questions, edit files, or spawn further sub-agents. Treat each delegation as a one-purpose, fully self-contained instruction.`;

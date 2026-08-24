@@ -20,7 +20,7 @@ export const mcpTool = defineTool({
   name: 'mcp' as ToolName,
   label: 'Model Context Protocol',
   description:
-    'Interact with MCP servers by: first, call with no parameters to list configured servers; second, call with "server" to start it on first use and list its tools/schemas; third, call with "server", "tool", and schema-matching "arguments" to execute the tool.',
+    'Interact with MCP servers by: first, call with no parameters to list configured servers; second, call with `server` to start it on first use and list its tools/schemas; third, call with `server`, `tool`, and schema-matching `arguments` to execute the tool.',
   parameters: Type.Object({
     server: Type.Optional(Type.String({ description: 'The MCP server to talk to. Omit to list the configured servers.' })),
     tool: Type.Optional(Type.String({ description: "The tool to run on that server. Omit to list the server's tools." })),

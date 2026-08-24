@@ -60,7 +60,7 @@ function collapseCarriageReturns(line: string): string {
 export const executeCommandTool = defineTool({
   name: 'execute_command' as ToolName,
   label: 'Execute Command',
-  description: 'Run a CLI command on the host. Prefer explicit "cwd" over using change directory "cd" command.',
+  description: 'Run a CLI command on the host. Prefer explicit `cwd` over using change directory `cd` command.',
   parameters: Type.Object({
     command: Type.String({ description: 'The command to execute.' }),
     cwd: Type.Optional(Type.Union([Type.String(), Type.Null()], { description: 'Optional working directory; defaults to the workspace.' })),
@@ -204,7 +204,7 @@ export const executeCommandTool = defineTool({
         }
 
         if (timedOut) {
-          modelText = `${modelText}\n\nCommand timed out after ${effectiveTimeout} ms. If it is not waiting for input, rerun with a larger "timeout".`;
+          modelText = `${modelText}\n\nCommand timed out after ${effectiveTimeout} ms. If it is not waiting for input, rerun with a larger \`timeout\`.`;
         }
 
         res({
