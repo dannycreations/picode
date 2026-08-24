@@ -1,12 +1,21 @@
-import { exec, spawn } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { StringDecoder } from 'node:string_decoder';
-import { defineTool, formatSize, resolvePath, stripAnsi } from '@earendil-works/pi-coding-agent';
+import {
+  defineTool,
+  formatSize,
+  getShellConfig,
+  killProcessTree,
+  resolvePath,
+  stripAnsi,
+  trackDetachedChildPid,
+  untrackDetachedChildPid,
+} from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
 import { readOutputLimits } from '@pi-code/extension/core/settings';
 import { truncateOutput } from '@pi-code/extension/utilities/truncate';
-import { logger } from '@pi-code/shared/core/logger';
 
+import type { SpawnOptions } from 'node:child_process';
 import type { CustomToolResult } from '@pi-code/extension/types/extension';
 import type { ToolName } from '@pi-code/shared/core/types';
 
@@ -16,11 +25,18 @@ function stripAnsiAndNormalize(raw: string): string {
 
 const DEFAULT_TIMEOUT_MS = 120_000;
 const MAX_TIMEOUT_MS = 1_800_000;
-const KILL_GRACE_MS = 2_000;
 const STREAM_FLUSH_MS = 80;
 
 function resolveTimeout(requested: number | undefined): number {
   return Math.min(requested ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
+}
+
+function resolveBashShell(): { shell: string; args: string[] } | null {
+  try {
+    return getShellConfig();
+  } catch {
+    return null;
+  }
 }
 
 export function cleanCommandOutput(raw: string): string {
@@ -135,18 +151,21 @@ export const executeCommandTool = defineTool({
         }
       };
 
-      const cp = spawn(params.command, [], {
-        shell: true,
+      const spawnOptions: SpawnOptions = {
         cwd: resolvedCwd,
         env: { ...process.env, FORCE_COLOR: '1' },
         stdio: ['ignore', 'pipe', 'pipe'],
         detached: process.platform !== 'win32',
-      });
+      };
+
+      const bash = resolveBashShell();
+      const cp = bash ? spawn(bash.shell, [...bash.args, params.command], spawnOptions) : spawn(params.command, [], { ...spawnOptions, shell: true });
+
+      if (cp.pid) trackDetachedChildPid(cp.pid);
 
       let finished = false;
       let timedOut = false;
       let onAbort: (() => void) | null = null;
-      let escalationTimer: ReturnType<typeof setTimeout> | null = null;
       let timeoutTimer: ReturnType<typeof setTimeout> | null = null;
 
       const detachSignal = () => {
@@ -161,10 +180,6 @@ export const executeCommandTool = defineTool({
           clearTimeout(timeoutTimer);
           timeoutTimer = null;
         }
-        if (escalationTimer) {
-          clearTimeout(escalationTimer);
-          escalationTimer = null;
-        }
         if (streamTimer) {
           clearTimeout(streamTimer);
           streamTimer = null;
@@ -176,6 +191,7 @@ export const executeCommandTool = defineTool({
         finished = true;
         detachSignal();
         clearTimers();
+        if (cp.pid) untrackDetachedChildPid(cp.pid);
 
         // Flush remaining bytes from stream decoders
         const stdoutTail = stdoutDecoder.end();
@@ -214,29 +230,8 @@ export const executeCommandTool = defineTool({
         });
       };
 
-      // Safe to call repeatedly until the tree is gone. Never gate
-      // on cp.killed, which only records that a kill was requested.
-      const killProcess = (sig: NodeJS.Signals = 'SIGTERM') => {
-        const pid = cp.pid;
-        if (!pid) return;
-        try {
-          if (process.platform === 'win32') {
-            exec(`taskkill /pid ${pid} /T /F`, () => {});
-          } else {
-            process.kill(-pid, sig);
-            cp.kill(sig);
-          }
-        } catch (err) {
-          // Kill races against an already-exited tree throw expectedly; debug
-          // keeps a trail for stuck-process reports without warning noise.
-          logger.debug(`Failed to signal process tree ${pid} with ${sig}:`, err);
-        }
-      };
-
-      const escalateKill = (graceMs: number = KILL_GRACE_MS) => {
-        killProcess('SIGTERM');
-        if (escalationTimer) clearTimeout(escalationTimer);
-        escalationTimer = setTimeout(() => killProcess('SIGKILL'), graceMs);
+      const killCommand = () => {
+        if (cp.pid) killProcessTree(cp.pid);
       };
 
       cp.stdout?.on('data', (chunk: Buffer) => {
@@ -262,15 +257,15 @@ export const executeCommandTool = defineTool({
 
       timeoutTimer = setTimeout(() => {
         timedOut = true;
-        escalateKill();
+        killCommand();
       }, effectiveTimeout);
 
       if (signal) {
         if (signal.aborted) {
-          killProcess('SIGKILL');
+          killCommand();
           finish(null, 'SIGABRT');
         } else {
-          onAbort = () => escalateKill();
+          onAbort = () => killCommand();
           signal.addEventListener('abort', onAbort, { once: true });
         }
       }

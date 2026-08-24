@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 patchedDependencies:
-  '@earendil-works/pi-coding-agent': 7867dfe8835898c445e0606d47eb2d17d60b1e7c5570eecc193e55517f2200cb
+  '@earendil-works/pi-coding-agent': bc840498ea3c9f5e7c4af8f2e774b3d1240bd0e4cefb1257b6783bfc29ed71b8
 
 importers:
 
@@ -46,7 +46,7 @@ importers:
         version: 0.84.3(@modelcontextprotocol/sdk@1.30.0(supports-color@7.2.0)(zod@4.4.3))(supports-color@7.2.0)(ws@8.21.3)(zod@4.4.3)
       '@earendil-works/pi-coding-agent':
         specifier: ^0.84.3
-        version: 0.84.3(patch_hash=7867dfe8835898c445e0606d47eb2d17d60b1e7c5570eecc193e55517f2200cb)(@modelcontextprotocol/sdk@1.30.0(supports-color@7.2.0)(zod@4.4.3))(supports-color@7.2.0)(ws@8.21.3)(zod@4.4.3)
+        version: 0.84.3(patch_hash=bc840498ea3c9f5e7c4af8f2e774b3d1240bd0e4cefb1257b6783bfc29ed71b8)(@modelcontextprotocol/sdk@1.30.0(supports-color@7.2.0)(zod@4.4.3))(supports-color@7.2.0)(ws@8.21.3)(zod@4.4.3)
       '@modelcontextprotocol/sdk':
         specifier: ^1.30.0
         version: 1.30.0(supports-color@7.2.0)(zod@4.4.3)
@@ -3986,7 +3986,7 @@ snapshots:
     dependencies:
       '@earendil-works/pi-protocol': 0.84.3
 
-  '@earendil-works/pi-coding-agent@0.84.3(patch_hash=7867dfe8835898c445e0606d47eb2d17d60b1e7c5570eecc193e55517f2200cb)(@modelcontextprotocol/sdk@1.30.0(supports-color@7.2.0)(zod@4.4.3))(supports-color@7.2.0)(ws@8.21.3)(zod@4.4.3)':
+  '@earendil-works/pi-coding-agent@0.84.3(patch_hash=bc840498ea3c9f5e7c4af8f2e774b3d1240bd0e4cefb1257b6783bfc29ed71b8)(@modelcontextprotocol/sdk@1.30.0(supports-color@7.2.0)(zod@4.4.3))(supports-color@7.2.0)(ws@8.21.3)(zod@4.4.3)':
     dependencies:
       '@earendil-works/pi-agent-core': 0.84.3(@modelcontextprotocol/sdk@1.30.0(supports-color@7.2.0)(zod@4.4.3))(supports-color@7.2.0)(ws@8.21.3)(zod@4.4.3)
       '@earendil-works/pi-ai': 0.84.3(@modelcontextprotocol/sdk@1.30.0(supports-color@7.2.0)(zod@4.4.3))(supports-color@7.2.0)(ws@8.21.3)(zod@4.4.3)
