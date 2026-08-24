@@ -1,6 +1,7 @@
 import { cleanupSessionResources, registerSessionResourceCleanup } from '@earendil-works/pi-ai';
 import { commands, languages, window, workspace } from 'vscode';
 
+import { mcpGateway } from '@pi-code/extension/structures/agent-runtime/mcp/manager';
 import { invalidateAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { ChatViewProvider } from '@pi-code/extension/structures/agent-webview/provider';
 import { registerCommitMessageCommand } from '@pi-code/extension/structures/commit-message/command';
@@ -57,8 +58,10 @@ export function activate(context: ExtensionContext): void {
   );
 }
 
-export function deactivate(): Promise<void> {
+export async function deactivate(): Promise<void> {
   cleanupSessionResources();
+  // Local MCP servers run as child processes; close them so none outlive the host.
+  await mcpGateway.closeAll().catch((err) => logger.error('Failed to close MCP connections:', err));
   // The debug interceptor queues writes on a promise chain; drain it before the host exits.
-  return flushDebugLog();
+  await flushDebugLog();
 }

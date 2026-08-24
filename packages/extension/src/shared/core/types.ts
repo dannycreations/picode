@@ -21,7 +21,7 @@ export interface StatsData {
 }
 
 export type ToolName =
-  'ask_question' | 'delete_file' | 'edit_file' | 'execute_command' | 'read_file' | 'spawn_subagent' | 'update_todo' | 'write_file';
+  'ask_question' | 'delete_file' | 'edit_file' | 'execute_command' | 'mcp' | 'read_file' | 'spawn_subagent' | 'update_todo' | 'write_file';
 
 export type ToolStatus = 'approval' | 'completed' | 'denied' | 'running';
 
@@ -41,7 +41,9 @@ export type ToolArguments =
   // update_todo
   | { todos: Array<TodoItem> }
   // write_file
-  | { path: string; content: string };
+  | { path: string; content: string }
+  // mcp
+  | { server?: string; tool?: string; arguments?: Record<string, unknown> };
 
 export interface ReadFileSection {
   readonly path: string;

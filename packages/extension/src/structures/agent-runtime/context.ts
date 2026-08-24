@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { CONFIG_DIR_NAME, getAgentDir, loadProjectContextFiles } from '@earendil-works/pi-coding-agent';
 
 import { SUBAGENT_MESSAGE_PROMPT } from '@pi-code/extension/core/prompt';
+import { getActiveMcpConfig } from '@pi-code/extension/structures/agent-runtime/mcp/config';
 import { fencedMarkdown } from '@pi-code/extension/utilities/markdown';
 
 import type {
@@ -127,12 +128,27 @@ function renderSubagentGuidance(selectedTools: readonly string[] | undefined): s
   return selectedTools?.includes('spawn_subagent') ? SUBAGENT_MESSAGE_PROMPT : '';
 }
 
+function renderMcpServers(): string {
+  const entries = Object.entries(getActiveMcpConfig());
+  if (entries.length === 0) return '';
+
+  return [
+    '## MCP Servers',
+    '',
+    'External tools reachable only through the `mcp` tool.',
+    'Call it with no parameters to check live connection status, or with one of these server names to list its tools.',
+    '',
+    ...entries.map(([name, server]) => `- ${name}: ${server.kind}, ${server.autorun ? 'autorun' : 'on demand'}`),
+  ].join('\n');
+}
+
 export function composeSystemContext(options: BuildSystemPromptOptions): string {
   const sections = [
     options.customPrompt?.trim(),
     options.appendSystemPrompt?.trim(),
     renderProjectContext(options.contextFiles).trim(),
     renderSkills(options.selectedTools, options.skills).trim(),
+    renderMcpServers().trim(),
     renderSubagentGuidance(options.selectedTools).trim(),
   ];
   return sections.filter((section) => section !== undefined && section.length > 0).join('\n\n');

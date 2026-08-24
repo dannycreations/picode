@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { SUBAGENT_MESSAGE_PROMPT } from '@pi-code/extension/core/prompt';
 import { applyResourceContext, composeSystemContext, discoverContext } from '@pi-code/extension/structures/agent-runtime/context';
+import { setActiveMcpConfig } from '@pi-code/extension/structures/agent-runtime/mcp/config';
 
 import type { BuildSystemPromptOptions, Skill } from '@earendil-works/pi-coding-agent';
 
@@ -186,5 +187,28 @@ describe('composeSystemPrompt', () => {
     expect(prompt).toContain('- **broken**: a & b <c>');
     expect(prompt).toContain('Location: `/skills/broken/SKILL.md`');
     expect(prompt).not.toContain('- **manual**:');
+  });
+});
+
+describe('composeSystemPrompt MCP section', () => {
+  afterEach(() => setActiveMcpConfig({}));
+
+  it('lists each configured server with its startup mode', () => {
+    setActiveMcpConfig({
+      hot: { kind: 'local', command: 'npx', autorun: true },
+      web: { kind: 'remote', url: 'https://mcp.example/mcp' },
+    });
+
+    const prompt = composeSystemContext({ cwd: '/w' });
+
+    expect(prompt).toContain('## MCP Servers');
+    expect(prompt).toContain('- hot: local, autorun');
+    expect(prompt).toContain('- web: remote, on demand');
+  });
+
+  it('omits the section when no servers are active', () => {
+    setActiveMcpConfig({});
+
+    expect(composeSystemContext({ customPrompt: 'C', cwd: '/w' })).toBe('C');
   });
 });

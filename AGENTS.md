@@ -15,8 +15,8 @@ pnpm run check
 pnpm run test
 
 :: Scope a command to one package with a filter
-pnpm --filter @pi-code/webview run test
 pnpm --filter pi-code run check
+pnpm --filter @pi-code/webview run test
 ```
 
 ## Environment
@@ -24,11 +24,11 @@ pnpm --filter pi-code run check
 - **Runtime**: Node.js
 - **Package Manager**: pnpm (workspace monorepo, `packages/*`)
 
-| Package            | Location             | Role                                                                                                     |
-| ------------------ | -------------------- | -------------------------------------------------------------------------------------------------------- |
-| `pi-code`          | `packages/extension` | VS Code extension host: manifest, commands, agent runtime, tool calls                                    |
-| `@pi-code/webview` | `packages/webview`   | React UI rendered inside the chat webview                                                                |
-| Shared module      | `src/shared`         | Environment-agnostic contracts and pure helpers imported by both sides via the `@pi-code/shared/*` alias |
+| Package            | Location             | Role                                            |
+| ------------------ | -------------------- | ----------------------------------------------- |
+| `pi-code`          | `packages/extension` | VS Code extension host and agent runtime        |
+| `@pi-code/webview` | `packages/webview`   | React UI rendered inside the chat webview       |
+| `@pi-code/shared`  | `src/shared`         | Environment-agnostic contracts and pure helpers |
 
 - `packages/extension/src/shared` is the shared module, imported as `@pi-code/shared/*` by both packages. It must stay platform-agnostic: no `vscode` or DOM runtime imports, and node-originated types are allowed only as `import type`. Runtime code here is reused by the extension and the webview, so keep it free of editor- or browser-specific behavior.
 - Anything touching the editor belongs in `packages/extension`, anything touching the browser belongs in `packages/webview`.
