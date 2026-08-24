@@ -9,6 +9,7 @@ import { checkReadableFile, pathExists, writeFileAtomic } from '@pi-code/extensi
 import { buildFileChangeResult } from '@pi-code/extension/utilities/truncate';
 import { findOccurrences } from '@pi-code/shared/utilities/common';
 
+import type { CustomToolResult } from '@pi-code/extension/types/extension';
 import type { ToolName } from '@pi-code/shared/core/types';
 
 function safeLiteralReplace(str: string, oldString: string, newString: string): string {
@@ -95,24 +96,28 @@ function countRegexMatches(content: string, regex: RegExp): number {
   return count;
 }
 
-type ReplacementOutcome = { readonly content: string; readonly error?: undefined } | { readonly content?: undefined; readonly error: string };
+type MatchStrategy = 'exact' | 'whitespace' | 'token';
+
+type ReplacementOutcome =
+  | { readonly content: string; readonly strategy: MatchStrategy; readonly matched: number; readonly error?: undefined }
+  | { readonly content?: undefined; readonly strategy?: undefined; readonly matched?: undefined; readonly error: string };
 
 function replaceExpected(originalLF: string, oldLF: string, newLF: string, expected: number, filePath: string): ReplacementOutcome {
   const exact = findOccurrences(originalLF, oldLF, true).length;
   if (exact === expected) {
-    return { content: safeLiteralReplace(originalLF, oldLF, newLF) };
+    return { content: safeLiteralReplace(originalLF, oldLF, newLF), strategy: 'exact', matched: exact };
   }
 
   const wsRegex = buildWhitespaceTolerantRegex(oldLF);
   const whitespace = countRegexMatches(originalLF, wsRegex);
   if (whitespace === expected) {
-    return { content: originalLF.replace(wsRegex, () => newLF) };
+    return { content: originalLF.replace(wsRegex, () => newLF), strategy: 'whitespace', matched: whitespace };
   }
 
   const tokenRegex = buildTokenRegex(oldLF);
   const token = countRegexMatches(originalLF, tokenRegex);
   if (token === expected) {
-    return { content: originalLF.replace(tokenRegex, () => newLF) };
+    return { content: originalLF.replace(tokenRegex, () => newLF), strategy: 'token', matched: token };
   }
 
   return {
@@ -120,6 +125,19 @@ function replaceExpected(originalLF: string, oldLF: string, newLF: string, expec
       `Error: matched ${exact} occurrence(s) of "old_string" in ${filePath}, but "expected" is ${expected}.\n` +
       `Exact: ${exact}, whitespace-tolerant: ${whitespace}, token-based: ${token}.\n\n` +
       `Verify "old_string" matches the target exactly as-is, including whitespace and line endings.`,
+  };
+}
+
+function withMatchNote(
+  result: CustomToolResult<{ diff: string }>,
+  strategy: Exclude<MatchStrategy, 'exact'>,
+  matched: number,
+): CustomToolResult<{ diff: string }> {
+  const mode = strategy === 'whitespace' ? 'whitespace-tolerant matching' : 'token-based matching';
+  const note = `Note: matched ${matched} occurrence(s) using ${mode}; the file text differed from "old_string" in whitespace.`;
+  return {
+    ...result,
+    content: result.content.map((part) => (part.type === 'text' ? { ...part, text: `${part.text}\n\n${note}` } : part)),
   };
 }
 
@@ -149,39 +167,46 @@ export const editFileTool = defineTool({
         return toolError(`${check.body} Use "write_file" to overwrite this file, or "read_file" with "line_ranges" to inspect a portion.`);
       }
 
-      let newContent: string;
-
       if (originalContent === null) {
-        newContent = new_string;
         await mkdir(dirname(resolvedPath), { recursive: true });
-        await writeFileAtomic(resolvedPath, newContent);
-      } else {
-        const originalEol = detectLineEnding(originalContent);
-        const originalLF = normalizeToLF(originalContent);
-        const oldLF = normalizeToLF(old_string);
-        const newLF = normalizeToLF(new_string);
+        await writeFileAtomic(resolvedPath, new_string);
 
-        if (oldLF === newLF) {
-          return toolError('Error: "old_string" and "new_string" are identical; nothing to change.');
-        }
-
-        const expected = params.expected ?? 1;
-        const outcome = replaceExpected(originalLF, oldLF, newLF, expected, file_path);
-        if (outcome.error !== undefined) {
-          return toolError(outcome.error);
-        }
-
-        newContent = restoreLineEndings(outcome.content, originalEol);
-        await writeFileAtomic(resolvedPath, newContent);
+        return buildFileChangeResult({
+          limits: readOutputLimits(),
+          oldContent: '',
+          newContent: new_string,
+          successMessage: `Created ${file_path}`,
+          hint: `File created; read "${file_path}" to verify the contents.`,
+        });
       }
 
-      return buildFileChangeResult({
+      const originalEol = detectLineEnding(originalContent);
+      const originalLF = normalizeToLF(originalContent);
+      const oldLF = normalizeToLF(old_string);
+      const newLF = normalizeToLF(new_string);
+
+      if (oldLF === newLF) {
+        return toolError('Error: "old_string" and "new_string" are identical; nothing to change.');
+      }
+
+      const expected = params.expected ?? 1;
+      const outcome = replaceExpected(originalLF, oldLF, newLF, expected, file_path);
+      if (outcome.error !== undefined) {
+        return toolError(outcome.error);
+      }
+
+      const newContent = restoreLineEndings(outcome.content, originalEol);
+      await writeFileAtomic(resolvedPath, newContent);
+
+      const result = buildFileChangeResult({
         limits: readOutputLimits(),
-        oldContent: originalContent ?? '',
+        oldContent: originalContent,
         newContent,
         successMessage: `Updated ${file_path}`,
         hint: `Edit applied; read "${file_path}" to verify the remaining changes.`,
       });
+
+      return outcome.strategy === 'exact' ? result : withMatchNote(result, outcome.strategy, outcome.matched);
     });
   },
 });

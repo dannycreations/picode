@@ -88,4 +88,16 @@ describe('editFileTool', () => {
     expect(result.isError).toBeFalsy();
     expect(result.content[0].text).toContain('CONTENT');
   });
+
+  it('discloses a whitespace-tolerant match instead of claiming an exact replacement', async () => {
+    stat.mockResolvedValue(READABLE);
+    readFile.mockResolvedValue('value:\tone\ttwo');
+
+    const result = await execute({ file_path: 'tabs.txt', old_string: 'one  two', new_string: 'ONE  TWO' });
+
+    expect(writeFile).toHaveBeenCalledTimes(1);
+    expect(result.isError).toBeFalsy();
+    expect(result.content[0].text).toContain('whitespace-tolerant matching');
+    expect(result.content[0].text).toContain('differed from "old_string"');
+  });
 });
