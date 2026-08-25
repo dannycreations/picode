@@ -4,7 +4,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
 
 import { logger } from '@pi-code/shared/core/logger';
-import { splitInputSegments } from '@pi-code/webview/components/chat/helpers/highlight';
+import { splitTokenSegments } from '@pi-code/webview/components/chat/helpers/highlight';
 import { useChatCommand, useChatMention, useChatTag } from '@pi-code/webview/components/chat/hooks/useSuggestion';
 import { CommandMenu, CommitMenu, MentionMenu } from '@pi-code/webview/components/chat/SuggestionMenu';
 import { ImageThumb } from '@pi-code/webview/components/shared/ImageThumb';
@@ -61,7 +61,7 @@ export const ChatInput: FC<ChatInputProps> = ({ onSend, sendingDisabled, placeho
   const command = useChatCommand({ commands, value: inputValue, setValue: setInputValue, textareaRef });
   const mention = useChatMention({ value: inputValue, setValue: setInputValue, textareaRef });
   const commit = useChatTag({ value: inputValue, setValue: setInputValue, textareaRef });
-  const segments = useMemo(() => splitInputSegments(inputValue, commands), [inputValue, commands]);
+  const segments = useMemo(() => splitTokenSegments(inputValue, commands), [inputValue, commands]);
 
   // Drop any staged images when the active model cannot accept them, so the
   // user cannot send attachments the model would reject.

@@ -1,6 +1,7 @@
 import { User } from 'lucide-react';
+import { Fragment } from 'react';
 
-import { splitCommand } from '@pi-code/webview/components/chat/helpers/command';
+import { splitTokenSegments } from '@pi-code/webview/components/chat/helpers/highlight';
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
 import { SearchableText } from '@pi-code/webview/components/shared/Highlight';
 import { ImageThumbRow } from '@pi-code/webview/components/shared/ImageThumb';
@@ -21,7 +22,6 @@ export const UserMessage: FC<UserMessageProps> = ({ message, commands, search })
   if (message.sender !== 'user') return null;
 
   const text = message.text.trim();
-  const highlight = splitCommand(text, commands);
 
   return (
     <div className="group flex flex-col gap-1">
@@ -29,15 +29,16 @@ export const UserMessage: FC<UserMessageProps> = ({ message, commands, search })
       <div className="message-surface whitespace-pre-wrap leading-normal select-text">
         {search ? (
           <SearchableText text={text} search={search} />
-        ) : highlight ? (
-          <>
-            <Tooltip content="Loaded on request">
-              <span className="command-chip">{highlight.command}</span>
-            </Tooltip>
-            {highlight.rest}
-          </>
         ) : (
-          text
+          splitTokenSegments(text, commands).map((segment, index) =>
+            segment.highlighted ? (
+              <Tooltip key={index} content="Loaded on request">
+                <span className="command-chip">{segment.text}</span>
+              </Tooltip>
+            ) : (
+              <Fragment key={index}>{segment.text}</Fragment>
+            ),
+          )
         )}
         <ImageThumbRow images={message.images ?? []} />
       </div>
