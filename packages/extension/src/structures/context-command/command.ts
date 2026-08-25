@@ -93,15 +93,23 @@ async function runInlineCompletion(cwd: string, selection: ResolvedSelection, pr
     return;
   }
 
+  const controller = new AbortController();
   try {
     const replacement = await window.withProgress(
       {
         location: ProgressLocation.Notification,
         title: progressTitle,
-        cancellable: false,
+        cancellable: true,
       },
-      () => completeAndExtract(cwd, prompt),
+      (_progress, token) => {
+        token.onCancellationRequested(() => controller.abort());
+        return completeAndExtract(cwd, prompt, controller.signal);
+      },
     );
+    if (controller.signal.aborted) {
+      window.showInformationMessage('Code generation cancelled.');
+      return;
+    }
     if (!replacement) {
       window.showWarningMessage('The model returned an empty response. No changes applied.');
       return;
@@ -117,7 +125,9 @@ async function runInlineCompletion(cwd: string, selection: ResolvedSelection, pr
       window.showErrorMessage('Failed to apply the generated code to the file.');
     }
   } catch (error) {
-    reportError('Failed to generate code', error);
+    if (!controller.signal.aborted) {
+      reportError('Failed to generate code', error);
+    }
   }
 }
 
