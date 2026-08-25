@@ -70,8 +70,13 @@ function matchesPathForms(
   // cwd-relative form of wherever it resolves.
   if (!looksAbsolute(filePath) && matchesGlob(patternForMatch, normalizeSeparators(filePath))) return true;
   if (insideRelative !== undefined && matchesGlob(patternForMatch, normalizeSeparators(insideRelative))) return true;
-  // Denial is fail-closed, so deny patterns also reach the resolved location.
-  return denyBreadth && absoluteFile !== undefined && matchesGlob(patternForMatch, comparableForm(absoluteFile));
+  // Denial is fail-closed: relative deny patterns also reach wherever the
+  // path resolves, compared at every segment boundary so a name-rooted or
+  // folder-rooted pattern cannot be escaped by moving the file out of the
+  // workspace.
+  if (!denyBreadth || absoluteFile === undefined) return false;
+  const segments = comparableForm(absoluteFile).split('/').filter(Boolean);
+  return segments.some((_, index) => matchesGlob(patternForMatch, segments.slice(index).join('/')));
 }
 
 function decidePathAction(
@@ -175,7 +180,14 @@ function evaluateSubCommand(subCmd: string, allowedPatterns: readonly string[], 
 // Injectable for tests; production always uses shell-quote's parse.
 type Tokenizer = (command: string) => unknown[];
 
+// Newlines never reach the tokenizer as an operator token, so a second line
+// would otherwise ride along inside the first command's prefix match. Split
+// lines up front and judge each like any other chained sub-command.
 export function parseCommand(command: string, tokenize: Tokenizer = parse): string[] {
+  return command.split(/\r?\n/).flatMap((line) => parseCommandLine(line, tokenize));
+}
+
+function parseCommandLine(command: string, tokenize: Tokenizer): string[] {
   if (!command || !command.trim()) {
     return [];
   }
@@ -226,7 +238,7 @@ export function parseCommand(command: string, tokenize: Tokenizer = parse): stri
       continue;
     }
 
-    const SEPARATOR_OPS = ['&&', '||', ';', '|', '&', '\n'];
+    const SEPARATOR_OPS = ['&&', '||', ';', '|', '&'];
     if (SEPARATOR_OPS.includes(tok.op)) {
       if (currentCommand.length > 0) {
         subCommands.push(currentCommand.join(' '));
@@ -254,18 +266,21 @@ export function containsDangerousSubstitution(source: string): boolean {
     }
   }
 
-  if (process.platform === 'win32') {
-    let inDoubleQuote = false;
-    for (let i = 0; i < source.length; i++) {
-      const char = source[i];
-      if (char === '"') {
-        inDoubleQuote = !inDoubleQuote;
-      } else if (char === '^' && !inDoubleQuote && i + 1 < source.length && source[i + 1] === '"') {
-        return true;
-      }
+  return process.platform === 'win32' && hasCaretQuoteEscape(source);
+}
+
+// cmd.exe treats "^" outside double quotes as an escape character, so "^" can
+// terminate a quoted argument early and smuggle extra tokens past prefix matching.
+export function hasCaretQuoteEscape(source: string): boolean {
+  let inDoubleQuote = false;
+  for (let i = 0; i < source.length; i++) {
+    const char = source[i];
+    if (char === '"') {
+      inDoubleQuote = !inDoubleQuote;
+    } else if (char === '^' && !inDoubleQuote && i + 1 < source.length && source[i + 1] === '"') {
+      return true;
     }
   }
-
   return false;
 }
 

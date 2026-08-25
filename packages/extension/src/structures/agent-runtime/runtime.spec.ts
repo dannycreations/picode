@@ -26,6 +26,8 @@ const mocks = vi.hoisted(() => ({
   getEnvironmentDetails: vi.fn(async () => ''),
   expandMentions: vi.fn(async (text: string) => ({ text, mentionContent: undefined })),
   injectResourceMessages: vi.fn(async () => {}),
+  sendHiddenContent: vi.fn(async () => {}),
+  loadSessionTranscript: vi.fn((): { messages: unknown[]; stats: { contextTokens: number } } => ({ messages: [], stats: { contextTokens: 0 } })),
 }));
 
 vi.mock('@pi-code/extension/core/settings', () => ({
@@ -60,6 +62,11 @@ vi.mock('@pi-code/extension/structures/chat-command/mention', async (importOrigi
 vi.mock('@pi-code/extension/structures/chat-command/invocation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@pi-code/extension/structures/chat-command/invocation')>()),
   injectResourceMessages: mocks.injectResourceMessages,
+  sendHiddenContent: mocks.sendHiddenContent,
+}));
+vi.mock('@pi-code/extension/structures/chat-session/session', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@pi-code/extension/structures/chat-session/session')>()),
+  loadSessionTranscript: mocks.loadSessionTranscript,
 }));
 
 function makeFakeWebview(): Webview {
@@ -337,5 +344,134 @@ describe('Runtime cancel during init', () => {
     expect(session.prompt).toHaveBeenCalledTimes(1);
     const messages = (webview.postMessage as ReturnType<typeof vi.fn>).mock.calls.map((call) => call[0]);
     expect(messages.some((msg) => msg.type === 'agent_settled')).toBe(false);
+  });
+});
+
+// Compaction shares the harness above; these cover the manual compact() round
+// trip and the automatic resume-on-settle contract.
+const SESSION_STATS = () => ({
+  tokens: { input: 10, output: 20, cacheRead: 0, cacheWrite: 0 },
+  cost: 0.5,
+  contextUsage: { tokens: 30, contextWindow: 1000 },
+});
+
+describe('Runtime compaction', () => {
+  function posted(webview: Webview): Array<{ type: string }> {
+    return (webview.postMessage as ReturnType<typeof vi.fn>).mock.calls.map((call) => call[0] as { type: string });
+  }
+
+  function makeCompactSession(impl: () => Promise<unknown>): AgentSession & { compact: ReturnType<typeof vi.fn> } {
+    return {
+      ...makeStartableSession(),
+      compact: vi.fn(impl),
+      sessionManager: { appendMessage: vi.fn(() => 'persisted-id'), buildContextEntries: () => [] },
+      getSessionStats: SESSION_STATS,
+    } as unknown as AgentSession & { compact: ReturnType<typeof vi.fn> };
+  }
+
+  it('returns the post-compaction estimate and brackets the run with start and end messages', async () => {
+    const webview = makeFakeWebview();
+    const session = makeCompactSession(async () => ({ estimatedTokensAfter: 123 }));
+    mocks.createSession.mockResolvedValue({ session, services: SERVICES });
+    mocks.loadSessionTranscript.mockReturnValue({ messages: [{ id: 'm1', sender: 'user', text: 'hi', ts: 1 }], stats: { contextTokens: 999 } });
+    const runtime = new Runtime(webview);
+
+    const result = await runtime.compact(undefined);
+
+    expect(result).toEqual({ messages: [{ id: 'm1', sender: 'user', text: 'hi', ts: 1 }], stats: { contextTokens: 123 } });
+    expect(session.compact).toHaveBeenCalledTimes(1);
+    const types = posted(webview).map((message) => message.type);
+    expect(types.filter((type) => type === 'compaction_start')).toHaveLength(1);
+    expect(types.filter((type) => type === 'compaction_end')).toHaveLength(1);
+  });
+
+  it('swallows an aborted compaction instead of posting an error bubble', async () => {
+    const webview = makeFakeWebview();
+    const session = makeCompactSession(async () => {
+      throw Object.assign(new Error('Compaction cancelled'), { name: 'AbortError' });
+    });
+    mocks.createSession.mockResolvedValue({ session, services: SERVICES });
+    const runtime = new Runtime(webview);
+
+    const result = await runtime.compact(undefined);
+
+    expect(result).toBeNull();
+    expect(posted(webview).some((message) => message.type === 'agent_error')).toBe(false);
+    expect(posted(webview).filter((message) => message.type === 'compaction_end')).toHaveLength(1);
+  });
+
+  it('surfaces real compaction failures and still posts the end banner', async () => {
+    const webview = makeFakeWebview();
+    const session = makeCompactSession(async () => {
+      throw new Error('disk full');
+    });
+    mocks.createSession.mockResolvedValue({ session, services: SERVICES });
+    const runtime = new Runtime(webview);
+
+    const result = await runtime.compact(undefined);
+
+    expect(result).toBeNull();
+    expect(posted(webview)).toContainEqual({ type: 'agent_error', payload: { message: expect.stringContaining('disk full') } });
+    expect(posted(webview).filter((message) => message.type === 'compaction_end')).toHaveLength(1);
+  });
+});
+
+describe('Runtime auto-compaction resume', () => {
+  function emit(runtime: Runtime, session: AgentSession, event: Record<string, unknown>): void {
+    runtime['handleSessionEvent'](event as never, session);
+  }
+
+  function makeStatsfulSession(): AgentSession {
+    return { ...makeStartableSession(), getSessionStats: SESSION_STATS } as unknown as AgentSession;
+  }
+
+  it('continues the task once a threshold compaction settles without a retry', async () => {
+    const webview = makeFakeWebview();
+    const session = makeStatsfulSession();
+    const runtime = new Runtime(webview);
+    runtime['session'] = session;
+
+    emit(runtime, session, { type: 'compaction_end', reason: 'threshold', result: undefined, aborted: false, willRetry: false });
+    await flush();
+    // The resume waits for the agent to settle first.
+    expect(mocks.getEnvironmentDetails).not.toHaveBeenCalled();
+
+    emit(runtime, session, { type: 'agent_end', messages: [], willRetry: false });
+    await flush();
+
+    expect(mocks.getEnvironmentDetails).toHaveBeenCalledTimes(1);
+    expect(mocks.sendHiddenContent).toHaveBeenCalledWith(session, 'environment_details', '', { triggerTurn: true });
+  });
+
+  it('does not resume when the compaction aborted or will retry', async () => {
+    const runtime = new Runtime(makeFakeWebview());
+    const session = makeStatsfulSession();
+    runtime['session'] = session;
+
+    emit(runtime, session, { type: 'compaction_end', reason: 'overflow', result: undefined, aborted: true, willRetry: false });
+    emit(runtime, session, { type: 'agent_end', messages: [], willRetry: false });
+    await flush();
+
+    emit(runtime, session, { type: 'compaction_end', reason: 'threshold', result: undefined, aborted: false, willRetry: true });
+    emit(runtime, session, { type: 'agent_settled' });
+    await flush();
+
+    expect(mocks.getEnvironmentDetails).not.toHaveBeenCalled();
+    expect(runtime.replyQueue.all()).toEqual([]);
+  });
+
+  it('drops the pending resume when the task is cancelled', async () => {
+    const webview = makeFakeWebview();
+    const runtime = new Runtime(webview);
+    const session = makeStatsfulSession();
+    runtime['session'] = session;
+
+    emit(runtime, session, { type: 'compaction_end', reason: 'threshold', result: undefined, aborted: false, willRetry: false });
+    await runtime.cancelTask();
+
+    emit(runtime, session, { type: 'agent_end', messages: [], willRetry: false });
+    await flush();
+
+    expect(mocks.getEnvironmentDetails).not.toHaveBeenCalled();
   });
 });

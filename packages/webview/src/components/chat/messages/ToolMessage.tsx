@@ -90,7 +90,7 @@ const ToolSection: FC<ToolSectionProps> = ({
   const radiusClass = isFirst && isLast ? 'rounded-md' : isFirst ? 'rounded-t-md' : isLast ? 'rounded-b-md' : 'rounded-none';
 
   return (
-    <div className={cn('border border-vscode-editorGroup-border overflow-hidden bg-vscode-input-background', radiusClass)}>
+    <div className={cn('group border border-vscode-editorGroup-border overflow-hidden bg-vscode-input-background', radiusClass)}>
       <div className="p-2 flex items-center gap-2 select-none">
         {hasContent ? (
           <button
@@ -196,7 +196,7 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onRespondTool }) =>
   };
 
   return (
-    <div className="group flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1.5">
       <MessageHeader
         icon={<span className={cn('codicon', `codicon-${icon}`, 'text-vscode-focusBorder shrink-0')} />}
         title={title}

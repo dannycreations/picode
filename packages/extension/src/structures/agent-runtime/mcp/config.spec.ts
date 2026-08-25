@@ -107,6 +107,42 @@ describe('mergeMcpConfigs', () => {
 
     expect(config['s']).toEqual({ kind: 'local', command: 'new' });
   });
+
+  it('stores a "__proto__" key as an own data entry instead of polluting the prototype', () => {
+    const raw = JSON.parse('{"__proto__":{"command":"evil"},"web":{"url":"https://mcp.example/mcp"}}');
+
+    const { config, warnings } = mergeMcpConfigs(raw, undefined);
+
+    expect(warnings).toEqual([]);
+    expect(Object.keys(config).sort()).toEqual(['__proto__', 'web']);
+    expect(config['__proto__']).toEqual({ kind: 'local', command: 'evil' });
+    // The merge target must not inherit attacker-chosen fields.
+    expect(Object.getPrototypeOf(config)).toBeNull();
+  });
+
+  it('rejects a blank command and warns on mistyped args or env', () => {
+    const { config, warnings } = mergeMcpConfigs(
+      {
+        blank: { command: '   ' },
+        badArgs: { command: 'x', args: 'y' },
+        badEnv: { command: 'x', env: 'y' },
+      },
+      undefined,
+    );
+
+    expect(config).toEqual({});
+    expect(warnings).toHaveLength(3);
+    expect(warnings[0]).toContain('`command` cannot be empty');
+    expect(warnings[1]).toContain('`args` must be a list of strings');
+    expect(warnings[2]).toContain('`env` must map strings to strings');
+  });
+
+  it('ignores a top-level array with a warning', () => {
+    const { config, warnings } = mergeMcpConfigs([{ command: 'nope' }], undefined);
+
+    expect(config).toEqual({});
+    expect(warnings).toEqual(['Ignoring MCP servers from the global mcp.json: expected an object at the top level.']);
+  });
 });
 
 describe('loadMcpConfig', () => {

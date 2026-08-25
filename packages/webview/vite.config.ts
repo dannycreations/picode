@@ -45,7 +45,6 @@ export default defineConfig(({ command }) => {
       include: ['src/**/*.{test,spec}.{ts,mts,cts}'],
       watch: false,
       testTimeout: 10_000,
-      passWithNoTests: true,
     },
   };
 });

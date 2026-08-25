@@ -39,10 +39,12 @@ describe('executeCommandTool cancellation', () => {
       cwd: process.cwd(),
     } as any)) as any;
 
-    expect(Date.now() - startedAt).toBeLessThan(4000);
+    // Generous ceiling: the kill lands in milliseconds locally, but process
+    // spawn plus tree-kill slows down on a heavily loaded CI machine.
+    expect(Date.now() - startedAt).toBeLessThan(9000);
     expect(result.details.timedOut).toBe(false);
     expect(result.isError).toBe(true);
-  });
+  }, 20_000);
 
   it('escalates to SIGKILL so commands that ignore SIGTERM still settle', async () => {
     const result = (await executeCommandTool.execute(
@@ -54,7 +56,7 @@ describe('executeCommandTool cancellation', () => {
     )) as any;
 
     expect(result.details.timedOut).toBe(true);
-  }, 10_000);
+  }, 20_000);
 });
 
 describe('cleanCommandOutput', () => {

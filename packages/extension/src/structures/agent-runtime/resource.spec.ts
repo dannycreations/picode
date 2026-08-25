@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
+import { createAgentResources, invalidateAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 
 const mocks = vi.hoisted(() => ({
   readAppSettings: vi.fn(),
@@ -14,6 +14,13 @@ vi.mock('@pi-code/extension/core/settings', () => ({
 
 vi.mock('@pi-code/extension/utilities/vscode', () => ({
   isProjectTrusted: mocks.isProjectTrusted,
+}));
+
+// Keep discovery off the developer's machine-global agent directory so test
+// outcomes depend only on this file's fixtures.
+vi.mock('@pi-code/extension/structures/agent-runtime/context', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@pi-code/extension/structures/agent-runtime/context')>()),
+  discoverContext: vi.fn(async () => ({ agentRules: [], appendSystemPrompt: [] })),
 }));
 
 // Vitest 4 cannot intercept natively loaded node_modules, so instead of
@@ -33,6 +40,7 @@ function makeStubFactory(): CreateServices {
 const BASE_SETTINGS = { enableAgentRules: true, enableSkillDiscovery: true };
 
 afterEach(() => {
+  invalidateAgentResources();
   mocks.readAppSettings.mockReset();
   mocks.isProjectTrusted.mockReturnValue(false);
 });

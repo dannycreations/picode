@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   applyYoloDecision,
   containsDangerousSubstitution,
+  hasCaretQuoteEscape,
   matchesGlob,
   parseCommand,
   resolveCommandAction,
@@ -148,6 +149,16 @@ describe('resolvePathAction traversal spellings', () => {
     expect(action).toBe('deny');
   });
 
+  it('denies a name-rooted deny glob against a spelling that escapes the workspace', () => {
+    const action = resolvePathAction('/workspace', '../elsewhere/.env', true, [], ['.env']);
+    expect(action).toBe('deny');
+  });
+
+  it('reaches folder-rooted deny globs onto resolved paths outside the workspace', () => {
+    const action = resolvePathAction('/workspace', '../lab/secrets/key.pem', true, [], ['secrets/**']);
+    expect(action).toBe('deny');
+  });
+
   it('never lets a relative allow glob approve an absolute path outside the workspace', () => {
     const action = resolvePathAction('/workspace', '/etc/cron.d/x.ts', true, ['**/*.ts'], []);
     expect(action).toBe('confirm');
@@ -174,6 +185,11 @@ describe('resolveCommandAction', () => {
   it('should request confirmation when auto-approve is enabled but no command prefixes are allowed', () => {
     const action = resolveCommandAction('npm test', true, [], []);
     expect(action).toBe('confirm');
+  });
+
+  it('approves an empty command because there is nothing left to execute', () => {
+    expect(resolveCommandAction('', true, [], [])).toBe('approve');
+    expect(resolveCommandAction('   ', true, [], [])).toBe('approve');
   });
 
   it('should auto-approve every command only when "*" is explicitly allowed', () => {
@@ -212,6 +228,18 @@ describe('resolveCommandAction', () => {
     // rg is allowed, rm is explicitly denied -> should deny immediately
     const actionDenied = resolveCommandAction('rg && rm -rf *', true, ['rg'], ['rm *']);
     expect(actionDenied).toBe('deny');
+  });
+
+  it('evaluates each newline-separated line as its own chained sub-command', () => {
+    // The approved first line must not bless whatever follows the newline.
+    expect(resolveCommandAction('ls\nrm -rf x', true, ['ls'], [])).toBe('confirm');
+    expect(resolveCommandAction('ls\r\nrm -rf x', true, ['ls'], [])).toBe('confirm');
+
+    // An explicitly denied line denies the whole input immediately.
+    expect(resolveCommandAction('ls\nrm -rf x', true, ['ls'], ['rm *'])).toBe('deny');
+
+    // Lines that are all approved remain approved.
+    expect(resolveCommandAction('git status\ngit diff', true, ['git'], [])).toBe('approve');
   });
 
   it('should request confirmation when command contains dangerous substitutions', () => {
@@ -325,6 +353,11 @@ describe('parseCommand', () => {
     expect(subCmds).toEqual(['npm test']);
   });
 
+  it('should split newline-separated input into independent sub-commands', () => {
+    expect(parseCommand('git status\ngit pull')).toEqual(['git status', 'git pull']);
+    expect(parseCommand('git status\r\ngit pull')).toEqual(['git status', 'git pull']);
+  });
+
   it('should handle empty or whitespace-only inputs', () => {
     expect(parseCommand('')).toEqual([]);
     expect(parseCommand('   ')).toEqual([]);
@@ -347,5 +380,39 @@ describe('matchesGlob', () => {
 
   it('should handle malformed regex patterns gracefully without throwing', () => {
     expect(matchesGlob('[invalid-glob', 'test')).toBe(false);
+  });
+});
+
+// containsDangerousSubstitution gates its cmd.exe scan on process.platform;
+// swap it per assertion so both branches run on any host OS.
+function withPlatform<T>(platform: NodeJS.Platform, run: () => T): T {
+  const original = process.platform;
+  Object.defineProperty(process, 'platform', { value: platform, configurable: true });
+  try {
+    return run();
+  } finally {
+    Object.defineProperty(process, 'platform', { value: original, configurable: true });
+  }
+}
+
+describe('hasCaretQuoteEscape', () => {
+  it('detects a caret escaping a double quote outside quotes', () => {
+    expect(hasCaretQuoteEscape('echo ^"hello')).toBe(true);
+  });
+
+  it('ignores carets inside double quotes', () => {
+    expect(hasCaretQuoteEscape('echo "a^"b"')).toBe(false);
+  });
+
+  it('ignores carets that do not precede a quote', () => {
+    expect(hasCaretQuoteEscape('rg ^pattern')).toBe(false);
+  });
+});
+
+describe('containsDangerousSubstitution platform gate', () => {
+  it('applies the cmd.exe escape guard only on windows', () => {
+    const command = 'echo ^"hello';
+    expect(withPlatform('win32', () => containsDangerousSubstitution(command))).toBe(true);
+    expect(withPlatform('linux', () => containsDangerousSubstitution(command))).toBe(false);
   });
 });

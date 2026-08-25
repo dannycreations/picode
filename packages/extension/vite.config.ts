@@ -82,7 +82,6 @@ const __importMetaResolve = (specifier, parentUrl) =>
       include: ['src/**/*.{test,spec}.{ts,mts,cts}'],
       watch: false,
       testTimeout: 10_000,
-      passWithNoTests: true,
       alias: {
         vscode: 'data:text/javascript,export const window={};',
       },

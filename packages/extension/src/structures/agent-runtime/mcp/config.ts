@@ -114,7 +114,9 @@ export function parseMcpServer(raw: unknown): ParsedServer {
 }
 
 export function mergeMcpConfigs(globalRaw: unknown, projectRaw: unknown): { config: McpConfig; warnings: readonly string[] } {
-  const config: Record<string, McpServerConfig> = {};
+  // A null prototype turns hostile JSON keys like "__proto__" into plain own
+  // properties instead of rewriting the merged config's prototype chain.
+  const config = Object.create(null) as Record<string, McpServerConfig>;
   const warnings: string[] = [];
 
   const apply = (label: string, raw: unknown): void => {

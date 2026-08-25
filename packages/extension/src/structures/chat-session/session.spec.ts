@@ -1,11 +1,16 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
-import { recordApprovalDuration } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
+import { clearApprovalDurations, recordApprovalDuration } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
 import { convertSessionEntries } from '@pi-code/extension/structures/chat-session/session';
 
 import type { AssistantMessage, ToolResultMessage, UserMessage } from '@earendil-works/pi-ai';
 import type { SessionEntry } from '@earendil-works/pi-coding-agent';
 import type { ToolChatMessage } from '@pi-code/shared/core/types';
+
+beforeEach(() => {
+  // recordApprovalDuration writes module state keyed by tool call id.
+  clearApprovalDurations();
+});
 
 function messageEntry(id: string, message: UserMessage | AssistantMessage | ToolResultMessage): SessionEntry {
   return { id, type: 'message', parentId: null, timestamp: new Date().toISOString(), message };
