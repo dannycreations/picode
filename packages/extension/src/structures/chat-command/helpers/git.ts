@@ -1,7 +1,7 @@
 import { formatThrownValue } from '@earendil-works/pi-ai';
 import { Uri } from 'vscode';
 
-import { COMMIT_HASH_PATTERN, WORKING_CHANGES_TAG } from '@pi-code/extension/shared/core/constants';
+import { COMMIT_HASH_PATTERN, SHORT_HASH_LENGTH, WORKING_CHANGES_TAG } from '@pi-code/extension/shared/core/constants';
 import { execGit, getGitRepository } from '@pi-code/extension/utilities/git';
 import { truncateOutput } from '@pi-code/extension/utilities/truncate';
 
@@ -10,7 +10,6 @@ import type { CommitItem } from '@pi-code/shared/core/protocol';
 
 const COMMIT_SEARCH_WINDOW = 50;
 const COMMIT_RESULT_CAP = 10;
-const SHORT_HASH_LENGTH = 7;
 // One commit per five lines: hash, short hash, author, date, subject.
 const LOG_ARGUMENTS = ['--date=short', '--format=%H%n%h%n%an%n%ad%n%s'] as const;
 

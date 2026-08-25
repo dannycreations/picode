@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 import { DEFAULT_APP_ID } from '@pi-code/shared/core/constants';
 import { HISTORY_SCOPES } from '@pi-code/shared/core/protocol';
-import { elapsedSeconds } from '@pi-code/shared/utilities/common';
+import { elapsedSeconds, errorRow } from '@pi-code/shared/utilities/common';
 import {
   appendOnce,
   deliverQueuedReplies,
@@ -44,6 +44,19 @@ let composerTextarea: RefObject<HTMLTextAreaElement | null> | null = null;
 
 export function setComposerTextarea(ref: RefObject<HTMLTextAreaElement | null> | null): void {
   composerTextarea = ref;
+}
+
+// Suggestion requests tag each reply so stale results lose against newer ones.
+// Nothing renders from them, so they live outside the reactive store state.
+let searchRequestId = '';
+let commitRequestId = '';
+
+export function setSearchRequestId(id: string): void {
+  searchRequestId = id;
+}
+
+export function setCommitRequestId(id: string): void {
+  commitRequestId = id;
 }
 
 function scopedRecord<T>(fill: (scope: HistoryScope) => T): Record<HistoryScope, T> {
@@ -88,8 +101,6 @@ interface ChatState {
   readonly openedSettingsFromHistory: boolean;
   readonly latestEpoch: Record<HistoryScope, number>;
   readonly fetchedScopes: Set<HistoryScope>;
-  readonly searchRequestId: string;
-  readonly commitRequestId: string;
   readonly activeWorkspace: string;
   readonly workspaceFolders: WorkspaceFolderItem[];
 
@@ -176,7 +187,7 @@ export const useChatStore = create<ChatState>((set, get) => {
               })
             : settlePendingTurns(task.messages, { cost, error });
           if (error) {
-            messages = appendOnce(messages, { id: `${id}-error`, sender: 'error', text: error, errorMessage: error, ts: Date.now() });
+            messages = appendOnce(messages, errorRow(id, error, Date.now()));
           }
           return { ...task, messages, ...stats };
         }),
@@ -359,12 +370,12 @@ export const useChatStore = create<ChatState>((set, get) => {
       }));
     },
     search_results: (msg) => {
-      if (msg.payload.requestId === get().searchRequestId) {
+      if (msg.payload.requestId === searchRequestId) {
         set({ searchResults: msg.payload.paths });
       }
     },
     commit_results: (msg) => {
-      if (msg.payload.requestId === get().commitRequestId) {
+      if (msg.payload.requestId === commitRequestId) {
         set({ commitResults: msg.payload.commits });
       }
     },
@@ -392,8 +403,6 @@ export const useChatStore = create<ChatState>((set, get) => {
     openedSettingsFromHistory: false,
     latestEpoch: scopedRecord(() => 0),
     fetchedScopes: new Set<HistoryScope>(['current']),
-    searchRequestId: '',
-    commitRequestId: '',
     activeWorkspace: '',
     workspaceFolders: [],
 

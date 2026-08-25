@@ -4,7 +4,7 @@ import { calculateContextTokens, getLastAssistantUsage } from '@earendil-works/p
 import { getApprovalDuration } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
 import { toBase64DataUrl } from '@pi-code/extension/utilities/codec';
 import { logger } from '@pi-code/shared/core/logger';
-import { elapsedSeconds } from '@pi-code/shared/utilities/common';
+import { elapsedSeconds, errorRow } from '@pi-code/shared/utilities/common';
 import { buildToolSections } from '@pi-code/shared/utilities/tool';
 
 import type { ImageContent, TextContent, ThinkingContent, ToolCall, Usage } from '@earendil-works/pi-ai';
@@ -140,7 +140,7 @@ function appendAssistantTurn(result: ChatMessage[], id: string, msg: Extract<Ses
   }
 
   if (errorMessage) {
-    result.push({ id: `${id}-error`, sender: 'error', text: errorMessage, errorMessage, ts });
+    result.push(errorRow(id, errorMessage, ts));
   }
 }
 

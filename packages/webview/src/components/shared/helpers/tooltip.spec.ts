@@ -122,20 +122,6 @@ describe('computeTooltipPlacement', () => {
     expect(placement.top + TOOLTIP.height).toBeLessThanOrEqual(VIEWPORT.height - 6);
   });
 
-  it('should honour custom offset, padding and arrow sizing', () => {
-    expect(
-      computeTooltipPlacement({
-        anchor: anchorAt(150, 150),
-        tooltip: TOOLTIP,
-        viewport: VIEWPORT,
-        side: 'bottom',
-        offset: 12,
-        padding: 0,
-        arrowSize: 20,
-      }),
-    ).toEqual({ side: 'bottom', left: 110, top: 182, arrow: 50 });
-  });
-
   it('should round fractional coordinates', () => {
     const placement = computeTooltipPlacement({
       anchor: anchorAt(150, 150, 21, 21),

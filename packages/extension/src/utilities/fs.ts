@@ -147,11 +147,17 @@ export async function checkReadableFile(path: string): Promise<{ ok: true } | { 
   } catch (err) {
     // A missing file is an expected, non-error outcome for callers that probe
     // existence, so report it as not-found instead of throwing.
-    if ((err as NodeJS.ErrnoException)?.code === 'ENOENT') {
+    if (isEnoent(err)) {
       return { ok: false, body: `Error: "${path}" does not exist.` };
     }
     throw err;
   }
+}
+
+// Node reports missing paths with ENOENT; several callers treat that case as
+// expected rather than as a failure.
+export function isEnoent(err: unknown): boolean {
+  return (err as NodeJS.ErrnoException)?.code === 'ENOENT';
 }
 
 export async function pathExists(path: string): Promise<boolean> {
@@ -159,7 +165,7 @@ export async function pathExists(path: string): Promise<boolean> {
     await stat(path);
     return true;
   } catch (err) {
-    if ((err as NodeJS.ErrnoException)?.code === 'ENOENT') {
+    if (isEnoent(err)) {
       return false;
     }
     throw err;

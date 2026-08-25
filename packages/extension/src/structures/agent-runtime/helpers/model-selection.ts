@@ -3,9 +3,9 @@ import { applyCompactionSettings } from '@pi-code/extension/structures/agent-run
 import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
 import { logger } from '@pi-code/shared/core/logger';
 
-import type { ModelThinkingLevel } from '@earendil-works/pi-ai';
 import type { AgentSession } from '@earendil-works/pi-coding-agent';
 import type { ModelSelection } from '@pi-code/shared/core/protocol';
+import type { ModelThinkingLevel } from '@pi-code/shared/core/types';
 
 export function persistModelAndThinking(selection: ModelSelection, level?: ModelThinkingLevel): void {
   const manager = getSettingsManager(getWorkspaceCwd());

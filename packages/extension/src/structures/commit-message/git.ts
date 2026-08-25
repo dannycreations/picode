@@ -2,6 +2,7 @@ import { formatThrownValue } from '@earendil-works/pi-ai';
 import { generateUnifiedPatch } from '@earendil-works/pi-coding-agent';
 import { Uri, workspace } from 'vscode';
 
+import { SHORT_HASH_LENGTH } from '@pi-code/extension/shared/core/constants';
 import { isBinaryFile } from '@pi-code/extension/utilities/fs';
 import { GIT_STATUS } from '@pi-code/extension/utilities/git';
 import { toRelativePath } from '@pi-code/extension/utilities/vscode';
@@ -9,7 +10,6 @@ import { toRelativePath } from '@pi-code/extension/utilities/vscode';
 import type { Change, Repository } from '@pi-code/extension/types/git';
 
 const RECENT_COMMIT_COUNT = 5;
-const SHORT_HASH_LENGTH = 7;
 
 interface ResolvedGitChange {
   readonly relativePath: string;

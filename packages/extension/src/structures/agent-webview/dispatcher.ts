@@ -86,14 +86,11 @@ function buildWorkspaceData(): Extract<ExtensionToWebviewMessage, { type: 'works
 // Refreshes the shared model runtime's catalog and pushes the merged list to
 // the webview. `force` hits the network instead of trusting the cached catalog.
 function pushModelCatalog(ctx: MessageHandlerContext, modelRuntime: ModelRuntime, force = false, onUpdated?: () => void): void {
-  void refreshModelCatalog(
-    modelRuntime,
-    (models) => {
-      ctx.runtime.postMessage({ type: 'models_data', payload: { models } });
-      onUpdated?.();
-    },
-    force,
-  );
+  void refreshModelCatalog(modelRuntime, force).then((models) => {
+    if (!models) return;
+    ctx.runtime.postMessage({ type: 'models_data', payload: { models } });
+    onUpdated?.();
+  });
 }
 
 const HANDLER_MAP: HandlerMap = {

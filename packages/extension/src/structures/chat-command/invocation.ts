@@ -13,13 +13,24 @@ export const PROMPT_COMMAND_PREFIX = '/prompt:';
 const SKILL_CONTENT_TYPE = 'skill_content';
 const PROMPT_CONTENT_TYPE = 'prompt_content';
 
-export function matchSkillInvocation(text: string): string | null {
-  if (!text.startsWith(SKILL_COMMAND_PREFIX)) return null;
+interface MatchedInvocation {
+  readonly name: string;
+  readonly args: string;
+}
 
-  const remainder = text.slice(SKILL_COMMAND_PREFIX.length);
+// Splits a `/prefix:name args` command into the invoked name and the raw tail.
+function matchInvocation(text: string, prefix: string): MatchedInvocation | null {
+  if (!text.startsWith(prefix)) return null;
+
+  const remainder = text.slice(prefix.length);
   const spaceIndex = remainder.indexOf(' ');
-  if (spaceIndex === -1) return remainder;
-  return remainder.slice(0, spaceIndex);
+  const name = spaceIndex === -1 ? remainder : remainder.slice(0, spaceIndex);
+  return { name, args: spaceIndex === -1 ? '' : remainder.slice(spaceIndex + 1) };
+}
+
+export function matchSkillInvocation(text: string): string | null {
+  const matched = matchInvocation(text, SKILL_COMMAND_PREFIX);
+  return matched !== null && matched.name.length > 0 ? matched.name : null;
 }
 
 interface MatchedPrompt extends PromptTemplate {
@@ -27,16 +38,12 @@ interface MatchedPrompt extends PromptTemplate {
 }
 
 export function matchPromptInvocation(text: string, prompts: readonly PromptTemplate[]): MatchedPrompt | null {
-  if (!text.startsWith(PROMPT_COMMAND_PREFIX)) return null;
+  const matched = matchInvocation(text, PROMPT_COMMAND_PREFIX);
+  if (!matched || matched.name.length === 0) return null;
 
-  const remainder = text.slice(PROMPT_COMMAND_PREFIX.length);
-  const spaceIndex = remainder.indexOf(' ');
-  const name = spaceIndex === -1 ? remainder : remainder.slice(0, spaceIndex);
-  if (name.length === 0) return null;
-
-  const prompt = prompts.find((candidate) => candidate.name === name);
+  const prompt = prompts.find((candidate) => candidate.name === matched.name);
   if (!prompt) return null;
-  return { ...prompt, args: spaceIndex === -1 ? '' : remainder.slice(spaceIndex + 1) };
+  return { ...prompt, args: matched.args };
 }
 
 export function buildSkillBlock(name: string, filePath: string, content: string): string {

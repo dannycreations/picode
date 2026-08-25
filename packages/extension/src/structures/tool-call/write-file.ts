@@ -1,5 +1,4 @@
-import { mkdir, readFile } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { readFile } from 'node:fs/promises';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
@@ -36,7 +35,6 @@ export const writeFileTool = defineTool({
         }
       }
 
-      await mkdir(dirname(resolvedPath), { recursive: true });
       await writeFileAtomic(resolvedPath, finalContent);
 
       return buildFileChangeResult({

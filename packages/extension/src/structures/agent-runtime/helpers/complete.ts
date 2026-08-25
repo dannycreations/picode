@@ -5,7 +5,7 @@ import { createAgentResources } from '@pi-code/extension/structures/agent-runtim
 import { extractCodeFenceMessage } from '@pi-code/extension/utilities/markdown';
 import { logger } from '@pi-code/shared/core/logger';
 
-export async function completePrompt(cwd: string, prompt: string, signal?: AbortSignal): Promise<string> {
+async function completePrompt(cwd: string, prompt: string, signal?: AbortSignal): Promise<string> {
   const runtime = (await createAgentResources(cwd)).modelRuntime;
   const { id, provider } = await getDefaultModelSelection(cwd);
 

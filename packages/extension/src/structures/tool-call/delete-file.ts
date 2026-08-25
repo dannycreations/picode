@@ -1,19 +1,13 @@
 import { rm, stat, unlink } from 'node:fs/promises';
-import { isAbsolute, relative, resolve, sep } from 'node:path';
-import { defineTool } from '@earendil-works/pi-coding-agent';
+import { resolve } from 'node:path';
+import { defineTool, getCwdRelativePath } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
 import { runFileMutation, toolError, toolResult } from '@pi-code/extension/structures/tool-call/helpers';
+import { isEnoent } from '@pi-code/extension/utilities/fs';
 
 import type { Stats } from 'node:fs';
 import type { ToolName } from '@pi-code/shared/core/types';
-
-// True when the workspace root itself sits at or under `candidate`, meaning
-// deleting `candidate` would take the workspace with it.
-function containsWorkspace(candidate: string, workspace: string): boolean {
-  const rel = relative(candidate, workspace);
-  return rel === '' || (!rel.startsWith(`..${sep}`) && rel !== '..' && !isAbsolute(rel));
-}
 
 export const deleteFileTool = defineTool({
   name: 'delete_file' as ToolName,
@@ -24,7 +18,9 @@ export const deleteFileTool = defineTool({
   }),
   async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
     return runFileMutation(ctx.cwd, params.path, 'deleting file', async (resolvedPath) => {
-      if (containsWorkspace(resolvedPath, resolve(ctx.cwd))) {
+      // True when the workspace root sits at or under the target, so deleting
+      // it would take the whole workspace with it.
+      if (getCwdRelativePath(resolve(ctx.cwd), resolvedPath) !== undefined) {
         return toolError(`Error: refusing to delete "${params.path}" because it contains the workspace root.`);
       }
 
@@ -32,7 +28,7 @@ export const deleteFileTool = defineTool({
       try {
         stats = await stat(resolvedPath);
       } catch (err) {
-        if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+        if (isEnoent(err)) {
           return toolError(`Error: \`path\` does not exist: ${params.path}`);
         }
         throw err;

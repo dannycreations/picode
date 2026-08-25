@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { SETTING_KEYS, SETTINGS_SCHEMA } from '@pi-code/shared/core/settings';
+import { getSettingSpec, SETTING_KEYS } from '@pi-code/shared/core/settings';
 import manifest from '../../package.json' with { type: 'json' };
 import { buildManifestSettings } from '../../scripts/settings.ts';
 
@@ -26,7 +26,7 @@ describe('contributed configuration', () => {
 describe('schema defaults', () => {
   it('keeps every default inside its own bounds', () => {
     for (const key of SETTING_KEYS) {
-      const spec = SETTINGS_SCHEMA[key];
+      const spec = getSettingSpec(key);
       if (spec.type !== 'number') continue;
       expect(spec.default, key).toBeGreaterThanOrEqual(spec.minimum);
       expect(spec.default, key).toBeLessThanOrEqual(spec.maximum);

@@ -8,7 +8,7 @@ import { Runtime } from '@pi-code/extension/structures/agent-runtime/runtime';
 import { dispatch } from '@pi-code/extension/structures/agent-webview/dispatcher';
 import { WorkspaceService } from '@pi-code/extension/structures/agent-webview/workspace';
 import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
-import { CHAT_VIEW_TYPE, DEFAULT_APP_ID } from '@pi-code/shared/core/constants';
+import { COMMAND_IDS, DEFAULT_APP_ID } from '@pi-code/shared/core/constants';
 
 import type { CancellationToken, ExtensionContext, Webview, WebviewView, WebviewViewProvider, WebviewViewResolveContext } from 'vscode';
 import type { MessageHandlerContext } from '@pi-code/extension/structures/agent-webview/types';
@@ -62,7 +62,7 @@ function buildChatViewHtml(webview: Webview, extensionUri: Uri): string {
 }
 
 export class ChatViewProvider implements WebviewViewProvider {
-  public static readonly viewType = CHAT_VIEW_TYPE;
+  public static readonly viewType = COMMAND_IDS.chatView;
 
   private readonly workspace: WorkspaceService;
   private runtime: Runtime | null = null;

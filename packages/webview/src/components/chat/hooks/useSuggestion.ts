@@ -9,10 +9,10 @@ import {
   toCommitTagItem,
   WORKING_CHANGES_ITEM,
 } from '@pi-code/webview/components/chat/helpers/mention';
-import { useChatStore } from '@pi-code/webview/stores/useChatStore';
+import { setCommitRequestId, setSearchRequestId, useChatStore } from '@pi-code/webview/stores/useChatStore';
 
 import type { ChangeEvent, Dispatch, KeyboardEvent, RefObject, SetStateAction } from 'react';
-import type { CommandItem } from '@pi-code/shared/core/protocol';
+import type { CommandItem, WebviewToExtensionMessage } from '@pi-code/shared/core/protocol';
 import type { CommitTagItem } from '@pi-code/webview/components/chat/helpers/mention';
 
 interface UseSuggestionProps<T> {
@@ -162,6 +162,35 @@ export const useChatCommand = ({ commands, value, setValue, textareaRef }: UseCo
   });
 };
 
+const SEARCH_DEBOUNCE_MS = 200;
+
+type SearchRequestBuilder = (query: string, requestId: string) => WebviewToExtensionMessage;
+
+// Each builder registers its request id before returning the message to send;
+// the store drops responses whose id does not match the newest registration.
+const requestFileSearch: SearchRequestBuilder = (query, requestId) => {
+  setSearchRequestId(requestId);
+  return { type: 'search_files', query, requestId };
+};
+
+const requestCommitSearch: SearchRequestBuilder = (query, requestId) => {
+  setCommitRequestId(requestId);
+  // Drop the previous list so the menu never shows results from an older query.
+  useChatStore.setState({ commitResults: null });
+  return { type: 'search_commits', query, requestId };
+};
+
+// Fires one debounced search per query change; editing the query cancels the
+// pending send.
+const useDebouncedSearch = (query: string | null, buildRequest: SearchRequestBuilder): void => {
+  useEffect(() => {
+    if (query === null) return;
+    const message = buildRequest(query, crypto.randomUUID());
+    const handle = setTimeout(() => useChatStore.getState().send(message), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(handle);
+  }, [query, buildRequest]);
+};
+
 interface UseMentionProps {
   readonly value: string;
   readonly setValue: (value: string) => void;
@@ -184,19 +213,7 @@ export const useChatMention = ({ value, setValue, textareaRef }: UseMentionProps
     resolveItems: resolveResults,
   });
 
-  const { query } = suggestion;
-
-  useEffect(() => {
-    if (query === null) return;
-    const requestId = crypto.randomUUID();
-    // The store drops search_results whose id does not match, so register the
-    // request before sending to keep a stale response from ever winning.
-    useChatStore.setState({ searchRequestId: requestId });
-    const handle = setTimeout(() => {
-      useChatStore.getState().send({ type: 'search_files', query, requestId });
-    }, 200);
-    return () => clearTimeout(handle);
-  }, [query]);
+  useDebouncedSearch(suggestion.query, requestFileSearch);
 
   return suggestion;
 };
@@ -223,19 +240,7 @@ export const useChatTag = ({ value, setValue, textareaRef }: UseChatTagProps): U
     resolveItems,
   });
 
-  const { query } = suggestion;
-
-  useEffect(() => {
-    if (query === null) return;
-    const requestId = crypto.randomUUID();
-    // Same stale-response guard as file search: register before sending, and
-    // drop previous results so the menu waits for this query's data.
-    useChatStore.setState({ commitRequestId: requestId, commitResults: null });
-    const handle = setTimeout(() => {
-      useChatStore.getState().send({ type: 'search_commits', query, requestId });
-    }, 200);
-    return () => clearTimeout(handle);
-  }, [query]);
+  useDebouncedSearch(suggestion.query, requestCommitSearch);
 
   return suggestion;
 };

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { coerceSetting, coerceSettings, getSettingSpec, SETTING_KEYS, SETTINGS_SCHEMA } from '@pi-code/shared/core/settings';
+import { coerceSetting, coerceSettings, getSettingSpec, SETTING_KEYS } from '@pi-code/shared/core/settings';
 
 import type { AppSettings } from '@pi-code/shared/core/settings';
 
@@ -13,7 +13,6 @@ const DEFAULT_SETTINGS = defaultSettings();
 
 describe('settings schema', () => {
   it('derives keys and defaults from the schema', () => {
-    expect(SETTING_KEYS).toEqual(Object.keys(SETTINGS_SCHEMA));
     for (const key of SETTING_KEYS) {
       expect(DEFAULT_SETTINGS[key], key).toEqual(getSettingSpec(key).default);
     }

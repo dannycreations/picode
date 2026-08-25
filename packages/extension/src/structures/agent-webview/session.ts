@@ -12,10 +12,10 @@ import { streamLines } from '@pi-code/extension/utilities/fs';
 import { logger } from '@pi-code/shared/core/logger';
 import { resolveContextLimit } from '@pi-code/shared/utilities/common';
 
-import type { Api, Model, ModelThinkingLevel, TextContent } from '@earendil-works/pi-ai';
+import type { Api, Model, TextContent } from '@earendil-works/pi-ai';
 import type { AgentSessionServices, ModelRuntime } from '@earendil-works/pi-coding-agent';
 import type { ExtensionToWebviewMessage, HistoryItem, HistoryScope, ModelItem } from '@pi-code/shared/core/protocol';
-import type { ChatMessage, StatsData } from '@pi-code/shared/core/types';
+import type { ChatMessage, ModelThinkingLevel, StatsData } from '@pi-code/shared/core/types';
 
 type SessionInitData = Extract<ExtensionToWebviewMessage, { type: 'init_data' }>['payload'];
 
@@ -160,16 +160,17 @@ export async function getInitData(cwd: string, services: AgentSessionServices): 
   };
 }
 
-export async function refreshModelCatalog(modelRuntime: ModelRuntime, onModels: (models: ModelItem[]) => void, force = false): Promise<void> {
+export async function refreshModelCatalog(modelRuntime: ModelRuntime, force = false): Promise<ModelItem[] | null> {
   try {
     await modelRuntime.refresh({
       force,
       allowNetwork: true,
       signal: AbortSignal.timeout(CATALOG_TIMEOUT_MS),
     });
-    onModels(await listSelectableModels(modelRuntime));
+    return await listSelectableModels(modelRuntime);
   } catch (error) {
     logger.warn('Dynamic model refresh failed; the model list stays on the local catalog.', error);
+    return null;
   }
 }
 

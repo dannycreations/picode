@@ -16,6 +16,12 @@ export function createActiveTask(id: string, title: string, messages: ChatMessag
   return { id, title, messages, ...EMPTY_STATS };
 }
 
+// Live events and replayed transcripts both surface a failed turn under the
+// same `${id}-error` row convention, so one constructor keeps them identical.
+export function errorRow(id: string, message: string, ts: number): ChatMessage {
+  return { id: `${id}-error`, sender: 'error', text: message, errorMessage: message, ts };
+}
+
 export function defaultThinkingLevel(levels: readonly ModelThinkingLevel[]): ModelThinkingLevel | null {
   if (levels.length === 0) return null;
   if (levels.includes('medium')) return 'medium';

@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { formatThrownValue } from '@earendil-works/pi-ai';
 import { CONFIG_DIR_NAME, getAgentDir } from '@earendil-works/pi-coding-agent';
 
+import { isEnoent } from '@pi-code/extension/utilities/fs';
 import { logger } from '@pi-code/shared/core/logger';
 
 interface LocalMcpServer {
@@ -170,7 +171,7 @@ async function readRawConfig(path: string, label: string): Promise<{ raw?: unkno
   try {
     text = await readFile(path, 'utf8');
   } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return {};
+    if (isEnoent(err)) return {};
     return { warning: `Could not read ${label}: ${formatThrownValue(err)}.` };
   }
 

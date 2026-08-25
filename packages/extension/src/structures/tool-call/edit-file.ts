@@ -1,5 +1,4 @@
-import { mkdir, readFile } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { readFile } from 'node:fs/promises';
 import { defineTool, detectLineEnding, normalizeToLF, restoreLineEndings } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
@@ -168,7 +167,6 @@ export const editFileTool = defineTool({
       }
 
       if (originalContent === null) {
-        await mkdir(dirname(resolvedPath), { recursive: true });
         await writeFileAtomic(resolvedPath, new_string);
 
         return buildFileChangeResult({

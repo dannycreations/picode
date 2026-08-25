@@ -15,9 +15,6 @@ interface TooltipPlacementInput {
   readonly tooltip: TooltipSize;
   readonly viewport: TooltipSize;
   readonly side?: TooltipSide;
-  readonly offset?: number;
-  readonly padding?: number;
-  readonly arrowSize?: number;
 }
 
 export interface TooltipPlacement {
@@ -51,16 +48,16 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
-function getFreeSpace(side: TooltipSide, anchor: TooltipRect, viewport: TooltipSize, padding: number): number {
+function getFreeSpace(side: TooltipSide, anchor: TooltipRect, viewport: TooltipSize): number {
   switch (side) {
     case 'top':
-      return anchor.top - padding;
+      return anchor.top - TOOLTIP_PADDING;
     case 'bottom':
-      return viewport.height - (anchor.top + anchor.height) - padding;
+      return viewport.height - (anchor.top + anchor.height) - TOOLTIP_PADDING;
     case 'left':
-      return anchor.left - padding;
+      return anchor.left - TOOLTIP_PADDING;
     case 'right':
-      return viewport.width - (anchor.left + anchor.width) - padding;
+      return viewport.width - (anchor.left + anchor.width) - TOOLTIP_PADDING;
   }
 }
 
@@ -68,22 +65,14 @@ function getMainSize(side: TooltipSide, tooltip: TooltipSize): number {
   return side === 'top' || side === 'bottom' ? tooltip.height : tooltip.width;
 }
 
-export function computeTooltipPlacement({
-  anchor,
-  tooltip,
-  viewport,
-  side = 'top',
-  offset = TOOLTIP_OFFSET,
-  padding = TOOLTIP_PADDING,
-  arrowSize = TOOLTIP_ARROW_SIZE,
-}: TooltipPlacementInput): TooltipPlacement {
+export function computeTooltipPlacement({ anchor, tooltip, viewport, side = 'top' }: TooltipPlacementInput): TooltipPlacement {
   const candidates = SIDE_FALLBACKS[side];
 
   let resolved = candidates[0];
   let widestSpace = Number.NEGATIVE_INFINITY;
 
   for (const candidate of candidates) {
-    const free = getFreeSpace(candidate, anchor, viewport, padding) - offset;
+    const free = getFreeSpace(candidate, anchor, viewport) - TOOLTIP_OFFSET;
     if (free >= getMainSize(candidate, tooltip)) {
       resolved = candidate;
       widestSpace = Number.POSITIVE_INFINITY;
@@ -104,13 +93,13 @@ export function computeTooltipPlacement({
   let top: number;
 
   if (isVertical) {
-    const mainTop = resolved === 'top' ? anchor.top - offset - tooltip.height : anchor.top + anchor.height + offset;
-    top = clamp(mainTop, padding, viewport.height - tooltip.height - padding);
-    left = clamp(anchorCenterX - tooltip.width / 2, padding, viewport.width - tooltip.width - padding);
+    const mainTop = resolved === 'top' ? anchor.top - TOOLTIP_OFFSET - tooltip.height : anchor.top + anchor.height + TOOLTIP_OFFSET;
+    top = clamp(mainTop, TOOLTIP_PADDING, viewport.height - tooltip.height - TOOLTIP_PADDING);
+    left = clamp(anchorCenterX - tooltip.width / 2, TOOLTIP_PADDING, viewport.width - tooltip.width - TOOLTIP_PADDING);
   } else {
-    const mainLeft = resolved === 'left' ? anchor.left - offset - tooltip.width : anchor.left + anchor.width + offset;
-    left = clamp(mainLeft, padding, viewport.width - tooltip.width - padding);
-    top = clamp(anchorCenterY - tooltip.height / 2, padding, viewport.height - tooltip.height - padding);
+    const mainLeft = resolved === 'left' ? anchor.left - TOOLTIP_OFFSET - tooltip.width : anchor.left + anchor.width + TOOLTIP_OFFSET;
+    left = clamp(mainLeft, TOOLTIP_PADDING, viewport.width - tooltip.width - TOOLTIP_PADDING);
+    top = clamp(anchorCenterY - tooltip.height / 2, TOOLTIP_PADDING, viewport.height - tooltip.height - TOOLTIP_PADDING);
   }
 
   const crossSize = isVertical ? tooltip.width : tooltip.height;
@@ -119,8 +108,8 @@ export function computeTooltipPlacement({
 
   // Keep the arrow clear of the rounded corners, and centre it when the tooltip
   // is too small to hold both margins.
-  const maxArrow = crossSize - arrowSize;
-  const arrow = maxArrow <= arrowSize ? crossSize / 2 : clamp(anchorCenter - crossStart, arrowSize, maxArrow);
+  const maxArrow = crossSize - TOOLTIP_ARROW_SIZE;
+  const arrow = maxArrow <= TOOLTIP_ARROW_SIZE ? crossSize / 2 : clamp(anchorCenter - crossStart, TOOLTIP_ARROW_SIZE, maxArrow);
 
   return {
     side: resolved,

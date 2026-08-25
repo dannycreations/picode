@@ -24,7 +24,7 @@ interface StringListSetting extends SettingBase {
 
 type SettingSpec = BooleanSetting | NumberSetting | StringListSetting;
 
-export const SETTINGS_SCHEMA = {
+const SETTINGS_SCHEMA = {
   enableTodoTool: {
     type: 'boolean',
     default: true,
