@@ -62,6 +62,7 @@ export const SETTING_FIELDS: SettingFieldRegistry = {
 
   commitMessageModel: { tab: 'behaviour', label: 'Commit message model' },
   maxCommandTimeoutMs: { tab: 'behaviour', label: 'Command timeout limit' },
+  retryOnError: { tab: 'behaviour', label: 'Retry on error' },
 
   autoCompactContext: { tab: 'context', label: 'Automatic trigger compaction' },
   autoCompactContextPercent: { tab: 'context', label: 'Compaction threshold', parent: 'autoCompactContext' },

@@ -233,6 +233,13 @@ const SETTINGS_SCHEMA = {
     unit: 'ms',
     description: 'Maximum duration of a single command started by `execute_command`. Commands that run longer are killed once this limit is reached.',
   },
+  retryOnError: {
+    type: 'number',
+    default: 3,
+    minimum: 0,
+    maximum: 61,
+    description: 'Maximum times the agent retries a turn that fails with a transient error such as a rate limit, server overload, or provider error.',
+  },
 } as const satisfies Record<string, SettingSpec>;
 
 export type SettingKey = keyof typeof SETTINGS_SCHEMA;

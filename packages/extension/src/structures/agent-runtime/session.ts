@@ -14,6 +14,7 @@ import { spawnSubagentTool } from '@pi-code/extension/structures/tool-call/spawn
 import { updateTodoTool } from '@pi-code/extension/structures/tool-call/update-todo';
 import { writeFileTool } from '@pi-code/extension/structures/tool-call/write-file';
 import { isProjectTrusted } from '@pi-code/extension/utilities/vscode';
+import { getSettingSpec } from '@pi-code/shared/core/settings';
 import { resolveContextLimit } from '@pi-code/shared/utilities/common';
 
 import type { AgentSessionServices, ToolDefinition } from '@earendil-works/pi-coding-agent';
@@ -77,6 +78,7 @@ export async function createSession(cwd: string, sessionPath?: string): Promise<
   });
 
   applyCompactionSettings(session);
+  applyRetrySettings(session);
 
   return { session, services };
 }
@@ -86,4 +88,13 @@ export function applyCompactionSettings(session: AgentSession): void {
   const contextWindow = resolveContextLimit(session.model?.contextWindow);
   const reserveTokens = Math.round(((100 - settings.autoCompactContextPercent) / 100) * contextWindow);
   session.settingsManager.applyOverrides({ compaction: { enabled: settings.autoCompactContext, reserveTokens } });
+}
+
+export function applyRetrySettings(session: AgentSession): void {
+  const settings = readAppSettings();
+  const retrySpec = getSettingSpec('retryOnError');
+  const unlimitedValue = retrySpec.type === 'number' ? retrySpec.maximum : 0;
+  const enabled = settings.retryOnError !== 0;
+  const maxRetries = settings.retryOnError === unlimitedValue ? Number.MAX_SAFE_INTEGER : settings.retryOnError;
+  session.settingsManager.applyOverrides({ retry: { enabled, maxRetries } });
 }

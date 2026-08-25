@@ -50,11 +50,14 @@ export const SettingControl: FC<SettingControlProps> = ({ settingKey, draftSetti
     }
 
     case 'number': {
+      const resolvedValue = typeof value === 'number' ? value : spec.default;
+      const showUnlimited = settingKey === 'retryOnError' && resolvedValue === spec.maximum;
       return (
         <SettingSlider
           label={field.label}
           description={spec.description}
-          value={typeof value === 'number' ? value : spec.default}
+          value={resolvedValue}
+          formatValue={showUnlimited ? () => '∞' : undefined}
           min={spec.minimum}
           max={spec.maximum}
           step={spec.step}

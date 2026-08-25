@@ -9,10 +9,22 @@ interface SettingSliderProps {
   readonly description?: string;
   readonly unit?: string;
   readonly step?: number;
+  readonly formatValue?: (value: number) => string;
   readonly children?: ReactNode;
 }
 
-export const SettingSlider: FC<SettingSliderProps> = ({ label, value, min, max, onChange, description, unit = '', step = 1, children }) => {
+export const SettingSlider: FC<SettingSliderProps> = ({
+  label,
+  value,
+  min,
+  max,
+  onChange,
+  description,
+  unit = '',
+  step = 1,
+  formatValue,
+  children,
+}) => {
   const percentage = ((value - min) / (max - min)) * 100;
   const trackStyle = {
     background: `linear-gradient(to right, var(--vscode-button-background) ${percentage}%, var(--vscode-input-background) ${percentage}%)`,
@@ -35,7 +47,7 @@ export const SettingSlider: FC<SettingSliderProps> = ({ label, value, min, max, 
           className="w-full appearance-none h-2 rounded-sm border border-vscode-settings-checkboxBorder outline-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-vscode-button-background [&::-webkit-slider-thumb]:border-none [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-vscode-button-background [&::-moz-range-thumb]:border-none [&::-moz-range-thumb]:cursor-pointer"
         />
         <span className="w-14 text-sm text-vscode-foreground text-right">
-          {value}
+          {formatValue ? formatValue(value) : value}
           {unit}
         </span>
       </div>
