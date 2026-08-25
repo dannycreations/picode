@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { COMMAND_IDS } from '@pi-code/shared/core/constants';
-import { registerFillCodeCommand } from './command';
+import { registerAddToContextCommand, registerFillCodeCommand } from './command';
 
 const mocks = vi.hoisted(() => ({
   handlers: new Map<string, (...args: unknown[]) => unknown>(),
@@ -15,6 +15,8 @@ const mocks = vi.hoisted(() => ({
   getWorkspaceCwd: vi.fn(),
   reportError: vi.fn(),
   completeAndExtract: vi.fn(),
+  executeCommand: vi.fn(),
+  postMessage: vi.fn(),
 }));
 
 vi.mock('vscode', () => ({
@@ -23,6 +25,7 @@ vi.mock('vscode', () => ({
       mocks.handlers.set(id, handler);
       return { dispose: () => mocks.handlers.delete(id) };
     },
+    executeCommand: mocks.executeCommand,
   },
   languages: {
     getDiagnostics: () => [],
@@ -53,7 +56,8 @@ vi.mock('@pi-code/extension/structures/agent-runtime/helpers/complete', () => ({
   completeAndExtract: mocks.completeAndExtract,
 }));
 
-vi.mock('@pi-code/extension/structures/context-command/helpers', () => ({
+vi.mock('@pi-code/extension/structures/context-command/helpers', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./helpers')>()),
   mapDiagnostics: mocks.mapDiagnostics,
   resolveSelectionFromDocument: mocks.resolveSelectionFromDocument,
 }));
@@ -109,6 +113,44 @@ async function runFillCommand(): Promise<void> {
   if (!handler) throw new Error(`${COMMAND_IDS.fillCode} is not registered`);
   await handler([]);
 }
+
+async function runAddToContext(args: unknown[]): Promise<void> {
+  const handler = mocks.handlers.get(COMMAND_IDS.addToContext);
+  if (!handler) throw new Error(`${COMMAND_IDS.addToContext} is not registered`);
+  await handler(...args);
+}
+
+describe('addToContext argument handling', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.handlers.clear();
+    mocks.editor.current = createEditor();
+    mocks.resolveSelectionFromDocument.mockReturnValue({ filePath: 'test.ts', selectedText: 'old code', startLine: 1, endLine: 2 });
+    registerAddToContextCommand({ postMessage: mocks.postMessage } as never);
+  });
+
+  it('falls back to the active editor when a menu passes a Uri instead of a selection', async () => {
+    // Editor/context menus deliver the document Uri as the first argument.
+    await runAddToContext([{ $mid: 1, fsPath: '/ws/test.ts', path: '/ws/test.ts', scheme: 'file' }]);
+
+    expect(mocks.resolveSelectionFromDocument).toHaveBeenCalled();
+    expect(mocks.postMessage).toHaveBeenCalledWith({
+      type: 'set_chat_input',
+      payload: { text: 'test.ts:1-2\n```\nold code\n```\n\n' },
+    });
+  });
+
+  it('uses the selection passed by the code action unchanged', async () => {
+    const passed = { filePath: 'other.ts', selectedText: 'kept', startLine: 3, endLine: 4 };
+    await runAddToContext([passed]);
+
+    expect(mocks.resolveSelectionFromDocument).not.toHaveBeenCalled();
+    expect(mocks.postMessage).toHaveBeenCalledWith({
+      type: 'set_chat_input',
+      payload: { text: 'other.ts:3-4\n```\nkept\n```\n\n' },
+    });
+  });
+});
 
 describe('runInlineCompletion cancellation', () => {
   beforeEach(() => {

@@ -61,6 +61,19 @@ export interface ResolvedSelection {
   readonly endLine: number;
 }
 
+// Editor/context menus invoke commands with the document Uri, so arguments from
+// unknown callers must be shape-checked before use.
+export function isResolvedSelection(value: unknown): value is ResolvedSelection {
+  if (typeof value !== 'object' || value === null) return false;
+  const candidate = value as Partial<ResolvedSelection>;
+  return (
+    typeof candidate.filePath === 'string' &&
+    typeof candidate.selectedText === 'string' &&
+    typeof candidate.startLine === 'number' &&
+    typeof candidate.endLine === 'number'
+  );
+}
+
 export function resolveSelectionFromDocument(document: TextDocument, selection: Selection): ResolvedSelection | null {
   const effective = getEffectiveSelection(document, selection);
   if (!effective) return null;

@@ -2,7 +2,7 @@ import { commands, languages, ProgressLocation, Range, window } from 'vscode';
 
 import { FILL_CODE_PROMPT, FIX_CODE_PROMPT } from '@pi-code/extension/core/prompt';
 import { completeAndExtract } from '@pi-code/extension/structures/agent-runtime/helpers/complete';
-import { mapDiagnostics, resolveSelectionFromDocument } from '@pi-code/extension/structures/context-command/helpers';
+import { isResolvedSelection, mapDiagnostics, resolveSelectionFromDocument } from '@pi-code/extension/structures/context-command/helpers';
 import { getWorkspaceCwd, reportError } from '@pi-code/extension/utilities/vscode';
 import { COMMAND_IDS } from '@pi-code/shared/core/constants';
 
@@ -12,7 +12,7 @@ import type { MappedDiagnostic, ResolvedSelection } from '@pi-code/extension/str
 
 function resolveSelection(args: unknown[]): ResolvedSelection | null {
   const [passed] = args;
-  if (passed) return passed as ResolvedSelection;
+  if (isResolvedSelection(passed)) return passed;
 
   const editor = window.activeTextEditor;
   if (!editor) return null;
