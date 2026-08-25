@@ -16,7 +16,7 @@ import { writeFileTool } from '@pi-code/extension/structures/tool-call/write-fil
 import { isProjectTrusted } from '@pi-code/extension/utilities/vscode';
 import { resolveContextLimit } from '@pi-code/shared/utilities/common';
 
-import type { ToolDefinition } from '@earendil-works/pi-coding-agent';
+import type { AgentSessionServices, ToolDefinition } from '@earendil-works/pi-coding-agent';
 import type { McpConfig } from '@pi-code/extension/structures/agent-runtime/mcp/config';
 import type { ToolName } from '@pi-code/shared/core/types';
 
@@ -31,7 +31,12 @@ const CUSTOM_TOOLS = [
   spawnSubagentTool,
 ] as const;
 
-export async function createSession(cwd: string, sessionPath?: string): Promise<AgentSession> {
+interface CreatedSession {
+  readonly session: AgentSession;
+  readonly services: AgentSessionServices;
+}
+
+export async function createSession(cwd: string, sessionPath?: string): Promise<CreatedSession> {
   const sessionManager = sessionPath ? SessionManager.open(sessionPath) : SessionManager.create(cwd);
 
   const services = await createAgentResources(cwd);
@@ -73,7 +78,7 @@ export async function createSession(cwd: string, sessionPath?: string): Promise<
 
   applyCompactionSettings(session);
 
-  return session;
+  return { session, services };
 }
 
 export function applyCompactionSettings(session: AgentSession): void {

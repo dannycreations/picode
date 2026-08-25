@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveContextLimit, splitOnOccurrences } from './common';
+import { DEFAULT_CONTEXT_LIMIT, resolveContextLimit, splitOnOccurrences } from './common';
 
 describe('splitOnOccurrences', () => {
   it('returns one unmatched segment when nothing matches', () => {
@@ -46,6 +46,6 @@ describe('resolveContextLimit', () => {
   });
 
   it('falls back to the shared default budget', () => {
-    expect(resolveContextLimit(undefined)).toBe(200_000);
+    expect(resolveContextLimit(undefined)).toBe(DEFAULT_CONTEXT_LIMIT);
   });
 });

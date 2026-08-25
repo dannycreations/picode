@@ -106,7 +106,6 @@ async function readSessionPreview(filePath: string, mtime: number): Promise<Hist
 }
 
 async function listJsonlFiles(dir: string): Promise<string[]> {
-  if (!existsSync(dir)) return [];
   try {
     const entries = await workspace.fs.readDirectory(Uri.file(dir));
     return entries

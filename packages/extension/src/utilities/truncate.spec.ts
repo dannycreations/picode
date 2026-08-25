@@ -2,11 +2,12 @@ import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES } from '@earendil-works/pi-coding-
 import { describe, expect, it } from 'vitest';
 
 import { shareOutputLimits, toOutputLimits, truncateOutput } from '@pi-code/extension/utilities/truncate';
-import { createDefaultSettings } from '@pi-code/shared/core/settings';
+import { coerceSetting, SETTING_KEYS } from '@pi-code/shared/core/settings';
 
 import type { AppSettings } from '@pi-code/shared/core/settings';
 
-const DEFAULT_SETTINGS = createDefaultSettings();
+// Defaults materialized the same way readAppSettings builds them.
+const DEFAULT_SETTINGS = Object.fromEntries(SETTING_KEYS.map((key) => [key, coerceSetting(key, undefined)])) as AppSettings;
 
 const limits = { maxLines: 5, maxBytes: 1024 };
 

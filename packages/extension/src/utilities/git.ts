@@ -1,3 +1,4 @@
+import { execFile } from 'node:child_process';
 import { extensions } from 'vscode';
 
 import type { Uri } from 'vscode';
@@ -8,6 +9,10 @@ export const GIT_STATUS = {
   DELETED: 6,
   UNTRACKED: 7,
 } as const;
+
+// The whole `git show` output must survive the exec buffer; trimming to a
+// display budget happens afterwards on the complete text.
+const GIT_MAX_BUFFER = 10 * 1024 * 1024;
 
 async function getGitApi(): Promise<API | null> {
   const gitExtension = extensions.getExtension<GitExtension>('vscode.git');
@@ -37,6 +42,12 @@ export async function getGitRepository(uri?: Uri): Promise<Repository | null> {
   }
 
   return api.repositories[0] ?? null;
+}
+
+export function execGit(root: string, args: readonly string[]): Promise<string> {
+  return new Promise((resolve, reject) => {
+    execFile('git', [...args], { cwd: root, encoding: 'utf-8', maxBuffer: GIT_MAX_BUFFER }, (err, stdout) => (err ? reject(err) : resolve(stdout)));
+  });
 }
 
 export async function getIgnoredPaths(repo: Repository, absolutePaths: readonly string[]): Promise<Set<string>> {

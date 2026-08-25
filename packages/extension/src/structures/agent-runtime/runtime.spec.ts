@@ -66,6 +66,9 @@ function makeFakeWebview(): Webview {
   return { postMessage: vi.fn() } as unknown as Webview;
 }
 
+// Shape of the services createSession hands back; startTask reads skills and prompts from it.
+const SERVICES = { resourceLoader: { getSkills: () => ({ skills: [] }), getPrompts: () => ({ prompts: [] }) } };
+
 // A session shaped for the start/continue paths: prompt drives the run,
 // subscribe is called during preparation, and the rest satisfy dispose hooks.
 function makeStartableSession(): AgentSession & { prompt: ReturnType<typeof vi.fn>; dispose: ReturnType<typeof vi.fn> } {
@@ -237,7 +240,7 @@ describe('Runtime cancel during init', () => {
   it('does not prompt and settles the webview when cancelled before the session exists', async () => {
     const webview = makeFakeWebview();
     const runtime = new Runtime(webview);
-    const gate = deferred<AgentSession & { prompt: ReturnType<typeof vi.fn>; dispose: ReturnType<typeof vi.fn> }>();
+    const gate = deferred<{ session: AgentSession; services: unknown }>();
     mocks.createSession.mockReturnValue(gate.promise);
     const session = makeStartableSession();
 
@@ -248,7 +251,7 @@ describe('Runtime cancel during init', () => {
 
     await runtime.cancelTask();
 
-    gate.resolve(session);
+    gate.resolve({ session, services: SERVICES });
     await flush();
 
     expect(session.prompt).not.toHaveBeenCalled();
@@ -262,7 +265,7 @@ describe('Runtime cancel during init', () => {
     const runtime = new Runtime(webview);
     const envGate = deferred<string>();
     const session = makeStartableSession();
-    mocks.createSession.mockResolvedValue(session);
+    mocks.createSession.mockResolvedValue({ session, services: SERVICES });
     mocks.getEnvironmentDetails.mockReturnValue(envGate.promise);
 
     void runtime.startTask('hello');
@@ -306,7 +309,7 @@ describe('Runtime cancel during init', () => {
     const runtime = new Runtime(webview);
     const envGate = deferred<string>();
     const session = makeStartableSession();
-    mocks.createSession.mockResolvedValue(session);
+    mocks.createSession.mockResolvedValue({ session, services: SERVICES });
     mocks.getEnvironmentDetails.mockReturnValue(envGate.promise);
 
     void runtime.continueTask('/tmp/task.json');
@@ -326,7 +329,7 @@ describe('Runtime cancel during init', () => {
     const webview = makeFakeWebview();
     const runtime = new Runtime(webview);
     const session = makeStartableSession();
-    mocks.createSession.mockResolvedValue(session);
+    mocks.createSession.mockResolvedValue({ session, services: SERVICES });
 
     await runtime.startTask('hello');
     await flush();

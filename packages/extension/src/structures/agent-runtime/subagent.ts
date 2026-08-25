@@ -47,6 +47,7 @@ interface SubagentInput {
 }
 
 const MAX_CONCURRENT_SUBAGENTS = 3;
+const MAX_SUBAGENT_STEP_HISTORY = 10;
 
 let activeSpawns = 0;
 const waiting: (() => void)[] = [];
@@ -148,7 +149,7 @@ export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutco
   input.onProgress?.('');
   const collected: string[] = [];
 
-  const steps = (): string => collected.slice(-10).join('\n');
+  const steps = (): string => collected.slice(-MAX_SUBAGENT_STEP_HISTORY).join('\n');
 
   try {
     if (input.signal?.aborted) {

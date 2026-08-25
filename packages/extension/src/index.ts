@@ -14,6 +14,7 @@ import {
 import { PiCodeActionProvider } from '@pi-code/extension/structures/context-command/provider';
 import { flushDebugLog, installFetchInterceptor } from '@pi-code/extension/utilities/interceptor';
 import { getWorkspaceUri } from '@pi-code/extension/utilities/vscode';
+import { COMMAND_IDS } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
 
 import type { ExtensionContext } from 'vscode';
@@ -46,7 +47,7 @@ export function activate(context: ExtensionContext): void {
     registerFillCodeCommand(),
     registerFixCodeCommand(),
     languages.registerCodeActionsProvider('*', new PiCodeActionProvider(), PiCodeActionProvider.metadata),
-    commands.registerCommand('pi-code.settingsButtonClicked', () => {
+    commands.registerCommand(COMMAND_IDS.settingsButtonClicked, () => {
       chatViewProvider.postMessage({ type: 'show_settings' });
     }),
     // Trust gates which project resources Pi is allowed to load, so the cached

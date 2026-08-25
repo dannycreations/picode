@@ -487,10 +487,18 @@ export const useChatStore = create<ChatState>((set, get) => {
 
     // Switching folders invalidates everything scoped to the old cwd: cached
     // history lists and file-search results. The re-init refetches models,
-    // settings, commands, and history for the new folder.
+    // settings, commands, and history for the new folder. fetchedScopes resets
+    // here too, so no scope from the old workspace can mask an empty list
+    // during the window before init_data arrives.
     selectWorkspace: (path) => {
       if (path === get().activeWorkspace) return;
-      set({ activeWorkspace: path, historyByScope: scopedRecord<HistoryItem[]>(() => []), searchResults: [], commitResults: null });
+      set({
+        activeWorkspace: path,
+        historyByScope: scopedRecord<HistoryItem[]>(() => []),
+        searchResults: [],
+        commitResults: null,
+        fetchedScopes: new Set<HistoryScope>(['current']),
+      });
       get().send({ type: 'select_workspace', path });
       get().send({ type: 'init' });
     },

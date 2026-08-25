@@ -58,35 +58,23 @@ function postSession(ctx: MessageHandlerContext, id: string, title: string, path
   });
 }
 
-async function postHistory(ctx: MessageHandlerContext, scope: HistoryScope): Promise<void> {
+async function postHistory(ctx: MessageHandlerContext, scope: HistoryScope, snapshot = false): Promise<void> {
   // Monotonic per-webview counter for history refreshes. The webview applies
   // only the highest epoch per scope, so a stale or out-of-order history_data
   // chunk from an earlier refresh cannot corrupt the list.
   const epoch = ++ctx.historyEpoch;
   const cwd = ctx.cwd;
   try {
-    for await (const items of streamHistory(cwd, scope)) {
+    let items: HistoryItem[] | null = snapshot ? [] : null;
+    for await (const chunk of streamHistory(cwd, scope)) {
       // A workspace switch mid-stream must not mix sessions across folders.
       if (ctx.cwd !== cwd) return;
-      ctx.runtime.postMessage({ type: 'history_data', payload: { scope, epoch, items } });
+      if (items) items.push(...chunk);
+      else ctx.runtime.postMessage({ type: 'history_data', payload: { scope, epoch, items: chunk } });
     }
+    if (items) ctx.runtime.postMessage({ type: 'history_data', payload: { scope, epoch, items } });
   } catch (error) {
-    logger.warn(`History stream for "${scope}" failed; the list may be incomplete.`, error);
-  }
-}
-
-async function postHistorySnapshot(ctx: MessageHandlerContext, scope: HistoryScope): Promise<void> {
-  const epoch = ++ctx.historyEpoch;
-  const cwd = ctx.cwd;
-  try {
-    const items: HistoryItem[] = [];
-    for await (const chunk of streamHistory(cwd, scope)) {
-      if (ctx.cwd !== cwd) return;
-      items.push(...chunk);
-    }
-    ctx.runtime.postMessage({ type: 'history_data', payload: { scope, epoch, items } });
-  } catch (error) {
-    logger.warn(`History snapshot for "${scope}" failed; the list may be incomplete.`, error);
+    logger.warn(`History ${snapshot ? 'snapshot' : 'stream'} for "${scope}" failed; the list may be incomplete.`, error);
   }
 }
 
@@ -243,7 +231,7 @@ const HANDLER_MAP: HandlerMap = {
     // chunks) so the webview's list never transiently shrinks, which would drag
     // its pagination back a page.
     for (const target of HISTORY_SCOPES) {
-      await postHistorySnapshot(ctx, target);
+      await postHistory(ctx, target, true);
     }
   },
   update_settings: async (msg) => {

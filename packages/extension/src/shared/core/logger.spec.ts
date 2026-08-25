@@ -6,9 +6,8 @@ import type { LoggerSink } from '@pi-code/shared/core/logger';
 
 const ENV_LEVEL_KEY = 'PI_CODE_LOG_LEVEL';
 
-function recordingSink(records: Array<[string, string]>, level?: LoggerSink['level']): LoggerSink {
+function recordingSink(records: Array<[string, string]>): LoggerSink {
   return {
-    level,
     trace: (message) => records.push(['trace', message]),
     debug: (message) => records.push(['debug', message]),
     info: (message) => records.push(['info', message]),
@@ -53,22 +52,6 @@ describe('logger levels', () => {
     logger.debug('d');
     logger.info('i');
     expect(recordedLevels()).toEqual(['info']);
-  });
-
-  it('lets the sink declare a stricter level than the default', () => {
-    records = [];
-    logger.setSink(recordingSink(records, 'error'));
-    logger.warn('w');
-    logger.error('e');
-    expect(recordedLevels()).toEqual(['error']);
-  });
-
-  it('gives PI_CODE_LOG_LEVEL precedence over the sink level', () => {
-    process.env[ENV_LEVEL_KEY] = 'debug';
-    records = [];
-    logger.setSink(recordingSink(records, 'error'));
-    logger.debug('d');
-    expect(recordedLevels()).toEqual(['debug']);
   });
 
   it('silences every level when off', () => {

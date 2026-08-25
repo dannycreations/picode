@@ -49,8 +49,6 @@ export const ChatView: FC = () => {
   const config = useChatConfig();
   const view = useChatStore((state) => state.view);
   const setView = useChatStore((state) => state.setView);
-  const inputValue = useChatStore((state) => state.inputValue);
-  const setInputValue = useChatStore((state) => state.setInputValue);
   const appendToInput = useChatStore((state) => state.appendToInput);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   useEffect(() => {
@@ -445,9 +443,6 @@ export const ChatView: FC = () => {
       {!activeTask?.isArchived && (
         <ChatInput
           textareaRef={textareaRef}
-          inputValue={inputValue}
-          setInputValue={setInputValue}
-          commands={commands}
           onSend={(text, images) => {
             scrollToBottom();
             handleSendPrompt(text, images);

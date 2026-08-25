@@ -13,16 +13,12 @@ import { useChatStore } from '@pi-code/webview/stores/useChatStore';
 import { readFileAsDataUrl } from '@pi-code/webview/utilities/common';
 
 import type { ChangeEvent, ClipboardEvent, DragEvent, FC, KeyboardEvent, RefObject } from 'react';
-import type { CommandItem } from '@pi-code/shared/core/protocol';
 
 interface ChatInputProps {
-  readonly inputValue: string;
-  readonly setInputValue: (val: string) => void;
   readonly onSend: (text: string, images: string[]) => void;
   readonly sendingDisabled: boolean;
   readonly placeholderText: string;
   readonly textareaRef: RefObject<HTMLTextAreaElement | null>;
-  readonly commands: readonly CommandItem[];
   readonly supportsImages: boolean;
 }
 
@@ -51,18 +47,12 @@ const AttachedImagesPreview: FC<{
   );
 };
 
-export const ChatInput: FC<ChatInputProps> = ({
-  inputValue,
-  setInputValue,
-  onSend,
-  sendingDisabled,
-  placeholderText,
-  textareaRef,
-  commands,
-  supportsImages,
-}) => {
+export const ChatInput: FC<ChatInputProps> = ({ onSend, sendingDisabled, placeholderText, textareaRef, supportsImages }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const inputValue = useChatStore((state) => state.inputValue);
+  const setInputValue = useChatStore((state) => state.setInputValue);
+  const commands = useChatStore((state) => state.commands);
   const selectedImages = useChatStore((state) => state.inputImages);
   const setSelectedImages = useChatStore((state) => state.setInputImages);
   const fileInputRef = useRef<HTMLInputElement>(null);

@@ -1,13 +1,11 @@
-import { formatThrownValue } from '@earendil-works/pi-ai';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
 import { readOutputLimits } from '@pi-code/extension/core/settings';
-import { loadMcpConfig } from '@pi-code/extension/structures/agent-runtime/mcp/config';
+import { getActiveMcpConfig } from '@pi-code/extension/structures/agent-runtime/mcp/config';
 import { mcpGateway } from '@pi-code/extension/structures/agent-runtime/mcp/manager';
-import { toolError, toolResult } from '@pi-code/extension/structures/tool-call/helpers';
+import { toolError, toolErrorFrom, toolResult } from '@pi-code/extension/structures/tool-call/helpers';
 import { truncateOutput } from '@pi-code/extension/utilities/truncate';
-import { isProjectTrusted } from '@pi-code/extension/utilities/vscode';
 
 import type { CustomToolResult } from '@pi-code/extension/types/extension';
 import type { ToolName } from '@pi-code/shared/core/types';
@@ -32,13 +30,13 @@ export const mcpTool = defineTool({
   }),
   async execute(_toolCallId, params, signal, _onUpdate, ctx): Promise<CustomToolResult<McpDetails>> {
     try {
-      const config = await loadMcpConfig(ctx.cwd, { trusted: isProjectTrusted(ctx.cwd) });
+      const config = getActiveMcpConfig();
       const outcome = await mcpGateway.dispatch(config, ctx.cwd, params, signal);
       const { text } = truncateOutput(outcome.text, { limits: readOutputLimits() });
       const details: McpDetails = { subtitle: outcome.subtitle };
       return outcome.isError ? toolError(text, details) : toolResult(text, details);
     } catch (err) {
-      return toolError(`Error calling MCP: ${formatThrownValue(err)}`);
+      return toolErrorFrom(err, 'calling MCP');
     }
   },
 });

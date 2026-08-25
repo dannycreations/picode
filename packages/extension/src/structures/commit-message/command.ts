@@ -1,12 +1,11 @@
-import { formatThrownValue } from '@earendil-works/pi-ai';
 import { commands, ProgressLocation, window } from 'vscode';
 
 import { COMMIT_MESSAGE_PROMPT } from '@pi-code/extension/core/prompt';
-import { completePrompt } from '@pi-code/extension/structures/agent-runtime/helpers/complete';
+import { completeAndExtract } from '@pi-code/extension/structures/agent-runtime/helpers/complete';
 import { buildGitContext, getGitChanges, getGitDiffContext, getRepoContext } from '@pi-code/extension/structures/commit-message/git';
 import { getGitRepository } from '@pi-code/extension/utilities/git';
-import { extractCodeFenceMessage } from '@pi-code/extension/utilities/markdown';
-import { getWorkspaceUri } from '@pi-code/extension/utilities/vscode';
+import { getWorkspaceUri, reportError } from '@pi-code/extension/utilities/vscode';
+import { COMMAND_IDS } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
 
 import type { Disposable, Uri } from 'vscode';
@@ -93,10 +92,7 @@ async function generateAndApply(
   logger.debug(`Fully assembled prompt (character length: ${prompt.length})`);
 
   const cwd = repo.rootUri.fsPath;
-  const rawMessage = await completePrompt(cwd, prompt);
-  logger.trace(`Raw LLM response: ${rawMessage}`);
-
-  const cleanMessage = extractCodeFenceMessage(rawMessage);
+  const cleanMessage = await completeAndExtract(cwd, prompt);
   logger.debug(`Extracted commit message: ${cleanMessage}`);
   if (!cleanMessage) {
     throw new Error('Empty response received from model.');
@@ -108,7 +104,7 @@ async function generateAndApply(
 }
 
 export function registerCommitMessageCommand(): Disposable {
-  return commands.registerCommand('pi-code.generateCommitMessage', async (scmRequest?: ScmRequest) => {
+  return commands.registerCommand(COMMAND_IDS.generateCommitMessage, async (scmRequest?: ScmRequest) => {
     logger.info('Generate Commit Message command triggered.');
     try {
       const repo = await getGitRepository(resolveRootUri(scmRequest));
@@ -157,9 +153,7 @@ export function registerCommitMessageCommand(): Disposable {
         generatingRepos.delete(cwd);
       }
     } catch (error) {
-      const message = `Failed to generate commit message: ${formatThrownValue(error)}`;
-      logger.error(message, error);
-      window.showErrorMessage(message);
+      reportError('Failed to generate commit message', error);
     }
   });
 }

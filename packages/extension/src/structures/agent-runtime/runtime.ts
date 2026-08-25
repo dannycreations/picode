@@ -8,7 +8,7 @@ import { initSessionHooks } from '@pi-code/extension/structures/agent-runtime/ho
 import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { createSession } from '@pi-code/extension/structures/agent-runtime/session';
 import { collectCommands } from '@pi-code/extension/structures/chat-command/command';
-import { injectResourceMessages } from '@pi-code/extension/structures/chat-command/invocation';
+import { injectResourceMessages, sendHiddenContent } from '@pi-code/extension/structures/chat-command/invocation';
 import { expandMentions } from '@pi-code/extension/structures/chat-command/mention';
 import { getEnvironmentDetails } from '@pi-code/extension/structures/chat-session/environment';
 import { loadSessionTranscript } from '@pi-code/extension/structures/chat-session/session';
@@ -21,11 +21,7 @@ import type { ImageContent, TextContent } from '@earendil-works/pi-ai';
 import type { AgentSession, AgentSessionEvent, AgentSessionServices } from '@earendil-works/pi-coding-agent';
 import type { Webview } from 'vscode';
 import type { ExtensionToWebviewMessage } from '@pi-code/shared/core/protocol';
-import type { ChatMessage, StatsData } from '@pi-code/shared/core/types';
-
-function deliverMentionContent(session: AgentSession, content: string, deliverAs: 'nextTurn' | 'steer'): Promise<void> {
-  return session.sendCustomMessage({ customType: 'mention_content', content, display: false }, { deliverAs });
-}
+import type { ChatMessage, QueueChatMessage, StatsData } from '@pi-code/shared/core/types';
 
 export class Runtime {
   private session: AgentSession | null = null;
@@ -68,19 +64,12 @@ export class Runtime {
       await injectResourceMessages(session, { skills, prompts }, expanded.text);
 
       if (expanded.mentionContent) {
-        await deliverMentionContent(session, expanded.mentionContent, 'nextTurn');
+        await sendHiddenContent(session, 'mention_content', expanded.mentionContent, { deliverAs: 'nextTurn' });
       }
 
       // `nextTurn` makes pi attach the details to the upcoming user message, so
       // they reach the model and get persisted with the turn that used them.
-      await session.sendCustomMessage(
-        {
-          customType: 'environment_details',
-          content: envDetails,
-          display: false,
-        },
-        { deliverAs: 'nextTurn' },
-      );
+      await sendHiddenContent(session, 'environment_details', envDetails, { deliverAs: 'nextTurn' });
 
       const attachments = parseImageAttachments(images);
 
@@ -106,11 +95,9 @@ export class Runtime {
       const { session, envDetails } = await this.prepareSession(path);
       if (this.discardIfStale(generation, session)) return;
 
-      void session
-        .sendCustomMessage({ customType: 'environment_details', content: envDetails, display: false }, { triggerTurn: true })
-        .catch((err) => {
-          this.messenger.postError(err);
-        });
+      void sendHiddenContent(session, 'environment_details', envDetails, { triggerTurn: true }).catch((err) => {
+        this.messenger.postError(err);
+      });
     } catch (err) {
       if (generation !== this.taskGeneration) {
         logger.debug('Task continuation abandoned after cancel:', err);
@@ -127,7 +114,7 @@ export class Runtime {
     this.compacting = true;
     this.messenger.post({ type: 'compaction_start' });
     try {
-      const session = await this.getOrCreateSession(path, cwd);
+      const { session } = await this.getOrCreateSession(path, cwd);
       const compaction = await session.compact();
 
       // Returns the compacted transcript and its stats so the caller can refresh the
@@ -234,10 +221,9 @@ export class Runtime {
     this.prepareRun();
     const cwd = getWorkspaceCwd();
 
-    // Skills come from the same cached resources the session was built with,
-    // so one fetch serves both instead of resolving resources twice.
-    const session = await this.getOrCreateSession(path, cwd);
-    const services = await createAgentResources(cwd);
+    // Skills come from the exact resources the session was built with, so one
+    // fetch serves both instead of resolving resources twice.
+    const { session, services } = await this.getOrCreateSession(path, cwd);
 
     await applyPersistedModelAndThinking(session);
 
@@ -246,22 +232,22 @@ export class Runtime {
     return { session, envDetails, services };
   }
 
-  private async getOrCreateSession(path: string | undefined, cwd: string): Promise<AgentSession> {
+  private async getOrCreateSession(path: string | undefined, cwd: string): Promise<{ session: AgentSession; services: AgentSessionServices }> {
     if (this.session && (!path || this.session.sessionFile === path)) {
       logger.debug('Reusing existing agent session.');
-      return this.session;
+      return { session: this.session, services: await createAgentResources(cwd) };
     }
 
     this.cleanupSession();
 
-    const session = await createSession(cwd, path);
+    const { session, services } = await createSession(cwd, path);
     this.session = session;
     logger.debug(`Created agent session${path ? ` from ${path}` : ' for the workspace'}.`);
 
     this.bindSessionHooks(session);
     this.unsubscribeSessionEvents = session.subscribe((event) => this.handleSessionEvent(event, session));
 
-    return session;
+    return { session, services };
   }
 
   private bindSessionHooks(session: AgentSession): void {
@@ -286,7 +272,7 @@ export class Runtime {
         continue;
       }
 
-      if (await this.steerQueuedReply(msg, cwd, session, msg.images)) {
+      if (await this.steerQueuedReply(msg, cwd, session)) {
         delivered.push({ id: msg.id, sender: 'user', text: msg.text, images: msg.images, ts: msg.ts });
       } else {
         undelivered.push(msg);
@@ -340,9 +326,9 @@ export class Runtime {
     }
   }
 
-  private async steerQueuedReply(msg: ChatMessage, cwd: string, session: AgentSession, images: string[] | undefined): Promise<boolean> {
+  private async steerQueuedReply(msg: QueueChatMessage, cwd: string, session: AgentSession): Promise<boolean> {
     try {
-      const attachments = parseImageAttachments(images);
+      const attachments = parseImageAttachments(msg.images);
       const expanded = await expandMentions(msg.text, cwd);
       const content: (TextContent | ImageContent)[] = [{ type: 'text', text: expanded.text }];
       if (attachments) {
@@ -351,7 +337,7 @@ export class Runtime {
       session.agent.steer({ role: 'user', content, timestamp: msg.ts });
 
       if (expanded.mentionContent) {
-        await deliverMentionContent(session, expanded.mentionContent, 'steer');
+        await sendHiddenContent(session, 'mention_content', expanded.mentionContent, { deliverAs: 'steer' });
       }
       return true;
     } catch (err) {

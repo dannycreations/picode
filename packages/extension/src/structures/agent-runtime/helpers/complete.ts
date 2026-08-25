@@ -2,6 +2,7 @@ import { contentText } from '@earendil-works/pi-ai';
 
 import { getDefaultModelSelection } from '@pi-code/extension/core/settings';
 import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
+import { extractCodeFenceMessage } from '@pi-code/extension/utilities/markdown';
 import { logger } from '@pi-code/shared/core/logger';
 
 export async function completePrompt(cwd: string, prompt: string): Promise<string> {
@@ -28,4 +29,8 @@ export async function completePrompt(cwd: string, prompt: string): Promise<strin
     .filter((block) => block.type === 'thinking')
     .map((block) => block.thinking)
     .join('\n');
+}
+
+export async function completeAndExtract(cwd: string, prompt: string): Promise<string> {
+  return extractCodeFenceMessage(await completePrompt(cwd, prompt));
 }

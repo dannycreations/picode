@@ -1,28 +1,19 @@
-import { execFile } from 'node:child_process';
 import { formatThrownValue } from '@earendil-works/pi-ai';
 import { Uri } from 'vscode';
 
 import { WORKING_CHANGES_TAG } from '@pi-code/extension/shared/core/constants';
-import { getGitRepository } from '@pi-code/extension/utilities/git';
+import { execGit, getGitRepository } from '@pi-code/extension/utilities/git';
 import { truncateOutput } from '@pi-code/extension/utilities/truncate';
 
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
 import type { CommitItem } from '@pi-code/shared/core/protocol';
 
-// The whole `git show` output must survive the exec buffer; trimming to the
-// prompt budget happens afterwards on the complete text.
-const GIT_MAX_BUFFER = 10 * 1024 * 1024;
 const COMMIT_SEARCH_WINDOW = 50;
 const COMMIT_RESULT_CAP = 10;
 const COMMIT_HASH_PATTERN = /^[a-f0-9]{7,40}$/i;
+const SHORT_HASH_LENGTH = 7;
 // One commit per five lines: hash, short hash, author, date, subject.
 const LOG_ARGUMENTS = ['--date=short', '--format=%H%n%h%n%an%n%ad%n%s'] as const;
-
-function runGit(root: string, args: readonly string[]): Promise<string> {
-  return new Promise((resolve, reject) => {
-    execFile('git', [...args], { cwd: root, encoding: 'utf-8', maxBuffer: GIT_MAX_BUFFER }, (err, stdout) => (err ? reject(err) : resolve(stdout)));
-  });
-}
 
 async function resolveRepoRoot(cwd: string): Promise<string | null> {
   const repo = await getGitRepository(Uri.file(cwd)).catch(() => null);
@@ -56,7 +47,7 @@ export function matchCommits(commits: readonly CommitItem[], query: string): Com
 
   // A hash outside the recent window still gets an entry: `git show` resolves
   // it at expansion time even though the log listing cannot.
-  return [{ hash: needle, shortHash: needle.slice(0, 7), subject: needle }];
+  return [{ hash: needle, shortHash: needle.slice(0, SHORT_HASH_LENGTH), subject: needle }];
 }
 
 export async function searchCommits(query: string, cwd: string): Promise<CommitItem[]> {
@@ -64,7 +55,7 @@ export async function searchCommits(query: string, cwd: string): Promise<CommitI
     const root = await resolveRepoRoot(cwd);
     if (!root) return [];
 
-    const output = await runGit(root, ['log', `--max-count=${COMMIT_SEARCH_WINDOW}`, ...LOG_ARGUMENTS]);
+    const output = await execGit(root, ['log', `--max-count=${COMMIT_SEARCH_WINDOW}`, ...LOG_ARGUMENTS]);
     return matchCommits(parseGitLog(output), query);
   } catch {
     return [];
@@ -84,15 +75,15 @@ function buildWorkingChangesBlock(status: string, diff: string): string {
 }
 
 async function resolveCommitContent(token: string, root: string, limits: OutputLimits): Promise<string> {
-  const show = await runGit(root, ['show', '--no-color', '--stat', '--patch', token]);
+  const show = await execGit(root, ['show', '--no-color', '--stat', '--patch', token]);
   return buildCommitBlock(token, fitToLimits(show, limits));
 }
 
 async function resolveWorkingChanges(root: string, limits: OutputLimits): Promise<string> {
   // The two reads are independent; a failed diff must not hide a useful status.
   const [status, diff] = await Promise.all([
-    runGit(root, ['status', '--short']),
-    runGit(root, ['diff', '--no-color', 'HEAD']).catch((err) => `Unavailable: ${formatThrownValue(err)}`),
+    execGit(root, ['status', '--short']),
+    execGit(root, ['diff', '--no-color', 'HEAD']).catch((err) => `Unavailable: ${formatThrownValue(err)}`),
   ]);
   return buildWorkingChangesBlock(status, fitToLimits(diff, limits));
 }

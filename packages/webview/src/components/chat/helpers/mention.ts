@@ -2,18 +2,25 @@ import { WORKING_CHANGES_TAG } from '@pi-code/shared/core/constants';
 
 import type { CommitItem } from '@pi-code/shared/core/protocol';
 
-const MENTION_PATTERN = /(?<=^|\s)@([^\s]*)$/;
-const TAG_PATTERN = /(?<=^|\s)#([^\s]*)$/;
+const MENTION_TOKEN_PATTERN = /(?<=^|\s)@([^\s]*)$/;
+const TAG_TOKEN_PATTERN = /(?<=^|\s)#([^\s]*)$/;
 
 interface MentionQuery {
   readonly query: string;
 }
 
-export function readMentionQuery(text: string, caret: number): MentionQuery | null {
-  const before = text.slice(0, caret);
-  const match = MENTION_PATTERN.exec(before);
+function readTokenQuery(pattern: RegExp, text: string, caret: number): MentionQuery | null {
+  const match = pattern.exec(text.slice(0, caret));
   if (!match) return null;
   return { query: match[1] };
+}
+
+export function readMentionQuery(text: string, caret: number): MentionQuery | null {
+  return readTokenQuery(MENTION_TOKEN_PATTERN, text, caret);
+}
+
+export function readTagQuery(text: string, caret: number): MentionQuery | null {
+  return readTokenQuery(TAG_TOKEN_PATTERN, text, caret);
 }
 
 interface MentionInsertion {
@@ -21,15 +28,23 @@ interface MentionInsertion {
   readonly caret: number;
 }
 
-export function applyMention(text: string, caret: number, path: string): MentionInsertion {
+function insertToken(pattern: RegExp, prefix: string, text: string, caret: number, value: string): MentionInsertion {
   const before = text.slice(0, caret);
   const after = text.slice(caret);
-  const match = MENTION_PATTERN.exec(before);
+  const match = pattern.exec(before);
   if (!match) return { text, caret };
 
   const at = match.index;
-  const newBefore = `${before.slice(0, at)}@${path} `;
+  const newBefore = `${before.slice(0, at)}${prefix}${value} `;
   return { text: `${newBefore}${after}`, caret: newBefore.length };
+}
+
+export function applyMention(text: string, caret: number, path: string): MentionInsertion {
+  return insertToken(MENTION_TOKEN_PATTERN, '@', text, caret, path);
+}
+
+export function applyTag(text: string, caret: number, value: string): MentionInsertion {
+  return insertToken(TAG_TOKEN_PATTERN, '#', text, caret, value);
 }
 
 export interface CommitTagItem {
@@ -49,22 +64,4 @@ export function toCommitTagItem(commit: CommitItem): CommitTagItem {
     .filter((part): part is string => Boolean(part))
     .join(' ');
   return { value: commit.shortHash, label: commit.subject, description: detail };
-}
-
-export function readTagQuery(text: string, caret: number): MentionQuery | null {
-  const before = text.slice(0, caret);
-  const match = TAG_PATTERN.exec(before);
-  if (!match) return null;
-  return { query: match[1] };
-}
-
-export function applyTag(text: string, caret: number, value: string): MentionInsertion {
-  const before = text.slice(0, caret);
-  const after = text.slice(caret);
-  const match = TAG_PATTERN.exec(before);
-  if (!match) return { text, caret };
-
-  const at = match.index;
-  const newBefore = `${before.slice(0, at)}#${value} `;
-  return { text: `${newBefore}${after}`, caret: newBefore.length };
 }

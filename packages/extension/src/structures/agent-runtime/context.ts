@@ -1,4 +1,3 @@
-import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { CONFIG_DIR_NAME, getAgentDir, loadProjectContextFiles } from '@earendil-works/pi-coding-agent';
@@ -45,7 +44,6 @@ const SYSTEM_PROMPT_FILE = 'SYSTEM.md';
 const APPEND_SYSTEM_PROMPT_FILE = 'APPEND_SYSTEM.md';
 
 async function readOptionalFile(path: string): Promise<string | undefined> {
-  if (!existsSync(path)) return undefined;
   try {
     return await readFile(path, 'utf8');
   } catch {

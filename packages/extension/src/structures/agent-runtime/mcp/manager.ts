@@ -27,7 +27,7 @@ export interface McpConnection {
 
 export type McpConnector = (server: McpServerConfig, cwd: string) => Promise<McpConnection>;
 
-export async function connectMcpServer(server: McpServerConfig, cwd: string): Promise<McpConnection> {
+async function connectMcpServer(server: McpServerConfig, cwd: string): Promise<McpConnection> {
   const client = new Client({ name: 'pi-code', version: '0.0.1' });
   const timeoutMs = server.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 

@@ -1,9 +1,8 @@
-export type LogLevelName = 'trace' | 'debug' | 'info' | 'warn' | 'error';
+type LogLevelName = 'trace' | 'debug' | 'info' | 'warn' | 'error';
 
-export type LevelSetting = LogLevelName | 'off';
+type LevelSetting = LogLevelName | 'off';
 
 export interface LoggerSink {
-  readonly level?: LevelSetting;
   readonly trace: (message: string, ...args: unknown[]) => void;
   readonly debug: (message: string, ...args: unknown[]) => void;
   readonly info: (message: string, ...args: unknown[]) => void;
@@ -44,7 +43,7 @@ function readEnvLevel(): LevelSetting | undefined {
 }
 
 function isEnabled(level: LogLevelName): boolean {
-  const setting = readEnvLevel() ?? sink.level ?? 'info';
+  const setting = readEnvLevel() ?? 'info';
   return LEVEL_WEIGHT[level] >= LEVEL_WEIGHT[setting];
 }
 

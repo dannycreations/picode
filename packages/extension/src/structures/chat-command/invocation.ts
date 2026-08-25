@@ -8,8 +8,8 @@ import { logger } from '@pi-code/shared/core/logger';
 
 import type { AgentSession, PromptTemplate, Skill } from '@earendil-works/pi-coding-agent';
 
-const SKILL_COMMAND_PREFIX = '/skill:';
-const PROMPT_COMMAND_PREFIX = '/prompt:';
+export const SKILL_COMMAND_PREFIX = '/skill:';
+export const PROMPT_COMMAND_PREFIX = '/prompt:';
 const SKILL_CONTENT_TYPE = 'skill_content';
 const PROMPT_CONTENT_TYPE = 'prompt_content';
 
@@ -80,10 +80,16 @@ async function injectPromptMessage(session: AgentSession, prompts: readonly Prom
   await sendHiddenContent(session, PROMPT_CONTENT_TYPE, buildPromptBlock(matched, content));
 }
 
-// No `deliverAs`: a bare sendCustomMessage lands on the session before the
-// upcoming user turn, whereas `nextTurn` would be appended after it.
-function sendHiddenContent(session: AgentSession, customType: string, content: string): Promise<void> {
-  return session.sendCustomMessage({ customType, content, display: false });
+interface HiddenContentOptions {
+  readonly deliverAs?: 'nextTurn' | 'steer';
+  readonly triggerTurn?: boolean;
+}
+
+// Sends transcript-only content as a hidden custom message. With no options
+// the message lands on the session before the upcoming user turn, whereas
+// `deliverAs: 'nextTurn'` appends it after that turn instead.
+export function sendHiddenContent(session: AgentSession, customType: string, content: string, options: HiddenContentOptions = {}): Promise<void> {
+  return session.sendCustomMessage({ customType, content, display: false }, options);
 }
 
 // Sends the content a leading `/skill:` or `/prompt:` command refers to as

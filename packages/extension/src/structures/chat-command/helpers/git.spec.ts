@@ -2,17 +2,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { matchCommits, parseGitLog, resolveCommitTag, searchCommits } from '../helpers/git';
 
-const { execFileMock, getGitRepositoryMock } = vi.hoisted(() => ({
-  execFileMock: vi.fn(),
+const { execGitMock, getGitRepositoryMock } = vi.hoisted(() => ({
+  execGitMock: vi.fn(),
   getGitRepositoryMock: vi.fn(),
 }));
 
-vi.mock('node:child_process', async (importOriginal) => ({
-  ...(await importOriginal<Record<string, unknown>>()),
-  execFile: execFileMock,
-}));
 vi.mock('vscode', () => ({ Uri: { file: (path: string) => ({ fsPath: path }) } }));
-vi.mock('@pi-code/extension/utilities/git', () => ({ getGitRepository: getGitRepositoryMock }));
+vi.mock('@pi-code/extension/utilities/git', () => ({
+  execGit: execGitMock,
+  getGitRepository: getGitRepositoryMock,
+}));
 
 const REPO_ROOT = '/repo';
 const CWD = '/repo/sub';
@@ -34,19 +33,15 @@ const LOG_OUTPUT = [
 ].join('\r\n');
 
 function resolveGitWith(stdout: string): void {
-  execFileMock.mockImplementation((_file: string, _args: string[], _options: unknown, callback: (err: null, out: string) => void) =>
-    callback(null, stdout),
-  );
+  execGitMock.mockResolvedValue(stdout);
 }
 
 function failGitWith(message: string): void {
-  execFileMock.mockImplementation((_file: string, _args: string[], _options: unknown, callback: (err: Error, out: string) => void) =>
-    callback(new Error(message), ''),
-  );
+  execGitMock.mockRejectedValue(new Error(message));
 }
 
 beforeEach(() => {
-  execFileMock.mockReset();
+  execGitMock.mockReset();
   getGitRepositoryMock.mockReset().mockResolvedValue({ rootUri: { fsPath: REPO_ROOT } });
 });
 
@@ -109,19 +104,14 @@ describe('searchCommits', () => {
     const commits = await searchCommits('', CWD);
 
     expect(commits).toHaveLength(2);
-    expect(execFileMock).toHaveBeenCalledWith(
-      'git',
-      ['log', '--max-count=50', '--date=short', '--format=%H%n%h%n%an%n%ad%n%s'],
-      expect.objectContaining({ cwd: REPO_ROOT }),
-      expect.any(Function),
-    );
+    expect(execGitMock).toHaveBeenCalledWith(REPO_ROOT, ['log', '--max-count=50', '--date=short', '--format=%H%n%h%n%an%n%ad%n%s']);
   });
 
   it('returns nothing when no repository is found', async () => {
     getGitRepositoryMock.mockResolvedValue(undefined);
 
     await expect(searchCommits('', CWD)).resolves.toEqual([]);
-    expect(execFileMock).not.toHaveBeenCalled();
+    expect(execGitMock).not.toHaveBeenCalled();
   });
 
   it('returns nothing when git fails', async () => {
@@ -145,14 +135,14 @@ describe('resolveCommitTag', () => {
     expect(block).toContain('## Working Changes');
     expect(block).toContain('M src/a.ts');
     expect(block).toContain('Diff vs HEAD:');
-    const [statusCall, diffCall] = execFileMock.mock.calls;
-    expect(statusCall[1]).toEqual(['status', '--short']);
-    expect(diffCall[1]).toEqual(['diff', '--no-color', 'HEAD']);
+    const [statusCall, diffCall] = execGitMock.mock.calls;
+    expect(statusCall).toEqual([REPO_ROOT, ['status', '--short']]);
+    expect(diffCall).toEqual([REPO_ROOT, ['diff', '--no-color', 'HEAD']]);
   });
 
   it('keeps the status when only the diff fails', async () => {
-    execFileMock.mockImplementation((_file: string, args: string[], _options: unknown, callback: (err: Error | null, out: string) => void) =>
-      args[0] === 'diff' ? callback(new Error('unknown revision'), '') : callback(null, 'M src/a.ts'),
+    execGitMock.mockImplementation((_root: string, args: string[]) =>
+      args[0] === 'diff' ? Promise.reject(new Error('unknown revision')) : Promise.resolve('M src/a.ts'),
     );
 
     const block = await resolveCommitTag('changes', CWD, LIMITS);
@@ -168,12 +158,7 @@ describe('resolveCommitTag', () => {
 
     expect(block).toContain('## Commit: 4e7c64a');
     expect(block).toContain('fix: thing');
-    expect(execFileMock).toHaveBeenCalledWith(
-      'git',
-      ['show', '--no-color', '--stat', '--patch', '4e7c64a'],
-      expect.objectContaining({ cwd: REPO_ROOT }),
-      expect.any(Function),
-    );
+    expect(execGitMock).toHaveBeenCalledWith(REPO_ROOT, ['show', '--no-color', '--stat', '--patch', '4e7c64a']);
   });
 
   it('truncates oversized show output', async () => {

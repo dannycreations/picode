@@ -9,6 +9,7 @@ import { toRelativePath } from '@pi-code/extension/utilities/vscode';
 import type { Change, Repository } from '@pi-code/extension/types/git';
 
 const RECENT_COMMIT_COUNT = 5;
+const SHORT_HASH_LENGTH = 7;
 
 interface ResolvedGitChange {
   readonly relativePath: string;
@@ -85,7 +86,7 @@ export async function getRepoContext(repo: Repository): Promise<{ branch: string
   let recentCommits = '';
   try {
     const commits = await repo.log({ maxEntries: RECENT_COMMIT_COUNT });
-    recentCommits = commits.map((commit) => `${commit.hash.substring(0, 7)} ${commit.message.split('\n')[0]}`).join('\n');
+    recentCommits = commits.map((commit) => `${commit.hash.substring(0, SHORT_HASH_LENGTH)} ${commit.message.split('\n')[0]}`).join('\n');
   } catch {
     recentCommits = '';
   }

@@ -1,7 +1,9 @@
+import { formatThrownValue } from '@earendil-works/pi-ai';
 import { getAgentDir, hasTrustRequiringProjectResources, ProjectTrustStore } from '@earendil-works/pi-coding-agent';
-import { Uri, workspace } from 'vscode';
+import { Uri, window, workspace } from 'vscode';
 
 import { normalizeSeparators } from '@pi-code/extension/utilities/fs';
+import { logger } from '@pi-code/shared/core/logger';
 
 // Session-level choice of which workspace folder Pi targets; undefined means
 // "no explicit pick", so resolution falls back to the first folder.
@@ -43,4 +45,10 @@ export function isProjectTrusted(cwd: string): boolean {
   }
   trustStore ??= new ProjectTrustStore(getAgentDir());
   return trustStore.get(cwd) === true;
+}
+
+export function reportError(prefix: string, error: unknown): void {
+  const message = `${prefix}: ${formatThrownValue(error)}`;
+  logger.error(message, error);
+  window.showErrorMessage(message);
 }

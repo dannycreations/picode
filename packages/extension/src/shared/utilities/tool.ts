@@ -15,14 +15,27 @@ const DEFAULT_TOOL_META: ToolMeta = {
   fileIcon: 'file',
   language: 'text',
   fileTitle: {
-    running: 'File operation',
-    approval: 'File operation',
-    denied: 'File operation',
-    done: 'File operation',
+    running: 'Tool call',
+    approval: 'Tool call',
+    denied: 'Tool call',
+    done: 'Tool call',
   },
 };
 
-const TOOL_META: Readonly<Record<string, ToolMeta>> = {
+// Tools whose result messages render as expandable sections in the webview.
+const GROUP_TOOL_NAMES = [
+  'execute_command',
+  'read_file',
+  'write_file',
+  'edit_file',
+  'delete_file',
+  'spawn_subagent',
+  'mcp',
+] as const satisfies readonly ToolName[];
+
+type GroupToolName = (typeof GROUP_TOOL_NAMES)[number];
+
+const TOOL_META: Readonly<Record<GroupToolName, ToolMeta>> = {
   execute_command: {
     ...DEFAULT_TOOL_META,
     fileIcon: 'terminal',
@@ -97,21 +110,11 @@ const TOOL_META: Readonly<Record<string, ToolMeta>> = {
   },
 };
 
-// Tools whose result messages render as expandable sections in the webview.
-const GROUP_TOOL_NAMES = [
-  'execute_command',
-  'read_file',
-  'write_file',
-  'edit_file',
-  'delete_file',
-  'spawn_subagent',
-  'mcp',
-] as const satisfies readonly ToolName[];
-
 export const GROUP_TOOLS: ReadonlySet<ToolName> = new Set(GROUP_TOOL_NAMES);
 
 function toolMeta(toolName?: string): ToolMeta {
-  return TOOL_META[toolName ?? ''] ?? DEFAULT_TOOL_META;
+  const meta = toolName === undefined ? undefined : TOOL_META[toolName as GroupToolName];
+  return meta ?? DEFAULT_TOOL_META;
 }
 
 function getToolLanguage(toolName?: string): string {

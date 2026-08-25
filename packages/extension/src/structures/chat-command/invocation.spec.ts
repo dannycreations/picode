@@ -101,6 +101,7 @@ describe('injectResourceMessages', () => {
           display: false,
           content: expect.stringContaining('## Skill: review'),
         }),
+        {},
       );
     } finally {
       try {
@@ -136,6 +137,7 @@ describe('injectResourceMessages', () => {
         display: false,
         content: expect.stringContaining('## Prompt: notes'),
       }),
+      {},
     );
   });
 
@@ -151,6 +153,7 @@ describe('injectResourceMessages', () => {
         customType: 'prompt_content',
         content: '## Prompt: notes\n\nLocation: `/p/notes.md`\n\n```markdown\nTopic: web cache\nAll: web cache one two\n```',
       }),
+      {},
     );
   });
 

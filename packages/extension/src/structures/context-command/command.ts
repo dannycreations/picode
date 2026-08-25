@@ -1,11 +1,10 @@
-import { formatThrownValue } from '@earendil-works/pi-ai';
 import { commands, languages, ProgressLocation, Range, window } from 'vscode';
 
-import { completePrompt } from '@pi-code/extension/structures/agent-runtime/helpers/complete';
+import { FILL_CODE_PROMPT, FIX_CODE_PROMPT } from '@pi-code/extension/core/prompt';
+import { completeAndExtract } from '@pi-code/extension/structures/agent-runtime/helpers/complete';
 import { mapDiagnostics, resolveSelectionFromDocument } from '@pi-code/extension/structures/context-command/helpers';
-import { extractCodeFenceMessage } from '@pi-code/extension/utilities/markdown';
-import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
-import { logger } from '@pi-code/shared/core/logger';
+import { getWorkspaceCwd, reportError } from '@pi-code/extension/utilities/vscode';
+import { COMMAND_IDS } from '@pi-code/shared/core/constants';
 
 import type { Diagnostic, Disposable } from 'vscode';
 import type { ChatViewProvider } from '@pi-code/extension/structures/agent-webview/provider';
@@ -35,25 +34,25 @@ function getDiagnosticText(args: unknown[], selection: ResolvedSelection): strin
 function registerChatInputCommand(
   sender: ChatViewProvider,
   id: string,
-  buildPrompt: (selection: ResolvedSelection, args: any[]) => string,
+  buildPrompt: (selection: ResolvedSelection, args: unknown[]) => string,
 ): Disposable {
-  return commands.registerCommand(id, async (...args: any[]) => {
+  return commands.registerCommand(id, async (...args: unknown[]) => {
     const selection = resolveSelection(args);
     if (!selection) return;
 
     const prompt = buildPrompt(selection, args);
 
-    await commands.executeCommand('pi-code.chatView.focus');
+    await commands.executeCommand(COMMAND_IDS.chatViewFocus);
     sender.postMessage({ type: 'set_chat_input', payload: { text: prompt } });
   });
 }
 
 export function registerAddToContextCommand(sender: ChatViewProvider): Disposable {
-  return registerChatInputCommand(sender, 'pi-code.addToContext', formatSelectionBlock);
+  return registerChatInputCommand(sender, COMMAND_IDS.addToContext, formatSelectionBlock);
 }
 
 export function registerAddProblemToContextCommand(sender: ChatViewProvider): Disposable {
-  return registerChatInputCommand(sender, 'pi-code.addProblemToContext', (selection, args) => {
+  return registerChatInputCommand(sender, COMMAND_IDS.addProblemToContext, (selection, args) => {
     const diagnosticText = getDiagnosticText(args, selection);
     return `${diagnosticText}\n\n${formatSelectionBlock(selection)}`;
   });
@@ -95,11 +94,14 @@ async function runInlineCompletion(cwd: string, selection: ResolvedSelection, pr
   }
 
   try {
-    const raw = await window.withProgress({ location: ProgressLocation.Notification, title: progressTitle, cancellable: false }, () =>
-      completePrompt(cwd, prompt),
+    const replacement = await window.withProgress(
+      {
+        location: ProgressLocation.Notification,
+        title: progressTitle,
+        cancellable: false,
+      },
+      () => completeAndExtract(cwd, prompt),
     );
-
-    const replacement = extractCodeFenceMessage(raw);
     if (!replacement) {
       window.showWarningMessage('The model returned an empty response. No changes applied.');
       return;
@@ -115,9 +117,7 @@ async function runInlineCompletion(cwd: string, selection: ResolvedSelection, pr
       window.showErrorMessage('Failed to apply the generated code to the file.');
     }
   } catch (error) {
-    const message = `Failed to generate code: ${formatThrownValue(error)}`;
-    logger.error(message, error);
-    window.showErrorMessage(message);
+    reportError('Failed to generate code', error);
   }
 }
 
@@ -126,7 +126,7 @@ function registerInlineEditCommand(
   progressTitle: string,
   buildPrompt: (selection: ResolvedSelection, diagnosticText: string) => string,
 ): Disposable {
-  return commands.registerCommand(id, async (...args: any[]) => {
+  return commands.registerCommand(id, async (...args: unknown[]) => {
     const selection = resolveSelection(args);
     if (!selection) return;
 
@@ -144,23 +144,16 @@ function registerInlineEditCommand(
 
 export function registerFillCodeCommand(): Disposable {
   return registerInlineEditCommand(
-    'pi-code.fillCode',
+    COMMAND_IDS.fillCode,
     'Filling code with Pi...',
-    (selection) =>
-      'Replace the following code with a complete, working implementation that preserves and satisfies the specified contract and requirements. ' +
-      'Preserve the original indentation of the replaced lines. Return only the replacement code, with no explanations.\n\n' +
-      formatSelectionBlock(selection),
+    (selection) => FILL_CODE_PROMPT + '\n\n' + formatSelectionBlock(selection),
   );
 }
 
 export function registerFixCodeCommand(): Disposable {
   return registerInlineEditCommand(
-    'pi-code.fixCode',
+    COMMAND_IDS.fixCode,
     'Fixing code with Pi...',
-    (selection, diagnosticText) =>
-      'Fix the issues in the following code. Replace it with corrected code that resolves the problems listed below. ' +
-      'Preserve the original indentation of the replaced lines. Return only the replacement code, with no explanations.\n\n' +
-      `${diagnosticText ? `${diagnosticText}\n\n` : ''}` +
-      formatSelectionBlock(selection),
+    (selection, diagnosticText) => FIX_CODE_PROMPT + '\n\n' + (diagnosticText ? `${diagnosticText}\n\n` : '') + formatSelectionBlock(selection),
   );
 }

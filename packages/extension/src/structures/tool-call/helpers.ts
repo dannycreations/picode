@@ -15,8 +15,8 @@ export function toolError<T = EmptyDetails>(text: string, details: T = {} as T):
   return { content: [{ type: 'text', text }], details, isError: true };
 }
 
-export function toolErrorFrom(err: unknown, action: string): CustomToolResult {
-  return toolError(`Error ${action}: ${formatThrownValue(err)}`);
+export function toolErrorFrom<T = EmptyDetails>(err: unknown, action: string): CustomToolResult<T> {
+  return toolError<T>(`Error ${action}: ${formatThrownValue(err)}`);
 }
 
 export function runFileMutation(

@@ -1,16 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  coerceSetting,
-  coerceSettings,
-  createDefaultSettings,
-  getSettingSpec,
-  isSettingKey,
-  SETTING_KEYS,
-  SETTINGS_SCHEMA,
-} from '@pi-code/shared/core/settings';
+import { coerceSetting, coerceSettings, getSettingSpec, SETTING_KEYS, SETTINGS_SCHEMA } from '@pi-code/shared/core/settings';
 
-const DEFAULT_SETTINGS = createDefaultSettings();
+import type { AppSettings } from '@pi-code/shared/core/settings';
+
+// Materializes defaults through coerceSetting, the same path production reads use.
+function defaultSettings(): AppSettings {
+  return Object.fromEntries(SETTING_KEYS.map((key) => [key, coerceSetting(key, undefined)])) as AppSettings;
+}
+
+const DEFAULT_SETTINGS = defaultSettings();
 
 describe('settings schema', () => {
   it('derives keys and defaults from the schema', () => {
@@ -21,15 +20,10 @@ describe('settings schema', () => {
   });
 
   it('hands out fresh array defaults', () => {
-    const first = createDefaultSettings();
-    const second = createDefaultSettings();
+    const first = defaultSettings();
+    const second = defaultSettings();
     expect(first.allowedReadPaths).not.toBe(second.allowedReadPaths);
     expect(first.allowedReadPaths).toEqual([]);
-  });
-
-  it('recognizes only declared keys', () => {
-    expect(isSettingKey('autoApproveRead')).toBe(true);
-    expect(isSettingKey('autoApproveEverything')).toBe(false);
   });
 });
 

@@ -282,6 +282,16 @@ function appendPathSection(details: string, title: string, noun: string, paths: 
   return details + section;
 }
 
+function renderCurrentTime(now: Date): string {
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const timeZoneOffset =
+    new Intl.DateTimeFormat(undefined, { timeZoneName: 'longOffset' })
+      .formatToParts(now)
+      .find((part) => part.type === 'timeZoneName')
+      ?.value?.replace('GMT', 'UTC') ?? '';
+  return `\n\n### Current Time\n\n- **UTC**: ${now.toISOString()}\n- **User Time Zone**: ${timeZone} (${timeZoneOffset})`;
+}
+
 export async function getEnvironmentDetails(cwd: string, includeFileDetails = false): Promise<string> {
   let details = '';
   const settings = readAppSettings();
@@ -304,15 +314,7 @@ export async function getEnvironmentDetails(cwd: string, includeFileDetails = fa
     details = appendPathSection(details, 'VS Code Open Tabs', 'open tabs', openTabs, maxOpenTabsContext);
   }
 
-  // Current Time
-  const now = new Date();
-  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const timeZoneOffset =
-    new Intl.DateTimeFormat(undefined, { timeZoneName: 'longOffset' })
-      .formatToParts(now)
-      .find((part) => part.type === 'timeZoneName')
-      ?.value?.replace('GMT', 'UTC') ?? '';
-  details += `\n\n### Current Time\n\n- **UTC**: ${now.toISOString()}\n- **User Time Zone**: ${timeZone} (${timeZoneOffset})`;
+  details += renderCurrentTime(new Date());
 
   // Git Status and the workspace file listing are independent, so build them
   // together. Resolve the git repository once and share it between the two

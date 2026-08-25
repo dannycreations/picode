@@ -1,13 +1,15 @@
 import type { ActiveTaskState, ChatMessage, ModelThinkingLevel, StatsData } from '@pi-code/shared/core/types';
 
-export const EMPTY_STATS: StatsData = {
+export const DEFAULT_CONTEXT_LIMIT = 200_000;
+
+const EMPTY_STATS: StatsData = {
   tokensIn: 0,
   tokensOut: 0,
   cacheWrites: 0,
   cacheReads: 0,
   totalCost: 0,
   contextTokens: 0,
-  contextLimit: 200_000,
+  contextLimit: DEFAULT_CONTEXT_LIMIT,
 };
 
 export function createActiveTask(id: string, title: string, messages: ChatMessage[]): ActiveTaskState {

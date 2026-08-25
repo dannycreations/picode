@@ -233,10 +233,6 @@ export type AppSettings = {
 
 export const SETTING_KEYS = Object.keys(SETTINGS_SCHEMA) as readonly SettingKey[];
 
-export function isSettingKey(key: string): key is SettingKey {
-  return Object.hasOwn(SETTINGS_SCHEMA, key);
-}
-
 export function getSettingSpec(key: SettingKey): SettingSpec {
   return SETTINGS_SCHEMA[key];
 }
@@ -244,10 +240,6 @@ export function getSettingSpec(key: SettingKey): SettingSpec {
 function defaultValue(key: SettingKey): unknown {
   const fallback = SETTINGS_SCHEMA[key].default;
   return Array.isArray(fallback) ? [...fallback] : fallback;
-}
-
-export function createDefaultSettings(): AppSettings {
-  return Object.fromEntries(SETTING_KEYS.map((key) => [key, defaultValue(key)])) as AppSettings;
 }
 
 export function coerceSetting<K extends SettingKey>(key: K, value: unknown): AppSettings[K] {
@@ -278,9 +270,10 @@ export function coerceSetting<K extends SettingKey>(key: K, value: unknown): App
 
 export function coerceSettings(values: Partial<Record<string, unknown>>): Partial<AppSettings> {
   const result: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(values)) {
-    if (!isSettingKey(key)) continue;
-    result[key] = coerceSetting(key, value);
+  for (const key of SETTING_KEYS) {
+    if (key in values) {
+      result[key] = coerceSetting(key, values[key]);
+    }
   }
   return result as Partial<AppSettings>;
 }

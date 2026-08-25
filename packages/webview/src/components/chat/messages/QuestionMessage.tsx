@@ -54,10 +54,7 @@ export const QuestionMessage: FC<QuestionMessageProps> = ({ message, search, onA
 
       <div className="ml-6 flex flex-col gap-2 text-sm">
         <div className="leading-normal text-vscode-foreground select-text">
-          <Markdown
-            markdown={question}
-            search={search ? { query: search.query, globalOffset: search.globalOffset, activeIndex: search.activeIndex } : undefined}
-          />
+          <Markdown markdown={question} search={search} />
         </div>
 
         {isPending && suggestions.length > 0 && (
