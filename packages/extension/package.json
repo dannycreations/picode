@@ -260,6 +260,11 @@
         "icon": "$(sparkle)"
       },
       {
+        "command": "pi-code.cancelGenerateCommitMessage",
+        "title": "Cancel Generating Commit Message",
+        "icon": "$(stop)"
+      },
+      {
         "command": "pi-code.addToContext",
         "title": "Add to Context",
         "category": "Pi Code"
@@ -294,16 +299,27 @@
           "when": "view == pi-code.chatView"
         }
       ],
-      "scm/input": [
+      "scm/inputBox": [
         {
           "command": "pi-code.generateCommitMessage",
+          "when": "!pi-code.commitMessageGenerating",
+          "group": "navigation"
+        },
+        {
+          "command": "pi-code.cancelGenerateCommitMessage",
+          "when": "pi-code.commitMessageGenerating",
           "group": "navigation"
         }
       ],
       "scm/title": [
         {
           "command": "pi-code.generateCommitMessage",
-          "when": "scmProvider == git",
+          "when": "scmProvider == git && !pi-code.commitMessageGenerating",
+          "group": "navigation"
+        },
+        {
+          "command": "pi-code.cancelGenerateCommitMessage",
+          "when": "scmProvider == git && pi-code.commitMessageGenerating",
           "group": "navigation"
         }
       ],

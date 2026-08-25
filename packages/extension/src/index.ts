@@ -4,7 +4,7 @@ import { commands, languages, window, workspace } from 'vscode';
 import { mcpGateway } from '@pi-code/extension/structures/agent-runtime/mcp/manager';
 import { invalidateAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { ChatViewProvider } from '@pi-code/extension/structures/agent-webview/provider';
-import { registerCommitMessageCommand } from '@pi-code/extension/structures/commit-message/command';
+import { registerCommitMessageCommands } from '@pi-code/extension/structures/commit-message/command';
 import {
   registerAddProblemToContextCommand,
   registerAddToContextCommand,
@@ -41,7 +41,7 @@ export function activate(context: ExtensionContext): void {
     window.registerWebviewViewProvider(ChatViewProvider.viewType, chatViewProvider, {
       webviewOptions: { retainContextWhenHidden: true },
     }),
-    registerCommitMessageCommand(),
+    registerCommitMessageCommands(),
     registerAddToContextCommand(chatViewProvider),
     registerAddProblemToContextCommand(chatViewProvider),
     registerFillCodeCommand(),

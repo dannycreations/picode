@@ -5,6 +5,8 @@ export const CHAT_VIEW_TYPE = 'pi-code.chatView';
 export const COMMAND_IDS = {
   settingsButtonClicked: 'pi-code.settingsButtonClicked',
   generateCommitMessage: 'pi-code.generateCommitMessage',
+  commitMessageGenerating: 'pi-code.commitMessageGenerating',
+  cancelGenerateCommitMessage: 'pi-code.cancelGenerateCommitMessage',
   addToContext: 'pi-code.addToContext',
   addProblemToContext: 'pi-code.addProblemToContext',
   fillCode: 'pi-code.fillCode',

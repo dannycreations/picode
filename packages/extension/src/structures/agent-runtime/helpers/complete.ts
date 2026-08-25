@@ -5,7 +5,7 @@ import { createAgentResources } from '@pi-code/extension/structures/agent-runtim
 import { extractCodeFenceMessage } from '@pi-code/extension/utilities/markdown';
 import { logger } from '@pi-code/shared/core/logger';
 
-export async function completePrompt(cwd: string, prompt: string): Promise<string> {
+export async function completePrompt(cwd: string, prompt: string, signal?: AbortSignal): Promise<string> {
   const runtime = (await createAgentResources(cwd)).modelRuntime;
   const { id, provider } = await getDefaultModelSelection(cwd);
 
@@ -15,9 +15,7 @@ export async function completePrompt(cwd: string, prompt: string): Promise<strin
   }
 
   logger.debug('Sending completion request to backend...');
-  const response = await runtime.completeSimple(model, {
-    messages: [{ role: 'user' as const, content: prompt, timestamp: Date.now() }],
-  });
+  const response = await runtime.completeSimple(model, { messages: [{ role: 'user' as const, content: prompt, timestamp: Date.now() }] }, { signal });
   logger.debug('Completion response received successfully.');
 
   const primaryText = contentText(response.content).trim();
@@ -31,6 +29,6 @@ export async function completePrompt(cwd: string, prompt: string): Promise<strin
     .join('\n');
 }
 
-export async function completeAndExtract(cwd: string, prompt: string): Promise<string> {
-  return extractCodeFenceMessage(await completePrompt(cwd, prompt));
+export async function completeAndExtract(cwd: string, prompt: string, signal?: AbortSignal): Promise<string> {
+  return extractCodeFenceMessage(await completePrompt(cwd, prompt, signal));
 }

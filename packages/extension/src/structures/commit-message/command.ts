@@ -1,4 +1,4 @@
-import { commands, ProgressLocation, window } from 'vscode';
+import { commands, Disposable, ProgressLocation, window } from 'vscode';
 
 import { COMMIT_MESSAGE_PROMPT } from '@pi-code/extension/core/prompt';
 import { completeAndExtract } from '@pi-code/extension/structures/agent-runtime/helpers/complete';
@@ -8,16 +8,20 @@ import { getWorkspaceUri, reportError } from '@pi-code/extension/utilities/vscod
 import { COMMAND_IDS } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
 
-import type { Disposable, Uri } from 'vscode';
+import type { Uri } from 'vscode';
 import type { Repository } from '@pi-code/extension/types/git';
 
 interface ScmRequest {
   readonly rootUri?: Uri;
 }
 
-const generatingRepos = new Set<string>();
+const activeGenerations = new Map<string, AbortController>();
 const lastUserMessages = new Map<string, string>();
 const lastGeneratedMessages = new Map<string, string>();
+
+function setGeneratingContext(generating: boolean): void {
+  void commands.executeCommand('setContext', COMMAND_IDS.commitMessageGenerating, generating);
+}
 
 function resolveRootUri(scmRequest?: ScmRequest): Uri | undefined {
   if (scmRequest?.rootUri) {
@@ -80,6 +84,7 @@ async function generateAndApply(
   useStaged: boolean,
   userContext: string,
   rejectedMessage: string,
+  signal: AbortSignal,
 ): Promise<void> {
   logger.debug('Generating diff and repo context...');
   const [diff, { branch, recentCommits }] = await Promise.all([getGitDiffContext(repo, changes, useStaged), getRepoContext(repo)]);
@@ -92,8 +97,11 @@ async function generateAndApply(
   logger.debug(`Fully assembled prompt (character length: ${prompt.length})`);
 
   const cwd = repo.rootUri.fsPath;
-  const cleanMessage = await completeAndExtract(cwd, prompt);
+  const cleanMessage = await completeAndExtract(cwd, prompt, signal);
   logger.debug(`Extracted commit message: ${cleanMessage}`);
+  if (signal.aborted) {
+    throw new Error('Commit message generation cancelled.');
+  }
   if (!cleanMessage) {
     throw new Error('Empty response received from model.');
   }
@@ -103,8 +111,8 @@ async function generateAndApply(
   logger.info('Updated inputBox value successfully.');
 }
 
-export function registerCommitMessageCommand(): Disposable {
-  return commands.registerCommand(COMMAND_IDS.generateCommitMessage, async (scmRequest?: ScmRequest) => {
+export function registerCommitMessageCommands(): Disposable {
+  const generateCommand = commands.registerCommand(COMMAND_IDS.generateCommitMessage, async (scmRequest?: ScmRequest) => {
     logger.info('Generate Commit Message command triggered.');
     try {
       const repo = await getGitRepository(resolveRootUri(scmRequest));
@@ -117,12 +125,14 @@ export function registerCommitMessageCommand(): Disposable {
 
       const cwd = repo.rootUri.fsPath;
 
-      if (generatingRepos.has(cwd)) {
+      if (activeGenerations.has(cwd)) {
         logger.debug(`Already generating commit message for repository: ${cwd}. Ignoring duplicate request.`);
         return;
       }
 
-      generatingRepos.add(cwd);
+      const controller = new AbortController();
+      activeGenerations.set(cwd, controller);
+      setGeneratingContext(true);
       try {
         logger.debug(`Scanning git changes in directory: ${cwd}`);
         const { changes, useStaged } = await getGitChanges(repo);
@@ -143,17 +153,43 @@ export function registerCommitMessageCommand(): Disposable {
           {
             location: ProgressLocation.SourceControl,
             title: 'Generating commit message with Pi...',
-            cancellable: false,
+            cancellable: true,
           },
-          async () => {
-            await generateAndApply(repo, changes, useStaged, userContext, rejectedMessage);
+          (_progress, token) => {
+            token.onCancellationRequested(() => controller.abort());
+            return generateAndApply(repo, changes, useStaged, userContext, rejectedMessage, controller.signal);
           },
         );
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          throw error;
+        }
+        logger.info('Commit message generation cancelled.');
+        window.showInformationMessage('Commit message generation cancelled.');
       } finally {
-        generatingRepos.delete(cwd);
+        activeGenerations.delete(cwd);
+        setGeneratingContext(activeGenerations.size > 0);
       }
     } catch (error) {
       reportError('Failed to generate commit message', error);
     }
   });
+
+  const cancelCommand = commands.registerCommand(COMMAND_IDS.cancelGenerateCommitMessage, (scmRequest?: ScmRequest) => {
+    logger.info('Cancel Commit Message Generation command triggered.');
+    const cwd = resolveRootUri(scmRequest)?.fsPath;
+    const controller = cwd ? activeGenerations.get(cwd) : undefined;
+    // The menu may resolve a repo other than the one generating, so fall back
+    // to every active generation instead of leaving the stop button inert.
+    const targets = controller ? [controller] : [...activeGenerations.values()];
+    if (targets.length === 0) {
+      logger.debug('No active commit message generation to cancel.');
+      return;
+    }
+    for (const target of targets) {
+      target.abort();
+    }
+  });
+
+  return Disposable.from(generateCommand, cancelCommand);
 }
