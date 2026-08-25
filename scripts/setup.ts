@@ -15,6 +15,7 @@ interface Repo {
 const REPOS: Repo[] = [
   { name: 'kilocode', url: 'https://github.com/Kilo-Org/kilocode' },
   { name: 'kilocode-legacy', url: 'https://github.com/Kilo-Org/kilocode-legacy' },
+  { name: 'zoo-code', url: 'https://github.com/Zoo-Code-Org/Zoo-Code' },
   { name: 'pi-agent', url: 'https://github.com/earendil-works/pi' },
   { name: 'vscode', url: 'https://github.com/microsoft/vscode' },
 ];

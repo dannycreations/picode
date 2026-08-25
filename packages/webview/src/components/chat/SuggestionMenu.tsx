@@ -17,8 +17,23 @@ interface SuggestionMenuProps<T> {
 
 const SuggestionMenu = <T,>({ items, selectedIndex, onSelect, onHover, renderItem }: SuggestionMenuProps<T>): ReactElement | null => {
   const listRef = useRef<HTMLDivElement>(null);
+  // Scrolling to reveal a hovered row shifts the list under the stationary
+  // cursor, which fires mouseenter again and makes the menu creep. So hover
+  // arms this flag to skip the next scroll; keyboard navigation leaves it
+  // armed and still scrolls as before.
+  const shouldScrollRef = useRef(true);
+  // Programmatic scrolling also makes the browser re-dispatch mouseenter for
+  // whichever row lands under the stationary cursor, which fights the
+  // keyboard selection. Only a real mousemove re-enables hover, and a
+  // keyboard-driven selection disables it again.
+  const hasPointerMovedRef = useRef(false);
 
   useEffect(() => {
+    if (!shouldScrollRef.current) {
+      shouldScrollRef.current = true;
+      return;
+    }
+    hasPointerMovedRef.current = false;
     const selected = listRef.current?.children[selectedIndex];
     selected?.scrollIntoView({ block: 'nearest' });
   }, [selectedIndex]);
@@ -31,14 +46,24 @@ const SuggestionMenu = <T,>({ items, selectedIndex, onSelect, onHover, renderIte
       // Keep focus in the textarea so clicking a row does not blur-and-close first.
       onMouseDown={(event) => event.preventDefault()}
     >
-      <div ref={listRef} className="max-h-55 overflow-y-auto">
+      <div
+        ref={listRef}
+        className="max-h-55 overflow-y-auto"
+        onMouseMove={() => {
+          hasPointerMovedRef.current = true;
+        }}
+      >
         {items.map((item, index) => (
           <div
             key={index}
             role="option"
             aria-selected={index === selectedIndex}
             onClick={() => onSelect(item)}
-            onMouseEnter={() => onHover(index)}
+            onMouseEnter={() => {
+              if (!hasPointerMovedRef.current) return;
+              shouldScrollRef.current = false;
+              onHover(index);
+            }}
             className={cn(
               'flex cursor-pointer flex-col gap-0.5 px-3 py-1.5 border-b border-vscode-editorGroup-border/40 last:border-b-0',
               index === selectedIndex ? 'bg-vscode-list-activeSelectionBackground text-vscode-list-activeSelectionForeground' : '',

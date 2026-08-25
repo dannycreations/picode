@@ -20,10 +20,6 @@ export const HistoryPreview: FC<HistoryPreviewProps> = ({ history, onSelectTask,
     setDeleteConfirmPath(path);
   }, []);
 
-  if (history.length === 0) {
-    return null;
-  }
-
   return (
     <div className="flex flex-col gap-1 mt-4">
       <div className="flex flex-wrap items-center justify-between mt-2 mb-2">
