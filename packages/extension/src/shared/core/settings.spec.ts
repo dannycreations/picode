@@ -31,6 +31,7 @@ describe('coerceSetting', () => {
     expect(coerceSetting('autoApproveRead', 'yes')).toBe(false);
     expect(coerceSetting('maxWorkspaceFiles', '100')).toBe(DEFAULT_SETTINGS.maxWorkspaceFiles);
     expect(coerceSetting('maxWorkspaceFiles', Number.NaN)).toBe(DEFAULT_SETTINGS.maxWorkspaceFiles);
+    expect(coerceSetting('commitMessageModel', 42)).toBe('');
     expect(coerceSetting('allowedReadPaths', 'src/**')).toEqual([]);
   });
 

@@ -5,11 +5,15 @@ import { createAgentResources } from '@pi-code/extension/structures/agent-runtim
 import { extractCodeFenceMessage } from '@pi-code/extension/utilities/markdown';
 import { logger } from '@pi-code/shared/core/logger';
 
-async function completePrompt(cwd: string, prompt: string, signal?: AbortSignal): Promise<string> {
-  const runtime = (await createAgentResources(cwd)).modelRuntime;
-  const { id, provider } = await getDefaultModelSelection(cwd);
+import type { ModelSelection } from '@pi-code/shared/core/protocol';
 
-  const model = (provider && id && runtime.getModel(provider, id)) || runtime.getAvailableSnapshot()[0];
+async function completePrompt(cwd: string, prompt: string, signal?: AbortSignal, preferred?: ModelSelection): Promise<string> {
+  const runtime = (await createAgentResources(cwd)).modelRuntime;
+  const candidates = [preferred, await getDefaultModelSelection(cwd)];
+  const model =
+    candidates
+      .map((selection) => (selection?.provider && selection.id ? runtime.getModel(selection.provider, selection.id) : undefined))
+      .find(Boolean) ?? runtime.getAvailableSnapshot()[0];
   if (!model) {
     throw new Error('No model configured or available. Please configure your model settings in pi-agent.');
   }
@@ -29,6 +33,6 @@ async function completePrompt(cwd: string, prompt: string, signal?: AbortSignal)
     .join('\n');
 }
 
-export async function completeAndExtract(cwd: string, prompt: string, signal?: AbortSignal): Promise<string> {
-  return extractCodeFenceMessage(await completePrompt(cwd, prompt, signal));
+export async function completeAndExtract(cwd: string, prompt: string, signal?: AbortSignal, preferredModel?: ModelSelection): Promise<string> {
+  return extractCodeFenceMessage(await completePrompt(cwd, prompt, signal, preferredModel));
 }

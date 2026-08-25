@@ -12,7 +12,7 @@ import {
 } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
-import { readOutputLimits } from '@pi-code/extension/core/settings';
+import { readAppSettings, readOutputLimits } from '@pi-code/extension/core/settings';
 import { truncateOutput } from '@pi-code/extension/utilities/truncate';
 
 import type { SpawnOptions } from 'node:child_process';
@@ -24,11 +24,10 @@ function stripAnsiAndNormalize(raw: string): string {
 }
 
 const DEFAULT_TIMEOUT_MS = 120_000;
-const MAX_TIMEOUT_MS = 1_800_000;
 const STREAM_FLUSH_MS = 80;
 
-function resolveTimeout(requested: number | undefined): number {
-  return Math.min(requested ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
+function resolveTimeout(requested: number | undefined, maxMs: number): number {
+  return Math.min(requested ?? DEFAULT_TIMEOUT_MS, maxMs);
 }
 
 function resolveBashShell(): { shell: string; args: string[] } | null {
@@ -85,7 +84,7 @@ export const executeCommandTool = defineTool({
   async execute(_toolCallId, params, signal, onUpdate, ctx) {
     const limits = readOutputLimits();
     const retainedBytes = limits.maxBytes * 2;
-    const effectiveTimeout = resolveTimeout(params.timeout);
+    const effectiveTimeout = resolveTimeout(params.timeout, readAppSettings().maxCommandTimeoutMs);
 
     return new Promise<CustomToolResult<{ exitCode: number | null; signalCode: string | null; output: string; timedOut: boolean }>>((res) => {
       let resolvedCwd = ctx.cwd;

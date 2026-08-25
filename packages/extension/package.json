@@ -226,6 +226,18 @@
           "minimum": 5,
           "maximum": 500,
           "description": "Maximum size a single tool result may send to the model. Truncated results keep a notice explaining how to retrieve the remaining output."
+        },
+        "pi-code.commitMessageModel": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Model used to generate commit messages, as `provider/model`. Leave empty to use the model currently selected in the chat."
+        },
+        "pi-code.maxCommandTimeoutMs": {
+          "type": "number",
+          "default": 1800000,
+          "minimum": 10000,
+          "maximum": 3600000,
+          "markdownDescription": "Maximum duration of a single command started by `execute_command`. Commands that run longer are killed once this limit is reached."
         }
       }
     },

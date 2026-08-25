@@ -1,7 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import type { AppSettings, SettingKey, SettingSpecOf } from '@pi-code/shared/core/settings';
 
-export type SettingsTabId = 'ability' | 'approval' | 'context';
+export type SettingsTabId = 'ability' | 'approval' | 'behaviour' | 'context';
 
 export interface SettingsTab {
   readonly id: SettingsTabId;

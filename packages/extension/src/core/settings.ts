@@ -4,6 +4,7 @@ import { ConfigurationTarget, workspace } from 'vscode';
 import { toOutputLimits } from '@pi-code/extension/utilities/truncate';
 import { isProjectTrusted } from '@pi-code/extension/utilities/vscode';
 import { DEFAULT_APP_ID } from '@pi-code/shared/core/constants';
+import { parseModelSelection } from '@pi-code/shared/core/protocol';
 import { coerceSetting, coerceSettings, SETTING_KEYS } from '@pi-code/shared/core/settings';
 
 import type { WorkspaceConfiguration } from 'vscode';
@@ -35,6 +36,11 @@ export function readAppSettings(): AppSettings {
 // Every tool result shares one truncation budget derived from the settings snapshot.
 export function readOutputLimits(): OutputLimits {
   return toOutputLimits(readAppSettings());
+}
+
+// Empty string means "not configured", which callers translate into the chat-selected model.
+export function readCommitMessageModelSelection(): ModelSelection | undefined {
+  return parseModelSelection(readAppSettings().commitMessageModel);
 }
 
 function resolveConfigurationTarget(config: WorkspaceConfiguration, key: string): ConfigurationTarget {

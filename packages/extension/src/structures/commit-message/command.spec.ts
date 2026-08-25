@@ -39,6 +39,11 @@ vi.mock('vscode', () => ({
     showInformationMessage: mocks.showInformationMessage,
     showErrorMessage: mocks.showErrorMessage,
   },
+  workspace: {
+    getConfiguration: () => ({
+      get: () => undefined,
+    }),
+  },
 }));
 
 vi.mock('@pi-code/extension/core/prompt', () => ({ COMMIT_MESSAGE_PROMPT: 'PROMPT' }));

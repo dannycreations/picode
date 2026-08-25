@@ -1,19 +1,30 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { invalidateAppSettings } from '@pi-code/extension/core/settings';
 import { cleanCommandOutput, executeCommandTool } from '@pi-code/extension/structures/tool-call/execute-command';
+
+// Settings are memoized, so tests write raw VS Code values into this record and
+// invalidate the snapshot afterwards to pick up their changes.
+const configValues = vi.hoisted(() => ({}) as Record<string, unknown>);
 
 vi.mock('vscode', () => {
   return {
     workspace: {
       getConfiguration: () => ({
-        get: (key: string) => {
-          if (key === 'maxToolOutputLines') return 2000;
-          if (key === 'maxToolOutputSizeKb') return 50;
-          return undefined;
-        },
+        get: (key: string) => configValues[key],
       }),
     },
   };
+});
+
+beforeEach(() => {
+  configValues['maxToolOutputLines'] = 2000;
+  configValues['maxToolOutputSizeKb'] = 50;
+});
+
+afterEach(() => {
+  for (const key of Object.keys(configValues)) delete configValues[key];
+  invalidateAppSettings();
 });
 
 describe('executeCommandTool', () => {
@@ -57,6 +68,24 @@ describe('executeCommandTool cancellation', () => {
 
     expect(result.details.timedOut).toBe(true);
   }, 20_000);
+});
+
+describe('configured maximum timeout', () => {
+  // The schema floors this setting at 10 s, so the fastest testable cap is 10 s.
+  it('caps a requested timeout above the configured maximum', async () => {
+    configValues['maxCommandTimeoutMs'] = 10_000;
+    const startedAt = Date.now();
+    const result = (await executeCommandTool.execute(
+      'test-id',
+      { command: 'node -e "setTimeout(() => {}, 60000)"', timeout: 60_000 },
+      undefined,
+      undefined,
+      { cwd: process.cwd() } as any,
+    )) as any;
+
+    expect(result.details.timedOut).toBe(true);
+    expect(Date.now() - startedAt).toBeLessThan(30_000);
+  }, 30_000);
 });
 
 describe('cleanCommandOutput', () => {

@@ -1,4 +1,4 @@
-import { Database, ShieldCheck, Sparkles } from 'lucide-react';
+import { Cog, Database, ShieldCheck, Sparkles } from 'lucide-react';
 
 import { getSettingSpec, SETTING_KEYS } from '@pi-code/shared/core/settings';
 
@@ -17,6 +17,12 @@ export const SETTINGS_TABS: readonly SettingsTab[] = [
     label: 'Approval',
     icon: ShieldCheck,
     description: 'Configure auto-approval settings for agent actions to balance speed and safety.',
+  },
+  {
+    id: 'behaviour',
+    label: 'Behaviour',
+    icon: Cog,
+    description: 'Tune how the agent behaves while working on your tasks.',
   },
   {
     id: 'context',
@@ -53,6 +59,9 @@ export const SETTING_FIELDS: SettingFieldRegistry = {
   autoApproveExecute: { tab: 'approval', label: 'Execute Commands' },
   allowedExecuteCommands: { tab: 'approval', label: 'Allowed Commands', parent: 'autoApproveExecute', placeholder: 'e.g. npm' },
   deniedExecuteCommands: { tab: 'approval', label: 'Denied Commands', parent: 'autoApproveExecute', placeholder: 'e.g. rm -rf' },
+
+  commitMessageModel: { tab: 'behaviour', label: 'Commit message model' },
+  maxCommandTimeoutMs: { tab: 'behaviour', label: 'Command timeout limit' },
 
   autoCompactContext: { tab: 'context', label: 'Automatic trigger compaction' },
   autoCompactContextPercent: { tab: 'context', label: 'Compaction threshold', parent: 'autoCompactContext' },

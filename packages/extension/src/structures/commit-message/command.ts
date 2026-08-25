@@ -1,6 +1,7 @@
 import { commands, Disposable, ProgressLocation, window } from 'vscode';
 
 import { COMMIT_MESSAGE_PROMPT } from '@pi-code/extension/core/prompt';
+import { readCommitMessageModelSelection } from '@pi-code/extension/core/settings';
 import { completeAndExtract } from '@pi-code/extension/structures/agent-runtime/helpers/complete';
 import { buildGitContext, getGitChanges, getGitDiffContext, getRepoContext } from '@pi-code/extension/structures/commit-message/git';
 import { getGitRepository } from '@pi-code/extension/utilities/git';
@@ -97,7 +98,7 @@ async function generateAndApply(
   logger.debug(`Fully assembled prompt (character length: ${prompt.length})`);
 
   const cwd = repo.rootUri.fsPath;
-  const cleanMessage = await completeAndExtract(cwd, prompt, signal);
+  const cleanMessage = await completeAndExtract(cwd, prompt, signal, readCommitMessageModelSelection());
   logger.debug(`Extracted commit message: ${cleanMessage}`);
   if (signal.aborted) {
     throw new Error('Commit message generation cancelled.');

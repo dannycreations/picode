@@ -10,7 +10,7 @@ const packageDir = resolve(import.meta.dirname, '..');
 const manifestPath = join(packageDir, 'package.json');
 
 interface ConfigurationProperty {
-  readonly type: 'boolean' | 'number' | 'array';
+  readonly type: 'boolean' | 'number' | 'string' | 'array';
   readonly items?: { readonly type: 'string' };
   readonly default: unknown;
   readonly minimum?: number;
@@ -35,6 +35,8 @@ function buildProperty(key: SettingKey): ConfigurationProperty {
       return { type: 'boolean', default: spec.default, ...text };
     case 'number':
       return { type: 'number', default: spec.default, minimum: spec.minimum, maximum: spec.maximum, ...text };
+    case 'string':
+      return { type: 'string', default: spec.default, ...text };
     case 'string[]':
       return { type: 'array', items: { type: 'string' }, default: [...spec.default], ...text };
   }

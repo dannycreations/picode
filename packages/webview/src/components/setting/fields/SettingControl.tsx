@@ -1,8 +1,11 @@
+import { formatModelSelection } from '@pi-code/shared/core/protocol';
 import { getSettingSpec } from '@pi-code/shared/core/settings';
 import { getChildFieldKeys, isFieldVisible, matchesQuery, SETTING_FIELDS } from '@pi-code/webview/components/setting/core/fields';
 import { SettingCheckbox } from '@pi-code/webview/components/setting/fields/SettingCheckbox';
 import { SettingList } from '@pi-code/webview/components/setting/fields/SettingList';
+import { SettingSelect } from '@pi-code/webview/components/setting/fields/SettingSelect';
 import { SettingSlider } from '@pi-code/webview/components/setting/fields/SettingSlider';
+import { useChatStore } from '@pi-code/webview/stores/useChatStore';
 
 import type { FC } from 'react';
 import type { AppSettings, SettingKey } from '@pi-code/shared/core/settings';
@@ -20,6 +23,7 @@ export const SettingControl: FC<SettingControlProps> = ({ settingKey, draftSetti
   const spec = getSettingSpec(settingKey);
   const field = SETTING_FIELDS[settingKey];
   const value = draftSettings[settingKey];
+  const models = useChatStore((state) => state.models);
 
   const currentMatched = parentMatched || (searchQuery.trim() ? matchesQuery(settingKey, searchQuery) : false);
   const childKeys = getChildFieldKeys(settingKey).filter((childKey) => isFieldVisible(childKey, searchQuery, currentMatched));
@@ -59,6 +63,24 @@ export const SettingControl: FC<SettingControlProps> = ({ settingKey, draftSetti
         >
           {children}
         </SettingSlider>
+      );
+    }
+
+    case 'string': {
+      // Empty value means "follow the chat selection"; keep an unknown stored
+      // model visible instead of silently showing the default option.
+      const options = [{ value: '', label: 'Use chat model' }, ...models.map((model) => ({ value: formatModelSelection(model), label: model.name }))];
+      if (typeof value === 'string' && value !== '' && !options.some((option) => option.value === value)) {
+        options.push({ value, label: value });
+      }
+      return (
+        <SettingSelect
+          label={field.label}
+          description={spec.description}
+          value={typeof value === 'string' ? value : ''}
+          options={options}
+          onChange={(next) => onChange(settingKey, next)}
+        />
       );
     }
 

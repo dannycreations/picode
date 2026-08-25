@@ -17,12 +17,17 @@ interface NumberSetting extends SettingBase {
   readonly unit?: string;
 }
 
+interface StringSetting extends SettingBase {
+  readonly type: 'string';
+  readonly default: string;
+}
+
 interface StringListSetting extends SettingBase {
   readonly type: 'string[]';
   readonly default: readonly string[];
 }
 
-type SettingSpec = BooleanSetting | NumberSetting | StringListSetting;
+type SettingSpec = BooleanSetting | NumberSetting | StringSetting | StringListSetting;
 
 const SETTINGS_SCHEMA = {
   enableTodoTool: {
@@ -213,6 +218,21 @@ const SETTINGS_SCHEMA = {
     description:
       'Maximum size a single tool result may send to the model. Truncated results keep a notice explaining how to retrieve the remaining output.',
   },
+
+  commitMessageModel: {
+    type: 'string',
+    default: '',
+    description: 'Model used to generate commit messages, as `provider/model`. Leave empty to use the model currently selected in the chat.',
+  },
+  maxCommandTimeoutMs: {
+    type: 'number',
+    default: 1_800_000,
+    minimum: 10_000,
+    maximum: 3_600_000,
+    step: 10_000,
+    unit: 'ms',
+    description: 'Maximum duration of a single command started by `execute_command`. Commands that run longer are killed once this limit is reached.',
+  },
 } as const satisfies Record<string, SettingSpec>;
 
 export type SettingKey = keyof typeof SETTINGS_SCHEMA;
@@ -223,9 +243,11 @@ type SettingValue<S> = S extends { readonly type: 'boolean' }
   ? boolean
   : S extends { readonly type: 'number' }
     ? number
-    : S extends { readonly type: 'string[]' }
-      ? readonly string[]
-      : never;
+    : S extends { readonly type: 'string' }
+      ? string
+      : S extends { readonly type: 'string[]' }
+        ? readonly string[]
+        : never;
 
 export type AppSettings = {
   readonly [K in SettingKey]: SettingValue<SettingSpecOf<K>>;
@@ -258,6 +280,9 @@ export function coerceSetting<K extends SettingKey>(key: K, value: unknown): App
         return fallback;
       }
       return Math.min(Math.max(value, spec.minimum), spec.maximum) as AppSettings[K];
+    }
+    case 'string': {
+      return (typeof value === 'string' ? value : fallback) as AppSettings[K];
     }
     case 'string[]': {
       if (Array.isArray(value)) {

@@ -33,6 +33,18 @@ export interface ModelItem {
 
 export type ModelSelection = Pick<ModelItem, 'id' | 'provider'>;
 
+// Providers never contain slashes while model ids may, so the provider is
+// everything before the first slash.
+export function formatModelSelection(selection: ModelSelection): string {
+  return `${selection.provider}/${selection.id}`;
+}
+
+export function parseModelSelection(value: string): ModelSelection | undefined {
+  const separator = value.indexOf('/');
+  if (separator <= 0 || separator === value.length - 1) return undefined;
+  return { provider: value.slice(0, separator), id: value.slice(separator + 1) };
+}
+
 export interface CommandItem {
   readonly name: string;
   readonly source: 'builtin' | 'skill' | 'prompt';
