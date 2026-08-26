@@ -50,7 +50,7 @@ export const AssistantMessage: FC<AssistantMessageProps> = ({ message, search })
             <ChevronUp size={14} className={cn('transition-transform duration-200', !showReasoning && 'rotate-180')} />
           </MessageHeader>
           <Accordion open={showReasoning}>
-            <div className="ml-6 border-l border-vscode-descriptionForeground/20 pl-4 pb-1 text-muted whitespace-pre-wrap break-words leading-relaxed select-text">
+            <div className="ml-6 border-l border-vscode-descriptionForeground/20 pl-4 pb-1 text-muted whitespace-pre-wrap break-words leading-relaxed select-text max-h-60 overflow-y-auto">
               <SearchableText text={reasoning} search={search} />
             </div>
           </Accordion>
