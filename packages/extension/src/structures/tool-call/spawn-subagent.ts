@@ -24,7 +24,7 @@ interface SubagentDetails {
 
 function formatUsage(usage: SubagentUsage): string {
   const turns = `${usage.turns} turn${usage.turns === 1 ? '' : 's'}`;
-  return `${turns}, ${usage.tokensIn} in / ${usage.tokensOut} out, $${usage.cost.toFixed(4)}`;
+  return `${turns}, ${usage.tokensIn.toLocaleString()} in / ${usage.tokensOut.toLocaleString()} out, $${usage.cost.toFixed(4)}`;
 }
 
 function renderOutcome(outcome: SubagentOutcome, state: 'completed' | 'error'): string {

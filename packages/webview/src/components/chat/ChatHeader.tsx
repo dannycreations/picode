@@ -173,10 +173,12 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
         {/* Collapsed State Summary */}
         <Accordion open={!isExpanded}>
           <div className="w-full flex items-center justify-between gap-3 mt-1.5" onClick={(e) => e.stopPropagation()}>
-            <div className="flex-1 flex items-center gap-2">
-              <span className="text-muted whitespace-nowrap">Context: {contextPercentage}%</span>
-              <ContextProgressBar percentage={contextPercentage} />
-            </div>
+            <Tooltip content={`${contextTokens.toLocaleString()} / ${contextLimit.toLocaleString()}`} side="bottom">
+              <div className="flex-1 flex items-center gap-2">
+                <span className="text-muted whitespace-nowrap">Context: {contextPercentage}%</span>
+                <ContextProgressBar percentage={contextPercentage} />
+              </div>
+            </Tooltip>
             <div className="flex items-center gap-2">
               {totalCost > 0 && <span className="text-xs font-mono text-vscode-foreground/80">${totalCost.toFixed(4)}</span>}
               <Tooltip content="Search chat" side="bottom">
