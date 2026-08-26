@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { stat } from 'node:fs/promises';
 import { StringDecoder } from 'node:string_decoder';
 import {
   defineTool,
@@ -39,6 +40,14 @@ function resolveBashShell(): { shell: string; args: string[] } | null {
     return getShellConfig();
   } catch {
     return null;
+  }
+}
+
+async function isDirExist(path: string): Promise<boolean> {
+  try {
+    return (await stat(path)).isDirectory();
+  } catch {
+    return false;
   }
 }
 
@@ -90,10 +99,13 @@ export const executeCommandTool = defineTool({
     const retainedBytes = limits.maxBytes * 2;
     const effectiveTimeout = resolveTimeout(params.timeout, readAppSettings().maxCommandTimeoutMs);
 
-    return new Promise<CustomToolResult<{ exitCode: number | null; signalCode: string | null; output: string; timedOut: boolean }>>((res) => {
+    return new Promise<CustomToolResult<{ exitCode: number | null; signalCode: string | null; output: string; timedOut: boolean }>>(async (res) => {
       let resolvedCwd = ctx.cwd;
       if (typeof params.cwd === 'string' && params.cwd.trim() !== '') {
         resolvedCwd = resolvePath(params.cwd, ctx.cwd);
+        if (!(await isDirExist(resolvedCwd))) {
+          resolvedCwd = ctx.cwd;
+        }
       }
 
       const output: string[] = [];
