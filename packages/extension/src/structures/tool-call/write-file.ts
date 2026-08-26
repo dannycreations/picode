@@ -19,8 +19,8 @@ export const writeFileTool = defineTool({
     path: Type.String({ description: 'Workspace-relative path of the file to write.' }),
     content: Type.String({ description: 'Complete file content; never truncate.' }),
   }),
-  async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
-    return runFileMutation(ctx.cwd, params.path, 'writing to file', async (resolvedPath) => {
+  async execute(_toolCallId, params, _signal, onUpdate, ctx) {
+    const result = await runFileMutation(ctx.cwd, params.path, 'writing to file', async (resolvedPath) => {
       const finalContent = stripCodeFence(params.content);
 
       // Only build a diff from the prior content when the file is small enough
@@ -45,5 +45,7 @@ export const writeFileTool = defineTool({
         hint: `Write applied; read "${params.path}" to verify the remaining changes.`,
       });
     });
+    onUpdate?.(result);
+    return result;
   },
 });

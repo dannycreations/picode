@@ -17,23 +17,31 @@ export const askQuestionTool = defineTool({
       description: '2-4 answer options, ordered from most to least likely.',
     }),
   }),
-  async execute(toolCallId, params, signal, _onUpdate, _ctx) {
+  async execute(toolCallId, params, signal, onUpdate, _ctx) {
     try {
       // The chat view renders the question straight from the tool call
       // arguments, so an empty question would surface as an empty card.
       if (!params.question.trim()) {
-        return toolError('Error: `question` is required and cannot be empty.');
+        const result = toolError('Error: `question` is required and cannot be empty.');
+        onUpdate?.(result);
+        return result;
       }
 
       const response = await askQuestion(toolCallId, signal);
 
       if (response === null || (response.text.trim() === '' && !response.images?.length)) {
-        return toolError('Error: the user provided no response.');
+        const result = toolError('Error: the user provided no response.');
+        onUpdate?.(result);
+        return result;
       }
 
-      return toolResult(response.text, { response: response.text }, response.images);
+      const result = toolResult(response.text, { response: response.text }, response.images);
+      onUpdate?.(result);
+      return result;
     } catch (err) {
-      return toolErrorFrom(err, 'asking question');
+      const result = toolErrorFrom(err, 'asking question');
+      onUpdate?.(result);
+      return result;
     }
   },
 });

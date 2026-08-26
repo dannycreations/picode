@@ -22,7 +22,9 @@ export const updateTodoTool = defineTool({
       { description: 'Complete list in order; replaces the previous one.' },
     ),
   }),
-  async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
-    return toolResult('Todo list updated.', { todos: params.todos });
+  async execute(_toolCallId, params, _signal, onUpdate, _ctx) {
+    const result = toolResult('Todo list updated.', { todos: params.todos });
+    onUpdate?.(result);
+    return result;
   },
 });

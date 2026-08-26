@@ -58,19 +58,36 @@ async function readFileSection(cwd: string, file: FileRequest, limits: OutputLim
   }
 }
 
-async function mapConcurrent<T, R>(items: readonly T[], limit: number, signal: AbortSignal | undefined, run: (item: T) => Promise<R>): Promise<R[]> {
-  const results: R[] = Array(items.length);
+async function mapConcurrent<T, R>(
+  items: readonly T[],
+  limit: number,
+  signal: AbortSignal | undefined,
+  run: (item: T) => Promise<R>,
+  onResult?: (results: readonly (R | undefined)[], index: number) => void,
+): Promise<R[]> {
+  const results: (R | undefined)[] = Array(items.length);
   let nextIndex = 0;
 
   const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
     while (nextIndex < items.length && !signal?.aborted) {
       const index = nextIndex++;
       results[index] = await run(items[index]);
+      onResult?.(results, index);
     }
   });
 
   await Promise.all(workers);
-  return results;
+  return results as R[];
+}
+
+function assembleReadOutput(sections: readonly FileSection[]): {
+  text: string;
+  files: { path: string; content: string }[];
+} {
+  return {
+    text: sections.map((section) => (section.hasError ? section.body : `${section.header}\n${section.body}`)).join('\n\n'),
+    files: sections.map((section) => ({ path: section.path, content: section.body })),
+  };
 }
 
 export const readFileTool = defineTool({
@@ -94,7 +111,7 @@ export const readFileTool = defineTool({
       { minItems: 1, description: 'One or more files to read.' },
     ),
   }),
-  async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+  async execute(_toolCallId, params, signal, onUpdate, ctx) {
     try {
       const settings = readAppSettings();
       const maxConcurrent = settings.maxConcurrentFileReads > 0 ? settings.maxConcurrentFileReads : DEFAULT_MAX_CONCURRENT_READS;
@@ -103,19 +120,31 @@ export const readFileTool = defineTool({
       // Split the budget so one large file cannot consume the whole batch.
       const perFileLimits = shareOutputLimits(limits, params.files.length);
 
-      const sections = await mapConcurrent(params.files, maxConcurrent, signal, (file) => readFileSection(ctx.cwd, file, perFileLimits));
+      const sections = await mapConcurrent(
+        params.files,
+        maxConcurrent,
+        signal,
+        (file) => readFileSection(ctx.cwd, file, perFileLimits),
+        (partial) => {
+          const done = partial.filter((section): section is FileSection => section !== undefined);
+          const { text, files } = assembleReadOutput(done);
+          onUpdate?.(toolResult(text, { files }));
+        },
+      );
 
       if (signal?.aborted) {
         return toolError('Error: read operation was aborted.');
       }
 
-      const text = sections.map((section) => (section.hasError ? section.body : `${section.header}\n${section.body}`)).join('\n\n');
-
-      const files = sections.map((section) => ({ path: section.path, content: section.body }));
+      const { text, files } = assembleReadOutput(sections);
       const allFailed = sections.length > 0 && sections.every((section) => section.hasError);
-      return allFailed ? toolError(text, { files }) : toolResult(text, { files });
+      const result = allFailed ? toolError(text, { files }) : toolResult(text, { files });
+      onUpdate?.(result);
+      return result;
     } catch (err) {
-      return toolErrorFrom(err, 'reading file');
+      const result = toolErrorFrom(err, 'reading file');
+      onUpdate?.(result);
+      return result;
     }
   },
 });

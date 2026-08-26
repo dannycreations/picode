@@ -28,15 +28,29 @@ export const mcpTool = defineTool({
       }),
     ),
   }),
-  async execute(_toolCallId, params, signal, _onUpdate, ctx): Promise<CustomToolResult<McpDetails>> {
+  async execute(_toolCallId, params, signal, onUpdate, ctx): Promise<CustomToolResult<McpDetails>> {
     try {
       const config = getActiveMcpConfig();
+
+      if (params.server !== undefined && config[params.server] !== undefined) {
+        const subtitle = params.tool !== undefined ? `${params.server}/${params.tool}` : params.server;
+        const previewText =
+          params.tool !== undefined
+            ? `Calling tool "${params.tool}" on MCP server "${params.server}"...`
+            : `Listing tools on MCP server "${params.server}"...`;
+        onUpdate?.(toolResult(previewText, { subtitle }));
+      }
+
       const outcome = await mcpGateway.dispatch(config, ctx.cwd, params, signal);
       const { text } = truncateOutput(outcome.text, { limits: readOutputLimits() });
       const details: McpDetails = { subtitle: outcome.subtitle };
-      return outcome.isError ? toolError(text, details) : toolResult(text, details);
+      const result = outcome.isError ? toolError(text, details) : toolResult(text, details);
+      onUpdate?.(result);
+      return result;
     } catch (err) {
-      return toolErrorFrom(err, 'calling MCP');
+      const result = toolErrorFrom(err, 'calling MCP');
+      onUpdate?.(result);
+      return result;
     }
   },
 });

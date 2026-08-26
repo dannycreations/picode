@@ -16,8 +16,8 @@ export const deleteFileTool = defineTool({
   parameters: Type.Object({
     path: Type.String({ description: 'Workspace-relative path of the file or directory.' }),
   }),
-  async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
-    return runFileMutation(ctx.cwd, params.path, 'deleting file', async (resolvedPath) => {
+  async execute(_toolCallId, params, _signal, onUpdate, ctx) {
+    const result = await runFileMutation(ctx.cwd, params.path, 'deleting file', async (resolvedPath) => {
       // True when the workspace root sits at or under the target, so deleting
       // it would take the whole workspace with it.
       if (getCwdRelativePath(resolve(ctx.cwd), resolvedPath) !== undefined) {
@@ -42,5 +42,7 @@ export const deleteFileTool = defineTool({
       await unlink(resolvedPath);
       return toolResult(`Deleted file: ${params.path}`);
     });
+    onUpdate?.(result);
+    return result;
   },
 });
