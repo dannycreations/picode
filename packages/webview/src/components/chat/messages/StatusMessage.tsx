@@ -1,6 +1,8 @@
 import { cn } from 'cnfast';
-import { AlertTriangle, Info, RefreshCw } from 'lucide-react';
+import { AlertTriangle, ChevronUp, Info, RefreshCw } from 'lucide-react';
+import { useState } from 'react';
 
+import { Accordion } from '@pi-code/webview/components/shared/Accordion';
 import { SearchableText } from '@pi-code/webview/components/shared/Highlight';
 import { Spinner } from '@pi-code/webview/components/shared/Spinner';
 import { formatTime } from '@pi-code/webview/utilities/common';
@@ -10,38 +12,55 @@ import type { ChatMessage } from '@pi-code/shared/core/types';
 import type { SearchContext } from '@pi-code/webview/components/shared/Highlight';
 
 export const ApiRequestMessage: FC<{ readonly message: ChatMessage }> = ({ message }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
   if (message.sender !== 'api_request') return null;
 
   const isRunning = message.toolStatus === 'running';
-  const isFailed = message.toolStatus === 'denied';
+  const error = message.toolStatus === 'denied' ? message.errorMessage : undefined;
 
   return (
-    <div
-      className={cn(
-        'flex items-center justify-between gap-2 text-xs select-none transition-opacity duration-200',
-        isRunning ? 'opacity-100' : 'opacity-40 hover:opacity-100',
-      )}
-    >
-      <div className="flex items-center gap-2 text-vscode-foreground whitespace-nowrap">
-        {isRunning ? (
-          <Spinner className="text-vscode-focusBorder" />
-        ) : isFailed ? (
-          <AlertTriangle size={14} className="text-vscode-editorError-foreground shrink-0" />
-        ) : (
-          <RefreshCw size={14} className="text-vscode-focusBorder shrink-0" />
+    <div>
+      <div
+        className={cn(
+          'flex items-center justify-between gap-2 text-xs select-none transition-opacity duration-200',
+          isRunning ? 'opacity-100' : 'opacity-40 hover:opacity-100',
         )}
-        <span className={cn('font-semibold', isFailed ? 'text-vscode-editorError-foreground' : 'text-vscode-foreground')}>
-          {isRunning ? 'API Request...' : isFailed ? 'API Request Failed' : 'API Request'}
-        </span>
-      </div>
-      <div className="flex items-center gap-2 ml-auto">
-        {message.cost !== undefined && message.cost > 0 && (
-          <span className="text-xs text-vscode-dropdown-foreground border border-vscode-dropdown-border/50 px-1.5 py-0.5 rounded bg-vscode-dropdown-background font-mono">
-            ${message.cost.toFixed(4)}
+      >
+        <div
+          className={cn('flex items-center gap-2 whitespace-nowrap', error && 'cursor-pointer')}
+          onClick={error ? () => setIsExpanded(!isExpanded) : undefined}
+        >
+          {isRunning ? (
+            <Spinner className="text-vscode-focusBorder" />
+          ) : error ? (
+            <AlertTriangle size={14} className="text-vscode-editorError-foreground shrink-0" />
+          ) : (
+            <RefreshCw size={14} className="text-vscode-focusBorder shrink-0" />
+          )}
+          <span className={cn('font-semibold', error ? 'text-vscode-editorError-foreground' : 'text-vscode-foreground')}>
+            {isRunning ? 'API Request...' : error ? 'API Request Failed' : 'API Request'}
           </span>
-        )}
-        <span className="text-muted font-normal">{formatTime(message.ts)}</span>
+          {error && (
+            <ChevronUp
+              size={14}
+              className={cn('text-vscode-editorError-foreground transition-transform duration-200', !isExpanded && 'rotate-180')}
+            />
+          )}
+        </div>
+        <div className="flex items-center gap-2 ml-auto">
+          {message.cost !== undefined && message.cost > 0 && (
+            <span className="text-xs text-vscode-dropdown-foreground border border-vscode-dropdown-border/50 px-1.5 py-0.5 rounded bg-vscode-dropdown-background font-mono">
+              ${message.cost.toFixed(4)}
+            </span>
+          )}
+          <span className="text-muted font-normal">{formatTime(message.ts)}</span>
+        </div>
       </div>
+      <Accordion open={error !== undefined && isExpanded}>
+        <div className="mt-1 ml-6 border-l border-vscode-descriptionForeground/20 pl-4 font-mono text-xs break-all whitespace-pre-wrap leading-normal text-vscode-editorError-foreground select-text">
+          {error}
+        </div>
+      </Accordion>
     </div>
   );
 };

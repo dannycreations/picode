@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 import { DEFAULT_APP_ID } from '@pi-code/shared/core/constants';
 import { HISTORY_SCOPES } from '@pi-code/shared/core/protocol';
-import { elapsedSeconds, errorRow } from '@pi-code/shared/utilities/common';
+import { elapsedSeconds, findReplaceableFailedRequest } from '@pi-code/shared/utilities/common';
 import {
   appendOnce,
   deliverQueuedReplies,
@@ -166,12 +166,15 @@ export const useChatStore = create<ChatState>((set, get) => {
     api_request_start: (msg) => {
       const { id, timestamp } = msg.payload;
       set((state) =>
-        patchActiveTask(state, (task) => ({
-          ...task,
-          messages: task.messages.some((m) => m.id === id)
-            ? task.messages
-            : [...settlePendingTurns(task.messages), { id, sender: 'api_request', text: 'API Request', ts: timestamp, toolStatus: 'running' }],
-        })),
+        patchActiveTask(state, (task) => {
+          if (task.messages.some((m) => m.id === id)) return task;
+          const settled = settlePendingTurns(task.messages);
+          const row: ApiRequestChatMessage = { id, sender: 'api_request', text: 'API Request', ts: timestamp, toolStatus: 'running' };
+          // A retry reuses the previous failed request's slot, so one attempt
+          // chain renders as a single row until a turn succeeds.
+          const retryIndex = findReplaceableFailedRequest(settled);
+          return { ...task, messages: retryIndex === undefined ? [...settled, row] : [...settled.slice(0, retryIndex), row] };
+        }),
       );
     },
     api_request_end: (msg) => {
@@ -179,16 +182,13 @@ export const useChatStore = create<ChatState>((set, get) => {
       set((state) =>
         patchActiveTask(state, (task) => {
           const target = task.messages.find((m) => m.id === id && m.sender === 'api_request') as ApiRequestChatMessage | undefined;
-          let messages = target
+          const messages = target
             ? patchMessage(task.messages, id, {
                 toolStatus: error ? 'denied' : 'completed',
                 cost: cost ?? target.cost,
                 errorMessage: error ?? target.errorMessage,
               })
             : settlePendingTurns(task.messages, { cost, error });
-          if (error) {
-            messages = appendOnce(messages, errorRow(id, error, Date.now()));
-          }
           return { ...task, messages, ...stats };
         }),
       );

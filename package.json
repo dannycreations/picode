@@ -17,6 +17,11 @@
     "update": "npm-check-updates -u -x @types/node --workspaces --root",
     "prepare": "husky"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dannycreations/picode.git"
+  },
+  "homepage": "https://github.com/dannycreations/picode",
   "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "^4.7.1",
     "@types/node": "24.13.3",

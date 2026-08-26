@@ -4,7 +4,7 @@ import { calculateContextTokens, getLastAssistantUsage } from '@earendil-works/p
 import { getApprovalDuration } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
 import { toBase64DataUrl } from '@pi-code/extension/utilities/codec';
 import { logger } from '@pi-code/shared/core/logger';
-import { elapsedSeconds, errorRow } from '@pi-code/shared/utilities/common';
+import { elapsedSeconds, findReplaceableFailedRequest } from '@pi-code/shared/utilities/common';
 import { buildToolSections } from '@pi-code/shared/utilities/tool';
 
 import type { ImageContent, TextContent, ThinkingContent, ToolCall, Usage } from '@earendil-works/pi-ai';
@@ -108,7 +108,9 @@ function appendAssistantTurn(result: ChatMessage[], id: string, msg: Extract<Ses
   const cost = msg.usage?.cost?.total;
   const errorMessage = msg.errorMessage;
 
-  result.push({
+  // A retry after a failed turn reuses that turn's row, so a chain of failed
+  // attempts replays as one request until a turn succeeds.
+  const requestRow: ChatMessage = {
     id: `${id}-api-req`,
     sender: 'api_request',
     text: 'API Request',
@@ -116,7 +118,13 @@ function appendAssistantTurn(result: ChatMessage[], id: string, msg: Extract<Ses
     toolStatus: errorMessage ? 'denied' : 'completed',
     errorMessage,
     cost,
-  });
+  };
+  const retryIndex = findReplaceableFailedRequest(result);
+  if (retryIndex === undefined) result.push(requestRow);
+  else {
+    result.splice(retryIndex);
+    result.push(requestRow);
+  }
 
   result.push({
     id,
@@ -137,10 +145,6 @@ function appendAssistantTurn(result: ChatMessage[], id: string, msg: Extract<Ses
       toolStatus: 'completed',
       ts,
     });
-  }
-
-  if (errorMessage) {
-    result.push(errorRow(id, errorMessage, ts));
   }
 }
 

@@ -25,6 +25,10 @@ function stripAnsiAndNormalize(raw: string): string {
 
 const DEFAULT_TIMEOUT_MS = 120_000;
 const STREAM_FLUSH_MS = 80;
+// How long a child's stdio pipes may stay open after its exit before the
+// result settles anyway. A killed shell can leave a descendant holding the
+// pipes forever, which would otherwise hang the caller.
+const EXIT_STDIO_GRACE_MS = 100;
 
 function resolveTimeout(requested: number | undefined, maxMs: number): number {
   return Math.min(requested ?? DEFAULT_TIMEOUT_MS, maxMs);
@@ -164,8 +168,12 @@ export const executeCommandTool = defineTool({
 
       let finished = false;
       let timedOut = false;
+      let exited = false;
+      let exitCode: number | null = null;
+      let exitSignal: string | null = null;
       let onAbort: (() => void) | null = null;
       let timeoutTimer: ReturnType<typeof setTimeout> | null = null;
+      let exitGraceTimer: ReturnType<typeof setTimeout> | null = null;
 
       const detachSignal = () => {
         if (signal && onAbort) {
@@ -182,6 +190,10 @@ export const executeCommandTool = defineTool({
         if (streamTimer) {
           clearTimeout(streamTimer);
           streamTimer = null;
+        }
+        if (exitGraceTimer) {
+          clearTimeout(exitGraceTimer);
+          exitGraceTimer = null;
         }
       };
 
@@ -200,6 +212,9 @@ export const executeCommandTool = defineTool({
         streamUpdate(stdoutTail);
         streamUpdate(stderrTail);
         flushStream();
+        // Release pipes a descendant may still hold after the grace settle.
+        cp.stdout?.destroy();
+        cp.stderr?.destroy();
 
         const exitInfo = exitCode !== null ? `Exit code: ${exitCode}` : `Killed by signal: ${signalCode ?? 'UNKNOWN'}`;
         const rawOutput = output.join('');
@@ -230,24 +245,50 @@ export const executeCommandTool = defineTool({
       };
 
       const killCommand = () => {
-        if (cp.pid) killProcessTree(cp.pid);
+        if (cp.pid) {
+          killProcessTree(cp.pid);
+          return;
+        }
+        // Abort or timeout can land while spawn is still in flight. Kill as
+        // soon as the pid exists instead of letting the command run on.
+        cp.once('spawn', () => {
+          if (cp.pid) killProcessTree(cp.pid);
+        });
+      };
+
+      // 'close' waits for stdio pipes to close, and a killed shell can leave a
+      // detached descendant holding them open forever. After exit, settle once
+      // the pipes go idle instead of hanging; active output re-arms the grace
+      // so a still-writing descendant keeps its tail.
+      const armExitGrace = () => {
+        if (exitGraceTimer) clearTimeout(exitGraceTimer);
+        exitGraceTimer = setTimeout(() => finish(exitCode, exitSignal), EXIT_STDIO_GRACE_MS);
       };
 
       cp.stdout?.on('data', (chunk: Buffer) => {
         const text = stdoutDecoder.write(chunk);
         appendOutput(text);
         streamUpdate(text);
+        if (exited && !finished) armExitGrace();
       });
 
       cp.stderr?.on('data', (chunk: Buffer) => {
         const text = stderrDecoder.write(chunk);
         appendOutput(text);
         streamUpdate(text);
+        if (exited && !finished) armExitGrace();
       });
 
       cp.on('error', (err) => {
         appendOutput(`\nError spawning process: ${err.message}\n`);
         finish(1, null);
+      });
+
+      cp.once('exit', (code, sig) => {
+        exited = true;
+        exitCode = code;
+        exitSignal = sig;
+        armExitGrace();
       });
 
       cp.on('close', (code, sig) => {

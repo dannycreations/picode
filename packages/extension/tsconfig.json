@@ -2,7 +2,7 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
-    "types": ["node"],
+    "types": ["node", "vite/client"],
     "paths": {
       "@pi-code/extension/*": ["./src/*"],
       "@pi-code/shared/*": ["./src/shared/*"]

@@ -1,4 +1,4 @@
-import type { ActiveTaskState, ChatMessage, ModelThinkingLevel, StatsData } from '@pi-code/shared/core/types';
+import type { ActiveTaskState, AssistantChatMessage, ChatMessage, ModelThinkingLevel, StatsData } from '@pi-code/shared/core/types';
 
 export const DEFAULT_CONTEXT_LIMIT = 200_000;
 
@@ -16,10 +16,22 @@ export function createActiveTask(id: string, title: string, messages: ChatMessag
   return { id, title, messages, ...EMPTY_STATS };
 }
 
-// Live events and replayed transcripts both surface a failed turn under the
-// same `${id}-error` row convention, so one constructor keeps them identical.
-export function errorRow(id: string, message: string, ts: number): ChatMessage {
-  return { id: `${id}-error`, sender: 'error', text: message, errorMessage: message, ts };
+function hasVisibleOutput(message: AssistantChatMessage): boolean {
+  return message.text.trim() !== '' || (message.reasoning?.trim() ?? '') !== '';
+}
+
+export function findReplaceableFailedRequest(messages: readonly ChatMessage[]): number | undefined {
+  let chainStart: number | undefined;
+  for (let index = messages.length - 1; index >= 0; index--) {
+    const message = messages[index];
+    if (message.sender === 'assistant' && !hasVisibleOutput(message)) continue;
+    if (message.sender === 'api_request' && message.toolStatus === 'denied') {
+      chainStart = index;
+      continue;
+    }
+    break;
+  }
+  return chainStart;
 }
 
 export function defaultThinkingLevel(levels: readonly ModelThinkingLevel[]): ModelThinkingLevel | null {
