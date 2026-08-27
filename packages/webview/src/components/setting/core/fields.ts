@@ -1,6 +1,6 @@
 import { Cog, Database, ShieldCheck, Sparkles } from 'lucide-react';
 
-import { getSettingSpec, SETTING_KEYS } from '@pi-code/shared/core/settings';
+import { getSettingSpec } from '@pi-code/shared/core/settings';
 
 import type { SettingKey } from '@pi-code/shared/core/settings';
 import type { SettingFieldRegistry, SettingsTab, SettingsTabId } from '@pi-code/webview/components/setting/core/types';
@@ -61,6 +61,7 @@ export const SETTING_FIELDS: SettingFieldRegistry = {
   deniedExecuteCommands: { tab: 'approval', label: 'Denied Commands', parent: 'autoApproveExecute', placeholder: 'e.g. rm -rf' },
 
   commitMessageModel: { tab: 'behaviour', label: 'Commit message model' },
+  maxConcurrentFileReads: { tab: 'behaviour', label: 'Concurrent file reads limit' },
   maxCommandTimeoutMs: { tab: 'behaviour', label: 'Command timeout limit' },
   retryOnError: { tab: 'behaviour', label: 'Retry on error' },
 
@@ -70,17 +71,18 @@ export const SETTING_FIELDS: SettingFieldRegistry = {
   maxWorkspaceFiles: { tab: 'context', label: 'Workspace files context limit' },
   excludeIgnoredFiles: { tab: 'context', label: 'Exclude ignored files', parent: 'maxWorkspaceFiles' },
   maxGitStatusFiles: { tab: 'context', label: 'Git status max files' },
-  maxConcurrentFileReads: { tab: 'context', label: 'Concurrent file reads limit' },
   maxToolOutputLines: { tab: 'context', label: 'Tool output line limit' },
   maxToolOutputSizeKb: { tab: 'context', label: 'Tool output size limit' },
 };
 
+const FIELD_KEYS = Object.keys(SETTING_FIELDS) as readonly SettingKey[];
+
 export function getRootFieldKeys(tab: SettingsTabId): readonly SettingKey[] {
-  return SETTING_KEYS.filter((key) => SETTING_FIELDS[key].tab === tab && !SETTING_FIELDS[key].parent);
+  return FIELD_KEYS.filter((key) => SETTING_FIELDS[key].tab === tab && !SETTING_FIELDS[key].parent);
 }
 
 export function getChildFieldKeys(parent: SettingKey): readonly SettingKey[] {
-  return SETTING_KEYS.filter((key) => SETTING_FIELDS[key].parent === parent);
+  return FIELD_KEYS.filter((key) => SETTING_FIELDS[key].parent === parent);
 }
 
 export function matchesQuery(key: SettingKey, query: string): boolean {

@@ -191,14 +191,6 @@ const SETTINGS_SCHEMA = {
     maximum: 50,
     description: 'Maximum number of changed files to include in git status context. Set to 0 to disable. Branch info is always shown when above 0.',
   },
-  maxConcurrentFileReads: {
-    type: 'number',
-    default: 10,
-    minimum: 1,
-    maximum: 100,
-    description:
-      'Maximum number of files the `read_file` tool loads in parallel. Higher values may speed up reading many small files but increase memory usage.',
-  },
   maxToolOutputLines: {
     type: 'number',
     default: 2000,
@@ -223,6 +215,14 @@ const SETTINGS_SCHEMA = {
     type: 'string',
     default: '',
     description: 'Model used to generate commit messages, as `provider/model`. Leave empty to use the model currently selected in the chat.',
+  },
+  maxConcurrentFileReads: {
+    type: 'number',
+    default: 10,
+    minimum: 1,
+    maximum: 100,
+    description:
+      'Maximum number of files the `read_file` tool loads in parallel. Higher values may speed up reading many small files but increase memory usage.',
   },
   maxCommandTimeoutMs: {
     type: 'number',

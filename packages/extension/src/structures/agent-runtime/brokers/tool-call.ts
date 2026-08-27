@@ -30,7 +30,3 @@ export function getApprovalDuration(toolCallId: string): number | undefined {
 export function recordApprovalDuration(toolCallId: string, durationMs: number): void {
   approvalDurations.set(toolCallId, durationMs);
 }
-
-export function clearApprovalDurations(): void {
-  approvalDurations.clear();
-}

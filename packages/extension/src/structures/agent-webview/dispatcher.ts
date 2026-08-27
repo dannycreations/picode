@@ -64,15 +64,18 @@ async function postHistory(ctx: MessageHandlerContext, scope: HistoryScope, snap
   // chunk from an earlier refresh cannot corrupt the list.
   const epoch = ++ctx.historyEpoch;
   const cwd = ctx.cwd;
+  const postHistoryData = (items: HistoryItem[]): void => {
+    ctx.runtime.postMessage({ type: 'history_data', payload: { scope, epoch, items } });
+  };
   try {
     let items: HistoryItem[] | null = snapshot ? [] : null;
     for await (const chunk of streamHistory(cwd, scope)) {
       // A workspace switch mid-stream must not mix sessions across folders.
       if (ctx.cwd !== cwd) return;
       if (items) items.push(...chunk);
-      else ctx.runtime.postMessage({ type: 'history_data', payload: { scope, epoch, items: chunk } });
+      else postHistoryData(chunk);
     }
-    if (items) ctx.runtime.postMessage({ type: 'history_data', payload: { scope, epoch, items } });
+    if (items) postHistoryData(items);
   } catch (error) {
     logger.warn(`History ${snapshot ? 'snapshot' : 'stream'} for "${scope}" failed; the list may be incomplete.`, error);
   }
