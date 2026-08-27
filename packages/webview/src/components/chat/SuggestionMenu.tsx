@@ -17,25 +17,22 @@ interface SuggestionMenuProps<T> {
 
 const SuggestionMenu = <T,>({ items, selectedIndex, onSelect, onHover, renderItem }: SuggestionMenuProps<T>): ReactElement | null => {
   const listRef = useRef<HTMLDivElement>(null);
-  // Scrolling to reveal a hovered row shifts the list under the stationary
-  // cursor, which fires mouseenter again and makes the menu creep. So hover
-  // arms this flag to skip the next scroll; keyboard navigation leaves it
-  // armed and still scrolls as before.
-  const shouldScrollRef = useRef(true);
-  // Programmatic scrolling also makes the browser re-dispatch mouseenter for
-  // whichever row lands under the stationary cursor, which fights the
-  // keyboard selection. Only a real mousemove re-enables hover, and a
-  // keyboard-driven selection disables it again.
-  const hasPointerMovedRef = useRef(false);
+  // Mouse hovers must not scroll the list. Otherwise the row that slides under
+  // the stationary cursor re-fires mouseenter and the selection creeps.
+  const skipNextScrollRef = useRef(false);
+  // A programmatic keyboard scroll can also slide one row under the cursor and
+  // re-dispatch a single mouseenter. Ignore just that event so keyboard
+  // navigation is not hijacked by where the pointer rests.
+  const skipNextMouseEnterRef = useRef(false);
 
   useEffect(() => {
-    if (!shouldScrollRef.current) {
-      shouldScrollRef.current = true;
+    if (skipNextScrollRef.current) {
+      skipNextScrollRef.current = false;
       return;
     }
-    hasPointerMovedRef.current = false;
     const selected = listRef.current?.children[selectedIndex];
     selected?.scrollIntoView({ block: 'nearest' });
+    skipNextMouseEnterRef.current = true;
   }, [selectedIndex]);
 
   if (items.length === 0) return null;
@@ -50,7 +47,9 @@ const SuggestionMenu = <T,>({ items, selectedIndex, onSelect, onHover, renderIte
         ref={listRef}
         className="max-h-55 overflow-y-auto"
         onMouseMove={() => {
-          hasPointerMovedRef.current = true;
+          // A genuine pointer move means the next mouseenter is the user's, not
+          // a scroll artifact, so stop ignoring it.
+          skipNextMouseEnterRef.current = false;
         }}
       >
         {items.map((item, index) => (
@@ -60,8 +59,11 @@ const SuggestionMenu = <T,>({ items, selectedIndex, onSelect, onHover, renderIte
             aria-selected={index === selectedIndex}
             onClick={() => onSelect(item)}
             onMouseEnter={() => {
-              if (!hasPointerMovedRef.current) return;
-              shouldScrollRef.current = false;
+              if (skipNextMouseEnterRef.current) {
+                skipNextMouseEnterRef.current = false;
+                return;
+              }
+              skipNextScrollRef.current = true;
               onHover(index);
             }}
             className={cn(
@@ -105,7 +107,7 @@ export const CommandMenu = ({ commands, selectedIndex, onSelect, onHover }: Comm
             {showSource && <span className="shrink-0 text-[0.7rem] uppercase tracking-wide text-vscode-descriptionForeground">{command.source}</span>}
           </div>
           {command.description && (
-            <Tooltip content={command.detail} side="right">
+            <Tooltip content={command.description}>
               <span className={cn('line-clamp-2 text-xs', isSelected ? 'opacity-80' : 'text-vscode-descriptionForeground')}>
                 {command.description}
               </span>
