@@ -2,10 +2,9 @@ import { memo } from 'react';
 
 import { AssistantMessage } from '@pi-code/webview/components/chat/messages/AssistantMessage';
 import { QuestionMessage } from '@pi-code/webview/components/chat/messages/QuestionMessage';
-import { QueueMessage } from '@pi-code/webview/components/chat/messages/QueueMessage';
 import { ApiRequestMessage, ErrorMessage, InfoMessage } from '@pi-code/webview/components/chat/messages/StatusMessage';
 import { ToolMessage } from '@pi-code/webview/components/chat/messages/ToolMessage';
-import { UserMessage } from '@pi-code/webview/components/chat/messages/UserMessage';
+import { QueueMessage, UserMessage } from '@pi-code/webview/components/chat/messages/UserMessage';
 
 import type { CommandItem } from '@pi-code/shared/core/protocol';
 import type { ChatMessage } from '@pi-code/shared/core/types';
@@ -26,7 +25,7 @@ export const ChatBody = memo<ChatBodyProps>(({ message, commands, search, onResp
       case 'user':
         return <UserMessage message={message} commands={commands} search={search} />;
       case 'queue':
-        return <QueueMessage message={message} search={search} />;
+        return <QueueMessage message={message} commands={commands} search={search} />;
       case 'assistant':
         return <AssistantMessage message={message} search={search} />;
       case 'tool':
