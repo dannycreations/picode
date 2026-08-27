@@ -71,8 +71,8 @@ export type WebviewToExtensionMessage =
   | { type: 'load_session'; id: string; path: string; title: string }
   | { type: 'delete_sessions'; paths: string[] }
   | { type: 'send_message'; text: string; path?: string; images?: string[] }
-  | { type: 'search_files'; query: string; requestId: string }
-  | { type: 'search_commits'; query: string; requestId: string }
+  | { type: 'search_files'; query: string }
+  | { type: 'search_commits'; query: string }
   | { type: 'continue_task'; path?: string }
   | { type: 'tool_response'; approval_id: string; approved: boolean }
   | { type: 'question_response'; question_id: string; text: string; images?: string[] }
@@ -139,8 +139,8 @@ export type ExtensionToWebviewMessage =
   | { type: 'compaction_end'; payload?: StatsData }
   | { type: 'show_settings' }
   | { type: 'set_chat_input'; payload: { text: string } }
-  | { type: 'search_results'; payload: { requestId: string; paths: string[] } }
-  | { type: 'commit_results'; payload: { requestId: string; commits: CommitItem[] } }
+  | { type: 'search_results'; payload: { query: string; paths: string[] } }
+  | { type: 'commit_results'; payload: { query: string; commits: CommitItem[] } }
   | { type: 'reply_queue_data'; payload: { queue: ChatMessage[] } }
   | { type: 'reply_queue_delivered'; payload: { messages: ChatMessage[] } }
   | { type: 'stream_delta'; payload: { text?: string; thinking?: string } }

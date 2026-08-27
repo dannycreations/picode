@@ -9,7 +9,7 @@ import {
   toCommitTagItem,
   WORKING_CHANGES_ITEM,
 } from '@pi-code/webview/components/chat/helpers/mention';
-import { setCommitRequestId, setSearchRequestId, useChatStore } from '@pi-code/webview/stores/useChatStore';
+import { setLatestCommitQuery, setLatestSearchQuery, useChatStore } from '@pi-code/webview/stores/useChatStore';
 
 import type { ChangeEvent, Dispatch, KeyboardEvent, RefObject, SetStateAction } from 'react';
 import type { CommandItem, WebviewToExtensionMessage } from '@pi-code/shared/core/protocol';
@@ -164,20 +164,20 @@ export const useChatCommand = ({ commands, value, setValue, textareaRef }: UseCo
 
 const SEARCH_DEBOUNCE_MS = 200;
 
-type SearchRequestBuilder = (query: string, requestId: string) => WebviewToExtensionMessage;
+type SearchRequestBuilder = (query: string) => WebviewToExtensionMessage;
 
-// Each builder registers its request id before returning the message to send;
-// the store drops responses whose id does not match the newest registration.
-const requestFileSearch: SearchRequestBuilder = (query, requestId) => {
-  setSearchRequestId(requestId);
-  return { type: 'search_files', query, requestId };
+// Each builder records the query it sends so the store can drop a response that
+// answers an older, slower query than the one currently in the box.
+const requestFileSearch: SearchRequestBuilder = (query) => {
+  setLatestSearchQuery(query);
+  return { type: 'search_files', query };
 };
 
-const requestCommitSearch: SearchRequestBuilder = (query, requestId) => {
-  setCommitRequestId(requestId);
+const requestCommitSearch: SearchRequestBuilder = (query) => {
+  setLatestCommitQuery(query);
   // Drop the previous list so the menu never shows results from an older query.
   useChatStore.setState({ commitResults: null });
-  return { type: 'search_commits', query, requestId };
+  return { type: 'search_commits', query };
 };
 
 // Fires one debounced search per query change; editing the query cancels the
@@ -185,7 +185,7 @@ const requestCommitSearch: SearchRequestBuilder = (query, requestId) => {
 const useDebouncedSearch = (query: string | null, buildRequest: SearchRequestBuilder): void => {
   useEffect(() => {
     if (query === null) return;
-    const message = buildRequest(query, crypto.randomUUID());
+    const message = buildRequest(query);
     const handle = setTimeout(() => useChatStore.getState().send(message), SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(handle);
   }, [query, buildRequest]);

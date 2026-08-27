@@ -46,17 +46,18 @@ export function setComposerTextarea(ref: RefObject<HTMLTextAreaElement | null> |
   composerTextarea = ref;
 }
 
-// Suggestion requests tag each reply so stale results lose against newer ones.
-// Nothing renders from them, so they live outside the reactive store state.
-let searchRequestId = '';
-let commitRequestId = '';
+// Suggestion requests tag each reply with the query it answered, so a stale
+// result (from a slower, earlier query) loses against the newest query. Nothing
+// renders from them, so they live outside the reactive store state.
+let latestSearchQuery = '';
+let latestCommitQuery = '';
 
-export function setSearchRequestId(id: string): void {
-  searchRequestId = id;
+export function setLatestSearchQuery(query: string): void {
+  latestSearchQuery = query;
 }
 
-export function setCommitRequestId(id: string): void {
-  commitRequestId = id;
+export function setLatestCommitQuery(query: string): void {
+  latestCommitQuery = query;
 }
 
 function scopedRecord<T>(fill: (scope: HistoryScope) => T): Record<HistoryScope, T> {
@@ -371,12 +372,12 @@ export const useChatStore = create<ChatState>((set, get) => {
       }));
     },
     search_results: (msg) => {
-      if (msg.payload.requestId === searchRequestId) {
+      if (msg.payload.query === latestSearchQuery) {
         set({ searchResults: msg.payload.paths });
       }
     },
     commit_results: (msg) => {
-      if (msg.payload.requestId === commitRequestId) {
+      if (msg.payload.query === latestCommitQuery) {
         set({ commitResults: msg.payload.commits });
       }
     },

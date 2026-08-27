@@ -113,11 +113,11 @@ const HANDLER_MAP: HandlerMap = {
   },
   search_files: async (msg, ctx) => {
     const paths = await searchWorkspaceFiles(msg.query, ctx.cwd);
-    ctx.runtime.postMessage({ type: 'search_results', payload: { requestId: msg.requestId, paths } });
+    ctx.runtime.postMessage({ type: 'search_results', payload: { query: msg.query, paths } });
   },
   search_commits: async (msg, ctx) => {
     const commits = await searchCommits(msg.query, ctx.cwd);
-    ctx.runtime.postMessage({ type: 'commit_results', payload: { requestId: msg.requestId, commits } });
+    ctx.runtime.postMessage({ type: 'commit_results', payload: { query: msg.query, commits } });
   },
   insert_mentions: (msg, ctx) => {
     const text = msg.paths
