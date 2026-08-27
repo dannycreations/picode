@@ -288,6 +288,34 @@ describe('groupToolMessages', () => {
       },
     ]);
   });
+
+  it('should nest a standalone approval under the matching parent group', () => {
+    const messages = [
+      createToolMessage('p1', 'read_file', { toolStatus: 'completed', files: [{ path: 'a.ts', content: 'a' }] }),
+      createToolMessage('p2', 'write_file', { toolArgs: { path: 'b.ts', content: '' }, diff: 'b' }),
+      createToolMessage('a1', 'read_file', { toolStatus: 'approval', toolCallId: 'p1' }),
+    ];
+
+    const result = groupToolMessages(messages);
+
+    // p1 and p2 are different tools, so two groups remain; a1 nests under p1's group.
+    expect(result).toHaveLength(2);
+    expect(result[0].id).toBe('p1');
+    expect(asTool(result[0]).toolSections?.[0].approvalMessage?.id).toBe('a1');
+    expect(result[1].id).toBe('p2');
+  });
+
+  it('should keep a standalone approval with no matching parent as its own row', () => {
+    const messages = [
+      createToolMessage('p1', 'read_file', { toolStatus: 'completed', files: [{ path: 'a.ts', content: 'a' }] }),
+      createToolMessage('a1', 'read_file', { toolStatus: 'approval', toolCallId: 'missing' }),
+    ];
+
+    const result = groupToolMessages(messages);
+
+    expect(result).toHaveLength(2);
+    expect(result.find((m) => m.id === 'a1')).toBeDefined();
+  });
 });
 
 describe('buildToolSections subagent', () => {

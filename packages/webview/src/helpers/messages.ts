@@ -66,37 +66,40 @@ export function groupToolMessages(messages: ReadonlyArray<ChatMessage>): ChatMes
       result.push(message);
     }
   }
+
   flushGroup();
+
+  const parentIndexByToolCallId = new Map<string, number>();
+  for (let index = 0; index < result.length; index++) {
+    const row = result[index];
+    if (row.sender !== 'tool' || row.toolSections === undefined) continue;
+    for (const section of row.toolSections) {
+      if (section.id !== undefined && !parentIndexByToolCallId.has(section.id)) {
+        parentIndexByToolCallId.set(section.id, index);
+      }
+    }
+  }
 
   const approvalIdsToRemove = new Set<string>();
 
   for (const m of result) {
     if (m.sender !== 'tool' || m.toolCallId === undefined) continue;
-    const parentId = m.toolCallId;
-    const parentMsg = result.find((p) => p.sender === 'tool' && p.toolSections?.some((section) => section.id === parentId));
 
-    if (parentMsg && parentMsg.sender === 'tool' && parentMsg.toolSections) {
-      if (m.toolStatus === 'approval') {
-        const updatedMsg = {
-          ...parentMsg,
-          toolSections: parentMsg.toolSections.map((section) => {
-            if (section.id === parentId) {
-              return {
-                ...section,
-                status: 'approval',
-                approvalMessage: m,
-              };
-            }
-            return section;
-          }),
-        };
-        const index = result.findIndex((r) => r.id === parentMsg.id);
-        if (index !== -1) {
-          result[index] = updatedMsg;
-        }
-      }
-      approvalIdsToRemove.add(m.id);
+    const parentIndex = parentIndexByToolCallId.get(m.toolCallId);
+    if (parentIndex === undefined) continue;
+
+    const parentMsg = result[parentIndex];
+    if (parentMsg.sender !== 'tool') continue;
+
+    if (m.toolStatus === 'approval' && parentMsg.toolSections) {
+      result[parentIndex] = {
+        ...parentMsg,
+        toolSections: parentMsg.toolSections.map((section) =>
+          section.id === m.toolCallId ? { ...section, status: 'approval', approvalMessage: m } : section,
+        ),
+      };
     }
+    approvalIdsToRemove.add(m.id);
   }
 
   if (approvalIdsToRemove.size > 0) {
