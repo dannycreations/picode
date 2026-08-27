@@ -1,3 +1,4 @@
+import { readAppSettings } from '@pi-code/extension/core/settings';
 import { cancelAllApprovals } from '@pi-code/extension/structures/agent-runtime/brokers/approval';
 import { cancelAllQuestions } from '@pi-code/extension/structures/agent-runtime/brokers/question';
 import { Messenger } from '@pi-code/extension/structures/agent-runtime/core/messenger';
@@ -308,6 +309,14 @@ export class Runtime {
         // work. The re-triggered turn delivers any queued replies and clears
         // the queue on its own settle, so leave it intact here.
         void this.continueTask(this.session.sessionFile);
+      } else if (this.runEndedWithError && this.session?.sessionFile && this.isContextAtCompactionThreshold(this.session)) {
+        // A turn ended in error while the context was already past the
+        // auto-compaction threshold. Compact before resuming so the next
+        // attempt runs against a smaller context instead of retrying the
+        // failed turn against the full one. The session may miss the threshold
+        // on the error turn, so enforce it here before the task continues.
+        this.runEndedWithError = false;
+        void this.compactBeforeContinue(this.session.sessionFile);
       } else if (!this.runEndedWithError) {
         this.replyQueue.clear();
       }
@@ -323,6 +332,26 @@ export class Runtime {
 
     if (message) {
       this.messenger.post(message);
+    }
+  }
+
+  private isContextAtCompactionThreshold(session: AgentSession): boolean {
+    const settings = readAppSettings();
+    if (!settings.autoCompactContext) return false;
+
+    const usage = session.getContextUsage?.();
+    if (!usage || usage.tokens === null || usage.contextWindow <= 0) return false;
+
+    const threshold = settings.autoCompactContextPercent ?? 100;
+
+    return usage.tokens > (usage.contextWindow * threshold) / 100;
+  }
+
+  private async compactBeforeContinue(path: string): Promise<void> {
+    await this.compact(path);
+
+    if (this.session?.sessionFile === path) {
+      void this.continueTask(path);
     }
   }
 

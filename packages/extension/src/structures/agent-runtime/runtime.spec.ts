@@ -36,7 +36,7 @@ vi.mock('@pi-code/extension/core/settings', () => ({
     getDefaultModel: () => undefined,
     getDefaultThinkingLevel: () => undefined,
   }),
-  readAppSettings: () => ({ enableTodoTool: false }),
+  readAppSettings: () => ({ enableTodoTool: false, autoCompactContext: true, autoCompactContextPercent: 80 }),
 }));
 
 vi.mock('@pi-code/extension/structures/agent-runtime/session', async (importOriginal) => ({
@@ -473,5 +473,29 @@ describe('Runtime auto-compaction resume', () => {
     await flush();
 
     expect(mocks.getEnvironmentDetails).not.toHaveBeenCalled();
+  });
+
+  it('compacts before resuming when a failed turn is already past the threshold', async () => {
+    const webview = makeFakeWebview();
+    const session = {
+      ...makeStartableSession(),
+      sessionManager: { appendMessage: vi.fn(() => 'persisted-id'), buildContextEntries: () => [] },
+      getContextUsage: () => ({ tokens: 950, contextWindow: 1000, percent: 95 }),
+      compact: vi.fn(async () => ({ estimatedTokensAfter: 120 })),
+    } as unknown as AgentSession;
+    mocks.createSession.mockResolvedValue({ session, services: SERVICES });
+    const runtime = new Runtime(webview);
+    runtime['session'] = session;
+
+    emit(runtime, session, {
+      type: 'agent_end',
+      messages: [{ role: 'assistant', stopReason: 'error', errorMessage: 'rate limited' } as never],
+      willRetry: false,
+    });
+    await flush();
+
+    expect(session.compact).toHaveBeenCalledTimes(1);
+    expect(mocks.getEnvironmentDetails).toHaveBeenCalledTimes(1);
+    expect(mocks.sendHiddenContent).toHaveBeenCalledWith(session, 'environment_details', '', { triggerTurn: true });
   });
 });
