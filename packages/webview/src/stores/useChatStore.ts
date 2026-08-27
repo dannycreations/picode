@@ -148,6 +148,7 @@ export const useChatStore = create<ChatState>((set, get) => {
       const { path, stats } = msg.payload;
       set((state) => ({
         isRunning: true,
+        isCompacting: false,
         ...patchActiveTask(state, (task) => ({ ...task, path: path ?? task.path, ...stats })),
       }));
     },

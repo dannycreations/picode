@@ -207,13 +207,6 @@
           "maximum": 50,
           "description": "Maximum number of changed files to include in git status context. Set to 0 to disable. Branch info is always shown when above 0."
         },
-        "pi-code.maxConcurrentFileReads": {
-          "type": "number",
-          "default": 10,
-          "minimum": 1,
-          "maximum": 100,
-          "markdownDescription": "Maximum number of files the `read_file` tool loads in parallel. Higher values may speed up reading many small files but increase memory usage."
-        },
         "pi-code.maxToolOutputLines": {
           "type": "number",
           "default": 2000,
@@ -232,6 +225,13 @@
           "type": "string",
           "default": "",
           "markdownDescription": "Model used to generate commit messages, as `provider/model`. Leave empty to use the model currently selected in the chat."
+        },
+        "pi-code.maxConcurrentFileReads": {
+          "type": "number",
+          "default": 10,
+          "minimum": 1,
+          "maximum": 100,
+          "markdownDescription": "Maximum number of files the `read_file` tool loads in parallel. Higher values may speed up reading many small files but increase memory usage."
         },
         "pi-code.maxCommandTimeoutMs": {
           "type": "number",
