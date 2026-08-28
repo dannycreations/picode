@@ -66,9 +66,9 @@ describe('expandMentions', () => {
     const result = await expandMentions('Look at @src', cwd);
 
     expect(result.mentionContent).toContain('## Folder Content: src');
-    expect(result.mentionContent).toContain('src/index.ts');
-    expect(result.mentionContent).toContain('src/util.ts');
-    // File contents are not inlined; only the entry names are listed.
+    expect(result.mentionContent).toContain('├─ index.ts');
+    expect(result.mentionContent).toContain('└─ util.ts');
+    // File contents are not inlined; only the entry names are listed as a tree.
     expect(result.mentionContent).not.toContain('console.log(1)');
     expect(result.mentionContent).not.toContain('export const x = 2');
   });
@@ -80,7 +80,7 @@ describe('expandMentions', () => {
     const result = await expandMentions('Look at @project', cwd);
 
     expect(result.mentionContent).toContain('## Folder Content: project');
-    expect(result.mentionContent).toContain('project/src/index.ts');
+    expect(result.mentionContent).toContain('└─ index.ts');
     // The .git directory must stay out of the listing entirely.
     expect(result.mentionContent).not.toContain('.git');
     expect(result.mentionContent).not.toContain('core.filemode=true');

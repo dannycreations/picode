@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { buildFileTree, getEnvironmentDetails, renderFileTree, walkWorkspace } from '@pi-code/extension/structures/chat-session/environment';
+import { getEnvironmentDetails, walkWorkspace } from '@pi-code/extension/structures/chat-session/environment';
 
 const hoisted = vi.hoisted(() => ({
   FileType: { File: 1, Directory: 2, SymbolicLink: 64 },
@@ -60,36 +60,6 @@ beforeEach(() => {
   readFile.mockReset();
   getGitRepository.mockResolvedValue(null);
   getIgnoredPaths.mockResolvedValue(new Set());
-});
-
-describe('renderFileTree', () => {
-  it('renders a compact indented tree without repeating parent path segments', () => {
-    const paths = ['src/', 'src/a.ts', 'src/sub/', 'src/sub/b.ts', 'readme.md'];
-    const out = renderFileTree(buildFileTree(paths), 'root');
-
-    expect(out).toBe(['root', '├─ src/', '│  ├─ sub/', '│  │  └─ b.ts', '│  └─ a.ts', '└─ readme.md'].join('\n'));
-  });
-
-  it('treats trailing-slash entries as directories', () => {
-    const tree = buildFileTree(['dist/', 'dist/app.js']);
-    const out = renderFileTree(tree, 'root');
-
-    expect(out).toBe(['root', '└─ dist/', '   └─ app.js'].join('\n'));
-  });
-
-  it('correctly identifies intermediate folders as directories even if not explicitly listed with a trailing slash', () => {
-    const paths = ['src/a.ts', 'src/sub/b.ts', 'readme.md'];
-    const tree = buildFileTree(paths);
-    const out = renderFileTree(tree, 'root');
-
-    expect(out).toBe(['root', '├─ src/', '│  ├─ sub/', '│  │  └─ b.ts', '│  └─ a.ts', '└─ readme.md'].join('\n'));
-  });
-
-  it('renders a folder with a single nested file', () => {
-    const out = renderFileTree(buildFileTree(['src/', 'src/a.ts']), 'root');
-
-    expect(out).toBe(['root', '└─ src/', '   └─ a.ts'].join('\n'));
-  });
 });
 
 describe('getEnvironmentDetails workspace files listing', () => {

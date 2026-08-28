@@ -2,6 +2,9 @@ import type { ActiveTaskState, AssistantChatMessage, ChatMessage, ModelThinkingL
 
 export const DEFAULT_CONTEXT_LIMIT = 200_000;
 
+// Sorts names with numeric segments in natural order (file2 before file10).
+export const pathCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
 const EMPTY_STATS: StatsData = {
   tokensIn: 0,
   tokensOut: 0,

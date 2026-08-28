@@ -1,13 +1,14 @@
 import { stat } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { relative, resolve } from 'node:path';
 import { formatThrownValue } from '@earendil-works/pi-ai';
 import { formatPathRelativeToCwdOrAbsolute } from '@earendil-works/pi-coding-agent';
 
 import { readOutputLimits } from '@pi-code/extension/core/settings';
 import { resolveCommitTag } from '@pi-code/extension/structures/chat-command/helpers/git';
-import { checkReadableFile, walkDirectory } from '@pi-code/extension/utilities/fs';
+import { checkReadableFile, normalizeSeparators, walkDirectory } from '@pi-code/extension/utilities/fs';
 import { readNumberedText } from '@pi-code/extension/utilities/truncate';
 import { MENTION_PATTERN, TAG_PATTERN } from '@pi-code/shared/core/constants';
+import { buildFileTree, renderFileTree } from '@pi-code/shared/utilities/tree';
 
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
 
@@ -102,23 +103,29 @@ async function resolveMention(raw: string, cwd: string, limits: OutputLimits): P
 }
 
 async function listFolderEntries(dir: string, cwd: string): Promise<string> {
-  const lines: string[] = [];
+  const paths: string[] = [];
   let entryCount = 0;
   let totalChars = 0;
+  let truncated = false;
 
   for await (const { abs } of walkDirectory(dir, FOLDER_MAX_DEPTH)) {
-    if (entryCount >= FOLDER_MAX_FILES) break;
-
-    const label = formatPathRelativeToCwdOrAbsolute(abs, cwd);
-    if (totalChars + label.length > FOLDER_CHAR_CAP) {
-      lines.push(`... folder truncated: ${entryCount} entries listed ...`);
+    if (entryCount >= FOLDER_MAX_FILES) {
+      truncated = true;
       break;
     }
 
-    lines.push(label);
-    totalChars += label.length;
+    const rel = normalizeSeparators(relative(dir, abs));
+    if (totalChars + rel.length > FOLDER_CHAR_CAP) {
+      truncated = true;
+      break;
+    }
+
+    paths.push(rel);
+    totalChars += rel.length;
     entryCount++;
   }
 
-  return lines.join('\n');
+  const rootLabel = formatPathRelativeToCwdOrAbsolute(dir, cwd);
+  const tree = renderFileTree(buildFileTree(paths), rootLabel);
+  return truncated ? `${tree}\n\n... folder truncated: ${entryCount} entries listed ...` : tree;
 }

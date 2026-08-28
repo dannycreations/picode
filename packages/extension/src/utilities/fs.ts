@@ -5,6 +5,8 @@ import { dirname, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { formatPathRelativeToCwdOrAbsolute } from '@earendil-works/pi-coding-agent';
 
+import { pathCollator } from '@pi-code/shared/utilities/common';
+
 export interface FileChild {
   readonly name: string;
   readonly isDir: boolean;
@@ -54,8 +56,6 @@ export async function* walkDirectory(start: string, maxDepth: number, root: stri
 
   yield* walk(start, 0);
 }
-
-export const pathCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
 interface PathRank {
   // Basename starts with the query: 0. Match elsewhere in the basename: 1.
