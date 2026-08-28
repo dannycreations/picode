@@ -216,6 +216,10 @@ export function numberLines(lines: readonly string[], ranges: readonly (readonly
   }
 
   const parts: string[] = [];
+
+  // Separate genuinely invalid ranges (their message is preserved) from ranges
+  // we can number, so the merge below never folds one into the other.
+  const valid: Array<[number, number]> = [];
   for (const range of ranges) {
     const start = Math.max(1, range[0]);
     const end = Math.min(lines.length, range[1]);
@@ -225,6 +229,25 @@ export function numberLines(lines: readonly string[], ranges: readonly (readonly
       continue;
     }
 
+    valid.push([start, end]);
+  }
+
+  // Number each line once. Sort and merge overlapping or adjacent spans so a
+  // caller that passes [1,5] and [3,8] yields lines 1-8 a single time instead
+  // of repeating the shared lines and doing range-count times line-count work.
+  valid.sort((a, b) => a[0] - b[0]);
+
+  const merged: Array<[number, number]> = [];
+  for (const [start, end] of valid) {
+    const last = merged[merged.length - 1];
+    if (last && start <= last[1] + 1) {
+      last[1] = Math.max(last[1], end);
+    } else {
+      merged.push([start, end]);
+    }
+  }
+
+  for (const [start, end] of merged) {
     for (let i = start; i <= end; i++) {
       parts.push(`${i}|${lines[i - 1]}`);
     }

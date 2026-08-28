@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import { isBinaryFile, searchWorkspaceFiles } from './fs';
+import { isBinaryFile, numberLines, searchWorkspaceFiles } from './fs';
 
 let cwd: string;
 
@@ -138,5 +138,43 @@ describe('isBinaryFile', () => {
 
   it('propagates errors for unreadable paths', async () => {
     await expect(isBinaryFile(join(dir, 'does-not-exist.txt'))).rejects.toThrow();
+  });
+});
+
+describe('numberLines', () => {
+  const lines = ['a', 'b', 'c', 'd', 'e'];
+
+  it('numbers every line when no ranges are given', () => {
+    expect(numberLines(lines, undefined)).toBe('1|a\n2|b\n3|c\n4|d\n5|e');
+  });
+
+  it('numbers a single range with 1-based line numbers', () => {
+    expect(numberLines(lines, [[2, 4]])).toBe('2|b\n3|c\n4|d');
+  });
+
+  it('keeps a gap between disjoint ranges', () => {
+    expect(
+      numberLines(lines, [
+        [1, 2],
+        [4, 5],
+      ]),
+    ).toBe('1|a\n2|b\n4|d\n5|e');
+  });
+
+  it('numbers each line once when ranges overlap instead of repeating shared lines', () => {
+    expect(
+      numberLines(lines, [
+        [1, 3],
+        [3, 5],
+      ]),
+    ).toBe('1|a\n2|b\n3|c\n4|d\n5|e');
+  });
+
+  it('reports an invalid range without emitting its lines', () => {
+    expect(numberLines(lines, [[5, 3]])).toBe('Invalid range: 5-3');
+  });
+
+  it('clamps ranges to the available line count', () => {
+    expect(numberLines(lines, [[1, 100]])).toBe('1|a\n2|b\n3|c\n4|d\n5|e');
   });
 });

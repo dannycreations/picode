@@ -76,7 +76,15 @@ function matchesPathForms(
   // workspace.
   if (!denyBreadth || absoluteFile === undefined) return false;
   const segments = comparableForm(absoluteFile).split('/').filter(Boolean);
-  return segments.some((_, index) => matchesGlob(patternForMatch, segments.slice(index).join('/')));
+  // Test every segment-rooted suffix so a name- or folder-rooted pattern still
+  // matches after the file resolves outside the workspace. Build each suffix
+  // from the previous one instead of re-slicing the array at every step.
+  let suffix = '';
+  for (let index = segments.length - 1; index >= 0; index--) {
+    suffix = suffix === '' ? segments[index] : `${segments[index]}/${suffix}`;
+    if (matchesGlob(patternForMatch, suffix)) return true;
+  }
+  return false;
 }
 
 function decidePathAction(

@@ -154,6 +154,13 @@ describe('resolvePathAction traversal spellings', () => {
     expect(action).toBe('deny');
   });
 
+  it('denies a name-rooted deny glob on a deep path that escapes the workspace', () => {
+    // The resolved path has several segment boundaries; the deny walk must
+    // still reach the trailing name without re-slicing failures.
+    const action = resolvePathAction('/workspace', '../a/b/c/d/secret.txt', true, [], ['secret.txt']);
+    expect(action).toBe('deny');
+  });
+
   it('reaches folder-rooted deny globs onto resolved paths outside the workspace', () => {
     const action = resolvePathAction('/workspace', '../lab/secrets/key.pem', true, [], ['secrets/**']);
     expect(action).toBe('deny');
