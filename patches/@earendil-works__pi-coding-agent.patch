@@ -1,10 +1,10 @@
 diff --git a/dist/index.d.ts b/dist/index.d.ts
-index cd12d9e..177a8d6 100644
+index 3e9241d..6663d64 100644
 --- a/dist/index.d.ts
 +++ b/dist/index.d.ts
-@@ -32,4 +32,9 @@ export { parseFrontmatter, stripFrontmatter } from "./utils/frontmatter.ts";
- export { convertToPng } from "./utils/image-convert.ts";
+@@ -33,4 +33,9 @@ export { convertToPng } from "./utils/image-convert.ts";
  export { formatDimensionNote, type ResizedImage, resizeImage } from "./utils/image-resize.ts";
+ export { detectSupportedImageMimeTypeFromFile } from "./utils/mime.ts";
  export { getPowerShellConfig, getShellConfig } from "./utils/shell.ts";
 +export { stripAnsi } from "./utils/ansi.ts";
 +export { detectLineEnding, normalizeToLF, restoreLineEndings } from "./core/tools/edit-diff.ts";
@@ -14,11 +14,11 @@ index cd12d9e..177a8d6 100644
  //# sourceMappingURL=index.d.ts.map
 \ No newline at end of file
 diff --git a/dist/index.js b/dist/index.js
-index 7bc4467..43ed084 100644
+index 01017cd..08afe83 100644
 --- a/dist/index.js
 +++ b/dist/index.js
-@@ -44,4 +44,9 @@ export { convertToPng } from "./utils/image-convert.js";
- export { formatDimensionNote, resizeImage } from "./utils/image-resize.js";
+@@ -45,4 +45,9 @@ export { formatDimensionNote, resizeImage } from "./utils/image-resize.js";
+ export { detectSupportedImageMimeTypeFromFile } from "./utils/mime.js";
  // Shell utilities
  export { getPowerShellConfig, getShellConfig } from "./utils/shell.js";
 +export { stripAnsi } from "./utils/ansi.js";
