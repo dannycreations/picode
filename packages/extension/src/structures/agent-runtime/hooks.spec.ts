@@ -24,7 +24,7 @@ function makeFakeSession(appendMessage = vi.fn(() => 'persisted-id')): AgentSess
 const noopServices = {
   isTaskCancelled: () => false,
   prepareTurn: async () => {},
-  contextPrepared: async () => {},
+  contextPrepared: async () => [],
 };
 
 type ShouldStop = (context: unknown, signal?: AbortSignal) => boolean | Promise<boolean>;
@@ -104,6 +104,7 @@ describe('initSessionHooks', () => {
       },
       contextPrepared: async () => {
         order.push('prepared');
+        return [];
       },
     });
 

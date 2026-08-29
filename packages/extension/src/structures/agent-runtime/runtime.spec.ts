@@ -5,6 +5,7 @@ import { logger } from '@pi-code/shared/core/logger';
 
 import type { AgentSession } from '@earendil-works/pi-coding-agent';
 import type { Webview } from 'vscode';
+import type { QueueChatMessage } from '@pi-code/shared/core/types';
 
 interface Deferred<T> {
   readonly promise: Promise<T>;
@@ -24,7 +25,7 @@ const mocks = vi.hoisted(() => ({
   })),
   applyPersistedModelAndThinking: vi.fn(async () => {}),
   getEnvironmentDetails: vi.fn(async () => ''),
-  expandMentions: vi.fn(async (text: string) => ({ text, mentionContent: undefined })),
+  expandMentions: vi.fn(async (text: string) => ({ text, mentionContent: undefined as string | undefined })),
   injectResourceMessages: vi.fn(async () => {}),
   sendHiddenContent: vi.fn(async () => {}),
   loadSessionTranscript: vi.fn((): { messages: unknown[]; stats: { contextTokens: number } } => ({ messages: [], stats: { contextTokens: 0 } })),
@@ -176,6 +177,60 @@ describe('Runtime reply queue steering', () => {
     expect(steer).toHaveBeenCalledTimes(1);
     expect(runtime.replyQueue.all().map((m) => m.text)).toEqual(['Stays']);
     expect(logError).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns the hidden mention so it can attach to the same turn context', async () => {
+    const steer = vi.fn();
+    const session = makeFakeSession(steer);
+    const runtime = new Runtime(makeFakeWebview());
+    const cwd = 'c:/cwd';
+    const msg: QueueChatMessage = { id: 'q1', sender: 'queue', text: '@file x', images: [], ts: 1 };
+
+    mocks.expandMentions.mockResolvedValueOnce({
+      text: 'text with @file',
+      mentionContent: 'EXPANDED_FILE_CONTENT',
+    });
+
+    const result = await runtime['steerQueuedReply'](msg, cwd, session);
+
+    expect(result.steered).toBe(true);
+    expect(result.mention).toMatchObject({
+      role: 'custom',
+      customType: 'mention_content',
+      content: 'EXPANDED_FILE_CONTENT',
+      display: false,
+    });
+    expect(steer).toHaveBeenCalledTimes(1);
+    expect(steer.mock.calls[0][0].content).toEqual([{ type: 'text', text: 'text with @file' }]);
+    // The mention is persisted as a hidden custom message and rides in the turn
+    // context for the model; no steer/nextTurn custom message is sent separately.
+    expect(mocks.sendHiddenContent).toHaveBeenCalledWith(session, 'mention_content', 'EXPANDED_FILE_CONTENT', {
+      triggerTurn: false,
+    });
+  });
+
+  it('collects hidden mentions from drained queued replies', async () => {
+    const steer = vi.fn();
+    const session = makeFakeSession(steer);
+    const runtime = new Runtime(makeFakeWebview());
+
+    mocks.expandMentions
+      .mockResolvedValueOnce({ text: 'plain reply expanded', mentionContent: undefined })
+      .mockResolvedValueOnce({ text: 'mention reply expanded', mentionContent: 'FILE_CONTENT' });
+
+    runtime.replyQueue.add('plain reply');
+    runtime.replyQueue.add('mention reply');
+
+    const mentions = await runtime['drainQueuedReplies'](session);
+
+    expect(steer).toHaveBeenCalledTimes(2);
+    expect(mentions).toHaveLength(1);
+    expect(mentions[0]).toMatchObject({
+      role: 'custom',
+      customType: 'mention_content',
+      content: 'FILE_CONTENT',
+      display: false,
+    });
   });
 });
 

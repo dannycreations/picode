@@ -18,6 +18,7 @@ import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
 import { logger } from '@pi-code/shared/core/logger';
 import { resolveContextLimit } from '@pi-code/shared/utilities/common';
 
+import type { AgentMessage } from '@earendil-works/pi-agent-core';
 import type { ImageContent, TextContent } from '@earendil-works/pi-ai';
 import type { AgentSession, AgentSessionEvent, AgentSessionServices } from '@earendil-works/pi-coding-agent';
 import type { Webview } from 'vscode';
@@ -266,13 +267,14 @@ export class Runtime {
     });
   }
 
-  private async drainQueuedReplies(session: AgentSession): Promise<void> {
+  private async drainQueuedReplies(session: AgentSession): Promise<AgentMessage[]> {
     const pending = this.replyQueue.all();
-    if (pending.length === 0) return;
+    if (pending.length === 0) return [];
 
     const cwd = getWorkspaceCwd();
     const undelivered: ChatMessage[] = [];
     const delivered: ChatMessage[] = [];
+    const mentions: AgentMessage[] = [];
 
     for (const msg of pending) {
       if (msg.sender !== 'queue') {
@@ -280,8 +282,12 @@ export class Runtime {
         continue;
       }
 
-      if (await this.steerQueuedReply(msg, cwd, session)) {
+      const result = await this.steerQueuedReply(msg, cwd, session);
+      if (result.steered) {
         delivered.push({ id: msg.id, sender: 'user', text: msg.text, images: msg.images, ts: msg.ts });
+        if (result.mention) {
+          mentions.push(result.mention);
+        }
       } else {
         undelivered.push(msg);
       }
@@ -295,6 +301,7 @@ export class Runtime {
     // Only drop the messages that were actually delivered; failed ones
     // stay queued and are retried on the next turn.
     this.replyQueue.retain(undelivered);
+    return mentions;
   }
 
   private handleSessionEvent(event: AgentSessionEvent, session: AgentSession): void {
@@ -340,7 +347,7 @@ export class Runtime {
     return usage.tokens > (usage.contextWindow * threshold) / 100;
   }
 
-  private async steerQueuedReply(msg: QueueChatMessage, cwd: string, session: AgentSession): Promise<boolean> {
+  private async steerQueuedReply(msg: QueueChatMessage, cwd: string, session: AgentSession): Promise<{ steered: boolean; mention?: AgentMessage }> {
     try {
       const attachments = parseImageAttachments(msg.images);
       const expanded = await expandMentions(msg.text, cwd);
@@ -351,12 +358,22 @@ export class Runtime {
       session.agent.steer({ role: 'user', content, timestamp: msg.ts });
 
       if (expanded.mentionContent) {
-        await sendHiddenContent(session, 'mention_content', expanded.mentionContent, { deliverAs: 'steer' });
+        await sendHiddenContent(session, 'mention_content', expanded.mentionContent, { triggerTurn: false });
+        return {
+          steered: true,
+          mention: {
+            role: 'custom',
+            customType: 'mention_content',
+            content: expanded.mentionContent,
+            display: false,
+            timestamp: Date.now(),
+          } as AgentMessage,
+        };
       }
-      return true;
+      return { steered: true };
     } catch (err) {
       logger.error('Failed to steer queued reply, keeping it for later:', err);
-      return false;
+      return { steered: false };
     }
   }
 

@@ -3,12 +3,13 @@ import { uuidv7 } from '@earendil-works/pi-ai';
 import { readAppSettings } from '@pi-code/extension/core/settings';
 import { getLatestTodoList, withTodoProgress } from '@pi-code/extension/structures/chat-session/reminder';
 
+import type { AgentMessage } from '@earendil-works/pi-agent-core';
 import type { AgentSession } from '@earendil-works/pi-coding-agent';
 
 interface SessionHookServices {
   readonly isTaskCancelled: () => boolean;
   readonly prepareTurn: (session: AgentSession) => Promise<void>;
-  readonly contextPrepared: (session: AgentSession) => Promise<void>;
+  readonly contextPrepared: (session: AgentSession) => Promise<AgentMessage[]>;
 }
 
 export function initSessionHooks(session: AgentSession, services: SessionHookServices): void {
@@ -33,19 +34,16 @@ export function initSessionHooks(session: AgentSession, services: SessionHookSer
     await services.prepareTurn(session);
 
     const snapshot = await basePrepareContext?.(context, signal);
+    const mentions = await services.contextPrepared(session);
 
-    await services.contextPrepared(session);
-
-    // Inject a transient current-todo reminder into this request's context
-    // only; it is never persisted, so history stays clean.
     const baseContext = snapshot?.context ?? context.context;
     if (baseContext?.messages) {
       const settings = readAppSettings();
+      const contextMessages = mentions.length > 0 ? [...baseContext.messages, ...mentions] : baseContext.messages;
       const todoList = settings.enableTodoTool ? getLatestTodoList(context.context.messages) : undefined;
-      const messages = withTodoProgress(baseContext.messages, todoList);
+      const messages = withTodoProgress(contextMessages, todoList);
       return { ...(snapshot ?? {}), context: { ...baseContext, messages } };
     }
-
     return snapshot;
   };
 }
