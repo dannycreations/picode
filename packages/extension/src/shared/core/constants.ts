@@ -1,16 +1,16 @@
 export const DEFAULT_APP_ID = 'pi-code';
 
 export const COMMAND_IDS = {
-  chatView: 'pi-code.chatView',
-  chatViewFocus: 'pi-code.chatView.focus',
-  settingsButtonClicked: 'pi-code.settingsButtonClicked',
-  generateCommitMessage: 'pi-code.generateCommitMessage',
-  commitMessageGenerating: 'pi-code.commitMessageGenerating',
-  cancelGenerateCommitMessage: 'pi-code.cancelGenerateCommitMessage',
-  addToContext: 'pi-code.addToContext',
-  addProblemToContext: 'pi-code.addProblemToContext',
-  fillCode: 'pi-code.fillCode',
-  fixCode: 'pi-code.fixCode',
+  chatView: `${DEFAULT_APP_ID}.chatView`,
+  chatViewFocus: `${DEFAULT_APP_ID}.chatView.focus`,
+  settingsButtonClicked: `${DEFAULT_APP_ID}.settingsButtonClicked`,
+  generateCommitMessage: `${DEFAULT_APP_ID}.generateCommitMessage`,
+  commitMessageGenerating: `${DEFAULT_APP_ID}.commitMessageGenerating`,
+  cancelGenerateCommitMessage: `${DEFAULT_APP_ID}.cancelGenerateCommitMessage`,
+  addToContext: `${DEFAULT_APP_ID}.addToContext`,
+  addProblemToContext: `${DEFAULT_APP_ID}.addProblemToContext`,
+  fillCode: `${DEFAULT_APP_ID}.fillCode`,
+  fixCode: `${DEFAULT_APP_ID}.fixCode`,
 } as const;
 
 export const ACTIVE_TASK_ID = 'task-active';

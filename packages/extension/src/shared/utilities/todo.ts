@@ -8,7 +8,7 @@ export interface TodoItem {
 }
 
 export function getScrollIndex(todos: readonly TodoItem[]): number {
-  const inProgressIdx = todos.findIndex((todo) => todo.status === 'progress');
+  const inProgressIdx = todos.findIndex((todo) => todo.status === TODO_STATUSES[1]);
   if (inProgressIdx !== -1) return inProgressIdx;
-  return todos.findIndex((todo) => todo.status !== 'completed');
+  return todos.findIndex((todo) => todo.status !== TODO_STATUSES[2]);
 }

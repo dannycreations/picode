@@ -2,7 +2,7 @@ import { pathCollator } from '@pi-code/shared/utilities/common';
 
 export interface FileTreeNode {
   readonly name: string;
-  readonly isDir: boolean;
+  isDir: boolean;
   readonly children: Map<string, FileTreeNode>;
 }
 

@@ -117,10 +117,6 @@ function toolMeta(toolName?: string): ToolMeta {
   return meta ?? DEFAULT_TOOL_META;
 }
 
-function getToolLanguage(toolName?: string): string {
-  return toolMeta(toolName).language;
-}
-
 function getToolFilePath(toolArgs?: ToolArguments): string | undefined {
   if (!toolArgs) return undefined;
   if ('path' in toolArgs && typeof toolArgs.path === 'string') return toolArgs.path;
@@ -189,14 +185,14 @@ function fileToolSections(message: ToolChatMessage): ToolSection[] {
     return message.files.map((file) => ({
       title: file.path,
       content: file.content,
-      language: getToolLanguage(message.toolName),
+      language: toolMeta(message.toolName).language,
       openPath: file.path,
     }));
   }
 
   const path = getToolFilePath(message.toolArgs);
   if (path || message.diff) {
-    return [{ title: path ?? 'File', content: message.diff, language: getToolLanguage(message.toolName), openPath: path }];
+    return [{ title: path ?? 'File', content: message.diff, language: toolMeta(message.toolName).language, openPath: path }];
   }
 
   return [];
