@@ -248,7 +248,7 @@ interface DiffStat {
 
 export function getFirstDiffLine(diff?: string): number | undefined {
   if (!diff) return undefined;
-  const match = diff.match(/^@@ -\d+(?:,\d+)? \+(\d+)/m);
+  const match = diff.match(/^[-+]\s*(\d+)/m);
   if (!match) return undefined;
   const line = Number.parseInt(match[1], 10);
   return Number.isFinite(line) && line > 0 ? line : undefined;

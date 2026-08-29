@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildToolSections, getToolHeaderMeta, GROUP_TOOLS } from '@pi-code/shared/utilities/tool';
+import { buildToolSections, getFirstDiffLine, getToolHeaderMeta, GROUP_TOOLS } from '@pi-code/shared/utilities/tool';
 
 import type { ChatMessage, ToolChatMessage } from '@pi-code/shared/core/types';
 
@@ -60,5 +60,37 @@ describe('getToolHeaderMeta mcp', () => {
     expect(getToolHeaderMeta('mcp', 'running').title).toBe('Calling MCP');
     expect(getToolHeaderMeta('mcp', 'approval').title).toBe('Wants to call MCP');
     expect(getToolHeaderMeta('mcp', 'denied').title).toBe('MCP call denied');
+  });
+});
+
+describe('getFirstDiffLine', () => {
+  it('returns the new-file line of the first added line', () => {
+    const diff = [' 360 pub fn old() {}', '+367 // inserted comment', '+368 fn new_fn() {}', ' 385 pub fn flatten() {}'].join('\n');
+    expect(getFirstDiffLine(diff)).toBe(367);
+  });
+
+  it('returns the line number when the first change is a removal', () => {
+    const diff = ['-360 let removed = true;', ' 361 let kept = false;'].join('\n');
+    expect(getFirstDiffLine(diff)).toBe(360);
+  });
+
+  it('parses padded line numbers', () => {
+    const diff = [' 360 pub fn old() {}', '+  5 let tiny = 0;'].join('\n');
+    expect(getFirstDiffLine(diff)).toBe(5);
+  });
+
+  it('ignores leading context lines before the first change', () => {
+    const diff = [' 1 first', ' 2 second', '+3 inserted', ' 4 fourth'].join('\n');
+    expect(getFirstDiffLine(diff)).toBe(3);
+  });
+
+  it('returns undefined when there is no change', () => {
+    const diff = [' 1 a', ' 2 b'].join('\n');
+    expect(getFirstDiffLine(diff)).toBeUndefined();
+  });
+
+  it('returns undefined for empty or missing diff', () => {
+    expect(getFirstDiffLine('')).toBeUndefined();
+    expect(getFirstDiffLine(undefined)).toBeUndefined();
   });
 });

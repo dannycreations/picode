@@ -85,10 +85,12 @@ export class WorkspaceService {
   }
 
   private async findEditorForUri(uri: Uri, attempts: number, delayMs: number): Promise<TextEditor | undefined> {
-    const target = uri.toString();
+    const targetFsPath = uri.fsPath;
     for (let attempt = 0; attempt < attempts; attempt++) {
       const editor = window.activeTextEditor;
-      if (editor && editor.document.uri.toString() === target) {
+      // The diff editor's active side carries a `git:`-schemed URI (index or HEAD version) rather
+      // than the plain file URI for staged changes, so match on the file path, not the full URI.
+      if (editor && editor.document.uri.fsPath === targetFsPath) {
         return editor;
       }
       if (attempt < attempts - 1) {
