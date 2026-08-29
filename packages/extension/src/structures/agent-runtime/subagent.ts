@@ -92,16 +92,28 @@ export function formatSubagentStep(toolName: SubagentToolName, args: unknown): s
   return `${toolName} ${preview(JSON.stringify(args ?? {}))}`;
 }
 
-function lastAssistantText(session: AgentSession): { text: string; error?: string } {
+export function lastAssistantText(session: AgentSession): { text: string; error?: string } {
   for (let i = session.state.messages.length - 1; i >= 0; i--) {
     const message = session.state.messages[i];
     if (message.role !== 'assistant') continue;
-    return {
-      text: contentText(message.content).trim(),
-      error: message.stopReason === 'error' ? (message.errorMessage ?? 'The sub-agent request failed.') : undefined,
-    };
+
+    const text = contentText(message.content).trim();
+    if (text.length > 0) {
+      return { text };
+    }
+
+    if (message.stopReason === 'error') {
+      return { text, error: message.errorMessage ?? 'The sub-agent request failed.' };
+    }
+
+    // The run resolved without a final text report. State the cause instead of
+    // leaving an empty error: a tool call with no trailing summary is how the
+    // agent loop ends when it stops before writing its report.
+    const endedOnToolCall = message.stopReason === 'toolUse' || message.content.some((block) => block.type === 'toolCall');
+    const error = endedOnToolCall ? 'The sub-agent ended without a report; its last turn was a tool call.' : 'The sub-agent ended without a report.';
+    return { text, error };
   }
-  return { text: '' };
+  return { text: '', error: 'The sub-agent produced no report.' };
 }
 
 function collectUsage(session: AgentSession): SubagentUsage {

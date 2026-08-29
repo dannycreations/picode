@@ -36,7 +36,7 @@ function renderOutcome(outcome: SubagentOutcome, state: 'completed' | 'error'): 
 
   const body =
     state === 'error'
-      ? [...(outcome.steps ? ['### Steps Taken', '', outcome.steps, ''] : []), '### Error', '', outcome.error ?? 'The sub-agent produced no report.']
+      ? [...(outcome.steps ? ['### Steps Taken', '', outcome.steps, ''] : []), '### Error', '', outcome.error]
       : ['### Result', '', text];
 
   return [`## Sub-agent ${outcome.agent} (${state})`, '', ...body, '', formatUsage(outcome.usage)].join('\n');
