@@ -9,6 +9,7 @@ interface SettingSliderProps {
   readonly description?: string;
   readonly unit?: string;
   readonly step?: number;
+  readonly scale?: number;
   readonly formatValue?: (value: number) => string;
   readonly children?: ReactNode;
 }
@@ -22,10 +23,15 @@ export const SettingSlider: FC<SettingSliderProps> = ({
   description,
   unit = '',
   step = 1,
+  scale = 1,
   formatValue,
   children,
 }) => {
-  const percentage = ((value - min) / (max - min)) * 100;
+  const displayMin = min / scale;
+  const displayMax = max / scale;
+  const displayStep = step / scale;
+  const displayValue = value / scale;
+  const percentage = ((displayValue - displayMin) / (displayMax - displayMin)) * 100;
   const trackStyle = {
     background: `linear-gradient(to right, var(--vscode-button-background) ${percentage}%, var(--vscode-input-background) ${percentage}%)`,
   };
@@ -38,16 +44,16 @@ export const SettingSlider: FC<SettingSliderProps> = ({
       <div className="flex items-center gap-4">
         <input
           type="range"
-          min={min}
-          max={max}
-          step={step}
-          value={value}
+          min={displayMin}
+          max={displayMax}
+          step={displayStep}
+          value={displayValue}
           style={trackStyle}
-          onChange={(e) => onChange(parseInt(e.target.value, 10))}
+          onChange={(e) => onChange(parseInt(e.target.value, 10) * scale)}
           className="w-full appearance-none h-2 rounded-sm border border-vscode-settings-checkboxBorder outline-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-vscode-button-background [&::-webkit-slider-thumb]:border-none [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-vscode-button-background [&::-moz-range-thumb]:border-none [&::-moz-range-thumb]:cursor-pointer"
         />
         <span className="w-14 text-sm text-vscode-foreground text-right">
-          {formatValue ? formatValue(value) : value}
+          {formatValue ? formatValue(displayValue) : displayValue}
           {unit}
         </span>
       </div>

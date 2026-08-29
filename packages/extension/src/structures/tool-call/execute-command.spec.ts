@@ -71,21 +71,22 @@ describe('executeCommandTool cancellation', () => {
 });
 
 describe('configured maximum timeout', () => {
-  // The schema floors this setting at 10 s, so the fastest testable cap is 10 s.
+  // The schema floors this setting at 1 minute (60000 ms), so the fastest testable cap is 1 minute.
   it('caps a requested timeout above the configured maximum', async () => {
-    configValues['maxCommandTimeoutMs'] = 10_000;
+    configValues['maxCommandTimeoutMs'] = 60_000;
     const startedAt = Date.now();
     const result = (await executeCommandTool.execute(
       'test-id',
-      { command: 'node -e "setTimeout(() => {}, 60000)"', timeout: 60_000 },
+      // Runs longer than the 60s cap so the timeout, not a clean exit, ends it.
+      { command: 'node -e "setTimeout(() => {}, 120000)"', timeout: 120_000 },
       undefined,
       undefined,
       { cwd: process.cwd() } as any,
     )) as any;
 
     expect(result.details.timedOut).toBe(true);
-    expect(Date.now() - startedAt).toBeLessThan(30_000);
-  }, 30_000);
+    expect(Date.now() - startedAt).toBeLessThan(90_000);
+  }, 90_000);
 });
 
 describe('cleanCommandOutput', () => {

@@ -62,6 +62,7 @@ export const SettingControl: FC<SettingControlProps> = ({ settingKey, draftSetti
           max={spec.maximum}
           step={spec.step}
           unit={spec.unit}
+          scale={spec.scale}
           onChange={(next) => onChange(settingKey, next)}
         >
           {children}

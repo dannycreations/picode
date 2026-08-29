@@ -15,6 +15,7 @@ interface NumberSetting extends SettingBase {
   readonly maximum: number;
   readonly step?: number;
   readonly unit?: string;
+  readonly scale?: number;
 }
 
 interface StringSetting extends SettingBase {
@@ -227,10 +228,11 @@ const SETTINGS_SCHEMA = {
   maxCommandTimeoutMs: {
     type: 'number',
     default: 1_800_000,
-    minimum: 10_000,
+    minimum: 60_000,
     maximum: 3_600_000,
-    step: 10_000,
-    unit: 'ms',
+    step: 60_000,
+    unit: 'min',
+    scale: 60_000,
     description: 'Maximum duration of a single command started by `execute_command`. Commands that run longer are killed once this limit is reached.',
   },
   retryOnError: {

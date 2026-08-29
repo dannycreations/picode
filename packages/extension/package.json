@@ -236,7 +236,7 @@
         "pi-code.maxCommandTimeoutMs": {
           "type": "number",
           "default": 1800000,
-          "minimum": 10000,
+          "minimum": 60000,
           "maximum": 3600000,
           "markdownDescription": "Maximum duration of a single command started by `execute_command`. Commands that run longer are killed once this limit is reached."
         },
