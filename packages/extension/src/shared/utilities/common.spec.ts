@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULT_CONTEXT_LIMIT, findReplaceableFailedRequest, resolveContextLimit, splitOnOccurrences } from './common';
+import { DEFAULT_CONTEXT_LIMIT, findReplaceableFailedRequest, relativeToWorkspace, resolveContextLimit, splitOnOccurrences } from './common';
 
 import type { ChatMessage } from '../core/types';
 
@@ -103,5 +103,35 @@ describe('findReplaceableFailedRequest', () => {
       { id: 'a1', sender: 'assistant', text: '', ts: 2 },
     ];
     expect(findReplaceableFailedRequest(messages)).toBe(1);
+  });
+});
+
+describe('relativeToWorkspace', () => {
+  it('returns the path unchanged when no workspace root is known', () => {
+    expect(relativeToWorkspace('c:/abc/def/ghi/tes.txt', '')).toBe('c:/abc/def/ghi/tes.txt');
+  });
+
+  it('strips the workspace root to a relative label', () => {
+    expect(relativeToWorkspace('c:/abc/def/ghi/tes.txt', 'c:/abc/def')).toBe('ghi/tes.txt');
+  });
+
+  it('accepts a trailing slash on the workspace root', () => {
+    expect(relativeToWorkspace('c:/abc/def/ghi/tes.txt', 'c:/abc/def/')).toBe('ghi/tes.txt');
+  });
+
+  it('normalizes backslash roots and paths', () => {
+    expect(relativeToWorkspace('c:\\abc\\def\\ghi\\tes.txt', 'c:\\abc\\def')).toBe('ghi/tes.txt');
+  });
+
+  it('matches a Windows drive letter regardless of case', () => {
+    expect(relativeToWorkspace('C:/abc/def/ghi/tes.txt', 'c:/abc/def')).toBe('ghi/tes.txt');
+  });
+
+  it('leaves POSIX paths that differ only by case untouched', () => {
+    expect(relativeToWorkspace('/home/user/Project/file.ts', '/home/user/project')).toBe('/home/user/Project/file.ts');
+  });
+
+  it('leaves paths outside the workspace untouched', () => {
+    expect(relativeToWorkspace('c:/abc/other/file.ts', 'c:/abc/def')).toBe('c:/abc/other/file.ts');
   });
 });

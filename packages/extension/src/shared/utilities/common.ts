@@ -95,3 +95,17 @@ export function splitOnOccurrences(text: string, needle: string, caseSensitive =
 export function elapsedSeconds(start: number, end: number = Date.now()): number {
   return Math.max(0, Math.round((end - start) / 1000));
 }
+
+export function relativeToWorkspace(path: string, root: string): string {
+  if (!root) return path;
+
+  const normPath = path.replace(/\\/g, '/');
+  const normRoot = root.replace(/\\/g, '/').replace(/\/+$/, '');
+  if (normRoot === '') return path;
+
+  const caseInsensitive = /^[a-zA-Z]:\//.test(normRoot);
+  const rootWithSlash = `${normRoot}/`;
+  const inside = caseInsensitive ? normPath.toLowerCase().startsWith(rootWithSlash.toLowerCase()) : normPath.startsWith(rootWithSlash);
+
+  return inside ? normPath.slice(rootWithSlash.length) : path;
+}

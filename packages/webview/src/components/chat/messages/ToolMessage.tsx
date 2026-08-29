@@ -2,6 +2,7 @@ import { cn } from 'cnfast';
 import { Play, X } from 'lucide-react';
 import { Fragment, useEffect, useState } from 'react';
 
+import { relativeToWorkspace } from '@pi-code/shared/utilities/common';
 import { buildToolSections, getDiffStat, getFirstDiffLine, getToolHeaderMeta } from '@pi-code/shared/utilities/tool';
 import { CodeBlock } from '@pi-code/webview/components/chat/CodeBlock';
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
@@ -174,6 +175,7 @@ function appendElapsed(subtitle: string | undefined, duration: number): string {
 export const ToolMessage: FC<ToolMessageProps> = ({ message, onRespondTool }) => {
   const { title, icon } = getToolHeaderMeta(message.toolName, message.toolStatus);
   const sections: ReadonlyArray<ToolSection> = message.toolSections ?? buildToolSections(message);
+  const activeWorkspace = useChatStore((s) => s.activeWorkspace);
   const hiddenCount = sections.length > 0 ? sections.length - 1 : 0;
   const hasMore = hiddenCount > 0;
   const approvalIndex = sections.findIndex((s) => s.approvalMessage !== undefined);
@@ -206,18 +208,23 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onRespondTool }) =>
       <div className="ml-6 text-sm">
         <div className="border border-vscode-editorGroup-border rounded-md overflow-hidden bg-vscode-input-background">
           {sections.map((section, index) => {
-            const sectionStatus = section.status ?? message.toolStatus;
-            const approvalMessage = section.approvalMessage;
+            const normalizedTitle = relativeToWorkspace(section.title, activeWorkspace);
+            const titledSection: ToolSection = normalizedTitle === section.title ? section : { ...section, title: normalizedTitle };
+
+            const sectionStatus = titledSection.status ?? message.toolStatus;
+            const approvalMessage = titledSection.approvalMessage;
             const hasSecApproval = approvalMessage !== undefined;
 
             const isRunning = sectionStatus === 'running';
-            const isWaiting = isRunning && message.toolName === 'spawn_subagent' && !section.content;
+            const isWaiting = isRunning && message.toolName === 'spawn_subagent' && !titledSection.content;
             const isSubagent = message.toolName === 'spawn_subagent';
-            const isDone = !isRunning && section.duration !== undefined;
+            const isDone = !isRunning && titledSection.duration !== undefined;
             const subagentDone = isSubagent && isDone;
-            const showTimer = message.toolName === 'execute_command' || (isSubagent && section.content !== undefined);
+            const showTimer = message.toolName === 'execute_command' || (isSubagent && titledSection.content !== undefined);
             const isDeleted = message.toolName === 'delete_file';
-            const displaySection = subagentDone ? { ...section, subtitle: appendElapsed(section.subtitle, section.duration) } : section;
+            const displaySection = subagentDone
+              ? { ...titledSection, subtitle: appendElapsed(titledSection.subtitle, titledSection.duration) }
+              : titledSection;
             const renderedSection = isDeleted ? { ...displaySection, openPath: undefined } : displaySection;
 
             const item = (
