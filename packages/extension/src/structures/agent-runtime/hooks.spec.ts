@@ -24,6 +24,7 @@ function makeFakeSession(appendMessage = vi.fn(() => 'persisted-id')): AgentSess
 const noopServices = {
   isTaskCancelled: () => false,
   prepareTurn: async () => {},
+  compactContextIfNeeded: async () => {},
   contextPrepared: async () => [],
 };
 
@@ -87,6 +88,43 @@ describe('initSessionHooks', () => {
 
     const stop = session.agent.shouldStopAfterTurn as unknown as ShouldStop;
     expect(stop({}, new AbortController().signal)).toBe(false);
+  });
+
+  it('compacts the context before preparing each turn', async () => {
+    const compactContextIfNeeded = vi.fn(async () => {});
+    const session = makeFakeSession();
+    (session.agent as { prepareNextTurnWithContext?: unknown }).prepareNextTurnWithContext = undefined;
+
+    initSessionHooks(session, { ...noopServices, compactContextIfNeeded });
+
+    await session.agent.prepareNextTurnWithContext!({ context: { messages: [] } } as never, undefined);
+
+    expect(compactContextIfNeeded).toHaveBeenCalledTimes(1);
+    expect(compactContextIfNeeded).toHaveBeenCalledWith(session);
+  });
+
+  it('uses the live session messages after compaction for the next turn', async () => {
+    const session = makeFakeSession();
+    const live: Array<{ role: string; content: string }> = [{ role: 'user', content: 'old' }];
+    (session as unknown as { messages: typeof live }).messages = live;
+
+    const echoBase = (turn: { context: { messages: unknown[] } }) => Promise.resolve({ context: { messages: turn.context.messages } });
+    (session.agent as { prepareNextTurnWithContext?: unknown }).prepareNextTurnWithContext = echoBase;
+
+    initSessionHooks(session, {
+      ...noopServices,
+      compactContextIfNeeded: async () => {
+        live.length = 0;
+        live.push({ role: 'user', content: 'compacted' });
+      },
+    });
+
+    const result = (await session.agent.prepareNextTurnWithContext!(
+      { context: { messages: [{ role: 'user', content: 'stale' }] } } as never,
+      undefined,
+    )) as { context: { messages: Array<{ content: string }> } };
+
+    expect(result.context.messages[0]).toEqual({ role: 'user', content: 'compacted' });
   });
 
   it('orders prepareTurn before the base build and contextPrepared after, then appends the todo reminder', async () => {

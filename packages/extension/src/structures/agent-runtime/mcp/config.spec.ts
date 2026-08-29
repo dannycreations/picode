@@ -5,6 +5,17 @@ import { CONFIG_DIR_NAME } from '@earendil-works/pi-coding-agent';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { loadMcpConfig, MCP_CONFIG_FILE, mergeMcpConfigs, parseMcpServer } from '@pi-code/extension/structures/agent-runtime/mcp/config';
+import { logger } from '@pi-code/shared/core/logger';
+
+import type { LoggerSink } from '@pi-code/shared/core/logger';
+
+const silentSink: LoggerSink = {
+  trace: () => {},
+  debug: () => {},
+  info: () => {},
+  warn: () => {},
+  error: () => {},
+};
 
 describe('parseMcpServer', () => {
   it('rejects entries that are neither local nor remote', () => {
@@ -150,6 +161,7 @@ describe('loadMcpConfig', () => {
   let agentDir: string;
 
   beforeEach(async () => {
+    logger.setSink(silentSink);
     workspace = await mkdtemp(join(tmpdir(), 'pi-code-mcp-workspace-'));
     agentDir = await mkdtemp(join(tmpdir(), 'pi-code-mcp-agent-'));
   });
@@ -157,6 +169,7 @@ describe('loadMcpConfig', () => {
   afterEach(async () => {
     await rm(workspace, { recursive: true, force: true });
     await rm(agentDir, { recursive: true, force: true });
+    logger.setSink(null);
   });
 
   async function writeProjectConfig(content: string): Promise<void> {

@@ -9,6 +9,7 @@ import type { AgentSession } from '@earendil-works/pi-coding-agent';
 interface SessionHookServices {
   readonly isTaskCancelled: () => boolean;
   readonly prepareTurn: (session: AgentSession) => Promise<void>;
+  readonly compactContextIfNeeded: (session: AgentSession) => Promise<void>;
   readonly contextPrepared: (session: AgentSession) => Promise<AgentMessage[]>;
 }
 
@@ -31,16 +32,20 @@ export function initSessionHooks(session: AgentSession, services: SessionHookSer
 
   const basePrepareContext = session.agent.prepareNextTurnWithContext;
   session.agent.prepareNextTurnWithContext = async (context, signal) => {
+    await services.compactContextIfNeeded(session);
     await services.prepareTurn(session);
 
-    const snapshot = await basePrepareContext?.(context, signal);
+    const liveMessages = session.messages;
+    const liveContext = liveMessages ? { ...context, context: { ...context.context, messages: liveMessages } } : context;
+
+    const snapshot = await basePrepareContext?.(liveContext, signal);
     const mentions = await services.contextPrepared(session);
 
-    const baseContext = snapshot?.context ?? context.context;
+    const baseContext = snapshot?.context ?? liveContext.context;
     if (baseContext?.messages) {
       const settings = readAppSettings();
       const contextMessages = mentions.length > 0 ? [...baseContext.messages, ...mentions] : baseContext.messages;
-      const todoList = settings.enableTodoTool ? getLatestTodoList(context.context.messages) : undefined;
+      const todoList = settings.enableTodoTool ? getLatestTodoList(liveMessages ?? context.context.messages) : undefined;
       const messages = withTodoProgress(contextMessages, todoList);
       return { ...(snapshot ?? {}), context: { ...baseContext, messages } };
     }

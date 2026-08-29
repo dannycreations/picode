@@ -1,7 +1,7 @@
 import { unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   buildPromptBlock,
@@ -10,8 +10,18 @@ import {
   matchPromptInvocation,
   matchSkillInvocation,
 } from '@pi-code/extension/structures/chat-command/invocation';
+import { logger } from '@pi-code/shared/core/logger';
 
 import type { AgentSession, PromptTemplate, Skill } from '@earendil-works/pi-coding-agent';
+import type { LoggerSink } from '@pi-code/shared/core/logger';
+
+const silentSink: LoggerSink = {
+  trace: () => {},
+  debug: () => {},
+  info: () => {},
+  warn: () => {},
+  error: () => {},
+};
 
 function fakeSession(): { session: AgentSession; sendCustomMessage: ReturnType<typeof vi.fn> } {
   const sendCustomMessage = vi.fn(async () => {});
@@ -78,6 +88,9 @@ describe('buildPromptBlock', () => {
 });
 
 describe('injectResourceMessages', () => {
+  beforeEach(() => logger.setSink(silentSink));
+  afterEach(() => logger.setSink(null));
+
   function resourcesWith(skills: Skill[], prompts: PromptTemplate[]) {
     return { skills, prompts };
   }

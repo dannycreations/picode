@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { copyFileSync, mkdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 
-import { require, resolveBin } from '../../extension/scripts/build';
+import { require, resolveBin } from '../../extension/scripts/build.ts';
 
 const packageDir = resolve(import.meta.dirname, '..');
 const distDir = join(packageDir, 'dist');

@@ -263,6 +263,7 @@ export class Runtime {
     initSessionHooks(session, {
       isTaskCancelled: () => !this.session,
       prepareTurn: (target) => applyPersistedModelAndThinking(target),
+      compactContextIfNeeded: (target) => this.compactContextIfNeeded(target),
       contextPrepared: (target) => this.drainQueuedReplies(target),
     });
   }
