@@ -1,5 +1,4 @@
 import { getSettingsManager } from '@pi-code/extension/core/settings';
-import { applyCompactionSettings } from '@pi-code/extension/structures/agent-runtime/session';
 import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
 import { logger } from '@pi-code/shared/core/logger';
 
@@ -43,6 +42,4 @@ export async function applyPersistedModelAndThinking(session: AgentSession): Pro
       logger.warn(`Could not apply persisted thinking level ${level}:`, err);
     }
   }
-
-  applyCompactionSettings(session);
 }

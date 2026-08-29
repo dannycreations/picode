@@ -416,82 +416,80 @@ describe('Runtime compaction', () => {
   });
 });
 
-describe('Runtime auto-compaction resume', () => {
-  function emit(runtime: Runtime, session: AgentSession, event: Record<string, unknown>): void {
-    runtime['handleSessionEvent'](event as never, session);
-  }
-
-  function makeStatsfulSession(): AgentSession {
-    return { ...makeStartableSession(), getSessionStats: SESSION_STATS } as unknown as AgentSession;
-  }
-
-  it('continues the task once a threshold compaction settles without a retry', async () => {
-    const webview = makeFakeWebview();
-    const session = makeStatsfulSession();
-    const runtime = new Runtime(webview);
-    runtime['session'] = session;
-
-    emit(runtime, session, { type: 'compaction_end', reason: 'threshold', result: undefined, aborted: false, willRetry: false });
-    await flush();
-    // The resume waits for the agent to settle first.
-    expect(mocks.getEnvironmentDetails).not.toHaveBeenCalled();
-
-    emit(runtime, session, { type: 'agent_end', messages: [], willRetry: false });
-    await flush();
-
-    expect(mocks.getEnvironmentDetails).toHaveBeenCalledTimes(1);
-    expect(mocks.sendHiddenContent).toHaveBeenCalledWith(session, 'environment_details', '', { triggerTurn: true });
-  });
-
-  it('does not resume when the compaction aborted or will retry', async () => {
-    const runtime = new Runtime(makeFakeWebview());
-    const session = makeStatsfulSession();
-    runtime['session'] = session;
-
-    emit(runtime, session, { type: 'compaction_end', reason: 'overflow', result: undefined, aborted: true, willRetry: false });
-    emit(runtime, session, { type: 'agent_end', messages: [], willRetry: false });
-    await flush();
-
-    emit(runtime, session, { type: 'compaction_end', reason: 'threshold', result: undefined, aborted: false, willRetry: true });
-    emit(runtime, session, { type: 'agent_settled' });
-    await flush();
-
-    expect(mocks.getEnvironmentDetails).not.toHaveBeenCalled();
-    expect(runtime.replyQueue.all()).toEqual([]);
-  });
-
-  it('drops the pending resume when the task is cancelled', async () => {
-    const webview = makeFakeWebview();
-    const runtime = new Runtime(webview);
-    const session = makeStatsfulSession();
-    runtime['session'] = session;
-
-    emit(runtime, session, { type: 'compaction_end', reason: 'threshold', result: undefined, aborted: false, willRetry: false });
-    await runtime.cancelTask();
-
-    emit(runtime, session, { type: 'agent_end', messages: [], willRetry: false });
-    await flush();
-
-    expect(mocks.getEnvironmentDetails).not.toHaveBeenCalled();
-  });
-
-  it('compacts before resuming when a failed turn is already past the threshold', async () => {
-    const webview = makeFakeWebview();
-    const session = {
+describe('Runtime compaction before turns', () => {
+  function makeThresholdSession(tokens: number): AgentSession & { compact: ReturnType<typeof vi.fn> } {
+    return {
       ...makeStartableSession(),
-      sessionManager: { appendMessage: vi.fn(() => 'persisted-id'), buildContextEntries: () => [] },
-      getContextUsage: () => ({ tokens: 950, contextWindow: 1000, percent: 95 }),
+      getContextUsage: () => ({ tokens, contextWindow: 1000, percent: Math.round((tokens / 1000) * 100) }),
       compact: vi.fn(async () => ({ estimatedTokensAfter: 120 })),
-    } as unknown as AgentSession;
+      sessionManager: { ...makeStartableSession().sessionManager, buildContextEntries: () => [] },
+    } as unknown as AgentSession & { compact: ReturnType<typeof vi.fn> };
+  }
+
+  function postedTypes(webview: Webview): string[] {
+    return (webview.postMessage as ReturnType<typeof vi.fn>).mock.calls.map((call) => (call[0] as { type: string }).type);
+  }
+
+  it('compacts before startTask when the context is above the threshold', async () => {
+    const webview = makeFakeWebview();
+    const session = makeThresholdSession(950);
+    mocks.createSession.mockResolvedValue({ session, services: SERVICES });
+    const runtime = new Runtime(webview);
+
+    await runtime.startTask('hello');
+    await flush();
+
+    expect(session.compact).toHaveBeenCalledTimes(1);
+    expect(session.prompt).toHaveBeenCalledTimes(1);
+
+    const types = postedTypes(webview);
+    expect(types.filter((type) => type === 'compaction_start')).toHaveLength(1);
+    expect(types.filter((type) => type === 'compaction_end')).toHaveLength(1);
+  });
+
+  it('does not compact before startTask when the context is below the threshold', async () => {
+    const webview = makeFakeWebview();
+    const session = makeThresholdSession(100);
+    mocks.createSession.mockResolvedValue({ session, services: SERVICES });
+    const runtime = new Runtime(webview);
+
+    await runtime.startTask('hello');
+    await flush();
+
+    expect(session.compact).not.toHaveBeenCalled();
+    expect(session.prompt).toHaveBeenCalledTimes(1);
+  });
+
+  it('compacts before continueTask when the context is above the threshold', async () => {
+    const webview = makeFakeWebview();
+    const session = makeThresholdSession(950);
     mocks.createSession.mockResolvedValue({ session, services: SERVICES });
     const runtime = new Runtime(webview);
     runtime['session'] = session;
 
-    emit(runtime, session, {
-      type: 'agent_end',
-      messages: [{ role: 'assistant', stopReason: 'error', errorMessage: 'rate limited' } as never],
-      willRetry: false,
-    });
+    await runtime.continueTask(session.sessionFile ?? '/tmp/task.json');
+    await flush();
+
+    expect(session.compact).toHaveBeenCalledTimes(1);
+    expect(mocks.getEnvironmentDetails).toHaveBeenCalledTimes(1);
+    expect(mocks.sendHiddenContent).toHaveBeenCalledWith(session, 'environment_details', '', { triggerTurn: true });
+  });
+
+  it('compacts before resuming an errored turn that is already past the threshold', async () => {
+    const webview = makeFakeWebview();
+    const session = makeThresholdSession(950);
+    mocks.createSession.mockResolvedValue({ session, services: SERVICES });
+    const runtime = new Runtime(webview);
+    runtime['session'] = session;
+
+    runtime['handleSessionEvent'](
+      {
+        type: 'agent_end',
+        messages: [{ role: 'assistant', stopReason: 'error', errorMessage: 'rate limited' } as never],
+        willRetry: false,
+      } as never,
+      session,
+    );
     await flush();
 
     expect(session.compact).toHaveBeenCalledTimes(1);

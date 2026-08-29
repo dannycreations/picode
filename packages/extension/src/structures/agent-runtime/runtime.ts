@@ -29,7 +29,6 @@ export class Runtime {
   private unsubscribeSessionEvents: (() => void) | null = null;
   private apiRequestId: string | null = null;
   private compacting = false;
-  private continueAfterCompaction = false;
   private runEndedWithError = false;
   private taskGeneration = 0;
 
@@ -75,6 +74,9 @@ export class Runtime {
       const attachments = parseImageAttachments(images);
 
       if (this.discardIfStale(generation, session)) return;
+
+      await this.compactContextIfNeeded(session);
+
       void session.prompt(expanded.text, { images: attachments, expandPromptTemplates: false }).catch((err) => {
         this.messenger.postError(err);
       });
@@ -96,6 +98,8 @@ export class Runtime {
       const { session, envDetails } = await this.prepareSession(path);
       if (this.discardIfStale(generation, session)) return;
 
+      await this.compactContextIfNeeded(session);
+
       void sendHiddenContent(session, 'environment_details', envDetails, { triggerTurn: true }).catch((err) => {
         this.messenger.postError(err);
       });
@@ -112,31 +116,31 @@ export class Runtime {
     this.prepareRun();
     const cwd = getWorkspaceCwd();
 
+    const { session } = await this.getOrCreateSession(path, cwd);
+    return this.runCompaction(session);
+  }
+
+  private async runCompaction(session: AgentSession): Promise<{ messages: ChatMessage[]; stats: StatsData } | null> {
     this.compacting = true;
     this.messenger.post({ type: 'compaction_start' });
     try {
-      const { session } = await this.getOrCreateSession(path, cwd);
       const compaction = await session.compact();
 
-      // Returns the compacted transcript and its stats so the caller can refresh the
-      // webview from the in-memory session instead of re-opening the file on disk.
       const entries = session.sessionManager.buildContextEntries();
       const transcript = loadSessionTranscript(entries, resolveContextLimit(session.model?.contextWindow));
+
       // loadSessionTranscript derives contextTokens from the last assistant usage,
       // which is the pre-compaction size once the context is rebuilt. Use the
-      // library's post-compaction estimate so the header reflects the shrink
-      // without waiting for the next prompt.
-      if (typeof compaction?.estimatedTokensAfter === 'number') {
-        return {
-          messages: transcript.messages,
-          stats: { ...transcript.stats, contextTokens: compaction.estimatedTokensAfter },
-        };
-      }
-      return transcript;
+      // session's post-compaction estimate so the header reflects the shrink.
+      const stats: StatsData =
+        typeof compaction?.estimatedTokensAfter === 'number'
+          ? { ...transcript.stats, contextTokens: compaction.estimatedTokensAfter }
+          : transcript.stats;
+
+      return { messages: transcript.messages, stats };
     } catch (err) {
-      // A user cancel aborts the in-flight compaction, which the session
-      // rethrows as an AbortError. Don't surface that as a spurious error
-      // bubble: the deliberate stop is already signaled by compaction_end.
+      // A user cancel aborts the in-flight compaction, which the session rethrows
+      // as an AbortError. Don't surface that as a spurious error bubble.
       const isAbort = err instanceof Error && (err.name === 'AbortError' || err.message === 'Compaction cancelled');
       if (!isAbort) {
         this.messenger.postError(err);
@@ -146,6 +150,11 @@ export class Runtime {
       this.compacting = false;
       this.messenger.post({ type: 'compaction_end' });
     }
+  }
+
+  private async compactContextIfNeeded(session: AgentSession): Promise<void> {
+    if (!this.isContextAtCompactionThreshold(session)) return;
+    await this.runCompaction(session);
   }
 
   public async reload(): Promise<'busy' | 'reloaded'> {
@@ -169,7 +178,6 @@ export class Runtime {
 
     this.cleanupPending();
     this.replyQueue.clear();
-    this.continueAfterCompaction = false;
 
     const session = this.session;
     this.session = null;
@@ -201,7 +209,6 @@ export class Runtime {
   private prepareRun(): void {
     this.cleanupPending();
     this.apiRequestId = null;
-    this.continueAfterCompaction = false;
   }
 
   private discardIfStale(generation: number, session: AgentSession): boolean {
@@ -291,32 +298,19 @@ export class Runtime {
   }
 
   private handleSessionEvent(event: AgentSessionEvent, session: AgentSession): void {
-    // A percent or overflow auto-compaction that finished without a built-in
-    // retry leaves the upstream loop stopped unless queued messages exist.
-    // Remember it so we resume the agent on settle and the task keeps running.
-    if (event.type === 'compaction_end' && !this.compacting && !event.aborted && !event.willRetry) {
-      this.continueAfterCompaction = true;
-    }
-
+    // A turn that ended in error leaves runEndedWithError set so the runtime can
+    // resume against a smaller context when the auto-compaction threshold is
+    // exceeded. Every turn compacts before its API request (see compactContextIfNeeded),
+    // so the resume path through continueTask handles it.
     if (event.type === 'agent_end') {
       this.runEndedWithError = event.messages.some((m) => m.role === 'assistant' && m.stopReason === 'error');
     }
 
     if (event.type === 'agent_settled' || event.type === 'agent_end') {
-      if (this.continueAfterCompaction && this.session?.sessionFile) {
-        this.continueAfterCompaction = false;
-        // Resume the agent so a successful auto-compaction does not halt the
-        // work. The re-triggered turn delivers any queued replies and clears
-        // the queue on its own settle, so leave it intact here.
-        void this.continueTask(this.session.sessionFile);
-      } else if (this.runEndedWithError && this.session?.sessionFile && this.isContextAtCompactionThreshold(this.session)) {
-        // A turn ended in error while the context was already past the
-        // auto-compaction threshold. Compact before resuming so the next
-        // attempt runs against a smaller context instead of retrying the
-        // failed turn against the full one. The session may miss the threshold
-        // on the error turn, so enforce it here before the task continues.
+      if (this.runEndedWithError && this.session?.sessionFile && this.isContextAtCompactionThreshold(this.session)) {
         this.runEndedWithError = false;
-        void this.compactBeforeContinue(this.session.sessionFile);
+        // Resume the agent; continueTask compacts again if the limit is still exceeded.
+        void this.continueTask(this.session.sessionFile);
       } else if (!this.runEndedWithError) {
         this.replyQueue.clear();
       }
@@ -343,16 +337,7 @@ export class Runtime {
     if (!usage || usage.tokens === null || usage.contextWindow <= 0) return false;
 
     const threshold = settings.autoCompactContextPercent ?? 100;
-
     return usage.tokens > (usage.contextWindow * threshold) / 100;
-  }
-
-  private async compactBeforeContinue(path: string): Promise<void> {
-    await this.compact(path);
-
-    if (this.session?.sessionFile === path) {
-      void this.continueTask(path);
-    }
   }
 
   private async steerQueuedReply(msg: QueueChatMessage, cwd: string, session: AgentSession): Promise<boolean> {
