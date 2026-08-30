@@ -35,7 +35,7 @@ export const ChatBody = memo<ChatBodyProps>(({ message, oldTodos, commands, sear
         if (message.toolName === 'ask_question') {
           return <QuestionMessage message={message} search={search} onAnswerQuestion={onAnswerQuestion} onCopyToInput={onCopyToInput} />;
         }
-        if (message.toolName === 'update_todo') {
+        if (message.toolName === 'update_todo' && message.toolStatus !== 'denied') {
           return <TodoBody oldTodos={oldTodos ?? []} newTodos={message.todos ?? []} timestamp={message.timestamp} />;
         }
         return <ToolMessage message={message} onRespondTool={onRespondTool} />;
