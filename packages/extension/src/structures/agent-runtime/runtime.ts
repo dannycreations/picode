@@ -264,9 +264,19 @@ export class Runtime {
 
   private bindSessionHooks(session: AgentSession): void {
     initSessionHooks(session, {
-      isTaskCancelled: () => !this.session,
+      isDisposed: () => !this.session,
+      isCompacting: () => this.compacting,
       prepareTurn: (target) => applyPersistedModelAndThinking(target),
-      compactContextIfNeeded: (target) => this.compactContextIfNeeded(target),
+      isContextAboveThreshold: (target) => this.isContextAtCompactionThreshold(target),
+      requestCompaction: async (target) => {
+        if (!this.isContextAtCompactionThreshold(target)) return;
+        this.taskGeneration++;
+
+        await this.runCompaction(session);
+        if (this.session === session && session.sessionFile) {
+          void this.continueTask(session.sessionFile);
+        }
+      },
       contextPrepared: (target) => this.drainQueuedReplies(target),
     });
   }
@@ -309,10 +319,6 @@ export class Runtime {
   }
 
   private handleSessionEvent(event: AgentSessionEvent, session: AgentSession): void {
-    // A turn that ended in error leaves runEndedWithError set so the runtime can
-    // resume against a smaller context when the auto-compaction threshold is
-    // exceeded. Every turn compacts before its API request (see compactContextIfNeeded),
-    // so the resume path through continueTask handles it.
     if (event.type === 'agent_end') {
       this.runEndedWithError = event.messages.some((m) => m.role === 'assistant' && m.stopReason === 'error');
     }

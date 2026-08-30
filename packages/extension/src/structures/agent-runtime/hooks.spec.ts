@@ -22,9 +22,11 @@ function makeFakeSession(appendMessage = vi.fn(() => 'persisted-id')): AgentSess
 }
 
 const noopServices = {
-  isTaskCancelled: () => false,
+  isDisposed: () => false,
+  isCompacting: () => false,
   prepareTurn: async () => {},
-  compactContextIfNeeded: async () => {},
+  isContextAboveThreshold: () => false,
+  requestCompaction: vi.fn(),
   contextPrepared: async () => [],
 };
 
@@ -38,7 +40,7 @@ describe('initSessionHooks', () => {
 
     initSessionHooks(session, {
       ...noopServices,
-      isTaskCancelled: () => cancelled,
+      isDisposed: () => cancelled,
     });
 
     // Cancelled: the synthetic abort entry never reaches persistence.
@@ -55,6 +57,25 @@ describe('initSessionHooks', () => {
     expect(appendMessage).toHaveBeenCalledTimes(2);
   });
 
+  it('suppresses the aborted assistant entry while compacting', () => {
+    const appendMessage = vi.fn(() => 'persisted-id');
+    const session = makeFakeSession(appendMessage);
+
+    initSessionHooks(session, {
+      ...noopServices,
+      isDisposed: () => false,
+      isCompacting: () => true,
+    });
+
+    // Compaction aborts the run but keeps the session, so isDisposed stays
+    // false; the compaction flag must still drop the synthetic abort entry.
+    session.sessionManager.appendMessage!({ role: 'assistant', stopReason: 'aborted' } as never);
+    expect(appendMessage).not.toHaveBeenCalled();
+
+    session.sessionManager.appendMessage!({ role: 'user', content: 'hi' } as never);
+    expect(appendMessage).toHaveBeenCalledTimes(1);
+  });
+
   it('forces a turn stop when cancelled or the signal aborted, else defers to the base predicate', async () => {
     const baseShouldStop = vi.fn(() => false);
     const session = makeFakeSession();
@@ -63,7 +84,7 @@ describe('initSessionHooks', () => {
 
     initSessionHooks(session, {
       ...noopServices,
-      isTaskCancelled: () => cancelled,
+      isDisposed: () => cancelled,
     });
 
     const stop = session.agent.shouldStopAfterTurn as unknown as ShouldStop;
@@ -90,41 +111,55 @@ describe('initSessionHooks', () => {
     expect(stop({}, new AbortController().signal)).toBe(false);
   });
 
-  it('compacts the context before preparing each turn', async () => {
-    const compactContextIfNeeded = vi.fn(async () => {});
+  it('signals compaction and skips preparation when the context is above threshold', async () => {
+    const requestCompaction = vi.fn();
+    const prepareTurn = vi.fn(async () => {});
     const session = makeFakeSession();
     (session.agent as { prepareNextTurnWithContext?: unknown }).prepareNextTurnWithContext = undefined;
 
-    initSessionHooks(session, { ...noopServices, compactContextIfNeeded });
+    initSessionHooks(session, {
+      ...noopServices,
+      isContextAboveThreshold: () => true,
+      requestCompaction,
+      prepareTurn,
+    });
+
+    const result = await session.agent.prepareNextTurnWithContext!({ context: { messages: [] } } as never, undefined);
+
+    expect(requestCompaction).toHaveBeenCalledTimes(1);
+    expect(requestCompaction).toHaveBeenCalledWith(session);
+    expect(prepareTurn).not.toHaveBeenCalled();
+    expect(result).toBeUndefined();
+  });
+
+  it('prepares the turn normally when the context is below threshold', async () => {
+    const requestCompaction = vi.fn();
+    const session = makeFakeSession();
+    (session.agent as { prepareNextTurnWithContext?: unknown }).prepareNextTurnWithContext = undefined;
+
+    initSessionHooks(session, { ...noopServices, requestCompaction });
 
     await session.agent.prepareNextTurnWithContext!({ context: { messages: [] } } as never, undefined);
 
-    expect(compactContextIfNeeded).toHaveBeenCalledTimes(1);
-    expect(compactContextIfNeeded).toHaveBeenCalledWith(session);
+    expect(requestCompaction).not.toHaveBeenCalled();
   });
 
-  it('uses the live session messages after compaction for the next turn', async () => {
+  it('uses the live session messages rather than the stale passed context when below threshold', async () => {
     const session = makeFakeSession();
-    const live: Array<{ role: string; content: string }> = [{ role: 'user', content: 'old' }];
+    const live: Array<{ role: string; content: string }> = [{ role: 'user', content: 'live' }];
     (session as unknown as { messages: typeof live }).messages = live;
 
     const echoBase = (turn: { context: { messages: unknown[] } }) => Promise.resolve({ context: { messages: turn.context.messages } });
     (session.agent as { prepareNextTurnWithContext?: unknown }).prepareNextTurnWithContext = echoBase;
 
-    initSessionHooks(session, {
-      ...noopServices,
-      compactContextIfNeeded: async () => {
-        live.length = 0;
-        live.push({ role: 'user', content: 'compacted' });
-      },
-    });
+    initSessionHooks(session, { ...noopServices });
 
     const result = (await session.agent.prepareNextTurnWithContext!(
       { context: { messages: [{ role: 'user', content: 'stale' }] } } as never,
       undefined,
     )) as { context: { messages: Array<{ content: string }> } };
 
-    expect(result.context.messages[0]).toEqual({ role: 'user', content: 'compacted' });
+    expect(result.context.messages[0]).toEqual({ role: 'user', content: 'live' });
   });
 
   it('orders prepareTurn before the base build and contextPrepared after, then appends the todo reminder', async () => {
