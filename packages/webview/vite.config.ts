@@ -19,9 +19,8 @@ export default defineConfig(({ command }) => {
     build: {
       lib: {
         entry: resolve(srcDir, 'index.tsx'),
-        formats: ['iife'],
-        name: 'webview',
-        fileName: () => 'webview.cjs',
+        formats: ['es'],
+        fileName: () => 'webview.js',
       },
       outDir: 'dist',
       emptyOutDir: true,

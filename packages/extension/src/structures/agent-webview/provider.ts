@@ -1,4 +1,3 @@
-import { uuidv7 } from '@earendil-works/pi-ai';
 import { Disposable, Uri, workspace } from 'vscode';
 
 import { invalidateAppSettings, readAppSettings } from '@pi-code/extension/core/settings';
@@ -16,21 +15,16 @@ import type { ExtensionToWebviewMessage, WebviewToExtensionMessage } from '@pi-c
 import type { ToolArguments } from '@pi-code/shared/core/types';
 
 function buildChatViewHtml(webview: Webview, extensionUri: Uri): string {
-  const scriptUri = webview.asWebviewUri(Uri.joinPath(extensionUri, 'dist', 'webview.cjs'));
+  const scriptUri = webview.asWebviewUri(Uri.joinPath(extensionUri, 'dist', 'webview.js'));
   const styleUri = webview.asWebviewUri(Uri.joinPath(extensionUri, 'dist', 'webview.css'));
   const codiconsUri = webview.asWebviewUri(Uri.joinPath(extensionUri, 'dist', 'codicon.css'));
-  const nonce = uuidv7();
 
-  // Content-Security-Policy per the VS Code webview guidelines: only our nonced
-  // bundle may execute, remote content is limited to `webview.cspSource`, and
-  // `default-src 'none'` leaves network access blocked. `wasm-unsafe-eval` is
-  // required by the Shiki highlighter, which instantiates an inlined WASM module.
   const csp = [
     `default-src 'none'`,
     `img-src ${webview.cspSource} data: blob:`,
     `font-src ${webview.cspSource} data:`,
     `style-src ${webview.cspSource} 'unsafe-inline'`,
-    `script-src 'nonce-${nonce}' 'wasm-unsafe-eval'`,
+    `script-src ${webview.cspSource} 'wasm-unsafe-eval'`,
   ].join('; ');
 
   return `<!DOCTYPE html>
@@ -56,7 +50,7 @@ function buildChatViewHtml(webview: Webview, extensionUri: Uri): string {
 </head>
 <body>
   <div id="root"></div>
-  <script nonce="${nonce}" src="${scriptUri}"></script>
+  <script type="module" src="${scriptUri}"></script>
 </body>
 </html>`;
 }

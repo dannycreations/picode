@@ -1,4 +1,4 @@
-import { memo, useDeferredValue, useMemo, useState } from 'react';
+import { lazy, memo, Suspense, useDeferredValue, useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
@@ -8,7 +8,6 @@ import { visit } from 'unist-util-visit';
 import { CodeBlock } from '@pi-code/webview/components/chat/CodeBlock';
 import { createSearchHighlightPlugin } from '@pi-code/webview/components/chat/helpers/search';
 import { extractCodeFromChildren, parseFileUri } from '@pi-code/webview/components/chat/markdown/helpers/markdown';
-import { MermaidBlock } from '@pi-code/webview/components/chat/markdown/MermaidBlock';
 import { CopyButton } from '@pi-code/webview/components/shared/CopyButton';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { useChatStore } from '@pi-code/webview/stores/useChatStore';
@@ -16,6 +15,12 @@ import { useChatStore } from '@pi-code/webview/stores/useChatStore';
 import type { FC, MouseEvent, ReactNode } from 'react';
 import type { Components } from 'react-markdown';
 import type { SearchContext } from '@pi-code/webview/components/shared/Highlight';
+
+// Diagrams appear in a minority of messages, so keep Mermaid out of the initial
+// bundle and load it only when a `language-mermaid` block is actually rendered.
+const MermaidBlock = lazy(() =>
+  import('@pi-code/webview/components/chat/markdown/MermaidBlock').then((module) => ({ default: module.MermaidBlock })),
+);
 
 interface MarkdownCodeNode {
   readonly type: 'code';
@@ -58,7 +63,9 @@ const MarkdownPre: FC<{ children?: ReactNode }> = ({ children }) => {
   if (className.includes('language-mermaid')) {
     return (
       <div className="my-4">
-        <MermaidBlock code={codeString} />
+        <Suspense fallback={<pre className="overflow-x-auto font-mono text-xs">{codeString}</pre>}>
+          <MermaidBlock code={codeString} />
+        </Suspense>
       </div>
     );
   }

@@ -234,9 +234,20 @@ export async function* streamHistory(cwd: string, scope: HistoryScope): AsyncGen
   ).filter((meta): meta is { path: string; mtime: number } => meta !== null);
   metas.sort((a, b) => b.mtime - a.mtime);
 
+  const previews = new Array<HistoryItem | null>(metas.length);
+  let cursor = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(HISTORY_PREVIEW_CHUNK / 2, metas.length) }, async () => {
+      while (true) {
+        const index = cursor++;
+        if (index >= metas.length) return;
+        previews[index] = await readSessionPreview(metas[index].path, metas[index].mtime);
+      }
+    }),
+  );
+
   let chunk: HistoryItem[] = [];
-  for (const meta of metas) {
-    const preview = await readSessionPreview(meta.path, meta.mtime);
+  for (const preview of previews) {
     if (!preview) continue;
     chunk.push(preview);
     if (chunk.length >= HISTORY_PREVIEW_CHUNK) {
