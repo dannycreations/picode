@@ -4,12 +4,12 @@ import { calculateContextTokens, getLastAssistantUsage } from '@earendil-works/p
 import { getApprovalDuration } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
 import { toBase64DataUrl } from '@pi-code/extension/utilities/codec';
 import { logger } from '@pi-code/shared/core/logger';
-import { elapsedSeconds, findReplaceableFailedRequest } from '@pi-code/shared/utilities/common';
+import { elapsedSeconds, findReplaceableFailedRequest, parseTextAttachment } from '@pi-code/shared/utilities/common';
 import { buildToolSections } from '@pi-code/shared/utilities/tool';
 
 import type { ImageContent, TextContent, ThinkingContent, ToolCall, Usage } from '@earendil-works/pi-ai';
-import type { SessionEntry } from '@earendil-works/pi-coding-agent';
-import type { Attachment, ChatMessage, StatsData, ToolArguments, ToolName, ToolResultDetails } from '@pi-code/shared/core/types';
+import type { SessionEntry, SessionEntryBase, SessionMessageEntry } from '@earendil-works/pi-coding-agent';
+import type { Attachment, ChatMessage, StatsData, TextAttachment, ToolArguments, ToolName, ToolResultDetails } from '@pi-code/shared/core/types';
 
 type MessageContentPart = TextContent | ThinkingContent | ToolCall | ImageContent;
 
@@ -36,6 +36,9 @@ function collectImageAttachments(parts: readonly MessageContentPart[]): Attachme
 export function convertSessionEntries(entries: readonly SessionEntry[]): ChatMessage[] {
   const result: ChatMessage[] = [];
 
+  const byId = new Map(entries.map((entry) => [entry.id, entry]));
+  const textAttachmentsByUser = collectTextAttachments(entries, byId);
+
   for (const entry of entries) {
     const ts = new Date(entry.timestamp).getTime();
 
@@ -51,7 +54,7 @@ export function convertSessionEntries(entries: readonly SessionEntry[]): ChatMes
         break;
 
       case 'message':
-        appendMessage(result, entry.id, entry.message, ts);
+        appendMessage(result, entry.id, entry.message, ts, textAttachmentsByUser.get(entry.id));
         break;
     }
   }
@@ -61,15 +64,47 @@ export function convertSessionEntries(entries: readonly SessionEntry[]): ChatMes
 
 type SessionMessage = Extract<SessionEntry, { type: 'message' }>['message'];
 
-function appendMessage(result: ChatMessage[], id: string, msg: SessionMessage, ts: number): void {
+function collectTextAttachments(entries: readonly SessionEntry[], byId: Map<string, SessionEntry>): Map<string, TextAttachment[]> {
+  const map = new Map<string, TextAttachment[]>();
+
+  for (const entry of entries) {
+    if (entry.type !== 'custom_message' || entry.customType !== 'text_attachment') continue;
+
+    const attachment = parseTextAttachment(entry.content);
+    if (!attachment) continue;
+
+    const userId = findUserMessageAncestorId(entry, byId);
+    if (!userId) continue;
+
+    const list = map.get(userId);
+    if (list) list.push(attachment);
+    else map.set(userId, [attachment]);
+  }
+
+  return map;
+}
+
+function findUserMessageAncestorId(entry: SessionEntryBase, byId: Map<string, SessionEntry>): string | null {
+  let current: SessionEntryBase | undefined = entry;
+  while (current) {
+    if (current.type === 'message' && (current as SessionMessageEntry).message.role === 'user') {
+      return current.id;
+    }
+    current = current.parentId ? byId.get(current.parentId) : undefined;
+  }
+  return null;
+}
+
+function appendMessage(result: ChatMessage[], id: string, msg: SessionMessage, ts: number, textAttachments?: readonly TextAttachment[]): void {
   switch (msg.role) {
     case 'user': {
       const imageAttachments = collectImageAttachments(toContentParts(msg.content));
+      const attachments = [...imageAttachments, ...(textAttachments ?? [])];
       result.push({
         id,
         sender: 'user',
         text: contentText(msg.content).trim(),
-        attachments: imageAttachments.length > 0 ? imageAttachments : undefined,
+        attachments: attachments.length > 0 ? attachments : undefined,
         ts,
       });
       break;

@@ -92,15 +92,10 @@ interface HiddenContentOptions {
   readonly triggerTurn?: boolean;
 }
 
-// Sends transcript-only content as a hidden custom message. With no options
-// the message lands on the session before the upcoming user turn, whereas
-// `deliverAs: 'nextTurn'` appends it after that turn instead.
 export function sendHiddenContent(session: AgentSession, customType: string, content: string, options: HiddenContentOptions = {}): Promise<void> {
   return session.sendCustomMessage({ customType, content, display: false }, options);
 }
 
-// Sends the content a leading `/skill:` or `/prompt:` command refers to as
-// hidden messages before the upcoming user turn. The caller sends the user message itself untouched.
 export async function injectResourceMessages(session: AgentSession, resources: RuntimeResources, text: string): Promise<void> {
   await injectSkillMessage(session, resources.skills, text);
   await injectPromptMessage(session, resources.prompts, text);

@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { recordApprovalDuration } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
 import { convertSessionEntries } from '@pi-code/extension/structures/chat-session/session';
 
-import type { AssistantMessage, ToolResultMessage, UserMessage } from '@earendil-works/pi-ai';
+import type { AssistantMessage, ImageContent, ToolResultMessage, UserMessage } from '@earendil-works/pi-ai';
 import type { SessionEntry } from '@earendil-works/pi-coding-agent';
-import type { ToolChatMessage } from '@pi-code/shared/core/types';
+import type { ChatMessage, ToolChatMessage } from '@pi-code/shared/core/types';
 
 function messageEntry(id: string, message: UserMessage | AssistantMessage | ToolResultMessage): SessionEntry {
   return { id, type: 'message', parentId: null, timestamp: new Date().toISOString(), message };
@@ -88,5 +88,60 @@ describe('convertSessionEntries tool duration with approval pause', () => {
     // Approval duration: 5 seconds
     // Net execution duration: 8 - 5 = 3 seconds
     expect((toolMsg as ToolChatMessage | undefined)?.duration).toBe(3);
+  });
+});
+
+describe('convertSessionEntries text attachment rehydration', () => {
+  function userEntry(id: string, content: UserMessage['content']): SessionEntry {
+    return { id, type: 'message', parentId: null, timestamp: new Date().toISOString(), message: { role: 'user', content, timestamp: Date.now() } };
+  }
+
+  function textAttachmentEntry(id: string, parentId: string, content = '``` ts\ncode\n```'): SessionEntry {
+    return {
+      id,
+      type: 'custom_message',
+      parentId,
+      timestamp: new Date().toISOString(),
+      customType: 'text_attachment',
+      content,
+      display: false,
+    };
+  }
+
+  it('restores a text attachment from the tagged custom entry by parsing its content', () => {
+    const entries: SessionEntry[] = [userEntry('u1', 'look at this file'), textAttachmentEntry('a1', 'u1')];
+
+    const user = convertSessionEntries(entries).find((m): m is Extract<ChatMessage, { sender: 'user' }> => m.sender === 'user');
+
+    expect(user?.attachments).toEqual([{ kind: 'text', content: 'code', language: 'ts' }]);
+  });
+
+  it('ignores a text_attachment entry whose details are not the text tag', () => {
+    const entries: SessionEntry[] = [userEntry('u1', 'look at this file'), textAttachmentEntry('a1', 'u1', 'this entry is not a fenced code block')];
+
+    const user = convertSessionEntries(entries).find((m): m is Extract<ChatMessage, { sender: 'user' }> => m.sender === 'user');
+
+    expect(user?.attachments).toBeUndefined();
+  });
+
+  it('combines a text attachment with an image attachment on the same user message', () => {
+    const image: ImageContent = { type: 'image', data: 'BASE64DATA', mimeType: 'image/png' };
+    const entries: SessionEntry[] = [userEntry('u1', [{ type: 'text', text: 'both kinds' }, image]), textAttachmentEntry('a1', 'u1')];
+
+    const user = convertSessionEntries(entries).find((m): m is Extract<ChatMessage, { sender: 'user' }> => m.sender === 'user');
+
+    expect(user?.attachments?.map((a) => a.kind).sort()).toEqual(['image', 'text']);
+  });
+
+  it('drops a text attachment whose ancestor chain reaches no user message', () => {
+    const entries: SessionEntry[] = [
+      userEntry('u1', 'first'),
+      // Orphaned: parentId points at nothing in the entry set.
+      textAttachmentEntry('a1', 'missing'),
+    ];
+
+    const user = convertSessionEntries(entries).find((m): m is Extract<ChatMessage, { sender: 'user' }> => m.sender === 'user');
+
+    expect(user?.attachments).toBeUndefined();
   });
 });

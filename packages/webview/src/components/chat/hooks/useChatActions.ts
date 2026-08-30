@@ -44,8 +44,7 @@ export const useChatActions = (): UseChatActionsReturn => {
       const trimmed = text.trim();
       const hasImage = attachments.some((attachment) => attachment.kind === 'image');
       // Keeps the transcript bubble, task title, and steered turn non-empty
-      // when the user sends image attachments without any words. Text
-      // attachments always contribute content through the attachments field.
+      // when the user sends image attachments without any words.
       const displayText = trimmed || (hasImage ? '(see attached image)' : '');
       if (!displayText && attachments.length === 0) return;
 

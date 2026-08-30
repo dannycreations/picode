@@ -11,6 +11,16 @@ export function formatTextAttachment(attachment: TextAttachment): string {
   return `\`\`\`${language}\n${attachment.content}\n\`\`\``;
 }
 
+export function parseTextAttachment(content: unknown): TextAttachment | null {
+  if (typeof content !== 'string') return null;
+
+  const match = /^``` ?(\S*)\n([\s\S]*?)\n```$/.exec(content.trim());
+  if (!match) return null;
+
+  const language = match[1];
+  return language ? { kind: 'text', content: match[2], language } : { kind: 'text', content: match[2] };
+}
+
 const EMPTY_STATS: StatsData = {
   tokensIn: 0,
   tokensOut: 0,

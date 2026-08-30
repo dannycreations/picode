@@ -400,6 +400,22 @@ describe('Runtime cancel during init', () => {
     const messages = (webview.postMessage as ReturnType<typeof vi.fn>).mock.calls.map((call) => call[0]);
     expect(messages.some((msg) => msg.type === 'agent_settled')).toBe(false);
   });
+
+  it('sends text attachments as hidden messages and keeps them out of the prompt', async () => {
+    const webview = makeFakeWebview();
+    const runtime = new Runtime(webview);
+    const session = makeStartableSession();
+    mocks.createSession.mockResolvedValue({ session, services: SERVICES });
+
+    await runtime.startTask('hi', [{ kind: 'text', content: 'SECRET', language: 'ts' }]);
+    await flush();
+
+    expect(session.prompt).toHaveBeenCalledTimes(1);
+    expect(session.prompt.mock.calls[0][0]).toBe('hi');
+    expect(mocks.sendHiddenContent).toHaveBeenCalledWith(session, 'text_attachment', '``` ts\nSECRET\n```', {
+      deliverAs: 'nextTurn',
+    });
+  });
 });
 
 // Compaction shares the harness above; these cover the manual compact() round

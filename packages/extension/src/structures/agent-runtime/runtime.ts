@@ -64,25 +64,24 @@ export class Runtime {
       // before the user turn; the user message itself is passed through.
       await injectResourceMessages(session, { skills, prompts }, expanded.text);
 
+      const textAttachments = (attachments ?? []).filter((attachment): attachment is TextAttachment => attachment.kind === 'text');
+      for (const attachment of textAttachments) {
+        await sendHiddenContent(session, 'text_attachment', formatTextAttachment(attachment), { deliverAs: 'nextTurn' });
+      }
+
       if (expanded.mentionContent) {
         await sendHiddenContent(session, 'mention_content', expanded.mentionContent, { deliverAs: 'nextTurn' });
       }
 
-      // `nextTurn` makes pi attach the details to the upcoming user message, so
-      // they reach the model and get persisted with the turn that used them.
       await sendHiddenContent(session, 'environment_details', envDetails, { deliverAs: 'nextTurn' });
 
       const imageAttachments = parseAttachments(attachments);
-      const textBlocks = (attachments ?? [])
-        .filter((attachment): attachment is TextAttachment => attachment.kind === 'text')
-        .map((attachment) => formatTextAttachment(attachment));
-      const promptWithAttachments = [expanded.text, ...textBlocks].filter((part) => part.length > 0).join('\n');
 
       if (this.discardIfStale(generation, session)) return;
 
       await this.compactContextIfNeeded(session);
 
-      void session.prompt(promptWithAttachments, { images: imageAttachments, expandPromptTemplates: false }).catch((err) => {
+      void session.prompt(expanded.text, { images: imageAttachments, expandPromptTemplates: false }).catch((err) => {
         this.messenger.postError(err);
       });
     } catch (err) {
@@ -356,12 +355,13 @@ export class Runtime {
     try {
       const imageAttachments = parseAttachments(msg.attachments);
       const expanded = await expandMentions(msg.text, cwd);
-      const textBlocks = (msg.attachments ?? [])
-        .filter((attachment): attachment is TextAttachment => attachment.kind === 'text')
-        .map((attachment) => formatTextAttachment(attachment));
-      const content: (TextContent | ImageContent)[] = [
-        { type: 'text', text: [expanded.text, ...textBlocks].filter((part) => part.length > 0).join('\n') },
-      ];
+
+      const textAttachments = (msg.attachments ?? []).filter((attachment): attachment is TextAttachment => attachment.kind === 'text');
+      for (const attachment of textAttachments) {
+        await sendHiddenContent(session, 'text_attachment', formatTextAttachment(attachment), { triggerTurn: false });
+      }
+
+      const content: (TextContent | ImageContent)[] = [{ type: 'text', text: expanded.text }];
       if (imageAttachments) {
         content.push(...imageAttachments);
       }
