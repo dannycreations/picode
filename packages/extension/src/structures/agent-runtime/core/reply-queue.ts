@@ -19,7 +19,7 @@ export class ReplyQueue {
       sender: 'queue',
       text,
       attachments,
-      ts: Date.now(),
+      timestamp: Date.now(),
     };
     this.messages.push(msg);
     this.onChange(this.messages);

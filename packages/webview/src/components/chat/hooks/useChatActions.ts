@@ -89,7 +89,7 @@ export const useChatActions = (): UseChatActionsReturn => {
         sender: 'user',
         text: displayText,
         attachments,
-        ts: Date.now(),
+        timestamp: Date.now(),
       };
 
       store.setIsRunning(true);

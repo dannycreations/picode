@@ -184,7 +184,7 @@ describe('Runtime reply queue steering', () => {
     const session = makeFakeSession(steer);
     const runtime = new Runtime(makeFakeWebview());
     const cwd = 'c:/cwd';
-    const msg: QueueChatMessage = { id: 'q1', sender: 'queue', text: '@file x', attachments: [], ts: 1 };
+    const msg: QueueChatMessage = { id: 'q1', sender: 'queue', text: '@file x', attachments: [], timestamp: 1 };
 
     mocks.expandMentions.mockResolvedValueOnce({
       text: 'text with @file',
@@ -473,12 +473,15 @@ describe('Runtime compaction', () => {
     const webview = makeFakeWebview();
     const session = makeCompactSession(async () => ({ estimatedTokensAfter: 123 }));
     mocks.createSession.mockResolvedValue({ session, services: SERVICES });
-    mocks.loadSessionTranscript.mockReturnValue({ messages: [{ id: 'm1', sender: 'user', text: 'hi', ts: 1 }], stats: { contextTokens: 999 } });
+    mocks.loadSessionTranscript.mockReturnValue({
+      messages: [{ id: 'm1', sender: 'user', text: 'hi', timestamp: 1 }],
+      stats: { contextTokens: 999 },
+    });
     const runtime = new Runtime(webview);
 
     const result = await runtime.compact(undefined);
 
-    expect(result).toEqual({ messages: [{ id: 'm1', sender: 'user', text: 'hi', ts: 1 }], stats: { contextTokens: 123 } });
+    expect(result).toEqual({ messages: [{ id: 'm1', sender: 'user', text: 'hi', timestamp: 1 }], stats: { contextTokens: 123 } });
     expect(session.compact).toHaveBeenCalledTimes(1);
     const types = posted(webview).map((message) => message.type);
     expect(types.filter((type) => type === 'compaction_start')).toHaveLength(1);

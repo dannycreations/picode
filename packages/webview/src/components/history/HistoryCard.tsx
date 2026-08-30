@@ -50,7 +50,7 @@ export const HistoryCard: FC<HistoryCardProps> = ({
         <div className="flex items-center justify-between text-muted mt-1">
           <div className="flex items-center gap-1.5 opacity-80">
             <Calendar size={10} className="opacity-80" />
-            <span>{formatTimeAgo(item.ts)}</span>
+            <span>{formatTimeAgo(item.timestamp)}</span>
           </div>
 
           {!isSelectionMode && (

@@ -33,8 +33,8 @@ export const useHistoryFilter = (history: HistoryItem[], itemsPerPage: number): 
     }
 
     result.sort((a, b) => {
-      if (sortBy === 'newest') return b.ts - a.ts;
-      if (sortBy === 'oldest') return a.ts - b.ts;
+      if (sortBy === 'newest') return b.timestamp - a.timestamp;
+      if (sortBy === 'oldest') return a.timestamp - b.timestamp;
       return a.task.localeCompare(b.task);
     });
 

@@ -49,7 +49,7 @@ export const QuestionMessage: FC<QuestionMessageProps> = ({ message, search, onA
       <MessageHeader
         icon={<MessageCircleQuestionMark size={14} className="text-vscode-focusBorder shrink-0" />}
         title="Question"
-        timestamp={message.ts}
+        timestamp={message.timestamp}
       />
 
       <div className="ml-6 flex flex-col gap-2 text-sm">

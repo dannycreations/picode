@@ -5,7 +5,7 @@ import { buildToolSections, getFirstDiffLine, getToolHeaderMeta, GROUP_TOOLS } f
 import type { ChatMessage, ToolChatMessage } from '@pi-code/shared/core/types';
 
 function mcpMessage(patch: Partial<ToolChatMessage>): ChatMessage {
-  return { id: 't1', sender: 'tool', text: 'mcp', ts: 1_700_000_000_000, ...patch };
+  return { id: 't1', sender: 'tool', text: 'mcp', timestamp: 1_700_000_000_000, ...patch };
 }
 
 describe('buildToolSections mcp', () => {

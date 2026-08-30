@@ -79,7 +79,7 @@ export interface ToolSection {
   readonly language?: string;
   readonly openPath?: string;
   readonly diffLine?: number;
-  readonly ts?: number;
+  readonly timestamp?: number;
   readonly duration?: number;
   readonly status?: string;
   readonly approvalMessage?: ChatMessage;
@@ -88,7 +88,7 @@ export interface ToolSection {
 interface ChatMessageBase {
   readonly id: string;
   readonly text: string;
-  readonly ts: number;
+  readonly timestamp: number;
 }
 
 export interface ApiRequestChatMessage extends ChatMessageBase {

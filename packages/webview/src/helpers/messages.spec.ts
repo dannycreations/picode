@@ -23,7 +23,7 @@ function createMessage(overrides: Partial<ChatMessage> = {}): ChatMessage {
     id: 'm-1',
     sender: 'assistant',
     text: '',
-    ts: 1,
+    timestamp: 1,
     ...overrides,
   } as ChatMessage;
 }
@@ -57,7 +57,7 @@ describe('isRenderableMessage', () => {
 });
 
 function updateTodo(id: string, todos: TodoItem[]): ChatMessage {
-  return { id, sender: 'tool', toolName: 'update_todo', text: '', ts: 1, todos } as ChatMessage;
+  return { id, sender: 'tool', toolName: 'update_todo', text: '', timestamp: 1, todos } as ChatMessage;
 }
 
 describe('previousTodos', () => {
@@ -67,7 +67,7 @@ describe('previousTodos', () => {
         { content: 'one', status: 'completed' },
         { content: 'two', status: 'pending' },
       ]),
-      { id: 'u', sender: 'user', text: 'hi', ts: 2 },
+      { id: 'u', sender: 'user', text: 'hi', timestamp: 2 },
       updateTodo('b', [
         { content: 'one', status: 'completed' },
         { content: 'three', status: 'progress' },
@@ -158,29 +158,29 @@ describe('resolveApproval', () => {
   it('resumes an approved tool as running and continues its clock past the wait', () => {
     // Tool started at ts=1000, approval requested immediately (pausedAt=1000), so
     // the elapsed clock should restart from ~0 rather than jump by the wait.
-    const messages = [createToolMessage('t1', 'execute_command', { toolStatus: 'approval', ts: 1000, pausedAt: 1000 })];
+    const messages = [createToolMessage('t1', 'execute_command', { toolStatus: 'approval', timestamp: 1000, pausedAt: 1000 })];
 
     const result = resolveApproval(messages, 't1', true);
 
     expect(asTool(result[0]).toolStatus).toBe('running');
-    expect(result[0].ts).toBeGreaterThan(1000);
+    expect(result[0].timestamp).toBeGreaterThan(1000);
     expect(asTool(result[0]).pausedAt).toBeUndefined();
   });
 
   it('resumes the clock from where it paused when execution had already run', () => {
     // Tool ran 5s (ts=1000) before the approval was requested at pausedAt=6000,
     // so approving should continue from ~5s, not restart at zero or include the wait.
-    const messages = [createToolMessage('t1', 'execute_command', { toolStatus: 'approval', ts: 1000, pausedAt: 6000 })];
+    const messages = [createToolMessage('t1', 'execute_command', { toolStatus: 'approval', timestamp: 1000, pausedAt: 6000 })];
 
     const result = resolveApproval(messages, 't1', true);
 
-    const elapsedAtResume = Date.now() - result[0].ts;
+    const elapsedAtResume = Date.now() - result[0].timestamp;
     expect(elapsedAtResume).toBeGreaterThanOrEqual(4900);
     expect(elapsedAtResume).toBeLessThanOrEqual(5100);
   });
 
   it('marks a rejected tool as denied', () => {
-    const messages = [createToolMessage('t1', 'execute_command', { toolStatus: 'approval', ts: 1000, pausedAt: 1000 })];
+    const messages = [createToolMessage('t1', 'execute_command', { toolStatus: 'approval', timestamp: 1000, pausedAt: 1000 })];
 
     const result = resolveApproval(messages, 't1', false);
 
@@ -202,8 +202,8 @@ describe('groupToolMessages', () => {
     expect(result[0].id).toBe('r1');
     expect(asTool(result[0]).toolName).toBe('read_file');
     expect(asTool(result[0]).toolSections).toEqual([
-      { id: 'r1', title: 'a.ts', content: 'a', language: 'text', openPath: 'a.ts', ts: 1, duration: undefined, status: 'completed' },
-      { id: 'r2', title: 'b.ts', content: 'b', language: 'text', openPath: 'b.ts', ts: 1, duration: undefined, status: 'completed' },
+      { id: 'r1', title: 'a.ts', content: 'a', language: 'text', openPath: 'a.ts', timestamp: 1, duration: undefined, status: 'completed' },
+      { id: 'r2', title: 'b.ts', content: 'b', language: 'text', openPath: 'b.ts', timestamp: 1, duration: undefined, status: 'completed' },
     ]);
   });
 
@@ -268,8 +268,8 @@ describe('groupToolMessages', () => {
 
     expect(result).toHaveLength(1);
     expect(asTool(result[0]).toolSections).toEqual([
-      { id: 'c1', title: 'ls', content: 'a', language: 'shell', ts: 1, duration: undefined, status: 'completed' },
-      { id: 'c2', title: 'pwd', content: 'b', language: 'shell', ts: 1, duration: undefined, status: 'completed' },
+      { id: 'c1', title: 'ls', content: 'a', language: 'shell', timestamp: 1, duration: undefined, status: 'completed' },
+      { id: 'c2', title: 'pwd', content: 'b', language: 'shell', timestamp: 1, duration: undefined, status: 'completed' },
     ]);
   });
 
@@ -283,7 +283,7 @@ describe('groupToolMessages', () => {
 
     expect(result).toHaveLength(1);
     expect(asTool(result[0]).toolSections).toEqual([
-      { id: 'c1', title: 'rg -n "foo"', content: 'output', language: 'shell', ts: 1, duration: undefined, status: 'completed' },
+      { id: 'c1', title: 'rg -n "foo"', content: 'output', language: 'shell', timestamp: 1, duration: undefined, status: 'completed' },
     ]);
   });
 
@@ -311,7 +311,7 @@ describe('groupToolMessages', () => {
         subtitle: undefined,
         content: '<report-1>',
         language: 'text',
-        ts: 1,
+        timestamp: 1,
         duration: undefined,
         status: 'completed',
       },
@@ -321,7 +321,7 @@ describe('groupToolMessages', () => {
         subtitle: undefined,
         content: '<report-2>',
         language: 'text',
-        ts: 1,
+        timestamp: 1,
         duration: undefined,
         status: 'completed',
       },

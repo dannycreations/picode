@@ -9,7 +9,7 @@ function createMessage(overrides: Partial<ChatMessage> = {}): ChatMessage {
     id: 'tc-1',
     sender: 'tool',
     text: 'ask_question',
-    ts: 1,
+    timestamp: 1,
     toolName: 'ask_question',
     ...overrides,
   } as ChatMessage;

@@ -91,15 +91,15 @@ async function readSessionPreview(filePath: string, mtime: number): Promise<Hist
       }
     }
     if (!id) return null;
-    let ts: number;
+    let timestamp: number;
     if (mtime > 0) {
-      ts = mtime;
+      timestamp = mtime;
     } else if (created) {
-      ts = new Date(created).getTime();
+      timestamp = new Date(created).getTime();
     } else {
-      ts = Date.now();
+      timestamp = Date.now();
     }
-    return { id, path: filePath, task: firstMessage || 'Untitled Task', ts };
+    return { id, path: filePath, task: firstMessage || 'Untitled Task', timestamp };
   } catch {
     return null;
   }

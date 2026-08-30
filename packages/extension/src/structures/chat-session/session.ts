@@ -40,21 +40,21 @@ export function convertSessionEntries(entries: readonly SessionEntry[]): ChatMes
   const textAttachmentsByUser = collectTextAttachments(entries, byId);
 
   for (const entry of entries) {
-    const ts = new Date(entry.timestamp).getTime();
+    const timestamp = new Date(entry.timestamp).getTime();
 
     switch (entry.type) {
       case 'compaction':
-        result.push({ id: entry.id, sender: 'info', text: `Compacted: ${entry.summary}`, ts });
+        result.push({ id: entry.id, sender: 'info', text: `Compacted: ${entry.summary}`, timestamp });
         break;
 
       case 'label':
         if (entry.label) {
-          result.push({ id: entry.id, sender: 'checkpoint', text: 'Checkpoint saved', ts });
+          result.push({ id: entry.id, sender: 'checkpoint', text: 'Checkpoint saved', timestamp });
         }
         break;
 
       case 'message':
-        appendMessage(result, entry.id, entry.message, ts, textAttachmentsByUser.get(entry.id));
+        appendMessage(result, entry.id, entry.message, timestamp, textAttachmentsByUser.get(entry.id));
         break;
     }
   }
@@ -95,7 +95,7 @@ function findUserMessageAncestorId(entry: SessionEntryBase, byId: Map<string, Se
   return null;
 }
 
-function appendMessage(result: ChatMessage[], id: string, msg: SessionMessage, ts: number, textAttachments?: readonly TextAttachment[]): void {
+function appendMessage(result: ChatMessage[], id: string, msg: SessionMessage, timestamp: number, textAttachments?: readonly TextAttachment[]): void {
   switch (msg.role) {
     case 'user': {
       const imageAttachments = collectImageAttachments(toContentParts(msg.content));
@@ -105,19 +105,19 @@ function appendMessage(result: ChatMessage[], id: string, msg: SessionMessage, t
         sender: 'user',
         text: contentText(msg.content).trim(),
         attachments: attachments.length > 0 ? attachments : undefined,
-        ts,
+        timestamp,
       });
       break;
     }
 
     case 'assistant':
-      appendAssistantTurn(result, id, msg, ts);
+      appendAssistantTurn(result, id, msg, timestamp);
       break;
 
     // A tool result is not a row of its own: it completes the `tool` row that
     // the assistant's matching tool call already pushed.
     case 'toolResult':
-      patchToolCall(result, msg, ts);
+      patchToolCall(result, msg, timestamp);
       break;
 
     case 'bashExecution':
@@ -130,7 +130,7 @@ function appendMessage(result: ChatMessage[], id: string, msg: SessionMessage, t
         toolStatus: msg.cancelled ? 'denied' : 'completed',
         diff: msg.output,
         duration: 0,
-        ts,
+        timestamp,
       });
       break;
 
@@ -140,7 +140,7 @@ function appendMessage(result: ChatMessage[], id: string, msg: SessionMessage, t
   }
 }
 
-function appendAssistantTurn(result: ChatMessage[], id: string, msg: Extract<SessionMessage, { role: 'assistant' }>, ts: number): void {
+function appendAssistantTurn(result: ChatMessage[], id: string, msg: Extract<SessionMessage, { role: 'assistant' }>, timestamp: number): void {
   const parts = toContentParts(msg.content);
   const cost = msg.usage?.cost?.total;
   const errorMessage = msg.errorMessage;
@@ -151,7 +151,7 @@ function appendAssistantTurn(result: ChatMessage[], id: string, msg: Extract<Ses
     id: `${id}-api-req`,
     sender: 'api_request',
     text: 'API Request',
-    ts: ts - 1,
+    timestamp: timestamp - 1,
     toolStatus: errorMessage ? 'denied' : 'completed',
     errorMessage,
     cost,
@@ -169,7 +169,7 @@ function appendAssistantTurn(result: ChatMessage[], id: string, msg: Extract<Ses
     text: contentText(msg.content),
     reasoning: joinThinking(parts),
     cost,
-    ts,
+    timestamp,
   });
 
   for (const toolCall of parts.filter((part) => part.type === 'toolCall')) {
@@ -180,12 +180,12 @@ function appendAssistantTurn(result: ChatMessage[], id: string, msg: Extract<Ses
       toolName: toolCall.name as ToolName,
       toolArgs: toolCall.arguments as ToolArguments,
       toolStatus: 'completed',
-      ts,
+      timestamp,
     });
   }
 }
 
-function patchToolCall(result: ChatMessage[], msg: Extract<SessionMessage, { role: 'toolResult' }>, ts: number): void {
+function patchToolCall(result: ChatMessage[], msg: Extract<SessionMessage, { role: 'toolResult' }>, timestamp: number): void {
   const index = result.findIndex((r) => r.sender === 'tool' && r.id === msg.toolCallId);
   if (index === -1) return;
 
@@ -195,9 +195,9 @@ function patchToolCall(result: ChatMessage[], msg: Extract<SessionMessage, { rol
   const resultText = contentText(msg.content);
   const details: ToolResultDetails | undefined = msg.details;
 
-  const rawDuration = elapsedSeconds(existing.ts, ts);
+  const rawDuration = elapsedSeconds(existing.timestamp, timestamp);
   const approvalMs = msg.toolCallId ? getApprovalDuration(msg.toolCallId) : undefined;
-  const netDuration = approvalMs !== undefined ? elapsedSeconds(existing.ts, ts - approvalMs) : rawDuration;
+  const netDuration = approvalMs !== undefined ? elapsedSeconds(existing.timestamp, timestamp - approvalMs) : rawDuration;
 
   result[index] = {
     ...existing,

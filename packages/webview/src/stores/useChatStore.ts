@@ -167,7 +167,7 @@ export const useChatStore = create<ChatState>((set, get) => {
           ...task,
           messages: [
             ...settlePendingTurns(task.messages),
-            { id: `assistant-${timestamp}`, sender: 'assistant', text: '', ts: timestamp, toolStatus: 'running' },
+            { id: `assistant-${timestamp}`, sender: 'assistant', text: '', timestamp, toolStatus: 'running' },
           ],
         })),
       );
@@ -178,7 +178,7 @@ export const useChatStore = create<ChatState>((set, get) => {
         patchActiveTask(state, (task) => {
           if (task.messages.some((m) => m.id === id)) return task;
           const settled = settlePendingTurns(task.messages);
-          const row: ApiRequestChatMessage = { id, sender: 'api_request', text: 'API Request', ts: timestamp, toolStatus: 'running' };
+          const row: ApiRequestChatMessage = { id, sender: 'api_request', text: 'API Request', timestamp, toolStatus: 'running' };
           // A retry reuses the previous failed request's slot, so one attempt
           // chain renders as a single row until a turn succeeds.
           const retryIndex = findReplaceableFailedRequest(settled);
@@ -267,7 +267,7 @@ export const useChatStore = create<ChatState>((set, get) => {
             };
           }
           const startedNow = target?.sender === 'tool' && target.toolName === 'spawn_subagent' && target.diff === undefined;
-          const patch = startedNow ? { diff: result, subtitle, ts: Date.now() } : { diff: result, subtitle };
+          const patch = startedNow ? { diff: result, subtitle, timestamp: Date.now() } : { diff: result, subtitle };
           return { ...task, messages: rebuildToolSections(patchMessage(task.messages, id, patch), id) };
         }),
       );
@@ -278,7 +278,7 @@ export const useChatStore = create<ChatState>((set, get) => {
         patchActiveTask(state, (task) => {
           if (ignoreUnknownSubagent(task.messages, subagent, id)) return task;
           const existing = task.messages.find((m) => m.id === id);
-          const duration = existing ? elapsedSeconds(existing.ts) : undefined;
+          const duration = existing ? elapsedSeconds(existing.timestamp) : undefined;
           return {
             ...task,
             messages: rebuildToolSections(
@@ -307,7 +307,7 @@ export const useChatStore = create<ChatState>((set, get) => {
             sender: 'error',
             text: message,
             errorMessage: message,
-            ts: Date.now(),
+            timestamp: Date.now(),
           }),
         })),
       }));
@@ -322,7 +322,7 @@ export const useChatStore = create<ChatState>((set, get) => {
     archive_result: (msg) => {
       const { id, path, archived, title } = msg.payload;
       set((state) => {
-        const item: HistoryItem = { id, path, task: title, ts: Date.now() };
+        const item: HistoryItem = { id, path, task: title, timestamp: Date.now() };
         const next = { ...state.historyByScope };
         if (archived) {
           next.current = state.historyByScope.current.filter((e) => e.id !== id);

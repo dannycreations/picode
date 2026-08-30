@@ -64,7 +64,7 @@ export const QueueMessage: FC<QueueMessageProps> = ({ message, commands, search 
 
   return (
     <div className="group flex flex-col gap-1">
-      <MessageHeader icon={<User size={14} className="text-vscode-focusBorder shrink-0" />} title="Ask" timestamp={message.ts}>
+      <MessageHeader icon={<User size={14} className="text-vscode-focusBorder shrink-0" />} title="Ask" timestamp={message.timestamp}>
         <span className="text-[10px] uppercase tracking-wider font-semibold text-vscode-charts-orange px-1.5 py-0.5 rounded border border-vscode-charts-orange/30 bg-vscode-charts-orange/10 ml-1.5 select-none">
           Queued
         </span>
@@ -121,7 +121,7 @@ export const UserMessage: FC<UserMessageProps> = ({ message, commands, search })
 
   return (
     <div className="group flex flex-col gap-1">
-      <MessageHeader icon={<User size={14} className="text-vscode-focusBorder shrink-0" />} title="Ask" timestamp={message.ts} />
+      <MessageHeader icon={<User size={14} className="text-vscode-focusBorder shrink-0" />} title="Ask" timestamp={message.timestamp} />
       <div className="message-surface whitespace-pre-wrap leading-normal select-text">
         <TokenizedText text={message.text} commands={commands} search={search} />
         <AttachmentRow attachments={message.attachments} />

@@ -298,7 +298,7 @@ export class Runtime {
 
       const result = await this.steerQueuedReply(msg, cwd, session);
       if (result.steered) {
-        delivered.push({ id: msg.id, sender: 'user', text: msg.text, attachments: msg.attachments, ts: msg.ts });
+        delivered.push({ id: msg.id, sender: 'user', text: msg.text, attachments: msg.attachments, timestamp: msg.timestamp });
         if (result.mention) {
           mentions.push(result.mention);
         }
@@ -378,7 +378,7 @@ export class Runtime {
       if (imageAttachments) {
         content.push(...imageAttachments);
       }
-      session.agent.steer({ role: 'user', content, timestamp: msg.ts });
+      session.agent.steer({ role: 'user', content, timestamp: msg.timestamp });
 
       if (expanded.mentionContent) {
         await sendHiddenContent(session, 'mention_content', expanded.mentionContent, { triggerTurn: false });

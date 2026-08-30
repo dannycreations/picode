@@ -20,7 +20,7 @@ export interface HistoryItem {
   readonly id: string;
   readonly path: string;
   readonly task: string;
-  readonly ts: number;
+  readonly timestamp: number;
 }
 
 export interface ModelItem {

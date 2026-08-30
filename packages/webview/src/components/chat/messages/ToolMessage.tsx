@@ -202,7 +202,7 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onRespondTool }) =>
       <MessageHeader
         icon={<span className={cn('codicon', `codicon-${icon}`, 'text-vscode-focusBorder shrink-0')} />}
         title={title}
-        timestamp={message.ts}
+        timestamp={message.timestamp}
       />
 
       <div className="ml-6 text-sm">
@@ -238,7 +238,7 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onRespondTool }) =>
                   isActive={isRunning}
                   isRunning={isRunning}
                   isWaiting={isWaiting}
-                  startTs={section.ts ?? message.ts}
+                  startTs={section.timestamp ?? message.timestamp}
                   duration={section.duration}
                   revealTimerOnHover={showTimer && isDone}
                   onOpenFile={openFile}

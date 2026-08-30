@@ -210,7 +210,7 @@ export function buildToolSections(message: ChatMessage): ToolSection[] {
   const withMeta = sections.map((section) => ({
     ...section,
     id: message.id,
-    ts: message.ts,
+    timestamp: message.timestamp,
     duration: message.duration,
     status: message.toolStatus,
   }));
@@ -223,7 +223,7 @@ export function buildToolSections(message: ChatMessage): ToolSection[] {
     {
       title: message.toolName ?? 'Tool',
       id: message.id,
-      ts: message.ts,
+      timestamp: message.timestamp,
       duration: message.duration,
       status: 'approval',
       approvalMessage: message,

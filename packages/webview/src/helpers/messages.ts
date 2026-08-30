@@ -196,8 +196,8 @@ export function resolveApproval(messages: ChatMessage[], msgId: string, approved
   }
 
   const target = messages.find((message) => message.id === msgId);
-  const ts = target?.sender === 'tool' && target.pausedAt !== undefined ? target.ts + (Date.now() - target.pausedAt) : Date.now();
-  return patchMessage(messages, msgId, { toolStatus: 'running', ts, pausedAt: undefined });
+  const timestamp = target?.sender === 'tool' && target.pausedAt !== undefined ? target.timestamp + (Date.now() - target.pausedAt) : Date.now();
+  return patchMessage(messages, msgId, { toolStatus: 'running', timestamp, pausedAt: undefined });
 }
 
 export function patchLastAssistant(messages: ChatMessage[], patch: (message: AssistantChatMessage) => Partial<AssistantChatMessage>): ChatMessage[] {
@@ -217,7 +217,7 @@ export function upsertToolMessage(messages: ChatMessage[], id: string, patch: Pa
     return patchMessage(messages, id, patch);
   }
 
-  const toolMessage: ChatMessage = { id, sender: 'tool', text: '', ts: Date.now(), ...patch };
+  const toolMessage: ChatMessage = { id, sender: 'tool', text: '', timestamp: Date.now(), ...patch };
 
   const queueIndex = messages.findIndex((message) => message.sender === 'queue');
   if (queueIndex === -1) return [...messages, toolMessage];

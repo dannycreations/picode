@@ -36,7 +36,7 @@ export const ChatBody = memo<ChatBodyProps>(({ message, oldTodos, commands, sear
           return <QuestionMessage message={message} search={search} onAnswerQuestion={onAnswerQuestion} onCopyToInput={onCopyToInput} />;
         }
         if (message.toolName === 'update_todo') {
-          return <TodoBody oldTodos={oldTodos ?? []} newTodos={message.todos ?? []} timestamp={message.ts} />;
+          return <TodoBody oldTodos={oldTodos ?? []} newTodos={message.todos ?? []} timestamp={message.timestamp} />;
         }
         return <ToolMessage message={message} onRespondTool={onRespondTool} />;
       case 'api_request':

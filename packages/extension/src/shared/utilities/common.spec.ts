@@ -57,7 +57,7 @@ describe('findReplaceableFailedRequest', () => {
     id,
     sender: 'api_request',
     text: 'API Request',
-    ts: 1,
+    timestamp: 1,
     toolStatus: 'denied',
     errorMessage: 'overloaded',
   });
@@ -67,40 +67,40 @@ describe('findReplaceableFailedRequest', () => {
   });
 
   it('returns the failed request when only an empty assistant reply follows it', () => {
-    const messages: ChatMessage[] = [failed('r1'), { id: 'a1', sender: 'assistant', text: '', ts: 2 }];
+    const messages: ChatMessage[] = [failed('r1'), { id: 'a1', sender: 'assistant', text: '', timestamp: 2 }];
     expect(findReplaceableFailedRequest(messages)).toBe(0);
   });
 
   it('returns undefined once visible assistant output follows the failure', () => {
-    const messages: ChatMessage[] = [failed('r1'), { id: 'a1', sender: 'assistant', text: 'partial answer', ts: 2 }];
+    const messages: ChatMessage[] = [failed('r1'), { id: 'a1', sender: 'assistant', text: 'partial answer', timestamp: 2 }];
     expect(findReplaceableFailedRequest(messages)).toBeUndefined();
   });
 
   it('returns undefined when the trailing request did not fail', () => {
-    const messages: ChatMessage[] = [{ id: 'r1', sender: 'api_request', text: 'API Request', ts: 1, toolStatus: 'completed' }];
+    const messages: ChatMessage[] = [{ id: 'r1', sender: 'api_request', text: 'API Request', timestamp: 1, toolStatus: 'completed' }];
     expect(findReplaceableFailedRequest(messages)).toBeUndefined();
   });
 
   it('stops at an error notice so fatal errors stay visible', () => {
-    const messages: ChatMessage[] = [failed('r1'), { id: 'e1', sender: 'error', text: 'fatal', ts: 2 }];
+    const messages: ChatMessage[] = [failed('r1'), { id: 'e1', sender: 'error', text: 'fatal', timestamp: 2 }];
     expect(findReplaceableFailedRequest(messages)).toBeUndefined();
   });
 
   it('skips empty attempts back to the start of the failure chain', () => {
     const messages: ChatMessage[] = [
       failed('r1'),
-      { id: 'a1', sender: 'assistant', text: '', ts: 2 },
+      { id: 'a1', sender: 'assistant', text: '', timestamp: 2 },
       failed('r2'),
-      { id: 'a2', sender: 'assistant', text: '', reasoning: '   ', ts: 3 },
+      { id: 'a2', sender: 'assistant', text: '', reasoning: '   ', timestamp: 3 },
     ];
     expect(findReplaceableFailedRequest(messages)).toBe(0);
   });
 
   it('collapses the chain even when a tool call precedes it', () => {
     const messages: ChatMessage[] = [
-      { id: 't1', sender: 'tool', text: 'read_file', ts: 1 },
+      { id: 't1', sender: 'tool', text: 'read_file', timestamp: 1 },
       failed('r1'),
-      { id: 'a1', sender: 'assistant', text: '', ts: 2 },
+      { id: 'a1', sender: 'assistant', text: '', timestamp: 2 },
     ];
     expect(findReplaceableFailedRequest(messages)).toBe(1);
   });

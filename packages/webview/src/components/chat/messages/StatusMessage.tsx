@@ -53,7 +53,7 @@ export const ApiRequestMessage: FC<{ readonly message: ChatMessage }> = ({ messa
               ${message.cost.toFixed(4)}
             </span>
           )}
-          <span className="text-muted font-normal">{formatTime(message.ts)}</span>
+          <span className="text-muted font-normal">{formatTime(message.timestamp)}</span>
         </div>
       </div>
       <Accordion open={error !== undefined && isExpanded}>
@@ -90,7 +90,7 @@ export const InfoMessage: FC<{ readonly message: ChatMessage; readonly search?: 
           <SearchableText text={message.text} search={search} />
         </span>
       </div>
-      <span className="text-muted font-normal shrink-0 whitespace-nowrap">{formatTime(message.ts)}</span>
+      <span className="text-muted font-normal shrink-0 whitespace-nowrap">{formatTime(message.timestamp)}</span>
     </div>
   );
 };

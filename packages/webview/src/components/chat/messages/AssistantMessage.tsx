@@ -44,7 +44,7 @@ export const AssistantMessage: FC<AssistantMessageProps> = ({ message, search })
               )
             }
             title="Thinking"
-            timestamp={message.ts}
+            timestamp={message.timestamp}
             onClick={() => setIsReasoningExpanded(!isReasoningExpanded)}
           >
             <ChevronUp size={14} className={cn('transition-transform duration-200', !showReasoning && 'rotate-180')} />
@@ -68,7 +68,7 @@ export const AssistantMessage: FC<AssistantMessageProps> = ({ message, search })
               )
             }
             title="Answer"
-            timestamp={message.ts}
+            timestamp={message.timestamp}
           />
           <div className="ml-6 text-sm leading-normal text-vscode-foreground select-text">
             <Markdown
