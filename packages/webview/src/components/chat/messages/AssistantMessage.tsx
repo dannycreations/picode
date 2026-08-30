@@ -43,7 +43,7 @@ export const AssistantMessage: FC<AssistantMessageProps> = ({ message, search })
                 <Lightbulb size={14} className="text-vscode-focusBorder shrink-0" />
               )
             }
-            title="Pi Thinking"
+            title="Thinking"
             timestamp={message.ts}
             onClick={() => setIsReasoningExpanded(!isReasoningExpanded)}
           >
@@ -67,7 +67,7 @@ export const AssistantMessage: FC<AssistantMessageProps> = ({ message, search })
                 <MessageCircle size={14} className="text-vscode-focusBorder shrink-0" />
               )
             }
-            title="Pi Said"
+            title="Answer"
             timestamp={message.ts}
           />
           <div className="ml-6 text-sm leading-normal text-vscode-foreground select-text">
