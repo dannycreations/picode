@@ -63,8 +63,6 @@
   --color-vscode-infoBackground: var(--vscode-infoBackground, var(--vscode-editor-background));
 }
 
-/* Custom styles */
-
 .icon-button {
   @apply inline-flex items-center justify-center shrink-0 border-none bg-transparent text-vscode-editor-foreground cursor-pointer rounded hover:bg-vscode-list-hoverBackground w-6 h-6;
 }
@@ -146,11 +144,6 @@
 
 .chat-search-input {
   caret-color: var(--vscode-focusBorder);
-}
-
-input::placeholder,
-textarea::placeholder {
-  user-select: none;
 }
 
 @keyframes fade-in {

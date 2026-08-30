@@ -15,7 +15,7 @@ import type { ExtensionToWebviewMessage, WebviewToExtensionMessage } from '@pi-c
 import type { ToolArguments } from '@pi-code/shared/core/types';
 
 function buildChatViewHtml(webview: Webview, extensionUri: Uri): string {
-  const scriptUri = webview.asWebviewUri(Uri.joinPath(extensionUri, 'dist', 'webview.js'));
+  const scriptUri = webview.asWebviewUri(Uri.joinPath(extensionUri, 'dist', 'webview.cjs'));
   const styleUri = webview.asWebviewUri(Uri.joinPath(extensionUri, 'dist', 'webview.css'));
   const codiconsUri = webview.asWebviewUri(Uri.joinPath(extensionUri, 'dist', 'codicon.css'));
 
@@ -42,15 +42,20 @@ function buildChatViewHtml(webview: Webview, extensionUri: Uri): string {
       margin: 0;
       padding: 0;
       overflow: hidden;
-      font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif);
+      font-family: var(--vscode-font-family);
       color: var(--vscode-foreground);
       background-color: var(--vscode-sideBar-background);
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+      user-select: none;
     }
   </style>
 </head>
 <body>
   <div id="root"></div>
-  <script type="module" src="${scriptUri}"></script>
+  <script src="${scriptUri}"></script>
 </body>
 </html>`;
 }
