@@ -264,6 +264,35 @@ describe('Runtime reply queue on settle', () => {
 
     expect(runtime.replyQueue.all()).toEqual([]);
   });
+
+  it('drains queued replies into a new turn when the run settles with queued replies', () => {
+    const runtime = new Runtime(makeFakeWebview());
+    runtime.replyQueue.add('Keep going');
+
+    const session = { ...makeFakeSession(vi.fn()), sessionFile: '/tmp/task.json' } as unknown as AgentSession;
+    runtime['session'] = session;
+
+    const continueTask = vi.spyOn(runtime, 'continueTask').mockResolvedValue(undefined);
+
+    runtime['handleSessionEvent']({ type: 'agent_settled' }, fakeEvent(session));
+
+    expect(continueTask).toHaveBeenCalledWith('/tmp/task.json');
+    expect(runtime.replyQueue.all().map((m) => m.text)).toEqual(['Keep going']);
+  });
+
+  it('keeps queued replies queued while turns keep ending before the settle', () => {
+    const runtime = new Runtime(makeFakeWebview());
+    runtime.replyQueue.add('Deferred');
+    const session = { ...makeFakeSession(vi.fn()), sessionFile: '/tmp/task.json' } as unknown as AgentSession;
+    runtime['session'] = session;
+
+    const continueTask = vi.spyOn(runtime, 'continueTask').mockResolvedValue(undefined);
+
+    runtime['handleSessionEvent']({ type: 'agent_end', messages: [], willRetry: false }, fakeEvent(session));
+
+    expect(continueTask).not.toHaveBeenCalled();
+    expect(runtime.replyQueue.all().map((m) => m.text)).toEqual(['Deferred']);
+  });
 });
 
 describe('Runtime cancellation persistence', () => {

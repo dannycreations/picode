@@ -320,6 +320,9 @@ export class Runtime {
 
   private handleSessionEvent(event: AgentSessionEvent, session: AgentSession): void {
     if (event.type === 'agent_end') {
+      // agent_end fires at the end of every turn, not only the final one.
+      // Record the error state but keep queued replies so a later turn (or
+      // the settle below) can still drain them.
       this.runEndedWithError = event.messages.some((m) => m.role === 'assistant' && m.stopReason === 'error');
     }
 
@@ -328,7 +331,11 @@ export class Runtime {
         this.runEndedWithError = false;
         // Resume the agent; continueTask compacts again if the limit is still exceeded.
         void this.continueTask(this.session.sessionFile);
-      } else if (!this.runEndedWithError) {
+      } else if (!this.runEndedWithError && event.type === 'agent_settled' && this.session?.sessionFile && this.replyQueue.all().length > 0) {
+        // The agent stopped but the user queued replies while it ran. Drain
+        // them into a fresh turn instead of discarding them.
+        void this.continueTask(this.session.sessionFile);
+      } else if (!this.runEndedWithError && event.type === 'agent_settled') {
         this.replyQueue.clear();
       }
       this.runEndedWithError = false;
