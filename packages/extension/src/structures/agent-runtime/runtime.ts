@@ -13,17 +13,17 @@ import { injectResourceMessages, sendHiddenContent } from '@pi-code/extension/st
 import { expandMentions } from '@pi-code/extension/structures/chat-command/mention';
 import { getEnvironmentDetails } from '@pi-code/extension/structures/chat-session/environment';
 import { loadSessionTranscript } from '@pi-code/extension/structures/chat-session/session';
-import { parseImageAttachments } from '@pi-code/extension/utilities/codec';
+import { parseAttachments } from '@pi-code/extension/utilities/codec';
 import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
 import { logger } from '@pi-code/shared/core/logger';
-import { resolveContextLimit } from '@pi-code/shared/utilities/common';
+import { formatTextAttachment, resolveContextLimit } from '@pi-code/shared/utilities/common';
 
 import type { AgentMessage } from '@earendil-works/pi-agent-core';
 import type { ImageContent, TextContent } from '@earendil-works/pi-ai';
 import type { AgentSession, AgentSessionEvent, AgentSessionServices } from '@earendil-works/pi-coding-agent';
 import type { Webview } from 'vscode';
 import type { ExtensionToWebviewMessage } from '@pi-code/shared/core/protocol';
-import type { ChatMessage, QueueChatMessage, StatsData } from '@pi-code/shared/core/types';
+import type { Attachment, ChatMessage, QueueChatMessage, StatsData, TextAttachment } from '@pi-code/shared/core/types';
 
 export class Runtime {
   private session: AgentSession | null = null;
@@ -47,10 +47,10 @@ export class Runtime {
     this.messenger.post(message);
   }
 
-  public async startTask(promptText: string, images?: string[], path?: string): Promise<void> {
+  public async startTask(promptText: string, attachments?: readonly Attachment[], path?: string): Promise<void> {
     const generation = ++this.taskGeneration;
     this.replyQueue.clear();
-    logger.debug(`Starting task: ${promptText.length} chars, ${images?.length ?? 0} image(s), session target ${path ?? 'current'}.`);
+    logger.debug(`Starting task: ${promptText.length} chars, ${attachments?.length ?? 0} attachment(s), session target ${path ?? 'current'}.`);
 
     try {
       const { session, envDetails, services } = await this.prepareSession(path);
@@ -72,13 +72,17 @@ export class Runtime {
       // they reach the model and get persisted with the turn that used them.
       await sendHiddenContent(session, 'environment_details', envDetails, { deliverAs: 'nextTurn' });
 
-      const attachments = parseImageAttachments(images);
+      const imageAttachments = parseAttachments(attachments);
+      const textBlocks = (attachments ?? [])
+        .filter((attachment): attachment is TextAttachment => attachment.kind === 'text')
+        .map((attachment) => formatTextAttachment(attachment));
+      const promptWithAttachments = [expanded.text, ...textBlocks].filter((part) => part.length > 0).join('\n');
 
       if (this.discardIfStale(generation, session)) return;
 
       await this.compactContextIfNeeded(session);
 
-      void session.prompt(expanded.text, { images: attachments, expandPromptTemplates: false }).catch((err) => {
+      void session.prompt(promptWithAttachments, { images: imageAttachments, expandPromptTemplates: false }).catch((err) => {
         this.messenger.postError(err);
       });
     } catch (err) {
@@ -285,7 +289,7 @@ export class Runtime {
 
       const result = await this.steerQueuedReply(msg, cwd, session);
       if (result.steered) {
-        delivered.push({ id: msg.id, sender: 'user', text: msg.text, images: msg.images, ts: msg.ts });
+        delivered.push({ id: msg.id, sender: 'user', text: msg.text, attachments: msg.attachments, ts: msg.ts });
         if (result.mention) {
           mentions.push(result.mention);
         }
@@ -350,11 +354,16 @@ export class Runtime {
 
   private async steerQueuedReply(msg: QueueChatMessage, cwd: string, session: AgentSession): Promise<{ steered: boolean; mention?: AgentMessage }> {
     try {
-      const attachments = parseImageAttachments(msg.images);
+      const imageAttachments = parseAttachments(msg.attachments);
       const expanded = await expandMentions(msg.text, cwd);
-      const content: (TextContent | ImageContent)[] = [{ type: 'text', text: expanded.text }];
-      if (attachments) {
-        content.push(...attachments);
+      const textBlocks = (msg.attachments ?? [])
+        .filter((attachment): attachment is TextAttachment => attachment.kind === 'text')
+        .map((attachment) => formatTextAttachment(attachment));
+      const content: (TextContent | ImageContent)[] = [
+        { type: 'text', text: [expanded.text, ...textBlocks].filter((part) => part.length > 0).join('\n') },
+      ];
+      if (imageAttachments) {
+        content.push(...imageAttachments);
       }
       session.agent.steer({ role: 'user', content, timestamp: msg.ts });
 

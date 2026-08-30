@@ -1,14 +1,15 @@
 import { formatThrownValue } from '@earendil-works/pi-ai';
 import { resolvePath, withFileMutationQueue } from '@earendil-works/pi-coding-agent';
 
-import { parseImageAttachments } from '@pi-code/extension/utilities/codec';
+import { parseAttachments } from '@pi-code/extension/utilities/codec';
 
 import type { CustomToolResult } from '@pi-code/extension/types/extension';
+import type { Attachment } from '@pi-code/shared/core/types';
 
 type EmptyDetails = Record<string, never>;
 
-export function toolResult<T = EmptyDetails>(text: string, details: T = {} as T, images?: string[]): CustomToolResult<T> {
-  return { content: [{ type: 'text', text }, ...(parseImageAttachments(images) ?? [])], details };
+export function toolResult<T = EmptyDetails>(text: string, details: T = {} as T, attachments?: readonly Attachment[]): CustomToolResult<T> {
+  return { content: [{ type: 'text', text }, ...(parseAttachments(attachments) ?? [])], details };
 }
 
 export function toolError<T = EmptyDetails>(text: string, details: T = {} as T): CustomToolResult<T> {

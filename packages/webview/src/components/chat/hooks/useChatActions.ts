@@ -6,19 +6,19 @@ import { createActiveTask } from '@pi-code/shared/utilities/common';
 import { patchMessage, resolveApproval } from '@pi-code/webview/helpers/messages';
 import { selectPendingQuestion, useChatStore } from '@pi-code/webview/stores/useChatStore';
 
-import type { ChatMessage } from '@pi-code/shared/core/types';
+import type { Attachment, ChatMessage } from '@pi-code/shared/core/types';
 
 interface UseChatActionsReturn {
-  readonly handleSendPrompt: (text: string, images: string[]) => void;
+  readonly handleSendPrompt: (text: string, attachments: Attachment[]) => void;
   readonly handleToolResponse: (msgId: string, approved: boolean) => void;
-  readonly handleAnswerQuestion: (questionId: string, text: string, images?: string[]) => void;
+  readonly handleAnswerQuestion: (questionId: string, text: string, attachments?: Attachment[]) => void;
   readonly handleCloseTask: () => void;
   readonly handleCancelTask: () => void;
   readonly handleDeleteActiveTask: () => void;
 }
 
 export const useChatActions = (): UseChatActionsReturn => {
-  const handleAnswerQuestion = useCallback((questionId: string, text: string, images: string[] = []): void => {
+  const handleAnswerQuestion = useCallback((questionId: string, text: string, attachments: Attachment[] = []): void => {
     const answer = text.trim();
     if (!answer) return;
 
@@ -30,21 +30,24 @@ export const useChatActions = (): UseChatActionsReturn => {
             messages: patchMessage(prev.messages, questionId, {
               toolStatus: 'completed',
               diff: answer,
-              ...(images.length > 0 && { images }),
+              ...(attachments.length > 0 && { attachments }),
             }),
           }
         : null,
     );
     store.setIsRunning(true);
-    store.send({ type: 'question_response', question_id: questionId, text: answer, images: images.length > 0 ? images : undefined });
+    store.send({ type: 'question_response', question_id: questionId, text: answer, attachments: attachments.length > 0 ? attachments : undefined });
   }, []);
 
   const handleSendPrompt = useCallback(
-    (text: string, images: string[]): void => {
-      text = text.trim();
+    (text: string, attachments: Attachment[]): void => {
+      const trimmed = text.trim();
+      const hasImage = attachments.some((attachment) => attachment.kind === 'image');
       // Keeps the transcript bubble, task title, and steered turn non-empty
-      // when the user sends attachments without any words.
-      if (!text && images.length > 0) text = '(see attached image)';
+      // when the user sends image attachments without any words. Text
+      // attachments always contribute content through the attachments field.
+      const displayText = trimmed || (hasImage ? '(see attached image)' : '');
+      if (!displayText && attachments.length === 0) return;
 
       const store = useChatStore.getState();
       const { activeTask, isRunning } = store;
@@ -53,7 +56,7 @@ export const useChatActions = (): UseChatActionsReturn => {
       // A pending question owns the input box: the reply answers the tool call
       // instead of starting a new turn.
       if (pendingQuestion) {
-        handleAnswerQuestion(pendingQuestion.id, text, images);
+        handleAnswerQuestion(pendingQuestion.id, displayText, attachments);
         return;
       }
 
@@ -61,7 +64,7 @@ export const useChatActions = (): UseChatActionsReturn => {
       // chat bubble or start an agent run. This is parsed from the text itself
       // rather than the fetched command list, so it stays correct before the
       // `init_data` response arrives.
-      const builtin = parseBuiltinCommand(text);
+      const builtin = parseBuiltinCommand(trimmed);
       if (builtin === 'reload') {
         store.send({ type: 'builtin_command', command: 'reload' });
         return;
@@ -78,21 +81,28 @@ export const useChatActions = (): UseChatActionsReturn => {
       // A running agent cannot take a new turn, so the reply is queued and
       // steered into the current one instead.
       if (activeTask && isRunning) {
-        store.send({ type: 'add_to_reply_queue', text, images: images.length > 0 ? images : undefined });
+        store.send({ type: 'add_to_reply_queue', text: displayText, attachments: attachments.length > 0 ? attachments : undefined });
         return;
       }
 
       const userMsg: ChatMessage = {
         id: crypto.randomUUID(),
         sender: 'user',
-        text,
-        images: images.length > 0 ? images : undefined,
+        text: displayText,
+        attachments,
         ts: Date.now(),
       };
 
       store.setIsRunning(true);
-      store.setActiveTask((prev) => (prev ? { ...prev, messages: [...prev.messages, userMsg] } : createActiveTask(ACTIVE_TASK_ID, text, [userMsg])));
-      store.send({ type: 'send_message', text, path: activeTask?.path, images: images.length > 0 ? images : undefined });
+      store.setActiveTask((prev) =>
+        prev ? { ...prev, messages: [...prev.messages, userMsg] } : createActiveTask(ACTIVE_TASK_ID, displayText, [userMsg]),
+      );
+      store.send({
+        type: 'send_message',
+        text: displayText,
+        path: activeTask?.path,
+        attachments: attachments.length > 0 ? attachments : undefined,
+      });
     },
     [handleAnswerQuestion],
   );

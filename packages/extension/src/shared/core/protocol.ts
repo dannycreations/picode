@@ -1,6 +1,7 @@
 import type { AppSettings } from '@pi-code/shared/core/settings';
 import type {
   ActiveTaskState,
+  Attachment,
   ChatMessage,
   ModelThinkingLevel,
   ReadFileSection,
@@ -70,24 +71,24 @@ export type WebviewToExtensionMessage =
   | { type: 'get_history'; scope: HistoryScope }
   | { type: 'load_session'; id: string; path: string; title: string }
   | { type: 'delete_sessions'; paths: string[] }
-  | { type: 'send_message'; text: string; path?: string; images?: string[] }
+  | { type: 'send_message'; text: string; path?: string; attachments?: Attachment[] }
   | { type: 'search_files'; query: string }
   | { type: 'search_commits'; query: string }
   | { type: 'continue_task'; path?: string }
   | { type: 'tool_response'; approval_id: string; approved: boolean }
-  | { type: 'question_response'; question_id: string; text: string; images?: string[] }
+  | { type: 'question_response'; question_id: string; text: string; attachments?: Attachment[] }
   | { type: 'view_raw_task'; path?: string }
   | { type: 'export_session'; path: string; id: string }
   | { type: 'archive_session'; path: string; id: string; title: string }
   | { type: 'open_file'; text: string; values?: { line?: number; diff?: boolean } }
-  | { type: 'open_image'; dataUrl: string }
+  | { type: 'open_attachment'; attachment: Attachment }
   | { type: 'save_image'; dataUrl: string; filename: string }
   | { type: 'cancel_task' }
   | { type: 'builtin_command'; command: Exclude<BuiltinCommandName, 'compact'> }
   | { type: 'builtin_command'; command: Extract<BuiltinCommandName, 'compact'>; id: string; path?: string; title: string }
   | { type: 'set_model'; model: ModelSelection; thinkingLevel?: ModelThinkingLevel }
   | { type: 'update_settings'; settings: Partial<AppSettings> }
-  | { type: 'add_to_reply_queue'; text: string; images?: string[] }
+  | { type: 'add_to_reply_queue'; text: string; attachments?: Attachment[] }
   | { type: 'edit_reply_queue'; id: string; text: string }
   | { type: 'remove_from_reply_queue'; id: string }
   | { type: 'insert_mentions'; paths: string[] }

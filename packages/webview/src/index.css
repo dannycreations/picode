@@ -98,8 +98,8 @@
   @apply ml-6 border border-vscode-editorGroup-border rounded bg-vscode-editor-background text-vscode-editor-foreground p-3 text-sm break-words;
 }
 
-.image-thumb {
-  @apply relative w-10 h-10 rounded border border-vscode-panel-border overflow-hidden cursor-pointer hover:opacity-80;
+.attachment-thumb {
+  @apply relative w-10 h-10 flex items-center justify-center rounded border border-vscode-panel-border overflow-hidden cursor-pointer hover:opacity-80;
 }
 
 .image-row {

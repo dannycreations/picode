@@ -26,7 +26,7 @@ describe('askQuestionTool', () => {
 
   it('appends answered images as image content blocks', async () => {
     const pending = execute();
-    answerQuestion('test-id', '(image)', ['data:image/png;base64,aGk=']);
+    answerQuestion('test-id', '(image)', [{ kind: 'image', dataUrl: 'data:image/png;base64,aGk=' }]);
 
     const result = await pending;
 

@@ -1,9 +1,15 @@
-import type { ActiveTaskState, AssistantChatMessage, ChatMessage, ModelThinkingLevel, StatsData } from '@pi-code/shared/core/types';
+import type { ActiveTaskState, AssistantChatMessage, ChatMessage, ModelThinkingLevel, StatsData, TextAttachment } from '@pi-code/shared/core/types';
 
 export const DEFAULT_CONTEXT_LIMIT = 200_000;
 
 // Sorts names with numeric segments in natural order (file2 before file10).
 export const pathCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
+// Wraps a text attachment as a fenced markdown block for the model prompt.
+export function formatTextAttachment(attachment: TextAttachment): string {
+  const language = attachment.language ? ` ${attachment.language}` : '';
+  return `\`\`\`${language}\n${attachment.content}\n\`\`\``;
+}
 
 const EMPTY_STATS: StatsData = {
   tokensIn: 0,

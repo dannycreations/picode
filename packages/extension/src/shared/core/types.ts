@@ -58,6 +58,19 @@ export interface ToolResultDetails {
   readonly subtitle?: string;
 }
 
+export interface ImageAttachment {
+  readonly kind: 'image';
+  readonly dataUrl: string;
+}
+
+export interface TextAttachment {
+  readonly kind: 'text';
+  readonly content: string;
+  readonly language?: string;
+}
+
+export type Attachment = ImageAttachment | TextAttachment;
+
 export interface ToolSection {
   readonly id?: string;
   readonly title: string;
@@ -107,7 +120,7 @@ interface InfoChatMessage extends ChatMessageBase {
 
 export interface QueueChatMessage extends ChatMessageBase {
   readonly sender: 'queue';
-  readonly images?: string[];
+  readonly attachments?: readonly Attachment[];
 }
 
 export interface ToolChatMessage extends ChatMessageBase {
@@ -123,14 +136,14 @@ export interface ToolChatMessage extends ChatMessageBase {
   readonly toolCallId?: string;
   readonly duration?: number;
   readonly pausedAt?: number;
-  readonly images?: string[];
+  readonly attachments?: readonly Attachment[];
   readonly files?: ReadonlyArray<ReadFileSection>;
   readonly toolSections?: ReadonlyArray<ToolSection>;
 }
 
 interface UserChatMessage extends ChatMessageBase {
   readonly sender: 'user';
-  readonly images?: string[];
+  readonly attachments?: readonly Attachment[];
 }
 
 export type ChatMessage =

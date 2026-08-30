@@ -7,7 +7,7 @@ import { ToolMessage } from '@pi-code/webview/components/chat/messages/ToolMessa
 import { QueueMessage, UserMessage } from '@pi-code/webview/components/chat/messages/UserMessage';
 
 import type { CommandItem } from '@pi-code/shared/core/protocol';
-import type { ChatMessage } from '@pi-code/shared/core/types';
+import type { Attachment, ChatMessage } from '@pi-code/shared/core/types';
 import type { SearchContext } from '@pi-code/webview/components/shared/Highlight';
 
 interface ChatBodyProps {
@@ -15,7 +15,7 @@ interface ChatBodyProps {
   readonly commands: readonly CommandItem[];
   readonly search?: SearchContext;
   readonly onRespondTool: (msgId: string, approved: boolean) => void;
-  readonly onAnswerQuestion: (questionId: string, text: string) => void;
+  readonly onAnswerQuestion: (questionId: string, text: string, attachments?: Attachment[]) => void;
   readonly onCopyToInput: (text: string) => void;
 }
 

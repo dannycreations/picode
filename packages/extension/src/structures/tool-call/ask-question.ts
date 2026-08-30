@@ -29,13 +29,13 @@ export const askQuestionTool = defineTool({
 
       const response = await askQuestion(toolCallId, signal);
 
-      if (response === null || (response.text.trim() === '' && !response.images?.length)) {
+      if (response === null || (response.text.trim() === '' && !response.attachments?.length)) {
         const result = toolError('Error: the user provided no response.');
         onUpdate?.(result);
         return result;
       }
 
-      const result = toolResult(response.text, { response: response.text }, response.images);
+      const result = toolResult(response.text, { response: response.text }, response.attachments);
       onUpdate?.(result);
       return result;
     } catch (err) {

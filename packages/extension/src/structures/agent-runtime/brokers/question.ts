@@ -1,8 +1,10 @@
 import { createRequestRegistry } from '@pi-code/extension/structures/agent-runtime/brokers/registry';
 
+import type { Attachment } from '@pi-code/shared/core/types';
+
 interface QuestionAnswer {
   readonly text: string;
-  readonly images?: string[];
+  readonly attachments?: readonly Attachment[];
 }
 
 const questions = createRequestRegistry<QuestionAnswer | null>();
@@ -29,8 +31,8 @@ export function askQuestion(questionId: string, signal?: AbortSignal): Promise<Q
   });
 }
 
-export function answerQuestion(questionId: string, text: string, images?: string[]): boolean {
-  return questions.resolve(questionId, { text, images });
+export function answerQuestion(questionId: string, text: string, attachments?: readonly Attachment[]): boolean {
+  return questions.resolve(questionId, { text, attachments });
 }
 
 export function cancelAllQuestions(): void {

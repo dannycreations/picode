@@ -9,7 +9,7 @@ import { buildToolSections } from '@pi-code/shared/utilities/tool';
 
 import type { ImageContent, TextContent, ThinkingContent, ToolCall, Usage } from '@earendil-works/pi-ai';
 import type { SessionEntry } from '@earendil-works/pi-coding-agent';
-import type { ChatMessage, StatsData, ToolArguments, ToolName, ToolResultDetails } from '@pi-code/shared/core/types';
+import type { Attachment, ChatMessage, StatsData, ToolArguments, ToolName, ToolResultDetails } from '@pi-code/shared/core/types';
 
 type MessageContentPart = TextContent | ThinkingContent | ToolCall | ImageContent;
 
@@ -27,8 +27,10 @@ function joinThinking(parts: readonly MessageContentPart[]): string {
     .join('\n');
 }
 
-function collectImages(parts: readonly MessageContentPart[]): string[] {
-  return parts.filter((part) => part.type === 'image').map((part) => toBase64DataUrl(part.data, part.mimeType));
+function collectImageAttachments(parts: readonly MessageContentPart[]): Attachment[] {
+  return parts
+    .filter((part) => part.type === 'image')
+    .map((part) => ({ kind: 'image' as const, dataUrl: toBase64DataUrl(part.data, part.mimeType) }));
 }
 
 export function convertSessionEntries(entries: readonly SessionEntry[]): ChatMessage[] {
@@ -62,12 +64,12 @@ type SessionMessage = Extract<SessionEntry, { type: 'message' }>['message'];
 function appendMessage(result: ChatMessage[], id: string, msg: SessionMessage, ts: number): void {
   switch (msg.role) {
     case 'user': {
-      const images = collectImages(toContentParts(msg.content));
+      const imageAttachments = collectImageAttachments(toContentParts(msg.content));
       result.push({
         id,
         sender: 'user',
         text: contentText(msg.content).trim(),
-        images: images.length > 0 ? images : undefined,
+        attachments: imageAttachments.length > 0 ? imageAttachments : undefined,
         ts,
       });
       break;

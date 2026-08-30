@@ -7,32 +7,33 @@ import { logger } from '@pi-code/shared/core/logger';
 import { splitTokenSegments } from '@pi-code/webview/components/chat/helpers/highlight';
 import { useChatCommand, useChatMention, useChatTag } from '@pi-code/webview/components/chat/hooks/useSuggestion';
 import { CommandMenu, CommitMenu, MentionMenu } from '@pi-code/webview/components/chat/SuggestionMenu';
-import { ImageThumb } from '@pi-code/webview/components/shared/ImageThumb';
+import { AttachmentThumb } from '@pi-code/webview/components/shared/AttachmentThumb';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { useChatStore } from '@pi-code/webview/stores/useChatStore';
 import { readFileAsDataUrl } from '@pi-code/webview/utilities/common';
 
 import type { ChangeEvent, ClipboardEvent, DragEvent, FC, KeyboardEvent, RefObject } from 'react';
+import type { Attachment } from '@pi-code/shared/core/types';
 
 interface ChatInputProps {
-  readonly onSend: (text: string, images: string[]) => void;
+  readonly onSend: (text: string, attachments: Attachment[]) => void;
   readonly sendingDisabled: boolean;
   readonly placeholderText: string;
   readonly textareaRef: RefObject<HTMLTextAreaElement | null>;
   readonly supportsImages: boolean;
 }
 
-const AttachedImagesPreview: FC<{
-  readonly images: string[];
+const AttachedAttachmentsPreview: FC<{
+  readonly attachments: readonly Attachment[];
   readonly onRemove: (index: number) => void;
-}> = ({ images, onRemove }) => {
-  if (images.length === 0) return null;
+}> = ({ attachments, onRemove }) => {
+  if (attachments.length === 0) return null;
 
   return (
     <div className="flex flex-wrap gap-2 mb-2">
-      {images.map((img, idx) => (
-        <div key={idx} className="relative w-10 h-10 rounded overflow-hidden">
-          <ImageThumb url={img} />
+      {attachments.map((attachment, idx) => (
+        <div key={idx} className="relative rounded overflow-hidden">
+          <AttachmentThumb {...attachment} />
           <Tooltip content="Remove attachment">
             <button
               onClick={() => onRemove(idx)}
@@ -47,14 +48,16 @@ const AttachedImagesPreview: FC<{
   );
 };
 
+export const TEXT_ATTACHMENT_THRESHOLD = 2000;
+
 export const ChatInput: FC<ChatInputProps> = ({ onSend, sendingDisabled, placeholderText, textareaRef, supportsImages }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const inputValue = useChatStore((state) => state.inputValue);
   const setInputValue = useChatStore((state) => state.setInputValue);
   const commands = useChatStore((state) => state.commands);
-  const selectedImages = useChatStore((state) => state.inputImages);
-  const setSelectedImages = useChatStore((state) => state.setInputImages);
+  const selectedAttachments = useChatStore((state) => state.inputAttachments);
+  const setSelectedAttachments = useChatStore((state) => state.setInputAttachments);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const matchRef = useRef<HTMLDivElement>(null);
 
@@ -64,16 +67,17 @@ export const ChatInput: FC<ChatInputProps> = ({ onSend, sendingDisabled, placeho
   const segments = useMemo(() => splitTokenSegments(inputValue, commands), [inputValue, commands]);
 
   // Drop any staged images when the active model cannot accept them, so the
-  // user cannot send attachments the model would reject.
+  // user cannot send attachments the model would reject. Text attachments stay,
+  // because they are delivered as plain text the model can always read.
   useEffect(() => {
-    if (!supportsImages) setSelectedImages([]);
+    if (!supportsImages) setSelectedAttachments((prev) => prev.filter((attachment) => attachment.kind !== 'image'));
   }, [supportsImages]);
 
   const handleSend = () => {
-    if ((inputValue.trim() || selectedImages.length > 0) && !sendingDisabled) {
-      onSend(inputValue, selectedImages);
+    if ((inputValue.trim() || selectedAttachments.length > 0) && !sendingDisabled) {
+      onSend(inputValue, selectedAttachments);
       setInputValue('');
-      setSelectedImages([]);
+      setSelectedAttachments([]);
     }
   };
 
@@ -99,10 +103,14 @@ export const ChatInput: FC<ChatInputProps> = ({ onSend, sendingDisabled, placeho
   const attachImage = async (file: File): Promise<void> => {
     try {
       const dataUrl = await readFileAsDataUrl(file);
-      setSelectedImages((prev) => [...prev, dataUrl]);
+      setSelectedAttachments((prev) => [...prev, { kind: 'image', dataUrl }]);
     } catch (err) {
       logger.error('Failed to attach image:', err);
     }
+  };
+
+  const addTextAttachment = (content: string): void => {
+    setSelectedAttachments((prev) => [...prev, { kind: 'text', content }]);
   };
 
   const handleAttachImage = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -111,16 +119,29 @@ export const ChatInput: FC<ChatInputProps> = ({ onSend, sendingDisabled, placeho
   };
 
   const handlePaste = async (e: ClipboardEvent<HTMLTextAreaElement>) => {
-    if (!supportsImages) return;
     const items = e.clipboardData?.items;
     if (!items) return;
 
-    for (let i = 0; i < items.length; i++) {
-      if (!items[i].type.includes('image')) continue;
-      const file = items[i].getAsFile();
-      if (!file) continue;
+    if (supportsImages) {
+      let attachedImage = false;
+      for (let i = 0; i < items.length; i++) {
+        if (!items[i].type.includes('image')) continue;
+        const file = items[i].getAsFile();
+        if (!file) continue;
+        e.preventDefault();
+        await attachImage(file);
+        attachedImage = true;
+      }
+      if (attachedImage) return;
+    }
+
+    // A large plain-text paste becomes a text attachment instead of filling
+    // the composer, so the transcript keeps a short prompt and the pasted
+    // content reaches the model as a markdown block.
+    const pasted = e.clipboardData.getData('text');
+    if (pasted.length >= TEXT_ATTACHMENT_THRESHOLD) {
       e.preventDefault();
-      await attachImage(file);
+      addTextAttachment(pasted);
     }
   };
 
@@ -162,11 +183,14 @@ export const ChatInput: FC<ChatInputProps> = ({ onSend, sendingDisabled, placeho
     useChatStore.getState().send({ type: 'insert_mentions', paths });
   };
 
-  const isSendButtonActive = (inputValue.trim().length > 0 || selectedImages.length > 0) && !sendingDisabled;
+  const isSendButtonActive = (inputValue.trim().length > 0 || selectedAttachments.length > 0) && !sendingDisabled;
 
   return (
     <div className={cn('relative flex flex-col px-3.5 pt-2 pb-1 outline-none w-full box-border bg-vscode-sideBar-background shrink-0')}>
-      <AttachedImagesPreview images={selectedImages} onRemove={(idx) => setSelectedImages((prev) => prev.filter((_, i) => i !== idx))} />
+      <AttachedAttachmentsPreview
+        attachments={selectedAttachments}
+        onRemove={(idx) => setSelectedAttachments((prev) => prev.filter((_, i) => i !== idx))}
+      />
 
       <div
         className={cn(

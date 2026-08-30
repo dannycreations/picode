@@ -1,6 +1,6 @@
 import { uuidv7 } from '@earendil-works/pi-ai';
 
-import type { ChatMessage } from '@pi-code/shared/core/types';
+import type { Attachment, ChatMessage } from '@pi-code/shared/core/types';
 
 // Holds replies typed while a task runs, delivering them into the next turn as
 // steering messages instead of starting a new task.
@@ -13,12 +13,12 @@ export class ReplyQueue {
     return this.messages;
   }
 
-  public add(text: string, images?: string[]): void {
+  public add(text: string, attachments?: readonly Attachment[]): void {
     const msg: ChatMessage = {
       id: uuidv7(),
       sender: 'queue',
       text,
-      images,
+      attachments,
       ts: Date.now(),
     };
     this.messages.push(msg);

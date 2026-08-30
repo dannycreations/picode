@@ -5,6 +5,7 @@ import { SESSION_FILE_UNAVAILABLE } from '@pi-code/extension/structures/agent-we
 import { extensionForMimeType, parseBase64DataUrl } from '@pi-code/extension/utilities/codec';
 
 import type { TextEditor } from 'vscode';
+import type { Attachment } from '@pi-code/extension/shared/core/types';
 
 export class WorkspaceService {
   public constructor(private readonly storageUri: Uri) {}
@@ -47,14 +48,25 @@ export class WorkspaceService {
     }
   }
 
-  public async openBase64Image(dataUrl: string): Promise<void> {
-    const parts = parseBase64DataUrl(dataUrl);
-    if (!parts) return;
+  public async openAttachment(attachment: Attachment): Promise<void> {
+    const attachmentsUri = Uri.joinPath(this.storageUri, 'attachments');
 
-    const target = Uri.joinPath(this.storageUri, 'images', `pi-code-img-${Date.now()}.${extensionForMimeType(parts.mimeType)}`);
+    let target: Uri;
+    let write: () => unknown;
 
-    await workspace.fs.createDirectory(Uri.joinPath(this.storageUri, 'images'));
-    await this.writeBase64DataUrl(target, parts.data);
+    if (attachment.kind === 'image') {
+      const parts = parseBase64DataUrl(attachment.dataUrl);
+      if (!parts) return;
+
+      target = Uri.joinPath(attachmentsUri, `pi-code-img-${Date.now()}.${extensionForMimeType(parts.mimeType)}`);
+      write = () => this.writeBase64DataUrl(target, parts.data);
+    } else {
+      target = Uri.joinPath(attachmentsUri, `pi-code-text-${Date.now()}.txt`);
+      write = () => workspace.fs.writeFile(target, Buffer.from(attachment.content, 'utf-8'));
+    }
+
+    await workspace.fs.createDirectory(attachmentsUri);
+    await write();
     await commands.executeCommand('vscode.open', target);
   }
 

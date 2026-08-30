@@ -3,8 +3,8 @@ import { Fragment, useState } from 'react';
 
 import { splitTokenSegments } from '@pi-code/webview/components/chat/helpers/highlight';
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
+import { AttachmentRow } from '@pi-code/webview/components/shared/AttachmentThumb';
 import { SearchableText } from '@pi-code/webview/components/shared/Highlight';
-import { ImageThumbRow } from '@pi-code/webview/components/shared/ImageThumb';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { useChatStore } from '@pi-code/webview/stores/useChatStore';
 
@@ -89,7 +89,7 @@ export const QueueMessage: FC<QueueMessageProps> = ({ message, commands, search 
       ) : (
         <div className="message-surface whitespace-pre-wrap leading-normal select-text">
           <TokenizedText text={message.text} commands={commands} search={search} />
-          <ImageThumbRow images={message.images ?? []} />
+          <AttachmentRow attachments={message.attachments} />
           <div className="flex justify-end gap-3.5 mt-3 pt-2.5 border-t border-vscode-panel-border/50 text-xs select-none">
             <button
               onClick={() => {
@@ -124,7 +124,7 @@ export const UserMessage: FC<UserMessageProps> = ({ message, commands, search })
       <MessageHeader icon={<User size={14} className="text-vscode-focusBorder shrink-0" />} title="You Said" timestamp={message.ts} />
       <div className="message-surface whitespace-pre-wrap leading-normal select-text">
         <TokenizedText text={message.text} commands={commands} search={search} />
-        <ImageThumbRow images={message.images ?? []} />
+        <AttachmentRow attachments={message.attachments} />
       </div>
     </div>
   );

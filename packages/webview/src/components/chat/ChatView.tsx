@@ -27,7 +27,7 @@ import { selectPendingQuestion, setComposerTextarea, useChatStore } from '@pi-co
 
 import type { FC } from 'react';
 import type { HistoryItem } from '@pi-code/shared/core/protocol';
-import type { ChatMessage } from '@pi-code/shared/core/types';
+import type { Attachment, ChatMessage } from '@pi-code/shared/core/types';
 
 // Rough per-sender heights for the virtualizer's first estimate; measured row
 // sizes replace them once rows mount.
@@ -235,9 +235,9 @@ export const ChatView: FC = () => {
   );
 
   const handleAnswer = useCallback(
-    (questionId: string, text: string, images?: string[]) => {
+    (questionId: string, text: string, attachments?: Attachment[]) => {
       scrollToBottom();
-      handleAnswerQuestion(questionId, text, images);
+      handleAnswerQuestion(questionId, text, attachments);
     },
     [scrollToBottom, handleAnswerQuestion],
   );
@@ -443,9 +443,9 @@ export const ChatView: FC = () => {
       {!activeTask?.isArchived && (
         <ChatInput
           textareaRef={textareaRef}
-          onSend={(text, images) => {
+          onSend={(text, attachments) => {
             scrollToBottom();
-            handleSendPrompt(text, images);
+            handleSendPrompt(text, attachments);
           }}
           sendingDisabled={isInputDisabled}
           supportsImages={supportsImages}

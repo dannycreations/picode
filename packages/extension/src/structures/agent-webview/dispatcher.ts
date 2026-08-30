@@ -109,7 +109,7 @@ const HANDLER_MAP: HandlerMap = {
     pushModelCatalog(ctx, services.modelRuntime);
   },
   send_message: (msg, ctx) => {
-    void ctx.runtime.startTask(msg.text, msg.images, msg.path);
+    void ctx.runtime.startTask(msg.text, msg.attachments, msg.path);
   },
   search_files: async (msg, ctx) => {
     const paths = await searchWorkspaceFiles(msg.query, ctx.cwd);
@@ -129,7 +129,7 @@ const HANDLER_MAP: HandlerMap = {
     ctx.runtime.postMessage({ type: 'set_chat_input', payload: { text: `${text} ` } });
   },
   add_to_reply_queue: (msg, ctx) => {
-    ctx.runtime.replyQueue.add(msg.text, msg.images);
+    ctx.runtime.replyQueue.add(msg.text, msg.attachments);
   },
   edit_reply_queue: (msg, ctx) => {
     ctx.runtime.replyQueue.edit(msg.id, msg.text);
@@ -144,7 +144,7 @@ const HANDLER_MAP: HandlerMap = {
     if (msg.approved) approveApproval(msg.approval_id);
     else denyApproval(msg.approval_id);
   },
-  question_response: (msg) => answerQuestion(msg.question_id, msg.text, msg.images),
+  question_response: (msg) => answerQuestion(msg.question_id, msg.text, msg.attachments),
   cancel_task: async (_, ctx) => {
     await ctx.runtime.cancelTask();
     await postHistory(ctx, 'current');
@@ -209,8 +209,8 @@ const HANDLER_MAP: HandlerMap = {
       await ctx.workspace.openFile(ctx.cwd, msg.text, msg.values?.line);
     }
   },
-  open_image: async (msg, ctx) => {
-    await ctx.workspace.openBase64Image(msg.dataUrl);
+  open_attachment: async (msg, ctx) => {
+    await ctx.workspace.openAttachment(msg.attachment);
   },
   save_image: async (msg, ctx) => {
     await ctx.workspace.saveImage(msg.dataUrl, msg.filename);

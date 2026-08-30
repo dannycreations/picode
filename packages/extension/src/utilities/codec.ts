@@ -1,4 +1,5 @@
 import type { ImageContent } from '@earendil-works/pi-ai';
+import type { Attachment, ImageAttachment } from '@pi-code/shared/core/types';
 
 const BASE64_DATA_URL_PATTERN = /^data:([^;,]+)((?:;[^;,]+)*);base64,(.+)$/;
 
@@ -41,12 +42,13 @@ export function extensionForMimeType(mimeType: string): string {
   return /^[a-z0-9]+$/.test(cleaned) ? cleaned : DEFAULT_EXTENSION;
 }
 
-export function parseImageAttachments(images?: string[]): ImageContent[] | undefined {
-  if (!images || images.length === 0) return undefined;
+export function parseAttachments(attachments?: readonly Attachment[]): ImageContent[] | undefined {
+  if (!attachments || attachments.length === 0) return undefined;
 
-  return images
-    .map((img) => {
-      const parts = parseBase64DataUrl(img);
+  return attachments
+    .filter((attachment): attachment is ImageAttachment => attachment.kind === 'image')
+    .map((attachment) => {
+      const parts = parseBase64DataUrl(attachment.dataUrl);
       return parts ? { type: 'image' as const, mimeType: parts.mimeType, data: parts.data } : null;
     })
     .filter((item): item is ImageContent => item !== null);

@@ -29,7 +29,14 @@ import type {
   WorkspaceFolderItem,
 } from '@pi-code/shared/core/protocol';
 import type { AppSettings } from '@pi-code/shared/core/settings';
-import type { ActiveTaskState, ApiRequestChatMessage, ChatMessage, ModelThinkingLevel, ToolChatMessage } from '@pi-code/shared/core/types';
+import type {
+  ActiveTaskState,
+  ApiRequestChatMessage,
+  Attachment,
+  ChatMessage,
+  ModelThinkingLevel,
+  ToolChatMessage,
+} from '@pi-code/shared/core/types';
 
 interface WebviewApi extends Omit<InternalWebviewApi<unknown>, 'postMessage'> {
   postMessage(message: WebviewToExtensionMessage): void;
@@ -89,7 +96,7 @@ interface ChatState {
   readonly isCompacting: boolean;
   readonly view: 'chat' | 'history' | 'settings';
   readonly inputValue: string;
-  readonly inputImages: string[];
+  readonly inputAttachments: Attachment[];
   readonly models: ModelItem[];
   readonly settings: AppSettings | null;
   readonly commands: CommandItem[];
@@ -117,7 +124,7 @@ interface ChatState {
   readonly setIsRunning: (value: boolean) => void;
   readonly setView: (view: ChatState['view']) => void;
   readonly setInputValue: (value: string) => void;
-  readonly setInputImages: (value: string[] | ((prev: string[]) => string[])) => void;
+  readonly setInputAttachments: (value: Attachment[] | ((prev: Attachment[]) => Attachment[])) => void;
   readonly appendToInput: (text: string) => void;
   readonly setScope: (scope: HistoryScope) => void;
   readonly selectWorkspace: (path: string) => void;
@@ -392,7 +399,7 @@ export const useChatStore = create<ChatState>((set, get) => {
     isCompacting: false,
     view: 'chat',
     inputValue: '',
-    inputImages: [],
+    inputAttachments: [],
     models: [],
     settings: null,
     commands: [],
@@ -476,7 +483,7 @@ export const useChatStore = create<ChatState>((set, get) => {
 
     setInputValue: (value) => set({ inputValue: value }),
 
-    setInputImages: (value) => set((state) => ({ inputImages: typeof value === 'function' ? value(state.inputImages) : value })),
+    setInputAttachments: (value) => set((state) => ({ inputAttachments: typeof value === 'function' ? value(state.inputAttachments) : value })),
 
     appendToInput: (text) => {
       const textarea = composerTextarea?.current;

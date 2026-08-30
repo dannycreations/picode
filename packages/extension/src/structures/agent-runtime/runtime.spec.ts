@@ -184,7 +184,7 @@ describe('Runtime reply queue steering', () => {
     const session = makeFakeSession(steer);
     const runtime = new Runtime(makeFakeWebview());
     const cwd = 'c:/cwd';
-    const msg: QueueChatMessage = { id: 'q1', sender: 'queue', text: '@file x', images: [], ts: 1 };
+    const msg: QueueChatMessage = { id: 'q1', sender: 'queue', text: '@file x', attachments: [], ts: 1 };
 
     mocks.expandMentions.mockResolvedValueOnce({
       text: 'text with @file',
