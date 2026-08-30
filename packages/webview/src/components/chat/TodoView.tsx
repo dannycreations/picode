@@ -3,27 +3,28 @@ import { ArrowRight, Check, ListChecks, SquareDashed } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { getScrollIndex } from '@pi-code/shared/utilities/todo';
+import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
 import { Accordion } from '@pi-code/webview/components/shared/Accordion';
 
 import type { FC } from 'react';
 import type { TodoItem, TodoStatus } from '@pi-code/shared/utilities/todo';
 
-interface TodoViewProps {
+interface TodoHeaderProps {
   readonly todos: TodoItem[];
 }
 
 const TodoIcon: FC<{ status: TodoStatus }> = ({ status }) => {
   switch (status) {
     case 'completed':
-      return <Check className="w-3 h-3 mt-1 shrink-0" />;
+      return <Check className="w-3.5 h-3.5 shrink-0" />;
     case 'progress':
-      return <ArrowRight className="w-3 h-3 mt-1 shrink-0" />;
+      return <ArrowRight className="w-3.5 h-3.5 shrink-0" />;
     default:
-      return <SquareDashed className="w-3 h-3 mt-1 shrink-0" />;
+      return <SquareDashed className="w-3.5 h-3.5 shrink-0" />;
   }
 };
 
-export const TodoView: FC<TodoViewProps> = ({ todos }) => {
+export const TodoHeader: FC<TodoHeaderProps> = ({ todos }) => {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
 
@@ -85,6 +86,47 @@ export const TodoView: FC<TodoViewProps> = ({ todos }) => {
           ))}
         </ul>
       </Accordion>
+    </div>
+  );
+};
+
+interface TodoBodyProps {
+  readonly oldTodos: readonly TodoItem[];
+  readonly newTodos: readonly TodoItem[];
+  readonly timestamp: number;
+}
+
+export const TodoBody: FC<TodoBodyProps> = ({ timestamp, oldTodos, newTodos }) => {
+  const isInitialState = oldTodos.length === 0;
+
+  const changedTodos = isInitialState
+    ? newTodos
+    : newTodos.filter((todo) => {
+        if (todo.status !== 'completed' && todo.status !== 'progress') return false;
+        const previous = oldTodos.find((p) => p.content === todo.content);
+        return !previous || previous.status !== todo.status;
+      });
+
+  if (changedTodos.length === 0) return null;
+
+  return (
+    <div data-todo-changes className="overflow-hidden">
+      <MessageHeader icon={<ListChecks className="w-3.5 h-3.5 shrink-0" />} title="Updated to-dos" timestamp={timestamp} />
+      <ul className="list-none space-y-1 my-1 pr-1 pt-1 font-light leading-normal">
+        {changedTodos.map((todo) => (
+          <li
+            key={todo.content}
+            className={cn(
+              'flex flex-row gap-2 items-center',
+              todo.status === 'progress' && 'text-vscode-charts-yellow',
+              todo.status !== 'progress' && todo.status !== 'completed' && 'opacity-60',
+            )}
+          >
+            <TodoIcon status={todo.status} />
+            <span>{todo.content}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 };

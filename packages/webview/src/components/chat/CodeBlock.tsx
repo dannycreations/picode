@@ -99,7 +99,7 @@ export const CodeBlock = memo(({ source = '', language }: CodeBlockProps) => {
         className="p-3 overflow-y-auto leading-relaxed select-text"
         style={{
           backgroundColor: 'transparent',
-          maxHeight: '400px',
+          maxHeight: '350px',
           whiteSpace: 'pre-wrap',
           wordBreak: 'normal',
           overflowWrap: 'break-word',

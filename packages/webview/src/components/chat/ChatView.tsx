@@ -21,13 +21,14 @@ import { ConfirmDialog } from '@pi-code/webview/components/shared/ConfirmDialog'
 import { SEARCH_HIT_ACTIVE_CLASS } from '@pi-code/webview/components/shared/Highlight';
 import { Spinner } from '@pi-code/webview/components/shared/Spinner';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
-import { groupToolMessages, hasPendingApproval, isRenderableMessage, latestTodos } from '@pi-code/webview/helpers/messages';
+import { groupToolMessages, hasPendingApproval, isRenderableMessage, latestTodos, previousTodos } from '@pi-code/webview/helpers/messages';
 import { useAutoScroll } from '@pi-code/webview/hooks/useAutoScroll';
 import { selectPendingQuestion, setComposerTextarea, useChatStore } from '@pi-code/webview/stores/useChatStore';
 
 import type { FC } from 'react';
 import type { HistoryItem } from '@pi-code/shared/core/protocol';
 import type { Attachment, ChatMessage } from '@pi-code/shared/core/types';
+import type { TodoItem } from '@pi-code/shared/utilities/todo';
 
 // Rough per-sender heights for the virtualizer's first estimate; measured row
 // sizes replace them once rows mount.
@@ -152,6 +153,18 @@ export const ChatView: FC = () => {
   const messages = activeTask?.messages;
   const visibleMessages = useMemo(() => (messages ?? []).filter(isRenderableMessage), [messages]);
   const renderItems = useMemo(() => groupToolMessages(visibleMessages), [visibleMessages]);
+
+  // Map each update_todo row to the todos from the prior update so the chat body
+  // can show only what changed in that step. Built once per render list.
+  const oldTodosById = useMemo(() => {
+    const map = new Map<string, TodoItem[]>();
+    for (const message of renderItems) {
+      if (message.sender !== 'tool' || message.toolName !== 'update_todo') continue;
+      const prior = previousTodos(renderItems, message.id);
+      if (prior) map.set(message.id, prior);
+    }
+    return map;
+  }, [renderItems]);
 
   // In-chat text search: count matches per message so we can show a total, jump
   // between them, and tell each renderer which occurrence to emphasize.
@@ -379,6 +392,7 @@ export const ChatView: FC = () => {
               >
                 <ChatBody
                   message={renderItems[item.index]}
+                  oldTodos={oldTodosById.get(renderItems[item.index].id)}
                   commands={commands}
                   search={
                     searchOpen && searchQuery

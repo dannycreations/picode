@@ -110,11 +110,6 @@ export function groupToolMessages(messages: ReadonlyArray<ChatMessage>): ChatMes
 }
 
 export function isRenderableMessage(message: ChatMessage): boolean {
-  // Tool calls surfaced by dedicated UI instead of a message row.
-  if (message.sender === 'tool' && message.toolName === 'update_todo') {
-    return false;
-  }
-
   // An assistant turn is created the moment the model starts responding, so it
   // stays empty until the first text or reasoning delta arrives.
   if (message.sender === 'assistant') {
@@ -135,6 +130,18 @@ export function hasPendingApproval(messages: ReadonlyArray<ChatMessage>): boolea
 export function latestTodos(messages: ReadonlyArray<ChatMessage>): TodoItem[] | undefined {
   for (let i = messages.length - 1; i >= 0; i--) {
     const message = messages[i];
+    if (message.sender === 'tool' && message.toolName === 'update_todo' && message.todos) {
+      return message.todos;
+    }
+  }
+  return undefined;
+}
+
+export function previousTodos(messages: ReadonlyArray<ChatMessage>, currentId: string): TodoItem[] | undefined {
+  const currentIndex = messages.findIndex((message) => message.id === currentId);
+  if (currentIndex === -1) return undefined;
+  for (let index = currentIndex - 1; index >= 0; index--) {
+    const message = messages[index];
     if (message.sender === 'tool' && message.toolName === 'update_todo' && message.todos) {
       return message.todos;
     }

@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
-import { TodoView } from '@pi-code/webview/components/chat/TodoView';
+import { TodoHeader } from '@pi-code/webview/components/chat/TodoView';
 import { Accordion } from '@pi-code/webview/components/shared/Accordion';
 import { TaskActions } from '@pi-code/webview/components/shared/TaskActions';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
@@ -295,7 +295,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
             </table>
           </div>
         </Accordion>
-        {todos && todos.length > 0 && <TodoView todos={todos} />}
+        {todos && todos.length > 0 && <TodoHeader todos={todos} />}
       </div>
     </div>
   );

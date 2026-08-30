@@ -5,12 +5,14 @@ import {
   deliverQueuedReplies,
   groupToolMessages,
   isRenderableMessage,
+  previousTodos,
   resolveApproval,
   settlePendingTurns,
   upsertToolMessage,
 } from '@pi-code/webview/helpers/messages';
 
 import type { ChatMessage, ToolChatMessage, ToolName } from '@pi-code/shared/core/types';
+import type { TodoItem } from '@pi-code/shared/utilities/todo';
 
 const SENDERS = ['user', 'assistant', 'tool', 'error', 'checkpoint', 'info', 'api_request'] as const;
 
@@ -31,8 +33,8 @@ function createToolMessage(id: string, toolName: ToolName, overrides: Partial<Ch
 }
 
 describe('isRenderableMessage', () => {
-  it('should hide tool calls that are surfaced elsewhere in the UI', () => {
-    expect(isRenderableMessage(createMessage({ sender: 'tool', text: 'update_todo', toolName: 'update_todo' }))).toBe(false);
+  it('should render update_todo as its own row in the chat body', () => {
+    expect(isRenderableMessage(createMessage({ sender: 'tool', text: 'update_todo', toolName: 'update_todo' }))).toBe(true);
     expect(isRenderableMessage(createMessage({ sender: 'tool', text: 'read_file', toolName: 'read_file' }))).toBe(true);
   });
 
@@ -51,6 +53,43 @@ describe('isRenderableMessage', () => {
     for (const sender of SENDERS.filter((s) => s !== 'assistant')) {
       expect(isRenderableMessage(createMessage({ sender, text: '' }))).toBe(true);
     }
+  });
+});
+
+function updateTodo(id: string, todos: TodoItem[]): ChatMessage {
+  return { id, sender: 'tool', toolName: 'update_todo', text: '', ts: 1, todos } as ChatMessage;
+}
+
+describe('previousTodos', () => {
+  it('returns the todos from the most recent prior update_todo', () => {
+    const messages: ChatMessage[] = [
+      updateTodo('a', [
+        { content: 'one', status: 'completed' },
+        { content: 'two', status: 'pending' },
+      ]),
+      { id: 'u', sender: 'user', text: 'hi', ts: 2 },
+      updateTodo('b', [
+        { content: 'one', status: 'completed' },
+        { content: 'three', status: 'progress' },
+      ]),
+    ];
+    expect(previousTodos(messages, 'b')).toEqual([
+      { content: 'one', status: 'completed' },
+      { content: 'two', status: 'pending' },
+    ]);
+  });
+
+  it('returns undefined for the first update_todo', () => {
+    const messages: ChatMessage[] = [
+      updateTodo('a', [{ content: 'one', status: 'completed' }]),
+      updateTodo('b', [{ content: 'two', status: 'pending' }]),
+    ];
+    expect(previousTodos(messages, 'a')).toBeUndefined();
+  });
+
+  it('returns undefined when the id is missing', () => {
+    const messages: ChatMessage[] = [updateTodo('a', [{ content: 'one', status: 'completed' }])];
+    expect(previousTodos(messages, 'missing')).toBeUndefined();
   });
 });
 
