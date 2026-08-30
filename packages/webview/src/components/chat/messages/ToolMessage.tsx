@@ -1,11 +1,13 @@
 import { cn } from 'cnfast';
 import { Play, X } from 'lucide-react';
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 
 import { relativeToWorkspace } from '@pi-code/shared/utilities/common';
 import { buildToolSections, getDiffStat, getFirstDiffLine, getToolHeaderMeta } from '@pi-code/shared/utilities/tool';
 import { CodeBlock } from '@pi-code/webview/components/chat/CodeBlock';
+import { getToolPatternConfig } from '@pi-code/webview/components/chat/helpers/tool-pattern';
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
+import { ToolPattern } from '@pi-code/webview/components/chat/messages/ToolPattern';
 import { Accordion } from '@pi-code/webview/components/shared/Accordion';
 import { Spinner } from '@pi-code/webview/components/shared/Spinner';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
@@ -14,6 +16,7 @@ import { useChatStore } from '@pi-code/webview/stores/useChatStore';
 import { formatDuration } from '@pi-code/webview/utilities/common';
 
 import type { FC } from 'react';
+import type { AppSettings } from '@pi-code/shared/core/settings';
 import type { ToolChatMessage, ToolSection } from '@pi-code/shared/core/types';
 
 interface ToolMessageProps {
@@ -176,6 +179,31 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onRespondTool }) =>
   const { title, icon } = getToolHeaderMeta(message.toolName, message.toolStatus);
   const sections: ReadonlyArray<ToolSection> = message.toolSections ?? buildToolSections(message);
   const activeWorkspace = useChatStore((s) => s.activeWorkspace);
+  const settings = useChatStore((s) => s.settings);
+
+  const patternConfig = useMemo(() => getToolPatternConfig(message, settings), [message, settings]);
+
+  const onTogglePattern = (pattern: string, allow: boolean): void => {
+    if (!patternConfig) return;
+    const current = useChatStore.getState().settings;
+    const allowed = (current?.[patternConfig.allowKey] as readonly string[] | undefined) ?? [];
+    const denied = (current?.[patternConfig.denyKey] as readonly string[] | undefined) ?? [];
+    const nextAllowed = allow
+      ? allowed.includes(pattern)
+        ? allowed.filter((entry) => entry !== pattern)
+        : [...allowed, pattern]
+      : denied.filter((entry) => entry !== pattern);
+    const nextDenied = allow
+      ? denied.filter((entry) => entry !== pattern)
+      : denied.includes(pattern)
+        ? denied.filter((entry) => entry !== pattern)
+        : [...denied, pattern];
+    useChatStore.getState().send({
+      type: 'update_settings',
+      settings: { [patternConfig.allowKey]: nextAllowed, [patternConfig.denyKey]: nextDenied } as Partial<AppSettings>,
+    });
+  };
+
   const hiddenCount = sections.length > 0 ? sections.length - 1 : 0;
   const hasMore = hiddenCount > 0;
   const approvalIndex = sections.findIndex((s) => s.approvalMessage !== undefined);
@@ -265,6 +293,16 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onRespondTool }) =>
               </Accordion>
             );
           })}
+
+          {patternConfig && (
+            <ToolPattern
+              patterns={patternConfig.patterns}
+              allowedPatterns={patternConfig.allowedPatterns}
+              deniedPatterns={patternConfig.deniedPatterns}
+              onToggleAllow={(pattern) => onTogglePattern(pattern, true)}
+              onToggleDeny={(pattern) => onTogglePattern(pattern, false)}
+            />
+          )}
 
           {hasMore && (
             <Tooltip content={isExpanded ? 'Collapse' : `Show ${hiddenCount} more item${hiddenCount === 1 ? '' : 's'}`}>
