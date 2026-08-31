@@ -32,7 +32,7 @@ export const useChatConfig = (): UseChatConfigReturn => {
 
   const selectedModelItem = useMemo(() => models.find((model) => model.id === selectedModel), [models, selectedModel]);
 
-  const thinkingLevels = selectedModelItem?.thinkingLevels ?? [];
+  const thinkingLevels = useMemo(() => selectedModelItem?.thinkingLevels ?? [], [selectedModelItem]);
   const supportsImages = selectedModelItem?.supportsImages ?? false;
   const selectedModelContextWindow = resolveContextLimit(selectedModelItem?.contextWindow);
 

@@ -5,13 +5,17 @@ import { Type } from 'typebox';
 import { SUBAGENTS } from '@pi-code/extension/core/prompt';
 import { readOutputLimits } from '@pi-code/extension/core/settings';
 import { mapEvent, notifySubagentEvent } from '@pi-code/extension/structures/agent-runtime/event';
-import { recordSubagentUsage, spawnSubagent } from '@pi-code/extension/structures/agent-runtime/subagent';
+import {
+  recordSubagentUsage,
+  SPAWN_SUBAGENT_TOOL_NAME,
+  spawnSubagent,
+  SUBAGENT_FORWARDED_EVENTS,
+} from '@pi-code/extension/structures/agent-runtime/subagent';
 import { toolError, toolResult } from '@pi-code/extension/structures/tool-call/helpers';
 import { truncateOutput } from '@pi-code/extension/utilities/truncate';
 
 import type { SubagentOutcome, SubagentUsage } from '@pi-code/extension/structures/agent-runtime/subagent';
 import type { CustomToolResult } from '@pi-code/extension/types/extension';
-import type { ToolName } from '@pi-code/shared/core/types';
 
 interface SubagentDetails {
   readonly agent: string;
@@ -43,10 +47,9 @@ function renderOutcome(outcome: SubagentOutcome, state: 'completed' | 'error'): 
 }
 
 const SUBAGENT_NAMES = SUBAGENTS.map((agent) => agent.name);
-const FORWARDED_SUBAGENT_EVENTS = new Set(['tool_execution_start', 'tool_execution_update', 'tool_execution_end']);
 
 export const spawnSubagentTool = defineTool({
-  name: 'spawn_subagent' as ToolName,
+  name: SPAWN_SUBAGENT_TOOL_NAME,
   label: 'Spawn Sub-agent',
   description: 'Delegate a self-contained, read-only task to a sub-agent that works independently and returns a final report.',
   parameters: Type.Object({
@@ -85,7 +88,7 @@ export const spawnSubagentTool = defineTool({
               })
           : undefined,
         onEvent: (event, subagentSession) => {
-          if (FORWARDED_SUBAGENT_EVENTS.has(event.type)) {
+          if (SUBAGENT_FORWARDED_EVENTS.has(event.type)) {
             const { message } = mapEvent(event, subagentSession, null);
             if (message) {
               notifySubagentEvent(message);

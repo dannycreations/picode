@@ -150,9 +150,9 @@ export const editFileTool = defineTool({
     new_string: Type.String({ description: 'Replacement text for `old_string`.' }),
     expected: Type.Optional(Type.Integer({ minimum: 1, description: 'Optional expected number of replacements; defaults to 1.' })),
   }),
-  async execute(_toolCallId, params, _signal, onUpdate, ctx) {
+  async execute(_toolCallId, params, signal, onUpdate, ctx) {
     const { file_path, old_string, new_string } = params;
-    const result = await runFileMutation(ctx.cwd, file_path, 'editing file', async (resolvedPath) => {
+    const result = await runFileMutation(ctx.cwd, file_path, 'editing file', signal, async (resolvedPath) => {
       let originalContent: string | null = null;
       const check = await checkReadableFile(resolvedPath);
       if (check.ok) {

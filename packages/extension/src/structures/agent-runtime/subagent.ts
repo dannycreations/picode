@@ -11,6 +11,7 @@ import { elapsedSeconds } from '@pi-code/shared/utilities/common';
 import type { Api, Model } from '@earendil-works/pi-ai';
 import type { AgentSession, AgentSessionEvent, ToolDefinition } from '@earendil-works/pi-coding-agent';
 import type { SubagentDefinition } from '@pi-code/extension/core/prompt';
+import type { ToolName } from '@pi-code/shared/core/types';
 
 type SubagentToolName = SubagentDefinition['tools'][number];
 
@@ -45,6 +46,9 @@ interface SubagentInput {
   readonly onProgress?: (steps: string) => void;
   readonly onEvent?: (event: AgentSessionEvent, session: AgentSession) => void;
 }
+
+export const SPAWN_SUBAGENT_TOOL_NAME = 'spawn_subagent' as ToolName;
+export const SUBAGENT_FORWARDED_EVENTS: ReadonlySet<string> = new Set(['tool_execution_start', 'tool_execution_update', 'tool_execution_end']);
 
 const MAX_CONCURRENT_SUBAGENTS = 3;
 const MAX_SUBAGENT_STEP_HISTORY = 10;

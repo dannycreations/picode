@@ -28,6 +28,7 @@ export const useMermaidRender = (originalCode: string, enabled: boolean): UseMer
     if (!enabled) return;
     setIsLoading(true);
 
+    let cancelled = false;
     const timer = setTimeout(() => {
       ensureMermaidInitialized();
       const id = `mermaid-${Math.random().toString(36).substring(2)}`;
@@ -35,17 +36,24 @@ export const useMermaidRender = (originalCode: string, enabled: boolean): UseMer
         .parse(code)
         .then(() => mermaid.render(id, code))
         .then(({ svg }) => {
+          if (cancelled) return;
           setError(null);
           setSvgContent(svg);
         })
         .catch((err) => {
+          if (cancelled) return;
           logger.warn('Mermaid parse/render failed:', err);
           setError(err instanceof Error ? err.message : 'Mermaid render error');
         })
-        .finally(() => setIsLoading(false));
+        .finally(() => {
+          if (!cancelled) setIsLoading(false);
+        });
     }, RENDER_DEBOUNCE_MS);
 
-    return () => clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [code, enabled]);
 
   return {

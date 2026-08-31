@@ -1,7 +1,7 @@
 import { uuidv7 } from '@earendil-works/pi-ai';
 
 import { getSubagentSession } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
-import { takeSubagentUsage } from '@pi-code/extension/structures/agent-runtime/subagent';
+import { SPAWN_SUBAGENT_TOOL_NAME, takeSubagentUsage } from '@pi-code/extension/structures/agent-runtime/subagent';
 import { logger } from '@pi-code/shared/core/logger';
 import { resolveContextLimit } from '@pi-code/shared/utilities/common';
 
@@ -158,7 +158,7 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
     case 'tool_execution_update': {
       const result = toolResultText(event.partialResult);
       const steps = (event.partialResult as { details?: { steps?: string } } | undefined)?.details?.steps;
-      const subtitle = event.toolName === 'spawn_subagent' ? latestStep(steps) : undefined;
+      const subtitle = event.toolName === SPAWN_SUBAGENT_TOOL_NAME ? latestStep(steps) : undefined;
       return {
         message: {
           type: 'tool_execution_update',

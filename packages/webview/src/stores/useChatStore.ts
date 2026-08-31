@@ -374,7 +374,7 @@ export const useChatStore = create<ChatState>((set, get) => {
         latestEpoch: { ...state.latestEpoch, [scope]: epoch },
         historyByScope: {
           ...state.historyByScope,
-          [scope]: isNewRefresh ? items : [...state.historyByScope[scope], ...items],
+          [scope]: isNewRefresh ? items : [...(state.historyByScope[scope] ?? []), ...items],
         },
       }));
     },
@@ -469,7 +469,8 @@ export const useChatStore = create<ChatState>((set, get) => {
     },
 
     applyMessage: (msg) => {
-      (messageHandlers[msg.type] as ExtensionMessageHandler<typeof msg.type>)(msg);
+      const handler = messageHandlers[msg.type] as ExtensionMessageHandler<typeof msg.type> | undefined;
+      if (handler) handler(msg);
     },
 
     setActiveTask: (value) =>

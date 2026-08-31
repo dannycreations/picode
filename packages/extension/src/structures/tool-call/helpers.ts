@@ -24,10 +24,14 @@ export function runFileMutation(
   cwd: string,
   rawPath: string,
   action: string,
+  signal: AbortSignal | undefined,
   mutate: (resolvedPath: string) => Promise<CustomToolResult>,
 ): Promise<CustomToolResult> {
   const resolvedPath = resolvePath(rawPath, cwd);
   return withFileMutationQueue(resolvedPath, async () => {
+    if (signal?.aborted) {
+      return toolError(`Action cancelled before it started: ${action}.`);
+    }
     try {
       return await mutate(resolvedPath);
     } catch (err) {
