@@ -30,7 +30,7 @@ export class Runtime {
   private unsubscribeSessionEvents: (() => void) | null = null;
   private apiRequestId: string | null = null;
   private compacting = false;
-  private runEndedWithError = false;
+  private runEndedWithFailure = false;
   private taskGeneration = 0;
 
   private readonly messenger: Messenger;
@@ -321,24 +321,27 @@ export class Runtime {
   private handleSessionEvent(event: AgentSessionEvent, session: AgentSession): void {
     if (event.type === 'agent_end') {
       // agent_end fires at the end of every turn, not only the final one.
-      // Record the error state but keep queued replies so a later turn (or
-      // the settle below) can still drain them.
-      this.runEndedWithError = event.messages.some((m) => m.role === 'assistant' && m.stopReason === 'error');
+      // A turn that ends in error or an aborted API request (context overflow)
+      // sits on a bloated context; record it so the settle below can compact
+      // and resume. Keep queued replies so a later turn can still drain them.
+      this.runEndedWithFailure = event.messages.some((m) => m.role === 'assistant' && (m.stopReason === 'error' || m.stopReason === 'aborted'));
     }
 
     if (event.type === 'agent_settled' || event.type === 'agent_end') {
-      if (this.runEndedWithError && this.session?.sessionFile && this.isContextAtCompactionThreshold(this.session)) {
-        this.runEndedWithError = false;
+      // Don't start a second compaction while one is already running, which is
+      // the case when the extension itself aborts the turn to compact.
+      if (this.runEndedWithFailure && !this.compacting && this.session?.sessionFile && this.isContextAtCompactionThreshold(this.session)) {
+        this.runEndedWithFailure = false;
         // Resume the agent; continueTask compacts again if the limit is still exceeded.
         void this.continueTask(this.session.sessionFile);
-      } else if (!this.runEndedWithError && event.type === 'agent_settled' && this.session?.sessionFile && this.replyQueue.all().length > 0) {
+      } else if (!this.runEndedWithFailure && event.type === 'agent_settled' && this.session?.sessionFile && this.replyQueue.all().length > 0) {
         // The agent stopped but the user queued replies while it ran. Drain
         // them into a fresh turn instead of discarding them.
         void this.continueTask(this.session.sessionFile);
-      } else if (!this.runEndedWithError && event.type === 'agent_settled') {
+      } else if (!this.runEndedWithFailure && event.type === 'agent_settled') {
         this.replyQueue.clear();
       }
-      this.runEndedWithError = false;
+      this.runEndedWithFailure = false;
     }
 
     if (this.compacting && (event.type === 'compaction_start' || event.type === 'compaction_end')) {

@@ -599,4 +599,26 @@ describe('Runtime compaction before turns', () => {
     expect(mocks.getEnvironmentDetails).toHaveBeenCalledTimes(1);
     expect(mocks.sendHiddenContent).toHaveBeenCalledWith(session, 'environment_details', '', { triggerTurn: true });
   });
+
+  it('compacts before resuming a turn whose API request aborted past the threshold', async () => {
+    const webview = makeFakeWebview();
+    const session = makeThresholdSession(950);
+    mocks.createSession.mockResolvedValue({ session, services: SERVICES });
+    const runtime = new Runtime(webview);
+    runtime['session'] = session;
+
+    runtime['handleSessionEvent'](
+      {
+        type: 'agent_end',
+        messages: [{ role: 'assistant', stopReason: 'aborted' } as never],
+        willRetry: false,
+      } as never,
+      session,
+    );
+    await flush();
+
+    expect(session.compact).toHaveBeenCalledTimes(1);
+    expect(mocks.getEnvironmentDetails).toHaveBeenCalledTimes(1);
+    expect(mocks.sendHiddenContent).toHaveBeenCalledWith(session, 'environment_details', '', { triggerTurn: true });
+  });
 });
