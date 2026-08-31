@@ -174,9 +174,16 @@ function mcpSection(message: ToolChatMessage): ToolSection[] {
     title = tool === undefined ? `${server}: list tools` : `${server}: ${tool}`;
   }
 
-  const pendingPayload = callArguments === undefined ? undefined : JSON.stringify(callArguments, null, 2);
-  const content = message.diff ?? pendingPayload;
+  let pendingPayload: string | undefined;
+  if (callArguments !== undefined) {
+    try {
+      pendingPayload = JSON.stringify(callArguments, null, 2);
+    } catch {
+      pendingPayload = String(callArguments);
+    }
+  }
 
+  const content = message.diff ?? pendingPayload;
   return [{ title, subtitle: message.subtitle, content, language: message.diff === undefined ? 'json' : 'text' }];
 }
 

@@ -54,14 +54,16 @@ export class WorkspaceService {
     let target: Uri;
     let write: () => unknown;
 
+    // Reuse a fixed filename so each open overwrites the last instead of
+    // accumulating a file per open in globalStorage.
     if (attachment.kind === 'image') {
       const parts = parseBase64DataUrl(attachment.dataUrl);
       if (!parts) return;
 
-      target = Uri.joinPath(attachmentsUri, `pi-code-img-${Date.now()}.${extensionForMimeType(parts.mimeType)}`);
+      target = Uri.joinPath(attachmentsUri, `pi-code-image.${extensionForMimeType(parts.mimeType)}`);
       write = () => this.writeBase64DataUrl(target, parts.data);
     } else {
-      target = Uri.joinPath(attachmentsUri, `pi-code-text-${Date.now()}.txt`);
+      target = Uri.joinPath(attachmentsUri, 'pi-code-text.txt');
       write = () => workspace.fs.writeFile(target, Buffer.from(attachment.content, 'utf-8'));
     }
 

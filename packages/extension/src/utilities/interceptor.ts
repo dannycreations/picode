@@ -1,6 +1,8 @@
 import { appendFile, mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
+import { logger } from '@pi-code/shared/core/logger';
+
 // Captured API requests carry bearer tokens and session keys in their headers.
 // Writing those to a file inside the workspace would leak secrets into the
 // user's repo, so redact any header whose value is credential-shaped.
@@ -42,7 +44,7 @@ function enqueue(text: string): void {
   writeChain = writeChain
     .then(() => mkdir(dirname(target), { recursive: true }))
     .then(() => appendFile(target, text))
-    .catch(() => undefined);
+    .catch((err) => logger.debug('Failed to write debug request log:', err));
 }
 
 async function interceptedFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {

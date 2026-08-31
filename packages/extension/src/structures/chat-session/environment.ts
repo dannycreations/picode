@@ -41,7 +41,8 @@ async function loadGitignoreFilter(gitignoreUri: Uri): Promise<ReturnType<typeof
     const contentBytes = await workspace.fs.readFile(gitignoreUri);
     const content = textDecoder.decode(contentBytes);
     return ignore().add(content);
-  } catch {
+  } catch (err) {
+    logger.debug(`Failed to read .gitignore at ${gitignoreUri.fsPath}; ignoring it:`, err);
     return null;
   }
 }

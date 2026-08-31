@@ -89,11 +89,13 @@ function buildWorkspaceData(): Extract<ExtensionToWebviewMessage, { type: 'works
 // Refreshes the shared model runtime's catalog and pushes the merged list to
 // the webview. `force` hits the network instead of trusting the cached catalog.
 function pushModelCatalog(ctx: MessageHandlerContext, modelRuntime: ModelRuntime, force = false, onUpdated?: () => void): void {
-  void refreshModelCatalog(modelRuntime, force).then((models) => {
-    if (!models) return;
-    ctx.runtime.postMessage({ type: 'models_data', payload: { models } });
-    onUpdated?.();
-  });
+  void refreshModelCatalog(modelRuntime, force)
+    .then((models) => {
+      if (!models) return;
+      ctx.runtime.postMessage({ type: 'models_data', payload: { models } });
+      onUpdated?.();
+    })
+    .catch((err) => logger.error('Failed to refresh model catalog:', err));
 }
 
 const HANDLER_MAP: HandlerMap = {
@@ -108,8 +110,8 @@ const HANDLER_MAP: HandlerMap = {
     // Reuse the runtime we just built instead of re-resolving resources.
     pushModelCatalog(ctx, services.modelRuntime);
   },
-  send_message: (msg, ctx) => {
-    void ctx.runtime.startTask(msg.text, msg.attachments, msg.path);
+  send_message: async (msg, ctx) => {
+    await ctx.runtime.startTask(msg.text, msg.attachments, msg.path);
   },
   search_files: async (msg, ctx) => {
     const paths = await searchWorkspaceFiles(msg.query, ctx.cwd);
@@ -137,8 +139,8 @@ const HANDLER_MAP: HandlerMap = {
   remove_from_reply_queue: (msg, ctx) => {
     ctx.runtime.replyQueue.remove(msg.id);
   },
-  continue_task: (msg, ctx) => {
-    void ctx.runtime.continueTask(msg.path || '');
+  continue_task: async (msg, ctx) => {
+    await ctx.runtime.continueTask(msg.path || '');
   },
   tool_response: (msg) => {
     if (msg.approved) approveApproval(msg.approval_id);

@@ -68,7 +68,7 @@ function scanFile(file: string, violations: Violation[]): void {
   check(DYNAMIC_IMPORT, false);
 }
 
-(async () => {
+async function main(): Promise<void> {
   const files = await listTypeScriptFiles(sharedDir);
   const violations: Violation[] = [];
   for (const file of files) scanFile(file, violations);
@@ -82,4 +82,9 @@ function scanFile(file: string, violations: Violation[]): void {
   }
 
   console.log('Shared module is platform-agnostic.');
-})();
+}
+
+void main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { stat } from 'node:fs/promises';
 import { StringDecoder } from 'node:string_decoder';
+import { formatThrownValue } from '@earendil-works/pi-ai';
 import {
   defineTool,
   formatSize,
@@ -85,6 +86,8 @@ function collapseCarriageReturns(line: string): string {
   return idx === -1 ? line : line.slice(idx + 1);
 }
 
+type ExecuteCommandReturn = CustomToolResult<{ exitCode: number | null; signalCode: string | null; output: string; timedOut: boolean }>;
+
 export const executeCommandTool = defineTool({
   name: 'execute_command' as ToolName,
   label: 'Execute Command',
@@ -99,7 +102,7 @@ export const executeCommandTool = defineTool({
     const retainedBytes = limits.maxBytes * 2;
     const effectiveTimeout = resolveTimeout(params.timeout, readAppSettings().maxCommandTimeoutMs);
 
-    return new Promise<CustomToolResult<{ exitCode: number | null; signalCode: string | null; output: string; timedOut: boolean }>>(async (res) => {
+    const executeCommand = async (res: (result: ExecuteCommandReturn) => void): Promise<void> => {
       let resolvedCwd = ctx.cwd;
       if (typeof params.cwd === 'string' && params.cwd.trim() !== '') {
         resolvedCwd = resolvePath(params.cwd, ctx.cwd);
@@ -321,6 +324,16 @@ export const executeCommandTool = defineTool({
           signal.addEventListener('abort', onAbort, { once: true });
         }
       }
+    };
+
+    return new Promise<ExecuteCommandReturn>((res) => {
+      void executeCommand(res).catch((err) => {
+        res({
+          content: [{ type: 'text', text: `Command failed before execution: ${formatThrownValue(err)}` }],
+          details: { exitCode: null, signalCode: null, output: '', timedOut: false },
+          isError: true,
+        });
+      });
     });
   },
 });

@@ -8,7 +8,12 @@ export const require = createRequire(import.meta.url);
 
 export function resolveBin(packageName: string, binName: string): string {
   const manifestPath = require.resolve(`${packageName}/package.json`);
-  const manifest = require(manifestPath) as { bin?: string | Record<string, string> };
+  let manifest: { bin?: string | Record<string, string> };
+  try {
+    manifest = require(manifestPath) as { bin?: string | Record<string, string> };
+  } catch (err) {
+    throw new Error(`Failed to load manifest for "${packageName}" at ${manifestPath}: ${(err as Error).message}`);
+  }
   const binPath = typeof manifest.bin === 'string' ? manifest.bin : manifest.bin?.[binName];
   if (!binPath) {
     throw new Error(`Unable to resolve the "${binName}" binary from "${packageName}".`);

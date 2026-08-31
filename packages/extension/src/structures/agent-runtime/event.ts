@@ -195,6 +195,7 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
       // file. Fold this turn's delegated usage into the header stats here,
       // then clear it so the next turn accounts for its own runs.
       const child = takeSubagentUsage(session.sessionId);
+
       return {
         message: {
           type: 'agent_settled',

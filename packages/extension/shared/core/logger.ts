@@ -51,11 +51,18 @@ function forward(level: LogLevelName, args: unknown[]): void {
   if (!isEnabled(level)) return;
 
   const [head, ...rest] = args;
-  if (level === 'error') {
-    sink.error(head instanceof Error || typeof head === 'string' ? head : String(head), ...rest);
-    return;
+  const message = head instanceof Error || typeof head === 'string' ? head : String(head);
+  // The logger sits on the error path; a failing or partial sink must not
+  // escalate into the operation that called it.
+  try {
+    if (level === 'error') {
+      sink.error(message, ...rest);
+      return;
+    }
+    sink[level](typeof message === 'string' ? message : String(message), ...rest);
+  } catch {
+    // Swallow sink failures; logging must never throw.
   }
-  sink[level](typeof head === 'string' ? head : String(head), ...rest);
 }
 
 export const logger = {

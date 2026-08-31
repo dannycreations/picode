@@ -8,6 +8,7 @@ import { resolveCommitTag } from '@pi-code/extension/structures/chat-command/hel
 import { checkReadableFile, normalizeSeparators, walkDirectory } from '@pi-code/extension/utilities/fs';
 import { readNumberedText } from '@pi-code/extension/utilities/truncate';
 import { MENTION_PATTERN, TAG_PATTERN } from '@pi-code/shared/core/constants';
+import { logger } from '@pi-code/shared/core/logger';
 import { buildFileTree, renderFileTree } from '@pi-code/shared/utilities/tree';
 
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
@@ -85,12 +86,17 @@ async function resolveMention(raw: string, cwd: string, limits: OutputLimits): P
   let info;
   try {
     info = await stat(target);
-  } catch {
+  } catch (err) {
+    logger.debug(`Could not stat mention target ${target}; skipping:`, err);
     return null;
   }
 
   if (info.isDirectory()) {
-    return { kind: 'folder', content: await listFolderEntries(target, cwd) };
+    try {
+      return { kind: 'folder', content: await listFolderEntries(target, cwd) };
+    } catch (err) {
+      return { kind: 'folder', content: `Error reading folder ${target}: ${formatThrownValue(err)}` };
+    }
   }
   if (info.isFile()) {
     try {

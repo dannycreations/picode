@@ -5,6 +5,7 @@ import { dirname, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { formatPathRelativeToCwdOrAbsolute } from '@earendil-works/pi-coding-agent';
 
+import { logger } from '@pi-code/shared/core/logger';
 import { pathCollator } from '@pi-code/shared/utilities/common';
 
 export interface FileChild {
@@ -40,7 +41,8 @@ export async function* walkDirectory(start: string, maxDepth: number, root: stri
     let children: FileChild[];
     try {
       children = await readNodeChildren(dir);
-    } catch {
+    } catch (err) {
+      logger.debug(`Skipping unreadable directory ${dir}:`, err);
       return;
     }
     children = excludeVcsEntries(children);

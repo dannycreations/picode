@@ -5,6 +5,7 @@ import { completeAndExtract } from '@pi-code/extension/structures/agent-runtime/
 import { isResolvedSelection, mapDiagnostics, resolveSelectionFromDocument } from '@pi-code/extension/structures/context-command/helpers';
 import { getWorkspaceCwd, reportError } from '@pi-code/extension/utilities/vscode';
 import { COMMAND_IDS } from '@pi-code/shared/core/constants';
+import { logger } from '@pi-code/shared/core/logger';
 
 import type { Diagnostic, Disposable } from 'vscode';
 import type { ChatViewProvider } from '@pi-code/extension/structures/agent-webview/provider';
@@ -42,7 +43,11 @@ function registerChatInputCommand(
 
     const prompt = buildPrompt(selection, args);
 
-    await commands.executeCommand(COMMAND_IDS.chatViewFocus);
+    try {
+      await commands.executeCommand(COMMAND_IDS.chatViewFocus);
+    } catch (err) {
+      logger.warn('Failed to focus the chat view; sending the prompt anyway.', err);
+    }
     sender.postMessage({ type: 'set_chat_input', payload: { text: prompt } });
   });
 }
@@ -79,7 +84,12 @@ function collectSelectionDiagnostics(selection: ResolvedSelection): string {
   const editor = window.activeTextEditor;
   if (!editor) return '';
 
-  const selectionRange = new Range(selection.startLine - 1, 0, selection.endLine - 1, editor.document.lineAt(selection.endLine - 1).text.length);
+  const doc = editor.document;
+  const maxLine = doc.lineCount - 1;
+  const endIdx = Math.min(selection.endLine - 1, maxLine);
+  if (endIdx < 0) return '';
+  const startIdx = Math.min(Math.max(selection.startLine - 1, 0), maxLine);
+  const selectionRange = new Range(startIdx, 0, endIdx, doc.lineAt(endIdx).text.length);
 
   const intersecting = languages.getDiagnostics(editor.document.uri).filter((d) => intersectsSelection(selectionRange, d));
   const diagnostics = mapDiagnostics(intersecting);
