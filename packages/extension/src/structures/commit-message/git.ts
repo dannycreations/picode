@@ -2,10 +2,10 @@ import { formatThrownValue } from '@earendil-works/pi-ai';
 import { generateUnifiedPatch } from '@earendil-works/pi-coding-agent';
 import { Uri, workspace } from 'vscode';
 
-import { SHORT_HASH_LENGTH } from '@pi-code/extension/shared/core/constants';
 import { isBinaryFile } from '@pi-code/extension/utilities/fs';
 import { GIT_STATUS } from '@pi-code/extension/utilities/git';
 import { toRelativePath } from '@pi-code/extension/utilities/vscode';
+import { SHORT_HASH_LENGTH } from '@pi-code/shared/core/constants';
 
 import type { Change, Repository } from '@pi-code/extension/types/git';
 

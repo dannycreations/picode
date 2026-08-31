@@ -5,7 +5,7 @@ import { SESSION_FILE_UNAVAILABLE } from '@pi-code/extension/structures/agent-we
 import { extensionForMimeType, parseBase64DataUrl } from '@pi-code/extension/utilities/codec';
 
 import type { TextEditor } from 'vscode';
-import type { Attachment } from '@pi-code/extension/shared/core/types';
+import type { Attachment } from '@pi-code/shared/core/types';
 
 export class WorkspaceService {
   public constructor(private readonly storageUri: Uri) {}

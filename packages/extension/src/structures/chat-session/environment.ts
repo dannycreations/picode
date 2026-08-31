@@ -3,7 +3,7 @@ import ignore from 'ignore';
 import { FileType, TabInputText, Uri, window, workspace } from 'vscode';
 
 import { readAppSettings } from '@pi-code/extension/core/settings';
-import { excludeVcsEntries } from '@pi-code/extension/utilities/fs';
+import { excludeVcsEntries, normalizeSeparators } from '@pi-code/extension/utilities/fs';
 import { getGitRepository, getIgnoredPaths } from '@pi-code/extension/utilities/git';
 import { toRelativePath, toWorkspaceRelativePath } from '@pi-code/extension/utilities/vscode';
 import { logger } from '@pi-code/shared/core/logger';
@@ -288,7 +288,7 @@ export async function getEnvironmentDetails(cwd: string, includeFileDetails = fa
   }
 
   if (workspaceFilesEnabled) {
-    details += `\n\n### Workspace Files (${cwd.replace(/\\/g, '/')})\n\n`;
+    details += `\n\n### Workspace Files (${normalizeSeparators(cwd)})\n\n`;
     details += renderFileTree(buildFileTree(listing.paths), basename(cwd));
     if (listing.hitLimit) {
       details += '\n\n*(File list truncated. Use `execute_command` to list files in specific subdirectories if you need to explore further.)*';

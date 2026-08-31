@@ -5,8 +5,8 @@
     "types": ["node", "vite/client"],
     "paths": {
       "@pi-code/extension/*": ["./src/*"],
-      "@pi-code/shared/*": ["./src/shared/*"]
+      "@pi-code/shared/*": ["./shared/*"]
     }
   },
-  "include": ["src", "scripts", "vite.config.ts"]
+  "include": ["src", "shared", "scripts", "vite.config.ts"]
 }

@@ -48,7 +48,7 @@ const AttachedAttachmentsPreview: FC<{
   );
 };
 
-export const TEXT_ATTACHMENT_THRESHOLD = 2000;
+const TEXT_ATTACHMENT_THRESHOLD = 2000;
 
 export const ChatInput: FC<ChatInputProps> = ({ onSend, sendingDisabled, placeholderText, textareaRef, supportsImages }) => {
   const [isFocused, setIsFocused] = useState(false);

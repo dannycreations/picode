@@ -1,9 +1,9 @@
 import { formatThrownValue } from '@earendil-works/pi-ai';
 import { Uri } from 'vscode';
 
-import { COMMIT_HASH_PATTERN, SHORT_HASH_LENGTH, WORKING_CHANGES_TAG } from '@pi-code/extension/shared/core/constants';
 import { execGit, getGitRepository } from '@pi-code/extension/utilities/git';
 import { truncateOutput } from '@pi-code/extension/utilities/truncate';
+import { COMMIT_HASH_PATTERN, SHORT_HASH_LENGTH, WORKING_CHANGES_TAG } from '@pi-code/shared/core/constants';
 
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
 import type { CommitItem } from '@pi-code/shared/core/protocol';

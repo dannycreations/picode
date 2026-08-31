@@ -6,7 +6,7 @@
     "jsx": "react-jsx",
     "paths": {
       "@pi-code/webview/*": ["./src/*"],
-      "@pi-code/shared/*": ["../extension/src/shared/*"]
+      "@pi-code/shared/*": ["../extension/shared/*"]
     }
   },
   "include": ["src", "scripts", "vite.config.ts"]

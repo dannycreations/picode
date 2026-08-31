@@ -23,15 +23,15 @@ async function write(rel: string, content = ''): Promise<void> {
 
 describe('searchWorkspaceFiles', () => {
   it('surfaces a deep folder once the query names its path', async () => {
-    await write('packages/extension/src/shared/index.ts');
+    await write('packages/extension/shared/index.ts');
     await write('packages/extension/src/other.ts');
 
     // Previously a full-workspace walk could be crowded out by unrelated
     // matches before reaching this folder. Anchoring on the typed path must
     // surface it.
-    const results = await searchWorkspaceFiles('packages/extension/src/shared', cwd);
+    const results = await searchWorkspaceFiles('packages/extension/shared', cwd);
 
-    expect(results).toContain('packages/extension/src/shared');
+    expect(results).toContain('packages/extension/shared');
   });
 
   it('returns nothing when the anchored directory does not exist', async () => {
