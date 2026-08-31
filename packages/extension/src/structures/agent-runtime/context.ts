@@ -101,6 +101,43 @@ export function applyResourceContext(loaderOptions: ResourceLoaderOptions, conte
   };
 }
 
+function renderSkills(selectedTools: readonly string[] | undefined, skills: readonly Skill[] | undefined): string {
+  const visible = (skills ?? []).filter((skill) => !skill.disableModelInvocation);
+  // Skills only help when the agent can actually read them.
+  if (!selectedTools?.includes('read_file') || visible.length === 0) return '';
+
+  const intro = [
+    '## Skills',
+    '',
+    'The following skills provide specialized instructions for specific tasks.',
+    "Use the read tool to load a skill's file when the task matches its description.",
+    'When a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.',
+  ];
+  const entries = visible.map((skill) => `- **${skill.name}**: ${skill.description}\n  Location: \`${skill.filePath}\``);
+  return [...intro, '', '### Available Skills', '', ...entries].join('\n');
+}
+
+function renderMcpServers(): string {
+  const servers = Object.entries(getActiveMcpConfig());
+  if (servers.length === 0) return '';
+
+  const intro = [
+    '## MCP Servers',
+    '',
+    'External tools reachable only through the `mcp` tool.',
+    'Call it with no parameters to check live connection status, or with one of these server names to list its tools.',
+  ];
+  const entries = servers.map(([name, server]) => {
+    const meta = `${server.kind}, ${server.autorun ? 'autorun' : 'on demand'}`;
+    return server.description ? `- ${name}: ${server.description} (${meta})` : `- ${name}: ${meta}`;
+  });
+  return [...intro, '', '### Available Servers', '', ...entries].join('\n');
+}
+
+function renderSubagentGuidance(selectedTools: readonly string[] | undefined): string {
+  return selectedTools?.includes('spawn_subagent') ? SUBAGENT_MESSAGE_PROMPT : '';
+}
+
 function renderProjectContext(contextFiles: ReadonlyArray<{ path: string; content: string }> | undefined): string {
   const files = contextFiles ?? [];
   if (files.length === 0) return '';
@@ -108,49 +145,14 @@ function renderProjectContext(contextFiles: ReadonlyArray<{ path: string; conten
   return ['## Project Context', 'Project-specific instructions and guidelines:', ...sections].join('\n\n');
 }
 
-function renderSkills(selectedTools: readonly string[] | undefined, skills: readonly Skill[] | undefined): string {
-  const visible = (skills ?? []).filter((skill) => !skill.disableModelInvocation);
-  // Skills only help when the agent can actually read them.
-  if (!selectedTools?.includes('read_file') || visible.length === 0) return '';
-
-  const intro = [
-    'The following skills provide specialized instructions for specific tasks.',
-    "Use the read tool to load a skill's file when the task matches its description.",
-    'When a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.',
-  ];
-  const entries = visible.map((skill) => `- **${skill.name}**: ${skill.description}\n  Location: \`${skill.filePath}\``);
-  return [...intro, '', '## Available Skills', '', ...entries].join('\n');
-}
-
-function renderSubagentGuidance(selectedTools: readonly string[] | undefined): string {
-  return selectedTools?.includes('spawn_subagent') ? SUBAGENT_MESSAGE_PROMPT : '';
-}
-
-function renderMcpServers(): string {
-  const entries = Object.entries(getActiveMcpConfig());
-  if (entries.length === 0) return '';
-
-  return [
-    '## MCP Servers',
-    '',
-    'External tools reachable only through the `mcp` tool.',
-    'Call it with no parameters to check live connection status, or with one of these server names to list its tools.',
-    '',
-    ...entries.map(([name, server]) => {
-      const meta = `${server.kind}, ${server.autorun ? 'autorun' : 'on demand'}`;
-      return server.description ? `- ${name}: ${server.description} (${meta})` : `- ${name}: ${meta}`;
-    }),
-  ].join('\n');
-}
-
 export function composeSystemContext(options: BuildSystemPromptOptions): string {
   const sections = [
     options.customPrompt?.trim(),
     options.appendSystemPrompt?.trim(),
-    renderProjectContext(options.contextFiles).trim(),
     renderSkills(options.selectedTools, options.skills).trim(),
     renderMcpServers().trim(),
     renderSubagentGuidance(options.selectedTools).trim(),
+    renderProjectContext(options.contextFiles).trim(),
   ];
   return sections.filter((section) => section !== undefined && section.length > 0).join('\n\n');
 }
