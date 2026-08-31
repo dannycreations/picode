@@ -17,6 +17,9 @@ const resourceCache = new Map<string, CachedResources>();
 
 export function invalidateAgentResources(): void {
   resourceCache.clear();
+  // The model runtime is captured once and reused across workspaces; drop it
+  // so a trust change or settings rotation rebuilds a current one.
+  sharedModelRuntime = undefined;
 }
 
 let sharedModelRuntime: ModelRuntime | undefined;

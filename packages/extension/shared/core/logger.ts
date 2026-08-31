@@ -31,15 +31,11 @@ const consoleSink: LoggerSink = {
 
 let sink: LoggerSink = consoleSink;
 
-function parseLevel(raw: string | undefined): LevelSetting | undefined {
-  const name = raw?.trim().toLowerCase();
-  return LEVEL_SETTINGS.find((setting) => setting === name);
-}
-
 function readEnvLevel(): LevelSetting | undefined {
-  // The webview bundle runs without Node's process global; treat the variable as unset there.
   if (typeof process === 'undefined') return undefined;
-  return parseLevel(process.env['PI_CODE_LOG_LEVEL']);
+  const value = process?.env?.['PI_CODE_LOG_LEVEL'];
+  const level = value?.trim().toLowerCase();
+  return LEVEL_SETTINGS.find((setting) => setting === level);
 }
 
 function isEnabled(level: LogLevelName): boolean {

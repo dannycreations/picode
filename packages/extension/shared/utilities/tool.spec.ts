@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildToolSections, getFirstDiffLine, getToolHeaderMeta, GROUP_TOOLS } from '@pi-code/shared/utilities/tool';
+import { buildToolSections, getDiffStat, getFirstDiffLine, getToolHeaderMeta, GROUP_TOOLS } from '@pi-code/shared/utilities/tool';
 
 import type { ChatMessage, ToolChatMessage } from '@pi-code/shared/core/types';
 
@@ -64,7 +64,7 @@ describe('getToolHeaderMeta mcp', () => {
 });
 
 describe('getFirstDiffLine', () => {
-  it('returns the new-file line of the first added line', () => {
+  it('returns the line number of the first added line', () => {
     const diff = [' 360 pub fn old() {}', '+367 // inserted comment', '+368 fn new_fn() {}', ' 385 pub fn flatten() {}'].join('\n');
     expect(getFirstDiffLine(diff)).toBe(367);
   });
@@ -92,5 +92,27 @@ describe('getFirstDiffLine', () => {
   it('returns undefined for empty or missing diff', () => {
     expect(getFirstDiffLine('')).toBeUndefined();
     expect(getFirstDiffLine(undefined)).toBeUndefined();
+  });
+});
+
+describe('getDiffStat', () => {
+  it('counts additions and removals in the edit_file diff format', () => {
+    const diff = [' 360 pub fn old() {}', '+367 // inserted', '-360 let removed = true;', ' 361 let kept = false;'].join('\n');
+    expect(getDiffStat(diff)).toEqual({ added: 1, removed: 1 });
+  });
+
+  it('returns undefined when there is no change', () => {
+    const diff = [' 1 first', ' 2 second'].join('\n');
+    expect(getDiffStat(diff)).toBeUndefined();
+  });
+
+  it('ignores unified-diff file markers', () => {
+    const diff = '--- a/file.ts\n+++ b/file.ts\n+added line\n-removed line';
+    expect(getDiffStat(diff)).toEqual({ added: 1, removed: 1 });
+  });
+
+  it('returns undefined for empty or missing diff', () => {
+    expect(getDiffStat('')).toBeUndefined();
+    expect(getDiffStat(undefined)).toBeUndefined();
   });
 });

@@ -52,15 +52,7 @@ const MAX_SUBAGENT_STEP_HISTORY = 10;
 let activeSpawns = 0;
 const waiting: (() => void)[] = [];
 
-async function acquireSpawnSlot(): Promise<() => void> {
-  // A queue inherits the slot of whoever released it instead of taking a
-  // new one, so the count cannot drift above the cap while a waiter resumes.
-  if (activeSpawns >= MAX_CONCURRENT_SUBAGENTS) {
-    await new Promise<void>((resolve) => waiting.push(resolve));
-  } else {
-    activeSpawns++;
-  }
-
+function releaseSlot(): () => void {
   let released = false;
   return () => {
     if (released) return;
@@ -70,6 +62,33 @@ async function acquireSpawnSlot(): Promise<() => void> {
     if (next) next();
     else activeSpawns--;
   };
+}
+
+async function acquireSpawnSlot(signal?: AbortSignal): Promise<() => void> {
+  if (activeSpawns < MAX_CONCURRENT_SUBAGENTS) {
+    activeSpawns++;
+    return releaseSlot();
+  }
+
+  // A cancelled sub-agent waiting for a slot must not block the queue until a
+  // slot frees; it leaves the wait list and gets a no-op release instead.
+  let granted = false;
+  await new Promise<void>((resolve) => {
+    const waiter = () => {
+      granted = true;
+      resolve();
+    };
+    const onAbort = () => {
+      const index = waiting.indexOf(waiter);
+      if (index !== -1) waiting.splice(index, 1);
+      resolve();
+    };
+    waiting.push(waiter);
+    if (signal?.aborted) onAbort();
+    else signal?.addEventListener('abort', onAbort, { once: true });
+  });
+
+  return granted ? releaseSlot() : () => {};
 }
 
 function preview(value: string): string {
@@ -156,14 +175,14 @@ async function createChildSession(cwd: string, agent: SubagentDefinition, toolCa
 }
 
 export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutcome> {
-  const release = await acquireSpawnSlot();
+  const release = await acquireSpawnSlot(input.signal);
   const startTime = Date.now();
-  input.onProgress?.('');
   const collected: string[] = [];
 
   const steps = (): string => collected.slice(-MAX_SUBAGENT_STEP_HISTORY).join('\n');
 
   try {
+    input.onProgress?.('');
     if (input.signal?.aborted) {
       return {
         agent: input.agent.name,

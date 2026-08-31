@@ -1,7 +1,7 @@
 import { contentText, uuidv7 } from '@earendil-works/pi-ai';
 import { calculateContextTokens, getLastAssistantUsage } from '@earendil-works/pi-coding-agent';
 
-import { getApprovalDuration } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
+import { clearApprovalDuration, getApprovalDuration } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
 import { toBase64DataUrl } from '@pi-code/extension/utilities/codec';
 import { logger } from '@pi-code/shared/core/logger';
 import { elapsedSeconds, findReplaceableFailedRequest, parseTextAttachment } from '@pi-code/shared/utilities/common';
@@ -85,8 +85,11 @@ function collectTextAttachments(entries: readonly SessionEntry[], byId: Map<stri
 }
 
 function findUserMessageAncestorId(entry: SessionEntryBase, byId: Map<string, SessionEntry>): string | null {
+  const visited = new Set<string>();
   let current: SessionEntryBase | undefined = entry;
   while (current) {
+    if (visited.has(current.id)) return null;
+    visited.add(current.id);
     if (current.type === 'message' && (current as SessionMessageEntry).message.role === 'user') {
       return current.id;
     }
@@ -197,6 +200,7 @@ function patchToolCall(result: ChatMessage[], msg: Extract<SessionMessage, { rol
 
   const rawDuration = elapsedSeconds(existing.timestamp, timestamp);
   const approvalMs = msg.toolCallId ? getApprovalDuration(msg.toolCallId) : undefined;
+  if (msg.toolCallId) clearApprovalDuration(msg.toolCallId);
   const netDuration = approvalMs !== undefined ? elapsedSeconds(existing.timestamp, timestamp - approvalMs) : rawDuration;
 
   result[index] = {

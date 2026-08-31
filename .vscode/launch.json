@@ -8,7 +8,10 @@
       "preLaunchTask": "build pi-code",
       "args": ["--extensionDevelopmentPath=${workspaceFolder}/packages/extension"],
       "outFiles": ["${workspaceFolder}/packages/extension/dist/**/*.cjs", "${workspaceFolder}/packages/extension/dist/**/*.js"],
-      "env": { "PI_CODE_DEBUG_HTTP": "1" }
+      "env": {
+        "PI_CODE_DEBUG_HTTP": "1",
+        "PI_CODE_LOG_LEVEL": "debug"
+      }
     }
   ]
 }

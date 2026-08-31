@@ -251,10 +251,14 @@ interface DiffStat {
 
 export function getFirstDiffLine(diff?: string): number | undefined {
   if (!diff) return undefined;
-  const match = diff.match(/^[-+]\s*(\d+)/m);
-  if (!match) return undefined;
-  const line = Number.parseInt(match[1], 10);
-  return Number.isFinite(line) && line > 0 ? line : undefined;
+  for (const line of diff.split('\n')) {
+    if (!line.startsWith('+') && !line.startsWith('-')) continue;
+    const match = /^[+-]\s*(\d+)/.exec(line);
+    if (!match) continue;
+    const lineNum = Number.parseInt(match[1], 10);
+    return Number.isFinite(lineNum) && lineNum > 0 ? lineNum : undefined;
+  }
+  return undefined;
 }
 
 export function getDiffStat(diff?: string): DiffStat | undefined {

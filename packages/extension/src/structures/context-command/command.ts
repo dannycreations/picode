@@ -125,11 +125,23 @@ async function runInlineCompletion(cwd: string, selection: ResolvedSelection, pr
       return;
     }
 
+    // The active editor may have changed while the model generated the edit.
+    // A different or missing editor means the selection no longer applies.
+    const currentEditor = window.activeTextEditor;
+    if (!currentEditor || currentEditor !== editor) {
+      window.showWarningMessage('The active editor changed while generating. No changes applied.');
+      return;
+    }
+
     const doc = editor.document;
     const startLine = Math.max(selection.startLine - 1, 0);
     const endLine = Math.min(selection.endLine - 1, doc.lineCount - 1);
-    const range = new Range(startLine, 0, endLine, doc.lineAt(endLine).text.length);
+    if (startLine > endLine) {
+      window.showWarningMessage('The selection is no longer valid. No changes applied.');
+      return;
+    }
 
+    const range = new Range(startLine, 0, endLine, doc.lineAt(endLine).text.length);
     const applied = await editor.edit((builder) => builder.replace(range, replacement));
     if (!applied) {
       window.showErrorMessage('Failed to apply the generated code to the file.');
