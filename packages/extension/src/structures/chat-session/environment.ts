@@ -163,7 +163,7 @@ export async function walkWorkspace(
         ? await getIgnoredPaths(
             repo,
             entries.map((entry) => entry.fsPath),
-          )
+          ).catch(() => null)
         : null;
 
     const nextNodes: UriNode[] = [];
@@ -275,7 +275,7 @@ export async function getEnvironmentDetails(cwd: string, includeFileDetails = fa
   const [gitLines, listing] = await Promise.all([
     gitStatusEnabled ? getGitStatusLines(cwd, repo).catch(() => []) : Promise.resolve<string[]>([]),
     workspaceFilesEnabled
-      ? walkWorkspace(cwd, maxWorkspaceFiles, settings.excludeIgnoredFiles, repo)
+      ? walkWorkspace(cwd, maxWorkspaceFiles, settings.excludeIgnoredFiles, repo).catch(() => ({ paths: [], hitLimit: false }))
       : Promise.resolve({ paths: [], hitLimit: false }),
   ]);
 

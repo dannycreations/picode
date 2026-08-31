@@ -186,6 +186,9 @@ const HANDLER_MAP: HandlerMap = {
         await postHistory(ctx, 'current');
         return;
       }
+      default:
+        logger.warn('Unknown builtin command received:', msg);
+        return;
     }
   },
   load_session: async (msg, ctx) => {

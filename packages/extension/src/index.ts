@@ -35,28 +35,35 @@ export function activate(context: ExtensionContext): void {
 
   logger.info('Extension activated.');
 
-  const chatViewProvider = new ChatViewProvider(context);
+  try {
+    const chatViewProvider = new ChatViewProvider(context);
 
-  context.subscriptions.push(
-    window.registerWebviewViewProvider(ChatViewProvider.viewType, chatViewProvider, {
-      webviewOptions: { retainContextWhenHidden: true },
-    }),
-    registerCommitMessageCommands(),
-    registerAddToContextCommand(chatViewProvider),
-    registerAddProblemToContextCommand(chatViewProvider),
-    registerFillCodeCommand(),
-    registerFixCodeCommand(),
-    languages.registerCodeActionsProvider('*', new PiCodeActionProvider(), PiCodeActionProvider.metadata),
-    commands.registerCommand(COMMAND_IDS.settingsButtonClicked, () => {
-      chatViewProvider.postMessage({ type: 'show_settings' });
-    }),
-    // Trust gates which project resources Pi is allowed to load, so the cached
-    // resource loaders must be rebuilt once the user grants trust.
-    workspace.onDidGrantWorkspaceTrust(() => {
-      logger.info('Workspace trust granted, reloading agent resources.');
-      invalidateAgentResources();
-    }),
-  );
+    context.subscriptions.push(
+      window.registerWebviewViewProvider(ChatViewProvider.viewType, chatViewProvider, {
+        webviewOptions: { retainContextWhenHidden: true },
+      }),
+      registerCommitMessageCommands(),
+      registerAddToContextCommand(chatViewProvider),
+      registerAddProblemToContextCommand(chatViewProvider),
+      registerFillCodeCommand(),
+      registerFixCodeCommand(),
+      languages.registerCodeActionsProvider('*', new PiCodeActionProvider(), PiCodeActionProvider.metadata),
+      commands.registerCommand(COMMAND_IDS.settingsButtonClicked, () => {
+        chatViewProvider.postMessage({ type: 'show_settings' });
+      }),
+      // Trust gates which project resources Pi is allowed to load, so the cached
+      // resource loaders must be rebuilt once the user grants trust.
+      workspace.onDidGrantWorkspaceTrust(() => {
+        logger.info('Workspace trust granted, reloading agent resources.');
+        invalidateAgentResources();
+      }),
+    );
+  } catch (err) {
+    // Surface the failure in our output channel before VS Code reports the
+    // generic activation failure, so the cause is not lost.
+    logger.error('Extension activation failed during registration:', err);
+    throw err;
+  }
 }
 
 export async function deactivate(): Promise<void> {

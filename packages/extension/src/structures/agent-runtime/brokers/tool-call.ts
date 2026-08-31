@@ -31,6 +31,10 @@ export function clearApprovalDuration(toolCallId: string): void {
   approvalDurations.delete(toolCallId);
 }
 
+export function clearAllApprovalDurations(): void {
+  approvalDurations.clear();
+}
+
 export function recordApprovalDuration(toolCallId: string, durationMs: number): void {
   approvalDurations.set(toolCallId, durationMs);
 }

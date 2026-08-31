@@ -39,7 +39,13 @@ export function toolResultText(result: unknown): string {
 
   const content = (result as { content?: readonly ToolResultPart[] } | undefined)?.content;
   const parts = Array.isArray(content) ? content.filter((part) => part.type === 'text' && typeof part.text === 'string') : [];
-  if (parts.length === 0) return JSON.stringify(result) ?? '';
+  if (parts.length === 0) {
+    try {
+      return JSON.stringify(result) ?? '';
+    } catch {
+      return String(result);
+    }
+  }
 
   return parts.map((part) => part.text).join('\n');
 }

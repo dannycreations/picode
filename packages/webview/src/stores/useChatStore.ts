@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import { DEFAULT_APP_ID } from '@pi-code/shared/core/constants';
+import { logger } from '@pi-code/shared/core/logger';
 import { HISTORY_SCOPES } from '@pi-code/shared/core/protocol';
 import { elapsedSeconds, findReplaceableFailedRequest } from '@pi-code/shared/utilities/common';
 import {
@@ -528,6 +529,10 @@ export const selectPendingQuestion = (state: ChatState): ChatMessage | undefined
 
 if (typeof window !== 'undefined') {
   window.addEventListener('message', (event: MessageEvent) => {
-    useChatStore.getState().applyMessage(event.data as ExtensionToWebviewMessage);
+    try {
+      useChatStore.getState().applyMessage(event.data as ExtensionToWebviewMessage);
+    } catch (err) {
+      logger.error('Failed to handle webview message:', err);
+    }
   });
 }

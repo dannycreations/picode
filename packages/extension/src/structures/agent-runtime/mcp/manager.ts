@@ -105,13 +105,15 @@ export function createMcpGateway(connect: McpConnector = connectMcpServer) {
     if (cached) {
       cache.delete(name);
       live.delete(name);
-      void cached.pending.then((connection) => connection.close()).catch(() => {});
+      void cached.pending
+        .then((connection) => connection.close())
+        .catch((err) => logger.debug(`Failed to close stale MCP connection "${name}":`, err));
     }
 
     const entry: CacheEntry = { identity, pending: connect(server, cwd) };
     void entry.pending.then(
       (connection) => {
-        live.add(name);
+        if (cache.get(name) === entry) live.add(name);
         // A crashed stdio child frees the slot so the next request reconnects.
         connection.onClose(() => forget(name, entry));
       },

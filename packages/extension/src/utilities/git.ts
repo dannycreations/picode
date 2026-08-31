@@ -23,12 +23,23 @@ async function getGitApi(): Promise<API | null> {
     return null;
   }
 
-  const exports = gitExtension.isActive ? gitExtension.exports : await gitExtension.activate();
-  if (!exports?.enabled) {
+  let gitExports: GitExtension | undefined;
+  try {
+    gitExports = gitExtension.isActive ? gitExtension.exports : await gitExtension.activate();
+  } catch (err) {
+    logger.warn('Git extension failed to activate; git features are disabled.', err);
+    return null;
+  }
+  if (!gitExports?.enabled) {
     return null;
   }
 
-  return exports.getAPI(1);
+  try {
+    return gitExports.getAPI(1);
+  } catch (err) {
+    logger.warn('Git API is unavailable; git features are disabled.', err);
+    return null;
+  }
 }
 
 export async function getGitRepository(uri?: Uri): Promise<Repository | null> {

@@ -38,22 +38,43 @@ function sortTreeNodes(nodes: FileTreeNode[]): FileTreeNode[] {
   });
 }
 
+interface StackItem {
+  readonly node: FileTreeNode;
+  readonly prefix: string;
+  readonly isLast: boolean;
+}
+
 export function renderFileTree(root: FileTreeNode, rootLabel: string): string {
   const lines: string[] = [rootLabel];
 
-  function walk(node: FileTreeNode, prefix: string): void {
-    const children = sortTreeNodes([...node.children.values()]);
-    children.forEach((child, index) => {
-      const isLast = index === children.length - 1;
-      const connector = isLast ? '└─ ' : '├─ ';
-      const label = `${child.name}${child.isDir ? '/' : ''}`;
-      lines.push(`${prefix}${connector}${label}`);
-      if (child.isDir) {
-        walk(child, prefix + (isLast ? '   ' : '│  '));
-      }
+  const stack: StackItem[] = [];
+  const rootChildren = sortTreeNodes([...root.children.values()]);
+  for (let i = rootChildren.length - 1; i >= 0; i--) {
+    stack.push({
+      node: rootChildren[i],
+      prefix: '',
+      isLast: i === rootChildren.length - 1,
     });
   }
 
-  walk(root, '');
+  while (stack.length > 0) {
+    const { node, prefix, isLast } = stack.pop()!;
+    const connector = isLast ? '└─ ' : '├─ ';
+    const label = `${node.name}${node.isDir ? '/' : ''}`;
+    lines.push(`${prefix}${connector}${label}`);
+
+    if (node.isDir) {
+      const childPrefix = prefix + (isLast ? '   ' : '│  ');
+      const children = sortTreeNodes([...node.children.values()]);
+      for (let i = children.length - 1; i >= 0; i--) {
+        stack.push({
+          node: children[i],
+          prefix: childPrefix,
+          isLast: i === children.length - 1,
+        });
+      }
+    }
+  }
+
   return lines.join('\n');
 }

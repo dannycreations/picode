@@ -203,11 +203,15 @@ export async function* streamLines(filePath: string): AsyncGenerator<string> {
 
 export async function readLines(filePath: string, maxLines?: number): Promise<string[]> {
   const lines: string[] = [];
-  for await (const line of streamLines(filePath)) {
-    lines.push(line);
-    if (maxLines !== undefined && lines.length >= maxLines) {
-      break;
+  try {
+    for await (const line of streamLines(filePath)) {
+      lines.push(line);
+      if (maxLines !== undefined && lines.length >= maxLines) {
+        break;
+      }
     }
+  } catch (err) {
+    throw new Error(`Failed to read lines from "${filePath}": ${err instanceof Error ? err.message : String(err)}`);
   }
   return lines;
 }

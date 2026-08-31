@@ -1,5 +1,7 @@
 import { formatThrownValue } from '@earendil-works/pi-ai';
 
+import { logger } from '@pi-code/shared/core/logger';
+
 import type { Webview } from 'vscode';
 import type { ExtensionToWebviewMessage } from '@pi-code/shared/core/protocol';
 
@@ -84,7 +86,14 @@ export class Messenger {
 
   private send(message: ExtensionToWebviewMessage): void {
     this.flush();
-    void this.webview?.postMessage(message);
+    this.postToWebview(message);
+  }
+
+  private postToWebview(message: ExtensionToWebviewMessage): void {
+    const sent = this.webview?.postMessage(message);
+    if (sent) {
+      void Promise.resolve(sent).catch((err) => logger.error('Failed to post webview message:', err));
+    }
   }
 
   private flush(): void {
@@ -101,7 +110,7 @@ export class Messenger {
     }
 
     if (this.textBuffer || this.thinkingBuffer) {
-      void this.webview.postMessage({
+      this.postToWebview({
         type: 'stream_delta',
         payload: {
           text: this.textBuffer || undefined,
@@ -115,7 +124,7 @@ export class Messenger {
     if (this.toolUpdates.size > 0) {
       for (const [id, update] of this.toolUpdates) {
         if (update.result || update.subtitle !== undefined) {
-          void this.webview.postMessage({
+          this.postToWebview({
             type: 'tool_execution_update',
             payload: { id, result: update.result, subagent: update.subagent, subtitle: update.subtitle },
           });

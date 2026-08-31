@@ -1,6 +1,7 @@
 import { uuidv7 } from '@earendil-works/pi-ai';
 
 import { createRequestRegistry } from '@pi-code/extension/structures/agent-runtime/brokers/registry';
+import { clearAllApprovalDurations, clearApprovalDuration } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
 import { logger } from '@pi-code/shared/core/logger';
 
 import type { ToolName } from '@pi-code/shared/core/types';
@@ -42,6 +43,9 @@ export function requestApproval(
   }
 
   const id = toolCallId || uuidv7();
+  // A reused id (a retried tool call) must not orphan the earlier pending
+  // approval, which would hang the awaiting tool_call handler forever.
+  approvals.resolve(id, false);
   return new Promise<boolean>((resolve) => {
     approvals.register(id, resolve);
     currentPresenter({ id, toolName, args, subagent, toolCallId: parentToolCallId });
@@ -53,9 +57,11 @@ export function approveApproval(id: string): void {
 }
 
 export function denyApproval(id: string): void {
+  clearApprovalDuration(id);
   approvals.resolve(id, false);
 }
 
 export function cancelAllApprovals(): void {
+  clearAllApprovalDurations();
   approvals.cancelAll(false);
 }

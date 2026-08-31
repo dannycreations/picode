@@ -16,6 +16,7 @@ import { Type } from 'typebox';
 
 import { readAppSettings, readOutputLimits } from '@pi-code/extension/core/settings';
 import { truncateOutput } from '@pi-code/extension/utilities/truncate';
+import { logger } from '@pi-code/shared/core/logger';
 
 import type { SpawnOptions } from 'node:child_process';
 import type { CustomToolResult } from '@pi-code/extension/types/extension';
@@ -281,17 +282,25 @@ export const executeCommandTool = defineTool({
       };
 
       cp.stdout?.on('data', (chunk: Buffer) => {
-        const text = stdoutDecoder.write(chunk);
-        appendOutput(text);
-        streamUpdate(text);
-        if (exited && !finished) armExitGrace();
+        try {
+          const text = stdoutDecoder.write(chunk);
+          appendOutput(text);
+          streamUpdate(text);
+          if (exited && !finished) armExitGrace();
+        } catch (err) {
+          logger.warn('Failed to process command stdout chunk:', err);
+        }
       });
 
       cp.stderr?.on('data', (chunk: Buffer) => {
-        const text = stderrDecoder.write(chunk);
-        appendOutput(text);
-        streamUpdate(text);
-        if (exited && !finished) armExitGrace();
+        try {
+          const text = stderrDecoder.write(chunk);
+          appendOutput(text);
+          streamUpdate(text);
+          if (exited && !finished) armExitGrace();
+        } catch (err) {
+          logger.warn('Failed to process command stderr chunk:', err);
+        }
       });
 
       cp.on('error', (err) => {

@@ -48,16 +48,26 @@ function enqueue(text: string): void {
 }
 
 async function interceptedFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-  const request = new Request(input, init);
+  let request: Request;
+  try {
+    request = new Request(input, init);
+  } catch (err) {
+    logger.debug('Skipping request capture; input is not re-wrappable:', err);
+    return nativeFetch(input, init);
+  }
 
   enqueue(
     formatEntry('request', {
       method: request.method,
       url: request.url,
       headers: redactHeaders(request.headers),
-      body: await captureBody(request),
+      body: '',
     }),
   );
+
+  void captureBody(request).then((body) => {
+    if (body !== null) enqueue(formatEntry('request', { url: request.url, body }));
+  });
 
   const response = await nativeFetch(request);
 
@@ -67,9 +77,13 @@ async function interceptedFetch(input: RequestInfo | URL, init?: RequestInit): P
       status: response.status,
       statusText: response.statusText,
       headers: redactHeaders(response.headers),
-      body: await captureBody(response),
+      body: '',
     }),
   );
+
+  void captureBody(response).then((body) => {
+    if (body !== null) enqueue(formatEntry('response', { url: response.url, body }));
+  });
 
   return response;
 }
