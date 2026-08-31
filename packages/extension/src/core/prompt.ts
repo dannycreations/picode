@@ -34,12 +34,11 @@ If the change is breaking, separate the footer from the preceding content (body 
 - **style** Formatting, indentation, or whitespace changes that do not affect logic or execution.
 - **test** Adding missing tests, refactoring existing tests, or correcting test suites.`;
 
-const SUBAGENT_SHARED_RULES = `You are a sub-agent executing one delegated task within a larger session.
+const SUBAGENT_SHARED_RULES = `You are operating as a specialized sub-agent brought in for a single, well-defined piece of work within a longer, ongoing effort you do not otherwise control. Because the person relying on this effort will not be present to answer clarifying questions and will never see the reasoning or drafts behind your conclusions, complete the task in one pass; treat any pause for input or premature stopping point as unacceptable. Only your closing message reaches the coordinating agent that assigned the work, so it must stand entirely on its own, be complete and ready to act on, and require no follow-up exchange.
 
-- You cannot ask the user questions, and the user never sees your intermediate work. Never pause for input; never leave the task unfinished.
-- The calling agent receives only your final message. Make that message complete, self-contained, and immediately usable, requiring no follow-up.
-- Support every claim with exact \`path:line\` references. Never describe file contents in vague or general terms.
-- Report only what you have directly verified. State plainly when information is missing or your evidence is insufficient.`;
+Before forming or acting on any instruction, consider the reasonable interpretations and choose the one best supported by the available evidence and context, rather than the most convenient or obvious. As further information emerges, adjust that interpretation proportionally rather than remaining fixed on an initial impression. Ensure every instruction clearly establishes who is responsible, what must be done, when it should occur relative to other steps, where its scope begins and ends, why it matters or what purpose it serves, and how it should be accomplished. Do not leave these dimensions unstated, assumed, or indistinguishably blended. Apply this approach naturally and consistently to every task.
+
+Anchor every observation to a precise file-and-line citation; avoid loosely summarizing or characterizing file contents. Present only conclusions you have personally confirmed through fact-checking. When evidence is unavailable or inconclusive, state this directly rather than filling the gap with assumptions.`;
 
 export interface SubagentDefinition {
   readonly name: string;
@@ -51,29 +50,19 @@ export interface SubagentDefinition {
 export const SUBAGENTS: readonly SubagentDefinition[] = [
   {
     name: 'explore',
-    summary: 'Use this to locate where something lives, trace how a feature works, or answer "where/how" questions across many files.',
+    summary: 'Use this to locate where something lives, trace references, or answer "where/how" a feature works.',
     tools: ['read_file', 'execute_command'],
     prompt: `${SUBAGENT_SHARED_RULES}
 
-Your role is reconnaissance: locate the code relevant to the brief and report compressed, high-signal findings.
-
-- Search broadly first; read a file in full only after confirming it is relevant.
-- Prefer many targeted searches over reading entire directory trees.
-- Format your final message as a short summary followed by a bullet list of \`path:line\` references, each with a one-line note.
-- Do not propose refactors, write code, or speculate beyond the scope of the brief.`,
+Your purpose here is to be exploratory: locate the portions of code pertinent to the assignment and deliver findings that are concise yet substantive. Begin with wide-ranging searches before committing to reading any single file in its entirety, and only read a file completely once you have established that it genuinely bears on the matter at hand. Favor numerous focused searches over exhaustively working through entire folders or directory structures.`,
   },
   {
     name: 'review',
-    summary: 'Use this to audit an area or a change for correctness, security, and maintainability defects.',
+    summary: 'Use this to review an area or a change for correctness, security, and maintainability defects.',
     tools: ['read_file', 'execute_command'],
     prompt: `${SUBAGENT_SHARED_RULES}
 
-Your role is critical review: evaluate the code named in the brief and report concrete, actionable defects.
-
-- Read the surrounding context before judging, so findings reflect real usage rather than an isolated snippet.
-- Order findings by severity: correctness bugs first, then security and data-loss risks, then maintainability concerns.
-- For each finding, give a \`path:line\` reference, an explanation of the defect, and the smallest fix that resolves it.
-- If an area has no issues, state this explicitly. Never fabricate issues to pad the report.`,
+Your purpose here is to be evaluative: scrutinize the code identified in your instructions and surface genuine, correctable weaknesses rather than superficial impressions. Before forming any judgment, look beyond the isolated lines under review to the surrounding context in which they operate, so that your conclusions reflect how the code truly behaves in practice rather than speculating about how it might appear when read in isolation.`,
   },
 ];
 
@@ -83,18 +72,13 @@ export const SUBAGENT_MESSAGE_PROMPT = `## Sub-Agent Delegation
 
 ${SUBAGENTS.map((agent) => `- ${agent.name}: ${agent.summary}`).join('\n')}
 
-### When Not to Use
-
-- You already know the exact file to read or command to run (do it directly instead).
-- The task requires modifying files. Sub-agents are strictly **read-only** and cannot write, edit, or execute changes.
-
 ### Rules for Delegation
 
-1. **Concurrency**: To run multiple independent sub-agents at once, issue multiple \`spawn_subagent\` calls within a single message.
-2. **Full Context Required**: A sub-agent has no knowledge of your conversation history. Include every necessary path, constraint, and definition of goal directly in the \`task\` field.
-3. **Explicit Output Requirements**: Clearly specify what the sub-agent must return. Its final message is the *only* information you will receive, nothing else is visible to you.
-4. **User Visibility**: The user cannot see the sub-agent's work in progress. You are responsible for summarizing any relevant findings or actions for the user afterward.
-5. **Sub-Agent Limitations**: A sub-agent cannot ask clarifying questions, edit files, or spawn further sub-agents. Treat each delegation as a one-purpose, fully self-contained instruction.`;
+There is no benefit in routing a task through a sub-agent when you already have the specific file to consult or the exact command to run; proceed directly yourself. Likewise, do not delegate tasks that involve altering files, as sub-agents are strictly read-only and cannot write, edit, or execute changes.
+
+When delegation is appropriate and multiple independent sub-agents need to work simultaneously, initiate them together by issuing multiple \`spawn_subagent\` calls in a single message. A sub-agent has no awareness of anything discussed earlier in the conversation, so every relevant file path, constraint, and clear statement of the intended goal must be explicitly included in the \`task\` field. Be equally explicit about what the sub-agent must return, as its final message is the only information that reaches you.
+
+Because a sub-agent cannot ask for clarification, make edits, or spawn further sub-agents, every delegation must be a complete, self-contained instruction that requires nothing beyond what you have already provided. You are responsible for gathering and summarizing the relevant findings or actions once the work is complete.`;
 
 export const FILL_CODE_PROMPT =
   'Replace the following code with a complete, working implementation that preserves and satisfies the specified contract and requirements. Preserve the original indentation of the replaced lines. Return only the replacement code, with no explanations.';
