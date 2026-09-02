@@ -81,11 +81,45 @@ export const ChatInput: FC<ChatInputProps> = ({ onSend, sendingDisabled, placeho
     }
   };
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+  const insertTextAtCursor = (text: string): void => {
+    const textarea = textareaRef.current;
+    if (!textarea) {
+      setInputValue(inputValue + text);
+      return;
+    }
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const newValue = inputValue.slice(0, start) + text + inputValue.slice(end);
+    setInputValue(newValue);
+
+    // Move cursor after the inserted text on next tick
+    requestAnimationFrame(() => {
+      textarea.selectionStart = textarea.selectionEnd = start + text.length;
+      textarea.focus();
+    });
+  };
+
+  const handleKeyDown = async (e: KeyboardEvent<HTMLTextAreaElement>) => {
     // The picker owns navigation and acceptance keys while it is open.
     if (mention.handleKeyDown(e)) return;
     if (command.handleKeyDown(e)) return;
     if (commit.handleKeyDown(e)) return;
+
+    // Ctrl+Shift+V (or Cmd+Shift+V on Mac) forces pasting large text
+    // directly into the textarea instead of converting it to a text attachment.
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'v' || e.key === 'V')) {
+      e.preventDefault();
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text) {
+          insertTextAtCursor(text);
+        }
+      } catch {
+        // Clipboard access denied or failed - ignore
+      }
+      return;
+    }
 
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
