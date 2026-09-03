@@ -1,4 +1,4 @@
-import { cn } from 'cnfast';
+import { cn } from 'cn';
 import { Play, X } from 'lucide-react';
 import { Fragment, useEffect, useMemo, useState } from 'react';
 

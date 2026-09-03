@@ -1,4 +1,4 @@
-import { cn } from 'cnfast';
+import { cn } from 'cn';
 import { toJsxRuntime } from 'hast-util-to-jsx-runtime';
 import { memo, useEffect, useState } from 'react';
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime';

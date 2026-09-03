@@ -1,5 +1,5 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { cn } from 'cnfast';
+import { cn } from 'cn';
 import { Pi } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 

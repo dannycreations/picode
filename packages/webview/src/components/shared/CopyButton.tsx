@@ -1,4 +1,4 @@
-import { cn } from 'cnfast';
+import { cn } from 'cn';
 import { Check, Copy } from 'lucide-react';
 import { forwardRef } from 'react';
 

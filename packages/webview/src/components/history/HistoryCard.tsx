@@ -1,4 +1,4 @@
-import { cn } from 'cnfast';
+import { cn } from 'cn';
 import { Calendar } from 'lucide-react';
 
 import { TaskActions } from '@pi-code/webview/components/shared/TaskActions';

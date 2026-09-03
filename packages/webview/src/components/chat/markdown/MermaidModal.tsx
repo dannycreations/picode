@@ -1,4 +1,4 @@
-import { cn } from 'cnfast';
+import { cn } from 'cn';
 import { useLayoutEffect, useRef, useState } from 'react';
 
 import { usePanZoom } from '@pi-code/webview/components/chat/markdown/hooks/usePanZoom';

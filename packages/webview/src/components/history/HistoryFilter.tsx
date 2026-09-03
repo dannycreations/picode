@@ -1,4 +1,4 @@
-import { cn } from 'cnfast';
+import { cn } from 'cn';
 import { Check, Search, X } from 'lucide-react';
 
 import { HISTORY_SCOPES } from '@pi-code/shared/core/protocol';

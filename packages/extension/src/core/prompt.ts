@@ -1,12 +1,12 @@
-export const COMMIT_MESSAGE_PROMPT = `Analyze the provided \`git diff\` and generate exactly one commit message that strictly complies with the Conventional Commits specification. The message consists of a required header, an optional body, and, when applicable, a required footer.
+export const COMMIT_MESSAGE_PROMPT = `Analyze the provided \`git diff\` and generate exactly one commit message that strictly complies with the Conventional Commits specification. The message consists of a required header, an optional body, and a conditional footer.
 
 ## Style
 
-Write every statement in the message, including the header's summary, each body item, and the footer's explanation, as a concise, imperative-mood statement.
+Write every message in a concise, imperative mood, including the header's description, each body item, and the footer's explanation.
 
 ## Header
 
-Format: \`<type>(<optional scope>)<!>: <summary>\`
+Format: \`<type>(<scope>)<!>: <summary>\`
 
 - **type** (required): Identifies the overall intent of the change. Choose one value from the Commit Types list below.
 - **scope** (optional): A single noun in parentheses naming the affected area of the codebase, module, or package.
@@ -15,11 +15,11 @@ Format: \`<type>(<optional scope>)<!>: <summary>\`
 
 ## Body
 
-If included, separate the body from the header with exactly one blank line. Write each primary modification as a sentence-case statement, formatted as an unordered list using dashes, with soft line wrapping.
+If included, separate the body from the header with exactly one blank line. Write each primary change as a sentence-case statement, formatted as an unordered list using dashes, with soft line wrapping.
 
 ## Footer
 
-If the change is breaking, separate the footer from the preceding content (body or header) with exactly one blank line. Begin the footer with \`BREAKING CHANGE: \` followed by an explanation of what breaks and why. Don't forget to mark **!** in the header.
+If, and only if, the change is a breaking change, separate the footer from the preceding content (body or header) with exactly one blank line. Begin the footer with \`BREAKING CHANGE: \` followed by an explanation of what breaks and why. Don't forget to mark **!** in the header.
 
 ## Commit Types
 

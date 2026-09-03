@@ -5,6 +5,7 @@ import { readCommitMessageModelSelection } from '@pi-code/extension/core/setting
 import { completeAndExtract } from '@pi-code/extension/structures/agent-runtime/helpers/complete';
 import { buildGitContext, getGitChanges, getGitDiffContext, getRepoContext } from '@pi-code/extension/structures/commit-message/git';
 import { getGitRepository } from '@pi-code/extension/utilities/git';
+import { fencedMarkdown } from '@pi-code/extension/utilities/markdown';
 import { getWorkspaceUri, reportError } from '@pi-code/extension/utilities/vscode';
 import { COMMAND_IDS } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
@@ -44,12 +45,12 @@ function buildPrompt(gitContext: string, userContext: string, rejectedMessage: s
   const sections = [COMMIT_MESSAGE_PROMPT.trim()];
 
   if (userContext.trim()) {
-    sections.push(`## User-Provided Context\n\n${userContext.trim()}`);
+    sections.push(`## User-Provided Context\n\n${fencedMarkdown(userContext.trim())}`);
   }
   if (rejectedMessage.trim()) {
     sections.push(
       '## Rejected Commit Message',
-      `Previously generated commit message (which was not accepted):\n\n${rejectedMessage.trim()}`,
+      `Previously generated commit message (which was not accepted):\n\n${fencedMarkdown(rejectedMessage.trim())}`,
       'Please generate a new, different commit message that follows the same requirements.',
     );
   }

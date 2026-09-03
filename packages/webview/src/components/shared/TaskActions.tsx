@@ -1,4 +1,4 @@
-import { cn } from 'cnfast';
+import { cn } from 'cn';
 import { Download, FileJson, Trash2 } from 'lucide-react';
 
 import { CopyButton } from '@pi-code/webview/components/shared/CopyButton';

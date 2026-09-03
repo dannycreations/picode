@@ -1,4 +1,4 @@
-import { cn } from 'cnfast';
+import { cn } from 'cn';
 import { useEffect, useMemo, useRef } from 'react';
 
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';

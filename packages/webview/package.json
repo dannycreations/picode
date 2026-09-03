@@ -18,10 +18,10 @@
   "homepage": "https://github.com/dannycreations/picode",
   "dependencies": {
     "@tanstack/react-virtual": "^3.14.10",
-    "cnfast": "^0.1.0",
+    "cn": "^0.2.4",
     "hast-util-to-jsx-runtime": "^2.3.6",
-    "katex": "^0.18.4",
-    "lucide-react": "^1.37.0",
+    "katex": "^0.18.5",
+    "lucide-react": "^1.39.0",
     "mermaid-compact": "^0.0.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
