@@ -15,7 +15,7 @@ Format: \`<type>(<scope>)<!>: <summary>\`
 
 ## Body
 
-If included, separate the body from the header with exactly one blank line. Write each primary change as a sentence-case statement, formatted as an unordered list using dashes, with soft line wrapping.
+If included, separate the body from the header with exactly one blank line. Write each primary modification as a sentence-case statement, formatted as an unordered list using dashes, with soft line wrapping.
 
 ## Footer
 

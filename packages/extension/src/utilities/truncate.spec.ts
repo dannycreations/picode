@@ -57,7 +57,7 @@ describe('truncateOutput', () => {
     expect(text).toContain('line1');
     expect(text).toContain('line5');
     expect(text).not.toContain('line6');
-    expect(text).toContain('[Truncated: showing the first 5 of 10 lines (5 line output limit).]');
+    expect(text).toContain('Truncated: showing the first 5 of 10 lines (5 line output limit).');
   });
 
   it('keeps the last lines and appends a notice when truncating the tail', () => {
@@ -65,7 +65,7 @@ describe('truncateOutput', () => {
 
     expect(text).toContain('line10');
     expect(text).not.toContain('line5\n');
-    expect(text).toContain('[Truncated: showing the last 5 of 10 lines (5 line output limit).]');
+    expect(text).toContain('Truncated: showing the last 5 of 10 lines (5 line output limit).');
   });
 
   it('reports the byte limit when size is the binding constraint', () => {
@@ -73,13 +73,14 @@ describe('truncateOutput', () => {
     const { text, truncation } = truncateOutput(content, { limits: { maxLines: 100, maxBytes: 512 } });
 
     expect(truncation.truncatedBy).toBe('bytes');
-    expect(text).toMatch(/\[Truncated: showing the first \d+ of 4 lines \(.+ output limit\)\.\]/);
+    expect(text).toMatch(/Truncated: showing the first \d+ of 4 lines \(.+ output limit\)\./);
   });
 
   it('appends the actionable hint to the notice', () => {
     const { text } = truncateOutput(buildLines(10), { limits, hint: 'Use line_ranges to continue.' });
 
-    expect(text).toContain('(5 line output limit). Use line_ranges to continue.]');
+    expect(text).toContain('(5 line output limit).');
+    expect(text).toContain('Use line_ranges to continue.');
   });
 
   it('derives the hint from the retained content', () => {
@@ -89,13 +90,13 @@ describe('truncateOutput', () => {
       hint: (truncation) => `Retained ${truncation.outputLines} lines.`,
     });
 
-    expect(text).toContain('Retained 5 lines.]');
+    expect(text).toContain('Retained 5 lines.');
   });
 
   it('emits only the notice when the first line alone busts the byte budget', () => {
     const { text, truncation } = truncateOutput(`${'x'.repeat(500)}\nsecond`, { limits: { maxLines: 10, maxBytes: 100 } });
 
     expect(truncation.firstLineExceedsLimit).toBe(true);
-    expect(text).toBe('[Truncated: the first line on its own exceeds the 100B output limit, so no content could be shown.]');
+    expect(text).toBe('Truncated: the first line on its own exceeds the 100B output limit, so no content could be shown.');
   });
 });

@@ -1,7 +1,10 @@
 import { spawn } from 'node:child_process';
-import { stat } from 'node:fs/promises';
+import { createWriteStream } from 'node:fs';
+import { stat, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
-import { formatThrownValue } from '@earendil-works/pi-ai';
+import { formatThrownValue, uuidv7 } from '@earendil-works/pi-ai';
 import {
   defineTool,
   formatSize,
@@ -19,6 +22,7 @@ import { truncateOutput } from '@pi-code/extension/utilities/truncate';
 import { logger } from '@pi-code/shared/core/logger';
 
 import type { SpawnOptions } from 'node:child_process';
+import type { WriteStream } from 'node:fs';
 import type { CustomToolResult } from '@pi-code/extension/types/extension';
 import type { ToolName } from '@pi-code/shared/core/types';
 
@@ -87,7 +91,13 @@ function collapseCarriageReturns(line: string): string {
   return idx === -1 ? line : line.slice(idx + 1);
 }
 
-type ExecuteCommandReturn = CustomToolResult<{ exitCode: number | null; signalCode: string | null; output: string; timedOut: boolean }>;
+type ExecuteCommandReturn = CustomToolResult<{
+  readonly exitCode: number | null;
+  readonly signalCode: string | null;
+  readonly output: string;
+  readonly timedOut: boolean;
+  readonly tempFilePath?: string | null;
+}>;
 
 export const executeCommandTool = defineTool({
   name: 'execute_command' as ToolName,
@@ -115,6 +125,12 @@ export const executeCommandTool = defineTool({
       const output: string[] = [];
       let retainedLength = 0;
       let totalLength = 0;
+
+      // Retain initial chunks before deciding to spill to a temp file.
+      const initialRawChunks: string[] = [];
+      let tempFilePath: string | null = null;
+      let tempFileStream: WriteStream | null = null;
+      let tempFileError = false;
 
       const stdoutDecoder = new StringDecoder('utf8');
       const stderrDecoder = new StringDecoder('utf8');
@@ -164,9 +180,39 @@ export const executeCommandTool = defineTool({
         output.push(text);
         retainedLength += text.length;
 
-        // Rolling window: drop the oldest chunks, tail truncation keeps the end.
+        // Rolling window for the model/UI: drop oldest chunks to keep tail.
         while (retainedLength > retainedBytes && output.length > 1) {
           retainedLength -= output.shift()!.length;
+        }
+
+        // Spill to an OS temp file as soon as output exceeds the truncation byte budget.
+        if (tempFileStream) {
+          if (!tempFileError) {
+            tempFileStream.write(text);
+          }
+        } else {
+          initialRawChunks.push(text);
+          if (totalLength > limits.maxBytes && !tempFileError) {
+            try {
+              tempFilePath = join(tmpdir(), `pi-code-command-${Date.now()}-${uuidv7().slice(0, 8)}.log`);
+              const stream = createWriteStream(tempFilePath, { flags: 'a', encoding: 'utf8' });
+              stream.on('error', (err) => {
+                logger.warn('Failed writing to command output temp file:', err);
+                tempFileError = true;
+              });
+              tempFileStream = stream;
+              for (const chunk of initialRawChunks) {
+                stream.write(chunk);
+              }
+              // Free memory of initial raw chunks once written to disk
+              initialRawChunks.length = 0;
+            } catch (err) {
+              logger.warn('Failed to initialize command output temp file stream:', err);
+              tempFileError = true;
+              tempFilePath = null;
+              tempFileStream = null;
+            }
+          }
         }
       };
 
@@ -213,7 +259,7 @@ export const executeCommandTool = defineTool({
         }
       };
 
-      const finish = (exitCode: number | null, signalCode: string | null) => {
+      const finish = async (exitCode: number | null, signalCode: string | null): Promise<void> => {
         if (finished) return;
         finished = true;
         detachSignal();
@@ -228,25 +274,58 @@ export const executeCommandTool = defineTool({
         streamUpdate(stdoutTail);
         streamUpdate(stderrTail);
         flushStream();
+
         // Release pipes a descendant may still hold after the grace settle.
         cp.stdout?.destroy();
         cp.stderr?.destroy();
 
-        const exitInfo = exitCode !== null ? `Exit code: ${exitCode}` : `Killed by signal: ${signalCode ?? 'UNKNOWN'}`;
-        const rawOutput = output.join('');
-        const cleanOutput = cleanCommandOutput(rawOutput);
+        // Close temp file stream if one was active
+        if (tempFileStream) {
+          await new Promise<void>((resolve) => {
+            if (tempFileStream!.closed) {
+              resolve();
+              return;
+            }
+            tempFileStream!.end(() => resolve());
+          });
+        }
 
-        // The rolling window may already have dropped the head of a very noisy run.
+        if (tempFileError) {
+          tempFilePath = null;
+        }
+
+        const exitInfo = exitCode !== null ? `Exit code: ${exitCode}` : `Killed by signal: ${signalCode ?? 'UNKNOWN'}`;
+        const rawTailOutput = output.join('');
+        const cleanOutput = cleanCommandOutput(rawTailOutput);
+
         const dropped = totalLength > retainedLength;
         const droppedNote = dropped ? ` The command produced ${formatSize(totalLength)} in total.` : '';
-        const retry = `Re-run with a search or pager (findstr, grep, head, tail) to inspect the rest.${droppedNote}`;
 
-        const { text, truncation } = truncateOutput(cleanOutput, { limits, keep: 'tail', hint: retry });
+        // If not already dumped to a file via streaming, check if the output exceeded line/byte limits.
+        // If truncated, dump the full raw output to a temp file now.
+        if (!tempFilePath && !tempFileError) {
+          const probe = truncateOutput(cleanOutput, { limits, keep: 'tail' });
+          if (dropped || probe.truncation.truncated) {
+            try {
+              tempFilePath = join(tmpdir(), `pi-code-command-${Date.now()}-${uuidv7().slice(0, 8)}.log`);
+              await writeFile(tempFilePath, initialRawChunks.join(''), 'utf8');
+            } catch (err) {
+              logger.warn('Failed to dump command output to temp file:', err);
+              tempFilePath = null;
+            }
+          }
+        }
 
-        // Streaming already discarded the head even though what remains fits the budget.
+        // Instruct the agent to inspect the temp file instead of re-running the command.
+        const resolution = tempFilePath
+          ? `Full raw output saved to: "${tempFilePath}".\nRead this file with a search or pager (findstr, grep, head, tail) to inspect the rest.\n${droppedNote}`
+          : `Re-run with a search or pager (findstr, grep, head, tail) to inspect the rest.\n${droppedNote}`;
+
+        const { text, truncation } = truncateOutput(cleanOutput, { limits, keep: 'tail', hint: resolution });
+
         let modelText = text;
         if (dropped && !truncation.truncated) {
-          modelText = `${text}\n\nTruncated to the last ${formatSize(limits.maxBytes)} of output. ${retry}`;
+          modelText = `${text}\n\nTruncated to the last ${formatSize(limits.maxBytes)} of output.\n${resolution}`;
         }
 
         if (timedOut) {
@@ -255,7 +334,7 @@ export const executeCommandTool = defineTool({
 
         res({
           content: [{ type: 'text', text: modelText || `Command completed with no output. ${exitInfo}` }],
-          details: { exitCode, signalCode, output: cleanOutput, timedOut },
+          details: { exitCode, signalCode, output: cleanOutput, timedOut, ...(tempFilePath ? { tempFilePath } : {}) },
           isError: exitCode !== 0,
         });
       };
@@ -265,20 +344,14 @@ export const executeCommandTool = defineTool({
           killProcessTree(cp.pid);
           return;
         }
-        // Abort or timeout can land while spawn is still in flight. Kill as
-        // soon as the pid exists instead of letting the command run on.
         cp.once('spawn', () => {
           if (cp.pid) killProcessTree(cp.pid);
         });
       };
 
-      // 'close' waits for stdio pipes to close, and a killed shell can leave a
-      // detached descendant holding them open forever. After exit, settle once
-      // the pipes go idle instead of hanging; active output re-arms the grace
-      // so a still-writing descendant keeps its tail.
       const armExitGrace = () => {
         if (exitGraceTimer) clearTimeout(exitGraceTimer);
-        exitGraceTimer = setTimeout(() => finish(exitCode, exitSignal), EXIT_STDIO_GRACE_MS);
+        exitGraceTimer = setTimeout(() => void finish(exitCode, exitSignal), EXIT_STDIO_GRACE_MS);
       };
 
       cp.stdout?.on('data', (chunk: Buffer) => {
@@ -305,7 +378,7 @@ export const executeCommandTool = defineTool({
 
       cp.on('error', (err) => {
         appendOutput(`\nError spawning process: ${err.message}\n`);
-        finish(1, null);
+        void finish(1, null);
       });
 
       cp.once('exit', (code, sig) => {
@@ -316,7 +389,7 @@ export const executeCommandTool = defineTool({
       });
 
       cp.on('close', (code, sig) => {
-        finish(code, sig);
+        void finish(code, sig);
       });
 
       timeoutTimer = setTimeout(() => {
@@ -327,7 +400,7 @@ export const executeCommandTool = defineTool({
       if (signal) {
         if (signal.aborted) {
           killCommand();
-          finish(null, 'SIGABRT');
+          void finish(null, 'SIGABRT');
         } else {
           onAbort = () => killCommand();
           signal.addEventListener('abort', onAbort, { once: true });

@@ -46,26 +46,26 @@ export function shareOutputLimits(limits: OutputLimits, count: number): OutputLi
 function formatTruncationNotice(truncation: TruncationResult, keep: TruncateKeep = 'head', hint?: string): string | undefined {
   if (!truncation.truncated) return undefined;
 
-  const suffix = hint ? ` ${hint}` : '';
+  const suffix = hint ? `\n${hint}` : '';
 
   if (truncation.firstLineExceedsLimit) {
-    return `[Truncated: the first line on its own exceeds the ${formatSize(truncation.maxBytes)} output limit, so no content could be shown.${suffix}]`;
+    return `Truncated: the first line on its own exceeds the ${formatSize(truncation.maxBytes)} output limit, so no content could be shown.${suffix}`;
   }
 
   if (truncation.lastLinePartial) {
     const lastLineSize = formatSize(truncation.outputBytes);
-    return `[Truncated: showing the last ${lastLineSize} of line ${truncation.totalLines} (${formatSize(truncation.maxBytes)} output limit).${suffix}]`;
+    return `Truncated: showing the last ${lastLineSize} of line ${truncation.totalLines} (${formatSize(truncation.maxBytes)} output limit).${suffix}`;
   }
 
   const position = keep === 'tail' ? 'last' : 'first';
   const scope = `showing the ${position} ${truncation.outputLines} of ${truncation.totalLines} lines`;
 
   if (truncation.truncatedBy === 'lines') {
-    return `[Truncated: ${scope} (${truncation.maxLines} line output limit).${suffix}]`;
+    return `Truncated: ${scope} (${truncation.maxLines} line output limit).${suffix}`;
   }
 
   const sizes = `${formatSize(truncation.outputBytes)} of ${formatSize(truncation.totalBytes)}, ${formatSize(truncation.maxBytes)} output limit`;
-  return `[Truncated: ${scope} (${sizes}).${suffix}]`;
+  return `Truncated: ${scope} (${sizes}).${suffix}`;
 }
 
 export function truncateOutput(content: string, options: TruncateOutputOptions): TruncatedOutput {
