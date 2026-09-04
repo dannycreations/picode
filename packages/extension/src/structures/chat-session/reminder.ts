@@ -4,9 +4,9 @@ import type { AgentMessage } from '@earendil-works/pi-agent-core';
 import type { TodoItem } from '@pi-code/shared/utilities/todo';
 
 const STATUS_MAP: Record<TodoItem['status'], string> = {
-  pending: 'Pending',
-  progress: 'In Progress',
-  completed: 'Completed',
+  open: 'Open',
+  active: 'Active',
+  closed: 'Closed',
 };
 
 const TODO_REMINDER_SECTION = '## Todo Reminders';

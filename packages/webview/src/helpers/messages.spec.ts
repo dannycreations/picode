@@ -64,31 +64,28 @@ describe('previousTodos', () => {
   it('returns the todos from the most recent prior update_todo', () => {
     const messages: ChatMessage[] = [
       updateTodo('a', [
-        { content: 'one', status: 'completed' },
-        { content: 'two', status: 'pending' },
+        { content: 'one', status: 'closed' },
+        { content: 'two', status: 'open' },
       ]),
       { id: 'u', sender: 'user', text: 'hi', timestamp: 2 },
       updateTodo('b', [
-        { content: 'one', status: 'completed' },
-        { content: 'three', status: 'progress' },
+        { content: 'one', status: 'closed' },
+        { content: 'three', status: 'active' },
       ]),
     ];
     expect(previousTodos(messages, 'b')).toEqual([
-      { content: 'one', status: 'completed' },
-      { content: 'two', status: 'pending' },
+      { content: 'one', status: 'closed' },
+      { content: 'two', status: 'open' },
     ]);
   });
 
   it('returns undefined for the first update_todo', () => {
-    const messages: ChatMessage[] = [
-      updateTodo('a', [{ content: 'one', status: 'completed' }]),
-      updateTodo('b', [{ content: 'two', status: 'pending' }]),
-    ];
+    const messages: ChatMessage[] = [updateTodo('a', [{ content: 'one', status: 'closed' }]), updateTodo('b', [{ content: 'two', status: 'open' }])];
     expect(previousTodos(messages, 'a')).toBeUndefined();
   });
 
   it('returns undefined when the id is missing', () => {
-    const messages: ChatMessage[] = [updateTodo('a', [{ content: 'one', status: 'completed' }])];
+    const messages: ChatMessage[] = [updateTodo('a', [{ content: 'one', status: 'closed' }])];
     expect(previousTodos(messages, 'missing')).toBeUndefined();
   });
 });

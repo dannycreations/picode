@@ -39,8 +39,8 @@ function toolResultMessage(toolCallId: string, toolName: string, text: string, d
 describe('convertSessionEntries todo parsing', () => {
   it('attaches the parsed update_todo list to the message', () => {
     const todos = [
-      { content: 'Task A', status: 'pending' as const },
-      { content: 'Task B', status: 'completed' as const },
+      { content: 'Task A', status: 'open' as const },
+      { content: 'Task B', status: 'closed' as const },
     ];
     const entries = [
       messageEntry('m1', assistantMessage([{ type: 'toolCall', id: 'tc1', name: 'update_todo', arguments: { todos: '- [ ] a' } }])),

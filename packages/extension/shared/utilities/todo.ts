@@ -1,4 +1,4 @@
-export const TODO_STATUSES = ['pending', 'progress', 'completed'] as const;
+export const TODO_STATUSES = ['open', 'active', 'closed'] as const;
 
 export type TodoStatus = (typeof TODO_STATUSES)[number];
 
@@ -8,7 +8,7 @@ export interface TodoItem {
 }
 
 export function getScrollIndex(todos: readonly TodoItem[]): number {
-  const inProgressIdx = todos.findIndex((todo) => todo.status === TODO_STATUSES[1]);
+  const inProgressIdx = todos.findIndex((todo) => todo.status === 'active');
   if (inProgressIdx !== -1) return inProgressIdx;
-  return todos.findIndex((todo) => todo.status !== TODO_STATUSES[2]);
+  return todos.findIndex((todo) => todo.status !== 'closed');
 }

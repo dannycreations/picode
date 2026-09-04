@@ -6,8 +6,8 @@ import type { AgentMessage } from '@earendil-works/pi-agent-core';
 import type { TodoItem } from '@pi-code/shared/utilities/todo';
 
 const todos: TodoItem[] = [
-  { content: 'a', status: 'completed' },
-  { content: 'b', status: 'progress' },
+  { content: 'a', status: 'closed' },
+  { content: 'b', status: 'active' },
 ];
 
 describe('formatTodoReminder', () => {
@@ -18,8 +18,8 @@ describe('formatTodoReminder', () => {
 
   it('renders the current checklist with a status-update nudge', () => {
     const out = formatTodoReminder(todos);
-    expect(out).toContain('| 1 | a | Completed |');
-    expect(out).toContain('| 2 | b | In Progress |');
+    expect(out).toContain('| 1 | a | Closed |');
+    expect(out).toContain('| 2 | b | Active |');
     expect(out).toContain('call the `update_todo` tool');
   });
 });
@@ -32,7 +32,7 @@ describe('getLatestTodoList', () => {
         toolCallId: '1',
         toolName: 'update_todo',
         content: [],
-        details: { todos: [{ content: 'old', status: 'pending' }] },
+        details: { todos: [{ content: 'old', status: 'open' }] },
         isError: false,
         timestamp: 0,
       },

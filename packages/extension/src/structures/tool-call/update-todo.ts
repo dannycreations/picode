@@ -16,7 +16,7 @@ export const updateTodoTool = defineTool({
         content: Type.String({ description: 'The task description.' }),
         status: Type.Union(
           TODO_STATUSES.map((status) => Type.Literal(status)),
-          { description: 'Current state (pending|progress|completed) of the task.' },
+          { description: 'Current state (e.g., open, active, or closed) of the task.' },
         ),
       }),
       { description: 'Complete list in order; replaces the previous one.' },

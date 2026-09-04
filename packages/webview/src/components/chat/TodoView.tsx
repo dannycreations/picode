@@ -15,9 +15,9 @@ interface TodoHeaderProps {
 
 const TodoIcon: FC<{ status: TodoStatus }> = ({ status }) => {
   switch (status) {
-    case 'completed':
+    case 'closed':
       return <Check className="w-3.5 h-3.5 shrink-0" />;
-    case 'progress':
+    case 'active':
       return <ArrowRight className="w-3.5 h-3.5 shrink-0" />;
     default:
       return <SquareDashed className="w-3.5 h-3.5 shrink-0" />;
@@ -39,7 +39,7 @@ export const TodoHeader: FC<TodoHeaderProps> = ({ todos }) => {
   if (!Array.isArray(todos) || todos.length === 0) return null;
 
   const totalCount = todos.length;
-  const completedCount = todos.filter((t) => t.status === 'completed').length;
+  const completedCount = todos.filter((t) => t.status === 'closed').length;
   const allCompleted = completedCount === totalCount && totalCount > 0;
 
   return (
@@ -47,7 +47,7 @@ export const TodoHeader: FC<TodoHeaderProps> = ({ todos }) => {
       <div
         className={cn(
           'flex items-center gap-2 pt-2 px-3 cursor-pointer select-none',
-          mostImportantTodo?.status === 'progress' && isCollapsed ? 'text-vscode-charts-yellow' : 'text-vscode-foreground',
+          mostImportantTodo?.status === 'active' && isCollapsed ? 'text-vscode-charts-yellow' : 'text-vscode-foreground',
         )}
         onClick={() => setIsCollapsed((v) => !v)}
       >
@@ -76,8 +76,8 @@ export const TodoHeader: FC<TodoHeaderProps> = ({ todos }) => {
               }}
               className={cn(
                 'font-light flex flex-row gap-2 items-start min-h-[20px] leading-normal mb-2 text-xs',
-                todo.status === 'progress' && 'text-vscode-charts-yellow',
-                todo.status !== 'progress' && todo.status !== 'completed' && 'opacity-60',
+                todo.status === 'active' && 'text-vscode-charts-yellow',
+                todo.status !== 'active' && todo.status !== 'closed' && 'opacity-60',
               )}
             >
               <TodoIcon status={todo.status} />
@@ -102,7 +102,7 @@ export const TodoBody: FC<TodoBodyProps> = ({ timestamp, oldTodos, newTodos }) =
   const changedTodos = isInitialState
     ? newTodos
     : newTodos.filter((todo) => {
-        if (todo.status !== 'completed' && todo.status !== 'progress') return false;
+        if (todo.status !== 'closed' && todo.status !== 'active') return false;
         const previous = oldTodos.find((p) => p.content === todo.content);
         return !previous || previous.status !== todo.status;
       });
@@ -118,8 +118,8 @@ export const TodoBody: FC<TodoBodyProps> = ({ timestamp, oldTodos, newTodos }) =
             key={todo.content}
             className={cn(
               'flex flex-row gap-2 items-center',
-              todo.status === 'progress' && 'text-vscode-charts-yellow',
-              todo.status !== 'progress' && todo.status !== 'completed' && 'opacity-60',
+              todo.status === 'active' && 'text-vscode-charts-yellow',
+              todo.status !== 'active' && todo.status !== 'closed' && 'opacity-60',
             )}
           >
             <TodoIcon status={todo.status} />
