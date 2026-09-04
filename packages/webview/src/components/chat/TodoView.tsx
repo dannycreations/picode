@@ -97,36 +97,35 @@ interface TodoBodyProps {
 }
 
 export const TodoBody: FC<TodoBodyProps> = ({ timestamp, oldTodos, newTodos }) => {
-  const isInitialState = oldTodos.length === 0;
-
-  const changedTodos = isInitialState
-    ? newTodos
-    : newTodos.filter((todo) => {
-        if (todo.status !== 'closed' && todo.status !== 'active') return false;
-        const previous = oldTodos.find((p) => p.content === todo.content);
-        return !previous || previous.status !== todo.status;
-      });
-
-  if (changedTodos.length === 0) return null;
+  const changedTodos =
+    oldTodos.length === 0
+      ? newTodos
+      : newTodos.filter((todo) => {
+          if (todo.status !== 'closed' && todo.status !== 'active') return false;
+          const previous = oldTodos.find((p) => p.content === todo.content);
+          return !previous || previous.status !== todo.status;
+        });
 
   return (
     <div data-todo-changes className="overflow-hidden">
       <MessageHeader icon={<ListChecks className="w-3.5 h-3.5 shrink-0" />} title="Updated to-dos" timestamp={timestamp} />
-      <ul className="list-none space-y-1 my-1 pr-1 pt-1 font-light leading-normal">
-        {changedTodos.map((todo) => (
-          <li
-            key={todo.content}
-            className={cn(
-              'flex flex-row gap-2 items-center',
-              todo.status === 'active' && 'text-vscode-charts-yellow',
-              todo.status !== 'active' && todo.status !== 'closed' && 'opacity-60',
-            )}
-          >
-            <TodoIcon status={todo.status} />
-            <span>{todo.content}</span>
-          </li>
-        ))}
-      </ul>
+      {changedTodos.length > 0 && (
+        <ul className="list-none space-y-1 my-1 pr-1 pt-1 font-light leading-normal">
+          {changedTodos.map((todo) => (
+            <li
+              key={todo.content}
+              className={cn(
+                'flex flex-row gap-2 items-center',
+                todo.status === 'active' && 'text-vscode-charts-yellow',
+                todo.status !== 'active' && todo.status !== 'closed' && 'opacity-60',
+              )}
+            >
+              <TodoIcon status={todo.status} />
+              <span>{todo.content}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 };
