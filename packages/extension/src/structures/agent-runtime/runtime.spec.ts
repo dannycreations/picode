@@ -77,22 +77,22 @@ function makeFakeWebview(): Webview {
 // Shape of the services createSession hands back; startTask reads skills and prompts from it.
 const SERVICES = { resourceLoader: { getSkills: () => ({ skills: [] }), getPrompts: () => ({ prompts: [] }) } };
 
-// A session shaped for the start/continue paths: prompt drives the run,
+// A session shaped for the start/continue paths: _runAgentPrompt drives the run,
 // subscribe is called during preparation, and the rest satisfy dispose hooks.
-function makeStartableSession(): AgentSession & { prompt: ReturnType<typeof vi.fn>; dispose: ReturnType<typeof vi.fn> } {
+function makeStartableSession() {
   return {
     agent: { state: { messages: [] }, steer: vi.fn(), shouldStopAfterTurn: undefined, prepareNextTurnWithContext: undefined },
-    sessionManager: { appendMessage: vi.fn(() => 'persisted-id') },
+    sessionManager: { appendMessage: vi.fn(() => 'persisted-id'), appendCustomMessageEntry: vi.fn() },
     settingsManager: { applyOverrides: vi.fn() },
     sessionFile: '/tmp/task.json',
     sessionId: 'session-1',
     isStreaming: false,
     subscribe: vi.fn(() => () => {}),
     sendCustomMessage: vi.fn(async () => undefined),
-    prompt: vi.fn(async () => undefined),
+    _runAgentPrompt: vi.fn(async () => undefined),
     abort: vi.fn(async () => undefined),
     dispose: vi.fn(),
-  } as unknown as AgentSession & { prompt: ReturnType<typeof vi.fn>; dispose: ReturnType<typeof vi.fn> };
+  };
 }
 
 // Drain the microtask queue enough for an awaited preparation to resume.
@@ -117,6 +117,7 @@ function makeFakeSession(steer: () => void, appendMessage: ReturnType<typeof vi.
     },
     sessionManager: {
       appendMessage,
+      appendCustomMessageEntry: vi.fn(),
     },
     settingsManager: {
       applyOverrides: vi.fn(),
@@ -127,9 +128,9 @@ function makeFakeSession(steer: () => void, appendMessage: ReturnType<typeof vi.
 // Queue CRUD lives in reply-queue.spec.ts; these cover how Runtime delivers
 // queued replies into a live turn through the installed session hooks.
 describe('Runtime reply queue steering', () => {
-  it('drains queued replies into the running session via steer on the next turn', async () => {
-    const steer = vi.fn();
-    const session = makeFakeSession(steer);
+  it('drains queued replies into the running session via appendMessage on the next turn', async () => {
+    const appendMessage = vi.fn(() => 'persisted-id');
+    const session = makeFakeSession(vi.fn(), appendMessage);
     const webview = makeFakeWebview();
     const runtime = new Runtime(webview);
 
@@ -140,10 +141,9 @@ describe('Runtime reply queue steering', () => {
     const prepare = session.agent.prepareNextTurnWithContext!;
     await prepare({} as Parameters<typeof prepare>[0], new AbortController().signal);
 
-    expect(steer).toHaveBeenCalledTimes(2);
-    expect(steer.mock.calls[0][0].role).toBe('user');
-    expect(steer.mock.calls[0][0].content[0].text).toBe('Hello World');
-    expect(steer.mock.calls[1][0].content[0].text).toBe('Second Message');
+    expect(appendMessage).toHaveBeenCalledTimes(2);
+    expect((appendMessage.mock.calls[0] as any[])[0].content[0].text).toBe('Hello World');
+    expect((appendMessage.mock.calls[1] as any[])[0].content[0].text).toBe('Second Message');
     expect(runtime.replyQueue.all()).toEqual([]);
 
     const delivered = (webview.postMessage as ReturnType<typeof vi.fn>).mock.calls
@@ -160,12 +160,12 @@ describe('Runtime reply queue steering', () => {
     });
   });
 
-  it('keeps queued replies that fail to steer and retries them next turn', async () => {
-    const steer = vi.fn(() => {
+  it('keeps queued replies that fail to process and retries them next turn', async () => {
+    const appendMessage = vi.fn(() => {
       throw new Error('boom');
     });
     const logError = vi.spyOn(logger, 'error').mockImplementation(() => {});
-    const session = makeFakeSession(steer);
+    const session = makeFakeSession(vi.fn(), appendMessage);
     const runtime = new Runtime(makeFakeWebview());
 
     runtime.replyQueue.add('Stays');
@@ -174,14 +174,14 @@ describe('Runtime reply queue steering', () => {
     const prepare = session.agent.prepareNextTurnWithContext!;
     await prepare({} as Parameters<typeof prepare>[0], new AbortController().signal);
 
-    expect(steer).toHaveBeenCalledTimes(1);
+    expect(appendMessage).toHaveBeenCalledTimes(1);
     expect(runtime.replyQueue.all().map((m) => m.text)).toEqual(['Stays']);
     expect(logError).toHaveBeenCalledTimes(1);
   });
 
-  it('returns the hidden mention so it can attach to the same turn context', async () => {
-    const steer = vi.fn();
-    const session = makeFakeSession(steer);
+  it('processes hidden mentions from drained queued replies', async () => {
+    const appendMessage = vi.fn(() => 'persisted-id');
+    const session = makeFakeSession(vi.fn(), appendMessage);
     const runtime = new Runtime(makeFakeWebview());
     const cwd = 'c:/cwd';
     const msg: QueueChatMessage = { id: 'q1', sender: 'queue', text: '@file x', attachments: [], timestamp: 1 };
@@ -191,27 +191,27 @@ describe('Runtime reply queue steering', () => {
       mentionContent: 'EXPANDED_FILE_CONTENT',
     });
 
-    const result = await runtime['steerQueuedReply'](msg, cwd, session);
+    const result = await runtime['processQueuedReply'](msg, cwd, session);
 
-    expect(result.steered).toBe(true);
-    expect(result.mention).toMatchObject({
-      role: 'custom',
-      customType: 'mention_content',
-      content: 'EXPANDED_FILE_CONTENT',
-      display: false,
-    });
-    expect(steer).toHaveBeenCalledTimes(1);
-    expect(steer.mock.calls[0][0].content).toEqual([{ type: 'text', text: 'text with @file' }]);
+    expect(result).toEqual(
+      expect.objectContaining({
+        id: 'q1',
+        sender: 'user',
+        text: '@file x',
+        attachments: [],
+        timestamp: 1,
+      }),
+    );
+    expect(appendMessage).toHaveBeenCalledTimes(1);
+    expect((appendMessage.mock.calls[0] as any[])[0].content).toEqual([{ type: 'text', text: 'text with @file' }]);
     // The mention is persisted as a hidden custom message and rides in the turn
-    // context for the model; no steer/nextTurn custom message is sent separately.
-    expect(mocks.sendHiddenContent).toHaveBeenCalledWith(session, 'mention_content', 'EXPANDED_FILE_CONTENT', {
-      triggerTurn: false,
-    });
+    // context for the model; no separate mention object is returned.
+    expect(session.sessionManager.appendCustomMessageEntry).toHaveBeenCalledWith('mention_content', 'EXPANDED_FILE_CONTENT', false);
   });
 
   it('collects hidden mentions from drained queued replies', async () => {
-    const steer = vi.fn();
-    const session = makeFakeSession(steer);
+    const appendMessage = vi.fn(() => 'persisted-id');
+    const session = makeFakeSession(vi.fn(), appendMessage);
     const runtime = new Runtime(makeFakeWebview());
 
     mocks.expandMentions
@@ -221,16 +221,10 @@ describe('Runtime reply queue steering', () => {
     runtime.replyQueue.add('plain reply');
     runtime.replyQueue.add('mention reply');
 
-    const mentions = await runtime['drainQueuedReplies'](session);
+    await runtime['drainQueuedReplies'](session);
 
-    expect(steer).toHaveBeenCalledTimes(2);
-    expect(mentions).toHaveLength(1);
-    expect(mentions[0]).toMatchObject({
-      role: 'custom',
-      customType: 'mention_content',
-      content: 'FILE_CONTENT',
-      display: false,
-    });
+    expect(appendMessage).toHaveBeenCalledTimes(2);
+    expect(session.sessionManager.appendCustomMessageEntry).toHaveBeenCalledWith('mention_content', 'FILE_CONTENT', false);
   });
 });
 
@@ -333,7 +327,7 @@ describe('Runtime cancel during init', () => {
     const runtime = new Runtime(webview);
     const gate = deferred<{ session: AgentSession; services: unknown }>();
     mocks.createSession.mockReturnValue(gate.promise);
-    const session = makeStartableSession();
+    const session = makeStartableSession() as any;
 
     void runtime.startTask('hello');
     // Let startTask reach the session creation await.
@@ -345,7 +339,7 @@ describe('Runtime cancel during init', () => {
     gate.resolve({ session, services: SERVICES });
     await flush();
 
-    expect(session.prompt).not.toHaveBeenCalled();
+    expect(session['_runAgentPrompt']).not.toHaveBeenCalled();
     expect(session.dispose).toHaveBeenCalledTimes(1);
     const messages = (webview.postMessage as ReturnType<typeof vi.fn>).mock.calls.map((call) => call[0]);
     expect(messages.filter((msg) => msg.type === 'agent_settled')).toHaveLength(1);
@@ -368,7 +362,7 @@ describe('Runtime cancel during init', () => {
     envGate.resolve('');
     await flush();
 
-    expect(session.prompt).not.toHaveBeenCalled();
+    expect(session['_runAgentPrompt']).not.toHaveBeenCalled();
     // Disposed once by cancelTask; the stale resume must not dispose again.
     expect(session.dispose).toHaveBeenCalledTimes(1);
     expect(session.abort).toHaveBeenCalledTimes(1);
@@ -379,13 +373,9 @@ describe('Runtime cancel during init', () => {
   it('does not settle the webview when a real run is already streaming', async () => {
     const webview = makeFakeWebview();
     const runtime = new Runtime(webview);
-    const session = makeStartableSession() as AgentSession & {
-      prompt: ReturnType<typeof vi.fn>;
-      dispose: ReturnType<typeof vi.fn>;
-      isStreaming: boolean;
-    };
+    const session = makeStartableSession();
     session.isStreaming = true;
-    runtime['session'] = session;
+    (runtime['session'] as any) = session;
 
     await runtime.cancelTask();
 
@@ -425,7 +415,7 @@ describe('Runtime cancel during init', () => {
     await runtime.startTask('hello');
     await flush();
 
-    expect(session.prompt).toHaveBeenCalledTimes(1);
+    expect(session['_runAgentPrompt']).toHaveBeenCalledTimes(1);
     const messages = (webview.postMessage as ReturnType<typeof vi.fn>).mock.calls.map((call) => call[0]);
     expect(messages.some((msg) => msg.type === 'agent_settled')).toBe(false);
   });
@@ -434,16 +424,22 @@ describe('Runtime cancel during init', () => {
     const webview = makeFakeWebview();
     const runtime = new Runtime(webview);
     const session = makeStartableSession();
+    const appendMessage = vi.fn(() => 'persisted-id');
+    session.sessionManager.appendMessage = appendMessage;
     mocks.createSession.mockResolvedValue({ session, services: SERVICES });
 
     await runtime.startTask('hi', [{ kind: 'text', content: 'SECRET', language: 'ts' }]);
     await flush();
 
-    expect(session.prompt).toHaveBeenCalledTimes(1);
-    expect(session.prompt.mock.calls[0][0]).toBe('hi');
-    expect(mocks.sendHiddenContent).toHaveBeenCalledWith(session, 'text_attachment', '``` ts\nSECRET\n```', {
-      deliverAs: 'nextTurn',
-    });
+    expect(session['_runAgentPrompt']).toHaveBeenCalledTimes(1);
+    expect(appendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        role: 'user',
+        content: [{ type: 'text', text: 'hi' }],
+        timestamp: expect.any(Number),
+      }),
+    );
+    expect(session.sessionManager.appendCustomMessageEntry).toHaveBeenCalledWith('text_attachment', '``` ts\nSECRET\n```', false);
   });
 });
 
@@ -464,7 +460,7 @@ describe('Runtime compaction', () => {
     return {
       ...makeStartableSession(),
       compact: vi.fn(impl),
-      sessionManager: { appendMessage: vi.fn(() => 'persisted-id'), buildContextEntries: () => [] },
+      sessionManager: { appendMessage: vi.fn(() => 'persisted-id'), appendCustomMessageEntry: vi.fn(), buildContextEntries: () => [] },
       getSessionStats: SESSION_STATS,
     } as unknown as AgentSession & { compact: ReturnType<typeof vi.fn> };
   }
@@ -521,11 +517,12 @@ describe('Runtime compaction', () => {
 
 describe('Runtime compaction before turns', () => {
   function makeThresholdSession(tokens: number): AgentSession & { compact: ReturnType<typeof vi.fn> } {
+    const base = makeStartableSession();
     return {
-      ...makeStartableSession(),
+      ...base,
       getContextUsage: () => ({ tokens, contextWindow: 1000, percent: Math.round((tokens / 1000) * 100) }),
       compact: vi.fn(async () => ({ estimatedTokensAfter: 120 })),
-      sessionManager: { ...makeStartableSession().sessionManager, buildContextEntries: () => [] },
+      sessionManager: { ...base.sessionManager, buildContextEntries: () => [] },
     } as unknown as AgentSession & { compact: ReturnType<typeof vi.fn> };
   }
 
@@ -543,7 +540,7 @@ describe('Runtime compaction before turns', () => {
     await flush();
 
     expect(session.compact).toHaveBeenCalledTimes(1);
-    expect(session.prompt).toHaveBeenCalledTimes(1);
+    expect(session['_runAgentPrompt']).toHaveBeenCalledTimes(1);
 
     const types = postedTypes(webview);
     expect(types.filter((type) => type === 'compaction_start')).toHaveLength(1);
@@ -560,7 +557,7 @@ describe('Runtime compaction before turns', () => {
     await flush();
 
     expect(session.compact).not.toHaveBeenCalled();
-    expect(session.prompt).toHaveBeenCalledTimes(1);
+    expect(session['_runAgentPrompt']).toHaveBeenCalledTimes(1);
   });
 
   it('compacts before continueTask when the context is above the threshold', async () => {
@@ -575,7 +572,7 @@ describe('Runtime compaction before turns', () => {
 
     expect(session.compact).toHaveBeenCalledTimes(1);
     expect(mocks.getEnvironmentDetails).toHaveBeenCalledTimes(1);
-    expect(mocks.sendHiddenContent).toHaveBeenCalledWith(session, 'environment_details', '', { triggerTurn: true });
+    expect(session.sessionManager.appendCustomMessageEntry).toHaveBeenCalledWith('environment_details', '', false);
   });
 
   it('compacts before resuming an errored turn that is already past the threshold', async () => {
@@ -597,7 +594,7 @@ describe('Runtime compaction before turns', () => {
 
     expect(session.compact).toHaveBeenCalledTimes(1);
     expect(mocks.getEnvironmentDetails).toHaveBeenCalledTimes(1);
-    expect(mocks.sendHiddenContent).toHaveBeenCalledWith(session, 'environment_details', '', { triggerTurn: true });
+    expect(session.sessionManager.appendCustomMessageEntry).toHaveBeenCalledWith('environment_details', '', false);
   });
 
   function posted(webview: Webview): Array<{ type: string }> {
@@ -678,6 +675,6 @@ describe('Runtime compaction before turns', () => {
 
     expect(session.compact).toHaveBeenCalledTimes(1);
     expect(mocks.getEnvironmentDetails).toHaveBeenCalledTimes(1);
-    expect(mocks.sendHiddenContent).toHaveBeenCalledWith(session, 'environment_details', '', { triggerTurn: true });
+    expect(session.sessionManager.appendCustomMessageEntry).toHaveBeenCalledWith('environment_details', '', false);
   });
 });

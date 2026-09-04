@@ -9,7 +9,7 @@ import type { Attachment } from '@pi-code/shared/core/types';
 type EmptyDetails = Record<string, never>;
 
 export function toolResult<T = EmptyDetails>(text: string, details: T = {} as T, attachments?: readonly Attachment[]): CustomToolResult<T> {
-  return { content: [{ type: 'text', text }, ...(parseAttachments(attachments) ?? [])], details };
+  return { content: [{ type: 'text', text }, ...parseAttachments(attachments)], details };
 }
 
 export function toolError<T = EmptyDetails>(text: string, details: T = {} as T): CustomToolResult<T> {

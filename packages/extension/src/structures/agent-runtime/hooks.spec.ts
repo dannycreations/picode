@@ -27,7 +27,7 @@ const noopServices = {
   prepareTurn: async () => {},
   isContextAboveThreshold: () => false,
   requestCompaction: vi.fn(),
-  contextPrepared: async () => [],
+  contextPrepared: async () => {},
 };
 
 type ShouldStop = (context: unknown, signal?: AbortSignal) => boolean | Promise<boolean>;
@@ -177,7 +177,6 @@ describe('initSessionHooks', () => {
       },
       contextPrepared: async () => {
         order.push('prepared');
-        return [];
       },
     });
 

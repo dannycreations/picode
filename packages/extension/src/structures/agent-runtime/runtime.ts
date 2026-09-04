@@ -9,7 +9,7 @@ import { initSessionHooks } from '@pi-code/extension/structures/agent-runtime/ho
 import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { createSession } from '@pi-code/extension/structures/agent-runtime/session';
 import { collectCommands } from '@pi-code/extension/structures/chat-command/command';
-import { injectResourceMessages, sendHiddenContent } from '@pi-code/extension/structures/chat-command/invocation';
+import { injectResourceMessages } from '@pi-code/extension/structures/chat-command/invocation';
 import { expandMentions } from '@pi-code/extension/structures/chat-command/mention';
 import { getEnvironmentDetails } from '@pi-code/extension/structures/chat-session/environment';
 import { loadSessionTranscript } from '@pi-code/extension/structures/chat-session/session';
@@ -18,8 +18,6 @@ import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
 import { logger } from '@pi-code/shared/core/logger';
 import { formatTextAttachment, resolveContextLimit } from '@pi-code/shared/utilities/common';
 
-import type { AgentMessage } from '@earendil-works/pi-agent-core';
-import type { ImageContent, TextContent } from '@earendil-works/pi-ai';
 import type { AgentSession, AgentSessionEvent, AgentSessionServices } from '@earendil-works/pi-coding-agent';
 import type { Webview } from 'vscode';
 import type { ExtensionToWebviewMessage } from '@pi-code/shared/core/protocol';
@@ -59,31 +57,32 @@ export class Runtime {
       const skills = services.resourceLoader.getSkills().skills;
       const prompts = services.resourceLoader.getPrompts().prompts;
       const expanded = await expandMentions(promptText, getWorkspaceCwd());
+      const imageAttachments = parseAttachments(attachments);
 
-      // Send `/skill:` and `/prompt:` command content as hidden messages
-      // before the user turn; the user message itself is passed through.
       await injectResourceMessages(session, { skills, prompts }, expanded.text);
+
+      session.sessionManager.appendMessage({
+        role: 'user',
+        content: [{ type: 'text', text: expanded.text }, ...imageAttachments],
+        timestamp: Date.now(),
+      });
 
       const textAttachments = (attachments ?? []).filter((attachment): attachment is TextAttachment => attachment.kind === 'text');
       for (const attachment of textAttachments) {
-        await sendHiddenContent(session, 'text_attachment', formatTextAttachment(attachment), { deliverAs: 'nextTurn' });
+        session.sessionManager.appendCustomMessageEntry('text_attachment', formatTextAttachment(attachment), false);
       }
 
       if (expanded.mentionContent) {
-        await sendHiddenContent(session, 'mention_content', expanded.mentionContent, { deliverAs: 'nextTurn' });
+        session.sessionManager.appendCustomMessageEntry('mention_content', expanded.mentionContent, false);
       }
 
-      await sendHiddenContent(session, 'environment_details', envDetails, { deliverAs: 'nextTurn' });
-
-      const imageAttachments = parseAttachments(attachments);
+      session.sessionManager.appendCustomMessageEntry('environment_details', envDetails, false);
 
       if (this.discardIfStale(generation, session)) return;
 
       await this.compactContextIfNeeded(session);
-
-      void session.prompt(expanded.text, { images: imageAttachments, expandPromptTemplates: false }).catch((err) => {
-        this.messenger.postError(err);
-      });
+      const runAgentPrompt = session['_runAgentPrompt'].bind(session) as (messages: string[]) => Promise<void>;
+      await runAgentPrompt([]).catch((err) => this.messenger.postError(err));
     } catch (err) {
       // A cancel landing mid-preparation makes the disposed session throw here;
       // that is the deliberate stop already reported by cancelTask.
@@ -104,9 +103,10 @@ export class Runtime {
 
       await this.compactContextIfNeeded(session);
 
-      void sendHiddenContent(session, 'environment_details', envDetails, { triggerTurn: true }).catch((err) => {
-        this.messenger.postError(err);
-      });
+      session.sessionManager.appendCustomMessageEntry('environment_details', envDetails, false);
+
+      const runAgentPrompt = session['_runAgentPrompt'].bind(session) as (messages: string[]) => Promise<void>;
+      await runAgentPrompt([]).catch((err) => this.messenger.postError(err));
     } catch (err) {
       if (generation !== this.taskGeneration) {
         logger.debug('Task continuation abandoned after cancel:', err);
@@ -316,14 +316,13 @@ export class Runtime {
     });
   }
 
-  private async drainQueuedReplies(session: AgentSession): Promise<AgentMessage[]> {
+  private async drainQueuedReplies(session: AgentSession): Promise<void> {
     const pending = this.replyQueue.all();
-    if (pending.length === 0) return [];
+    if (pending.length === 0) return;
 
     const cwd = getWorkspaceCwd();
     const undelivered: ChatMessage[] = [];
     const delivered: ChatMessage[] = [];
-    const mentions: AgentMessage[] = [];
 
     for (const msg of pending) {
       if (msg.sender !== 'queue') {
@@ -331,26 +330,19 @@ export class Runtime {
         continue;
       }
 
-      const result = await this.steerQueuedReply(msg, cwd, session);
-      if (result.steered) {
-        delivered.push({ id: msg.id, sender: 'user', text: msg.text, attachments: msg.attachments, timestamp: msg.timestamp });
-        if (result.mention) {
-          mentions.push(result.mention);
-        }
+      const deliveredEntry = await this.processQueuedReply(msg, cwd, session);
+      if (deliveredEntry) {
+        delivered.push(deliveredEntry);
       } else {
         undelivered.push(msg);
       }
     }
 
-    // Surface the consumed replies as user messages so they render live
     if (delivered.length > 0) {
       this.messenger.post({ type: 'reply_queue_delivered', payload: { messages: delivered } });
     }
 
-    // Only drop the messages that were actually delivered; failed ones
-    // stay queued and are retried on the next turn.
     this.replyQueue.retain(undelivered);
-    return mentions;
   }
 
   private handleSessionEvent(event: AgentSessionEvent, session: AgentSession): void {
@@ -402,39 +394,30 @@ export class Runtime {
     return usage.tokens > (usage.contextWindow * threshold) / 100;
   }
 
-  private async steerQueuedReply(msg: QueueChatMessage, cwd: string, session: AgentSession): Promise<{ steered: boolean; mention?: AgentMessage }> {
+  private async processQueuedReply(msg: QueueChatMessage, cwd: string, session: AgentSession): Promise<ChatMessage | undefined> {
     try {
-      const imageAttachments = parseAttachments(msg.attachments);
       const expanded = await expandMentions(msg.text, cwd);
+      const imageAttachments = parseAttachments(msg.attachments);
+
+      session.sessionManager.appendMessage({
+        role: 'user',
+        content: [{ type: 'text', text: expanded.text }, ...imageAttachments],
+        timestamp: msg.timestamp,
+      });
 
       const textAttachments = (msg.attachments ?? []).filter((attachment): attachment is TextAttachment => attachment.kind === 'text');
       for (const attachment of textAttachments) {
-        await sendHiddenContent(session, 'text_attachment', formatTextAttachment(attachment), { triggerTurn: false });
+        session.sessionManager.appendCustomMessageEntry('text_attachment', formatTextAttachment(attachment), false);
       }
-
-      const content: (TextContent | ImageContent)[] = [{ type: 'text', text: expanded.text }];
-      if (imageAttachments) {
-        content.push(...imageAttachments);
-      }
-      session.agent.steer({ role: 'user', content, timestamp: msg.timestamp });
 
       if (expanded.mentionContent) {
-        await sendHiddenContent(session, 'mention_content', expanded.mentionContent, { triggerTurn: false });
-        return {
-          steered: true,
-          mention: {
-            role: 'custom',
-            customType: 'mention_content',
-            content: expanded.mentionContent,
-            display: false,
-            timestamp: Date.now(),
-          } as AgentMessage,
-        };
+        session.sessionManager.appendCustomMessageEntry('mention_content', expanded.mentionContent, false);
       }
-      return { steered: true };
+
+      return { id: msg.id, sender: 'user', text: msg.text, attachments: msg.attachments, timestamp: msg.timestamp };
     } catch (err) {
-      logger.error('Failed to steer queued reply, keeping it for later:', err);
-      return { steered: false };
+      logger.error('Failed to process queued reply, keeping it for later:', err);
+      return undefined;
     }
   }
 

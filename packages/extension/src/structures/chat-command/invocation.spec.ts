@@ -23,9 +23,9 @@ const silentSink: LoggerSink = {
   error: () => {},
 };
 
-function fakeSession(): { session: AgentSession; sendCustomMessage: ReturnType<typeof vi.fn> } {
-  const sendCustomMessage = vi.fn(async () => {});
-  return { session: { sendCustomMessage } as unknown as AgentSession, sendCustomMessage };
+function fakeSession(): { session: AgentSession; appendCustomMessageEntry: ReturnType<typeof vi.fn> } {
+  const appendCustomMessageEntry = vi.fn();
+  return { session: { sessionManager: { appendCustomMessageEntry } } as unknown as AgentSession, appendCustomMessageEntry };
 }
 
 describe('matchSkillInvocation', () => {
@@ -99,7 +99,7 @@ describe('injectResourceMessages', () => {
     const file = join(tmpdir(), `picode-skill-test-${Date.now()}.md`);
     writeFileSync(file, '---\nname: review\n---\nRead the diff.');
     try {
-      const { session, sendCustomMessage } = fakeSession();
+      const { session, appendCustomMessageEntry } = fakeSession();
 
       await injectResourceMessages(
         session,
@@ -107,15 +107,8 @@ describe('injectResourceMessages', () => {
         '/skill:review check the logs',
       );
 
-      expect(sendCustomMessage).toHaveBeenCalledTimes(1);
-      expect(sendCustomMessage).toHaveBeenCalledWith(
-        expect.objectContaining({
-          customType: 'skill_content',
-          display: false,
-          content: expect.stringContaining('## Skill: review'),
-        }),
-        {},
-      );
+      expect(appendCustomMessageEntry).toHaveBeenCalledTimes(1);
+      expect(appendCustomMessageEntry).toHaveBeenCalledWith('skill_content', expect.stringContaining('## Skill: review'), false);
     } finally {
       try {
         unlinkSync(file);
@@ -126,7 +119,7 @@ describe('injectResourceMessages', () => {
   });
 
   it('stays silent when the skill file cannot be read', async () => {
-    const { session, sendCustomMessage } = fakeSession();
+    const { session, appendCustomMessageEntry } = fakeSession();
 
     await injectResourceMessages(
       session,
@@ -134,59 +127,50 @@ describe('injectResourceMessages', () => {
       '/skill:review do it',
     );
 
-    expect(sendCustomMessage).not.toHaveBeenCalled();
+    expect(appendCustomMessageEntry).not.toHaveBeenCalled();
   });
 
   it('sends a hidden prompt message for the explicit /prompt: form', async () => {
-    const { session, sendCustomMessage } = fakeSession();
+    const { session, appendCustomMessageEntry } = fakeSession();
     const prompts = [{ name: 'notes', filePath: '/p/notes.md', content: 'Write notes.' }] as unknown as PromptTemplate[];
 
     await injectResourceMessages(session, resourcesWith([], prompts), '/prompt:notes about today');
 
-    expect(sendCustomMessage).toHaveBeenCalledTimes(1);
-    expect(sendCustomMessage).toHaveBeenCalledWith(
-      expect.objectContaining({
-        customType: 'prompt_content',
-        display: false,
-        content: expect.stringContaining('## Prompt: notes'),
-      }),
-      {},
-    );
+    expect(appendCustomMessageEntry).toHaveBeenCalledTimes(1);
+    expect(appendCustomMessageEntry).toHaveBeenCalledWith('prompt_content', expect.stringContaining('## Prompt: notes'), false);
   });
 
   it('substitutes arguments into placeholders like pi-agent does', async () => {
-    const { session, sendCustomMessage } = fakeSession();
+    const { session, appendCustomMessageEntry } = fakeSession();
     const prompts = [{ name: 'notes', filePath: '/p/notes.md', content: 'Topic: $1\nAll: $ARGUMENTS' }] as unknown as PromptTemplate[];
 
     await injectResourceMessages(session, resourcesWith([], prompts), '/prompt:notes "web cache" one two');
 
-    expect(sendCustomMessage).toHaveBeenCalledTimes(1);
-    expect(sendCustomMessage).toHaveBeenCalledWith(
-      expect.objectContaining({
-        customType: 'prompt_content',
-        content: '## Prompt: notes\n\nLocation: `/p/notes.md`\n\n```markdown\nTopic: web cache\nAll: web cache one two\n```',
-      }),
-      {},
+    expect(appendCustomMessageEntry).toHaveBeenCalledTimes(1);
+    expect(appendCustomMessageEntry).toHaveBeenCalledWith(
+      'prompt_content',
+      '## Prompt: notes\n\nLocation: `/p/notes.md`\n\n```markdown\nTopic: web cache\nAll: web cache one two\n```',
+      false,
     );
   });
 
   it('stays silent for the plain /name spelling', async () => {
-    const { session, sendCustomMessage } = fakeSession();
+    const { session, appendCustomMessageEntry } = fakeSession();
     const prompts = [{ name: 'notes', filePath: '/p/notes.md', content: 'Write notes.' }] as unknown as PromptTemplate[];
 
     await injectResourceMessages(session, resourcesWith([], prompts), '/notes hello world');
 
-    expect(sendCustomMessage).not.toHaveBeenCalled();
+    expect(appendCustomMessageEntry).not.toHaveBeenCalled();
   });
 
   it('does nothing for plain text or unknown names', async () => {
-    const { session, sendCustomMessage } = fakeSession();
+    const { session, appendCustomMessageEntry } = fakeSession();
     const prompts = [{ name: 'notes' }] as unknown as PromptTemplate[];
     const resources = resourcesWith([{ name: 'review' }] as unknown as Skill[], prompts);
 
     await injectResourceMessages(session, resources, 'just chatting');
     await injectResourceMessages(session, resources, '/missing');
 
-    expect(sendCustomMessage).not.toHaveBeenCalled();
+    expect(appendCustomMessageEntry).not.toHaveBeenCalled();
   });
 });

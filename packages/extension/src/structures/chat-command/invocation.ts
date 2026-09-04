@@ -76,7 +76,7 @@ async function injectSkillMessage(session: AgentSession, skills: readonly Skill[
     return;
   }
 
-  await sendHiddenContent(session, SKILL_CONTENT_TYPE, buildSkillBlock(skill.name, skill.filePath, body));
+  session.sessionManager.appendCustomMessageEntry(SKILL_CONTENT_TYPE, buildSkillBlock(skill.name, skill.filePath, body), false);
 }
 
 async function injectPromptMessage(session: AgentSession, prompts: readonly PromptTemplate[], text: string): Promise<void> {
@@ -84,16 +84,7 @@ async function injectPromptMessage(session: AgentSession, prompts: readonly Prom
   if (!matched) return;
 
   const content = substituteArgs(matched.content, parseCommandArgs(matched.args));
-  await sendHiddenContent(session, PROMPT_CONTENT_TYPE, buildPromptBlock(matched, content));
-}
-
-interface HiddenContentOptions {
-  readonly deliverAs?: 'nextTurn' | 'steer';
-  readonly triggerTurn?: boolean;
-}
-
-export function sendHiddenContent(session: AgentSession, customType: string, content: string, options: HiddenContentOptions = {}): Promise<void> {
-  return session.sendCustomMessage({ customType, content, display: false }, options);
+  session.sessionManager.appendCustomMessageEntry(PROMPT_CONTENT_TYPE, buildPromptBlock(matched, content), false);
 }
 
 export async function injectResourceMessages(session: AgentSession, resources: RuntimeResources, text: string): Promise<void> {

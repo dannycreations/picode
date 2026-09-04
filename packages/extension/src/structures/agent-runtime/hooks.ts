@@ -3,7 +3,6 @@ import { uuidv7 } from '@earendil-works/pi-ai';
 import { readAppSettings } from '@pi-code/extension/core/settings';
 import { getLatestTodoList, withTodoProgress } from '@pi-code/extension/structures/chat-session/reminder';
 
-import type { AgentMessage } from '@earendil-works/pi-agent-core';
 import type { AgentSession } from '@earendil-works/pi-coding-agent';
 
 interface SessionHookServices {
@@ -12,7 +11,7 @@ interface SessionHookServices {
   readonly prepareTurn: (session: AgentSession) => Promise<void>;
   readonly isContextAboveThreshold: (session: AgentSession) => boolean;
   readonly requestCompaction: (session: AgentSession) => Promise<void>;
-  readonly contextPrepared: (session: AgentSession) => Promise<AgentMessage[]>;
+  readonly contextPrepared: (session: AgentSession) => Promise<void>;
 }
 
 export function initSessionHooks(session: AgentSession, services: SessionHookServices): void {
@@ -42,19 +41,17 @@ export function initSessionHooks(session: AgentSession, services: SessionHookSer
     }
 
     await services.prepareTurn(session);
+    await services.contextPrepared(session);
 
     const liveMessages = session.messages;
     const liveContext = liveMessages ? { ...context, context: { ...context.context, messages: liveMessages } } : context;
 
     const snapshot = await basePrepareContext?.(liveContext, signal);
-    const mentions = await services.contextPrepared(session);
-
     const baseContext = snapshot?.context ?? liveContext.context;
     if (baseContext?.messages) {
       const settings = readAppSettings();
-      const contextMessages = mentions.length > 0 ? [...baseContext.messages, ...mentions] : baseContext.messages;
       const todoList = settings.enableTodoTool ? getLatestTodoList(liveMessages ?? context.context.messages) : undefined;
-      const messages = withTodoProgress(contextMessages, todoList);
+      const messages = withTodoProgress(baseContext.messages, todoList);
       return { ...(snapshot ?? {}), context: { ...baseContext, messages } };
     }
     return snapshot;

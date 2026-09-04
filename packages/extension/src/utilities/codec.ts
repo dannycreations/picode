@@ -42,8 +42,8 @@ export function extensionForMimeType(mimeType: string): string {
   return /^[a-z0-9]+$/.test(cleaned) ? cleaned : DEFAULT_EXTENSION;
 }
 
-export function parseAttachments(attachments?: readonly Attachment[]): ImageContent[] | undefined {
-  if (!attachments || attachments.length === 0) return undefined;
+export function parseAttachments(attachments?: readonly Attachment[]): ImageContent[] {
+  if (!attachments || attachments.length === 0) return [];
 
   return attachments
     .filter((attachment): attachment is ImageAttachment => attachment.kind === 'image')
