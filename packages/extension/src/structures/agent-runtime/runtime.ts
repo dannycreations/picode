@@ -116,6 +116,41 @@ export class Runtime {
     }
   }
 
+  public async fork(path: string | undefined): Promise<{ messages: ChatMessage[]; stats: StatsData } | null> {
+    this.prepareRun();
+    const cwd = getWorkspaceCwd();
+
+    if (!path) {
+      this.messenger.postError(new Error('Open or start a task before using /fork.'));
+      return null;
+    }
+
+    const { session } = await this.getOrCreateSession(path, cwd);
+    const leafId = session.sessionManager.getLeafId();
+    if (!leafId) {
+      this.messenger.postError(new Error('Failed to create a forked session.'));
+      return null;
+    }
+
+    const branchedPath = session.sessionManager.createBranchedSession(leafId);
+    if (!branchedPath) {
+      this.messenger.postError(new Error('Failed to create a forked session.'));
+      return null;
+    }
+
+    this.cleanupSession();
+
+    const { session: newSession } = await createSession(cwd, branchedPath);
+    this.session = newSession;
+
+    this.bindSessionHooks(newSession);
+    this.unsubscribeSessionEvents = newSession.subscribe((event) => this.handleSessionEvent(event, newSession));
+
+    const entries = newSession.sessionManager.buildContextEntries();
+    const transcript = loadSessionTranscript(entries, resolveContextLimit(newSession.model?.contextWindow));
+    return { messages: transcript.messages, stats: transcript.stats };
+  }
+
   public async compact(path: string | undefined): Promise<{ messages: ChatMessage[]; stats: StatsData } | null> {
     this.prepareRun();
     const cwd = getWorkspaceCwd();

@@ -4,6 +4,7 @@ export const BUILTIN_COMMANDS = [
   { name: 'reload', description: 'Reload context files, templates, and configuration.' },
   { name: 'compact', description: 'Summarize the current conversation to free up context.' },
   { name: 'update', description: 'Fetch and apply the latest model catalog from providers.' },
+  { name: 'fork', description: 'Create a new session from the current session file.' },
 ] as const satisfies ReadonlyArray<{ name: string; description: string }>;
 
 const BUILTIN_COMMAND_NAMES = new Set<string>(BUILTIN_COMMANDS.map((command) => command.name));

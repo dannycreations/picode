@@ -186,6 +186,21 @@ const HANDLER_MAP: HandlerMap = {
         await postHistory(ctx, 'current');
         return;
       }
+      case 'fork': {
+        const path = msg.path || ctx.runtime.getSessionFile();
+        if (!path) {
+          window.showInformationMessage('Open or start a task before using /fork.');
+          return;
+        }
+
+        const details = await ctx.runtime.fork(path);
+        if (!details) return;
+
+        postSession(ctx, msg.id || ACTIVE_TASK_ID, msg.title || '', path, details);
+        await postHistory(ctx, 'current');
+        window.showInformationMessage('Forked session created.');
+        return;
+      }
       default:
         logger.warn('Unknown builtin command received:', msg);
         return;

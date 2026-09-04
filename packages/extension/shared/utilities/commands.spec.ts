@@ -7,6 +7,7 @@ describe('parseBuiltinCommand', () => {
     expect(parseBuiltinCommand('/reload')).toBe('reload');
     expect(parseBuiltinCommand('/compact')).toBe('compact');
     expect(parseBuiltinCommand('/update')).toBe('update');
+    expect(parseBuiltinCommand('/fork')).toBe('fork');
   });
 
   it('ignores surrounding whitespace', () => {

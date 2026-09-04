@@ -76,6 +76,10 @@ export const useChatActions = (): UseChatActionsReturn => {
         store.send({ type: 'builtin_command', command: 'update' });
         return;
       }
+      if (builtin === 'fork') {
+        store.send({ type: 'builtin_command', command: 'fork', id: '', path: activeTask?.path, title: activeTask?.title ?? '' });
+        return;
+      }
 
       // A running agent cannot take a new turn, so the reply is queued and
       // steered into the current one instead.

@@ -600,6 +600,65 @@ describe('Runtime compaction before turns', () => {
     expect(mocks.sendHiddenContent).toHaveBeenCalledWith(session, 'environment_details', '', { triggerTurn: true });
   });
 
+  function posted(webview: Webview): Array<{ type: string }> {
+    return (webview.postMessage as ReturnType<typeof vi.fn>).mock.calls.map((call) => call[0] as { type: string });
+  }
+
+  it('returns the forked session transcript', async () => {
+    const webview = makeFakeWebview();
+    const branchedPath = '/tmp/forked.json';
+    const newSession = makeStartableSession() as unknown as {
+      sessionFile: string;
+      sessionManager: { appendMessage: () => string; buildContextEntries: () => unknown[] };
+    };
+    newSession.sessionFile = branchedPath;
+    newSession.sessionManager = { appendMessage: vi.fn(() => 'persisted-id'), buildContextEntries: () => [] };
+    mocks.createSession.mockResolvedValueOnce({ session: newSession, services: SERVICES });
+    mocks.loadSessionTranscript.mockReturnValue({
+      messages: [{ id: 'm1', sender: 'user', text: 'forked hi', timestamp: 1 }],
+      stats: { contextTokens: 50 },
+    });
+
+    const runtime = new Runtime(webview);
+    const sourceSession = makeStartableSession() as unknown as {
+      sessionFile: string;
+      sessionManager: { createBranchedSession: () => string; getLeafId: () => string };
+    };
+    sourceSession.sessionFile = '/tmp/task.json';
+    sourceSession.sessionManager = { createBranchedSession: () => branchedPath, getLeafId: () => 'leaf' };
+    runtime['session'] = sourceSession as never;
+
+    const result = await runtime.fork('/tmp/task.json');
+
+    expect(result).toEqual({ messages: [{ id: 'm1', sender: 'user', text: 'forked hi', timestamp: 1 }], stats: { contextTokens: 50 } });
+    expect(mocks.createSession).toHaveBeenCalledWith(expect.any(String), branchedPath);
+  });
+
+  it('surfaces an error when the source path is missing', async () => {
+    const webview = makeFakeWebview();
+    const runtime = new Runtime(webview);
+
+    const result = await runtime.fork(undefined);
+
+    expect(result).toBeNull();
+    expect(posted(webview)).toContainEqual({ type: 'agent_error', payload: { message: expect.stringContaining('/fork') } });
+  });
+
+  it('surfaces an error when createBranchedSession returns no path', async () => {
+    const webview = makeFakeWebview();
+    const runtime = new Runtime(webview);
+    const sourceSession = makeStartableSession() as unknown as {
+      sessionManager: { createBranchedSession: () => string | undefined; getLeafId: () => string };
+    };
+    sourceSession.sessionManager = { createBranchedSession: () => undefined, getLeafId: () => 'leaf' };
+    runtime['session'] = sourceSession as never;
+
+    const result = await runtime.fork('/tmp/task.json');
+
+    expect(result).toBeNull();
+    expect(posted(webview)).toContainEqual({ type: 'agent_error', payload: { message: expect.stringContaining('forked session') } });
+  });
+
   it('compacts before resuming a turn whose API request aborted past the threshold', async () => {
     const webview = makeFakeWebview();
     const session = makeThresholdSession(950);

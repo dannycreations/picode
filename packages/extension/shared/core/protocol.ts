@@ -84,8 +84,8 @@ export type WebviewToExtensionMessage =
   | { type: 'open_attachment'; attachment: Attachment }
   | { type: 'save_image'; dataUrl: string; filename: string }
   | { type: 'cancel_task' }
-  | { type: 'builtin_command'; command: Exclude<BuiltinCommandName, 'compact'> }
-  | { type: 'builtin_command'; command: Extract<BuiltinCommandName, 'compact'>; id: string; path?: string; title: string }
+  | { type: 'builtin_command'; command: Exclude<BuiltinCommandName, 'compact' | 'fork'> }
+  | { type: 'builtin_command'; command: Extract<BuiltinCommandName, 'compact' | 'fork'>; id: string; path?: string; title: string }
   | { type: 'set_model'; model: ModelSelection; thinkingLevel?: ModelThinkingLevel }
   | { type: 'update_settings'; settings: Partial<AppSettings> }
   | { type: 'add_to_reply_queue'; text: string; attachments?: Attachment[] }
