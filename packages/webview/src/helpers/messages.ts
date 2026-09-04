@@ -238,6 +238,31 @@ export function deliverQueuedReplies(messages: ChatMessage[], delivered: ChatMes
   return [...replaced, ...appended];
 }
 
+export function patchReplyQueue(messages: ChatMessage[], queue: readonly ChatMessage[]): ChatMessage[] {
+  const queueById = new Map(queue.map((m) => [m.id, m]));
+
+  // Update existing queued replies in place so their position stays fixed
+  // even if non-queue messages were added after them in the transcript.
+  const updated = messages.map((m) => {
+    if (m.sender === 'queue' && queueById.has(m.id)) {
+      return { ...m, ...queueById.get(m.id)! };
+    }
+    return m;
+  });
+
+  // Drop queue entries that disappeared from the backend queue.
+  const filtered = updated.filter((m) => m.sender !== 'queue' || queueById.has(m.id));
+
+  // Append only genuinely new queue messages at the end.
+  const existingIds = new Set(filtered.map((m) => m.id));
+  const newQueueMessages = queue.filter((m) => !existingIds.has(m.id));
+  if (newQueueMessages.length === 0) {
+    return filtered;
+  }
+
+  return [...filtered, ...newQueueMessages];
+}
+
 function noticeKey(message: ChatMessage): string {
   const errorNotice = message.sender === 'tool' || message.sender === 'api_request' || message.sender === 'error' ? message.errorMessage : undefined;
   return errorNotice ?? message.text;

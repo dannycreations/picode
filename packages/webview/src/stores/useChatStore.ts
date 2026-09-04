@@ -10,6 +10,7 @@ import {
   ignoreUnknownSubagent,
   patchLastAssistant,
   patchMessage,
+  patchReplyQueue,
   rebuildToolSections,
   settlePendingTurns,
   upsertToolMessage,
@@ -143,12 +144,7 @@ export const useChatStore = create<ChatState>((set, get) => {
       set((state) => ({ isCompacting: false, ...patchActiveTask(state, (task) => ({ ...task, ...msg.payload })) }));
     },
     reply_queue_data: (msg) => {
-      set((state) =>
-        patchActiveTask(state, (task) => ({
-          ...task,
-          messages: [...task.messages.filter((m) => m.sender !== 'queue'), ...msg.payload.queue],
-        })),
-      );
+      set((state) => patchActiveTask(state, (task) => ({ ...task, messages: patchReplyQueue(task.messages, msg.payload.queue) })));
     },
     reply_queue_delivered: (msg) => {
       set((state) => patchActiveTask(state, (task) => ({ ...task, messages: deliverQueuedReplies(task.messages, msg.payload.messages) })));

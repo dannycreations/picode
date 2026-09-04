@@ -5,6 +5,7 @@ import {
   deliverQueuedReplies,
   groupToolMessages,
   isRenderableMessage,
+  patchReplyQueue,
   previousTodos,
   resolveApproval,
   settlePendingTurns,
@@ -118,6 +119,17 @@ describe('deliverQueuedReplies', () => {
     const queued = createMessage({ id: 'q1', sender: 'queue', text: 'hi' });
 
     expect(deliverQueuedReplies([queued], [])).toEqual([queued]);
+  });
+
+  it('should update an existing queued reply without changing its position', () => {
+    const q1 = createMessage({ id: 'q1', sender: 'queue', text: 'old' });
+    const later = createMessage({ id: 'later', sender: 'assistant', text: 'thinking' });
+    const messages = [q1, later];
+
+    const updated = patchReplyQueue(messages, [{ id: 'q1', sender: 'queue', text: 'new', timestamp: q1.timestamp }]);
+
+    expect(updated.map((m) => m.id)).toEqual(['q1', 'later']);
+    expect((updated[0] as any).text).toBe('new');
   });
 });
 
