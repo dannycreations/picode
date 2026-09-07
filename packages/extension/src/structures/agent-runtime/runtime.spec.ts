@@ -111,6 +111,7 @@ afterEach(() => {
 function makeFakeSession(steer: () => void, appendMessage: ReturnType<typeof vi.fn> = vi.fn(() => 'persisted-id')): AgentSession {
   return {
     agent: {
+      state: { messages: [] },
       steer,
       shouldStopAfterTurn: undefined,
       prepareNextTurnWithContext: undefined,
@@ -206,7 +207,7 @@ describe('Runtime reply queue steering', () => {
     expect((appendMessage.mock.calls[0] as any[])[0].content).toEqual([{ type: 'text', text: 'text with @file' }]);
     // The mention is persisted as a hidden custom message and rides in the turn
     // context for the model; no separate mention object is returned.
-    expect(session.sessionManager.appendCustomMessageEntry).toHaveBeenCalledWith('mention_content', 'EXPANDED_FILE_CONTENT', false);
+    expect(session.sessionManager.appendCustomMessageEntry).toHaveBeenCalledWith('mention_content', 'EXPANDED_FILE_CONTENT', false, undefined);
   });
 
   it('collects hidden mentions from drained queued replies', async () => {
@@ -224,7 +225,7 @@ describe('Runtime reply queue steering', () => {
     await runtime['drainQueuedReplies'](session);
 
     expect(appendMessage).toHaveBeenCalledTimes(2);
-    expect(session.sessionManager.appendCustomMessageEntry).toHaveBeenCalledWith('mention_content', 'FILE_CONTENT', false);
+    expect(session.sessionManager.appendCustomMessageEntry).toHaveBeenCalledWith('mention_content', 'FILE_CONTENT', false, undefined);
   });
 });
 
@@ -439,7 +440,7 @@ describe('Runtime cancel during init', () => {
         timestamp: expect.any(Number),
       }),
     );
-    expect(session.sessionManager.appendCustomMessageEntry).toHaveBeenCalledWith('text_attachment', '``` ts\nSECRET\n```', false);
+    expect(session.sessionManager.appendCustomMessageEntry).toHaveBeenCalledWith('text_attachment', '``` ts\nSECRET\n```', false, undefined);
   });
 });
 
@@ -572,7 +573,7 @@ describe('Runtime compaction before turns', () => {
 
     expect(session.compact).toHaveBeenCalledTimes(1);
     expect(mocks.getEnvironmentDetails).toHaveBeenCalledTimes(1);
-    expect(session.sessionManager.appendCustomMessageEntry).toHaveBeenCalledWith('environment_details', '', false);
+    expect(session.sessionManager.appendCustomMessageEntry).toHaveBeenCalledWith('environment_details', '', false, undefined);
   });
 
   it('compacts before resuming an errored turn that is already past the threshold', async () => {
@@ -594,7 +595,7 @@ describe('Runtime compaction before turns', () => {
 
     expect(session.compact).toHaveBeenCalledTimes(1);
     expect(mocks.getEnvironmentDetails).toHaveBeenCalledTimes(1);
-    expect(session.sessionManager.appendCustomMessageEntry).toHaveBeenCalledWith('environment_details', '', false);
+    expect(session.sessionManager.appendCustomMessageEntry).toHaveBeenCalledWith('environment_details', '', false, undefined);
   });
 
   function posted(webview: Webview): Array<{ type: string }> {
@@ -675,6 +676,6 @@ describe('Runtime compaction before turns', () => {
 
     expect(session.compact).toHaveBeenCalledTimes(1);
     expect(mocks.getEnvironmentDetails).toHaveBeenCalledTimes(1);
-    expect(session.sessionManager.appendCustomMessageEntry).toHaveBeenCalledWith('environment_details', '', false);
+    expect(session.sessionManager.appendCustomMessageEntry).toHaveBeenCalledWith('environment_details', '', false, undefined);
   });
 });

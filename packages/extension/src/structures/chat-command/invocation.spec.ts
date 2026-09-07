@@ -25,7 +25,13 @@ const silentSink: LoggerSink = {
 
 function fakeSession(): { session: AgentSession; appendCustomMessageEntry: ReturnType<typeof vi.fn> } {
   const appendCustomMessageEntry = vi.fn();
-  return { session: { sessionManager: { appendCustomMessageEntry } } as unknown as AgentSession, appendCustomMessageEntry };
+  return {
+    session: {
+      agent: { state: { messages: [] } },
+      sessionManager: { appendCustomMessageEntry },
+    } as unknown as AgentSession,
+    appendCustomMessageEntry,
+  };
 }
 
 describe('matchSkillInvocation', () => {
@@ -108,7 +114,7 @@ describe('injectResourceMessages', () => {
       );
 
       expect(appendCustomMessageEntry).toHaveBeenCalledTimes(1);
-      expect(appendCustomMessageEntry).toHaveBeenCalledWith('skill_content', expect.stringContaining('## Skill: review'), false);
+      expect(appendCustomMessageEntry).toHaveBeenCalledWith('skill_content', expect.stringContaining('## Skill: review'), false, undefined);
     } finally {
       try {
         unlinkSync(file);
@@ -137,7 +143,7 @@ describe('injectResourceMessages', () => {
     await injectResourceMessages(session, resourcesWith([], prompts), '/prompt:notes about today');
 
     expect(appendCustomMessageEntry).toHaveBeenCalledTimes(1);
-    expect(appendCustomMessageEntry).toHaveBeenCalledWith('prompt_content', expect.stringContaining('## Prompt: notes'), false);
+    expect(appendCustomMessageEntry).toHaveBeenCalledWith('prompt_content', expect.stringContaining('## Prompt: notes'), false, undefined);
   });
 
   it('substitutes arguments into placeholders like pi-agent does', async () => {
@@ -151,6 +157,7 @@ describe('injectResourceMessages', () => {
       'prompt_content',
       '## Prompt: notes\n\nLocation: `/p/notes.md`\n\n```markdown\nTopic: web cache\nAll: web cache one two\n```',
       false,
+      undefined,
     );
   });
 

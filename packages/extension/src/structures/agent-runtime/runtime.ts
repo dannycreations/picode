@@ -4,6 +4,7 @@ import { cancelAllQuestions } from '@pi-code/extension/structures/agent-runtime/
 import { Messenger } from '@pi-code/extension/structures/agent-runtime/core/messenger';
 import { ReplyQueue } from '@pi-code/extension/structures/agent-runtime/core/reply-queue';
 import { mapEvent } from '@pi-code/extension/structures/agent-runtime/event';
+import { appendAgentMessage } from '@pi-code/extension/structures/agent-runtime/helpers/agent-message';
 import { applyPersistedModelAndThinking } from '@pi-code/extension/structures/agent-runtime/helpers/model-selection';
 import { initSessionHooks } from '@pi-code/extension/structures/agent-runtime/hooks';
 import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
@@ -61,7 +62,7 @@ export class Runtime {
 
       await injectResourceMessages(session, { skills, prompts }, expanded.text);
 
-      session.sessionManager.appendMessage({
+      appendAgentMessage(session, {
         role: 'user',
         content: [{ type: 'text', text: expanded.text }, ...imageAttachments],
         timestamp: Date.now(),
@@ -69,14 +70,35 @@ export class Runtime {
 
       const textAttachments = (attachments ?? []).filter((attachment): attachment is TextAttachment => attachment.kind === 'text');
       for (const attachment of textAttachments) {
-        session.sessionManager.appendCustomMessageEntry('text_attachment', formatTextAttachment(attachment), false);
+        appendAgentMessage(session, {
+          role: 'custom',
+          customType: 'text_attachment',
+          content: formatTextAttachment(attachment),
+          display: false,
+          details: undefined,
+          timestamp: Date.now(),
+        });
       }
 
       if (expanded.mentionContent) {
-        session.sessionManager.appendCustomMessageEntry('mention_content', expanded.mentionContent, false);
+        appendAgentMessage(session, {
+          role: 'custom',
+          customType: 'mention_content',
+          content: expanded.mentionContent,
+          display: false,
+          details: undefined,
+          timestamp: Date.now(),
+        });
       }
 
-      session.sessionManager.appendCustomMessageEntry('environment_details', envDetails, false);
+      appendAgentMessage(session, {
+        role: 'custom',
+        customType: 'environment_details',
+        content: envDetails,
+        display: false,
+        details: undefined,
+        timestamp: Date.now(),
+      });
 
       if (this.discardIfStale(generation, session)) return;
 
@@ -103,7 +125,14 @@ export class Runtime {
 
       await this.compactContextIfNeeded(session);
 
-      session.sessionManager.appendCustomMessageEntry('environment_details', envDetails, false);
+      appendAgentMessage(session, {
+        role: 'custom',
+        customType: 'environment_details',
+        content: envDetails,
+        display: false,
+        details: undefined,
+        timestamp: Date.now(),
+      });
 
       const runAgentPrompt = session['_runAgentPrompt'].bind(session) as (messages: string[]) => Promise<void>;
       await runAgentPrompt([]).catch((err) => this.messenger.postError(err));
@@ -399,7 +428,7 @@ export class Runtime {
       const expanded = await expandMentions(msg.text, cwd);
       const imageAttachments = parseAttachments(msg.attachments);
 
-      session.sessionManager.appendMessage({
+      appendAgentMessage(session, {
         role: 'user',
         content: [{ type: 'text', text: expanded.text }, ...imageAttachments],
         timestamp: msg.timestamp,
@@ -407,11 +436,25 @@ export class Runtime {
 
       const textAttachments = (msg.attachments ?? []).filter((attachment): attachment is TextAttachment => attachment.kind === 'text');
       for (const attachment of textAttachments) {
-        session.sessionManager.appendCustomMessageEntry('text_attachment', formatTextAttachment(attachment), false);
+        appendAgentMessage(session, {
+          role: 'custom',
+          customType: 'text_attachment',
+          content: formatTextAttachment(attachment),
+          display: false,
+          details: undefined,
+          timestamp: Date.now(),
+        });
       }
 
       if (expanded.mentionContent) {
-        session.sessionManager.appendCustomMessageEntry('mention_content', expanded.mentionContent, false);
+        appendAgentMessage(session, {
+          role: 'custom',
+          customType: 'mention_content',
+          content: expanded.mentionContent,
+          display: false,
+          details: undefined,
+          timestamp: Date.now(),
+        });
       }
 
       return { id: msg.id, sender: 'user', text: msg.text, attachments: msg.attachments, timestamp: msg.timestamp };
