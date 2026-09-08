@@ -9,7 +9,7 @@ import { createAgentResources } from '@pi-code/extension/structures/agent-runtim
 import { collectCommands } from '@pi-code/extension/structures/chat-command/command';
 import { convertSessionEntries, loadSessionTranscript } from '@pi-code/extension/structures/chat-session/session';
 import { streamLines } from '@pi-code/extension/utilities/fs';
-import { logger } from '@pi-code/shared/core/logger';
+import { logger, readEnvLevel } from '@pi-code/shared/core/logger';
 import { resolveContextLimit } from '@pi-code/shared/utilities/common';
 
 import type { Api, Model, TextContent } from '@earendil-works/pi-ai';
@@ -157,6 +157,7 @@ export async function getInitData(cwd: string, services: AgentSessionServices): 
     default_thinking_level: thinkingLevel,
     settings: readAppSettings(),
     commands: collectCommands(services.resourceLoader),
+    log_level: readEnvLevel(),
   };
 }
 

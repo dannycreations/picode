@@ -1,6 +1,6 @@
 type LogLevelName = 'trace' | 'debug' | 'info' | 'warn' | 'error';
 
-type LevelSetting = LogLevelName | 'off';
+export type LevelSetting = LogLevelName | 'off';
 
 export interface LoggerSink {
   readonly trace: (message: string, ...args: unknown[]) => void;
@@ -30,17 +30,18 @@ const consoleSink: LoggerSink = {
 };
 
 let sink: LoggerSink = consoleSink;
+let level: LevelSetting | null = null;
 
-function readEnvLevel(): LevelSetting | undefined {
+export function readEnvLevel(): LevelSetting | undefined {
   if (typeof process === 'undefined') return undefined;
   const value = process?.env?.['PI_CODE_LOG_LEVEL'];
   const level = value?.trim().toLowerCase();
   return LEVEL_SETTINGS.find((setting) => setting === level);
 }
 
-function isEnabled(level: LogLevelName): boolean {
-  const setting = readEnvLevel() ?? 'info';
-  return LEVEL_WEIGHT[level] >= LEVEL_WEIGHT[setting];
+function isEnabled(key: LogLevelName): boolean {
+  const setting = level ?? readEnvLevel() ?? 'info';
+  return LEVEL_WEIGHT[key] >= LEVEL_WEIGHT[setting];
 }
 
 function forward(level: LogLevelName, args: unknown[]): void {
@@ -64,6 +65,10 @@ function forward(level: LogLevelName, args: unknown[]): void {
 export const logger = {
   setSink(next: LoggerSink | null): void {
     sink = next ?? consoleSink;
+  },
+
+  setLevel(key?: LevelSetting | null): void {
+    level = key || null;
   },
 
   trace(...args: unknown[]): void {

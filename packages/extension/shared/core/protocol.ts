@@ -1,3 +1,4 @@
+import type { LevelSetting } from '@pi-code/shared/core/logger';
 import type { AppSettings } from '@pi-code/shared/core/settings';
 import type {
   ActiveTaskState,
@@ -103,6 +104,7 @@ export type ExtensionToWebviewMessage =
         default_thinking_level?: ModelThinkingLevel;
         settings: AppSettings;
         commands: CommandItem[];
+        log_level?: LevelSetting;
       };
     }
   | { type: 'history_data'; payload: { scope: HistoryScope; epoch: number; items: HistoryItem[] } }

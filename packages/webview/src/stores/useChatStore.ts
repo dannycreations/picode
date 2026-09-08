@@ -342,7 +342,8 @@ export const useChatStore = create<ChatState>((set, get) => {
       get().appendToInput(msg.payload.text);
     },
     init_data: (msg) => {
-      const { models, default_model, default_thinking_level, settings, commands } = msg.payload;
+      const { models, default_model, default_thinking_level, settings, commands, log_level } = msg.payload;
+      logger.setLevel(log_level);
       set({
         models,
         settings: settings ?? null,
