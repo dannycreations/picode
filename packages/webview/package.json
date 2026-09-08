@@ -17,11 +17,11 @@
   },
   "homepage": "https://github.com/dannycreations/picode",
   "dependencies": {
-    "@tanstack/react-virtual": "^3.14.10",
-    "cn": "^0.2.4",
+    "@tanstack/react-virtual": "^3.14.11",
+    "cn": "^0.2.6",
     "hast-util-to-jsx-runtime": "^2.3.6",
-    "katex": "^0.18.5",
-    "lucide-react": "^1.39.0",
+    "katex": "^0.18.7",
+    "lucide-react": "^1.42.0",
     "mermaid-compact": "^0.0.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
@@ -38,13 +38,13 @@
     "@tailwindcss/cli": "^4.3.3",
     "@types/node": "24.13.3",
     "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.5",
+    "@types/react-dom": "^19.2.7",
     "@types/vscode-webview": "^1.57.5",
     "@vitejs/plugin-react": "^6.1.1",
     "@vscode/codicons": "^0.0.45",
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
     "vite": "^8.2.2",
-    "vitest": "^4.1.11"
+    "vitest": "^5.0.0"
   }
 }
