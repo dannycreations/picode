@@ -14,7 +14,6 @@ const mocks = vi.hoisted(() => ({
   reportError: vi.fn(),
   getGitChanges: vi.fn(),
   getGitDiffContext: vi.fn(),
-  getRepoContext: vi.fn(),
   buildGitContext: vi.fn(),
   completeAndExtract: vi.fn(),
 }));
@@ -55,7 +54,6 @@ vi.mock('@pi-code/extension/structures/agent-runtime/helpers/complete', () => ({
 vi.mock('@pi-code/extension/structures/commit-message/git', () => ({
   getGitChanges: mocks.getGitChanges,
   getGitDiffContext: mocks.getGitDiffContext,
-  getRepoContext: mocks.getRepoContext,
   buildGitContext: mocks.buildGitContext,
 }));
 
@@ -90,7 +88,6 @@ beforeEach(() => {
     useStaged: false,
   });
   mocks.getGitDiffContext.mockResolvedValue('');
-  mocks.getRepoContext.mockResolvedValue({ branch: 'main', recentCommits: '' });
   mocks.buildGitContext.mockReturnValue('GIT_CONTEXT');
   mocks.withProgress.mockImplementation(async (_options: unknown, callback: (progress: unknown, token: unknown) => Promise<unknown>) =>
     callback({}, { onCancellationRequested: vi.fn() }),

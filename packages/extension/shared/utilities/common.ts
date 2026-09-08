@@ -5,12 +5,6 @@ export const DEFAULT_CONTEXT_LIMIT = 200_000;
 // Sorts names with numeric segments in natural order (file2 before file10).
 export const pathCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
-// Wraps a text attachment as a fenced markdown block for the model prompt.
-export function formatTextAttachment(attachment: TextAttachment): string {
-  const language = attachment.language ? ` ${attachment.language}` : '';
-  return `\`\`\`${language}\n${attachment.content}\n\`\`\``;
-}
-
 export function parseTextAttachment(content: unknown): TextAttachment | null {
   if (typeof content !== 'string') return null;
 

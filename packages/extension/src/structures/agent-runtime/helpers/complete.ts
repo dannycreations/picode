@@ -2,8 +2,8 @@ import { contentText } from '@earendil-works/pi-ai';
 
 import { getDefaultModelSelection } from '@pi-code/extension/core/settings';
 import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
-import { extractCodeFenceMessage } from '@pi-code/extension/utilities/markdown';
 import { logger } from '@pi-code/shared/core/logger';
+import { extractCodeBlock } from '@pi-code/shared/utilities/markdown';
 
 import type { ModelSelection } from '@pi-code/shared/core/protocol';
 
@@ -34,5 +34,5 @@ async function completePrompt(cwd: string, prompt: string, signal?: AbortSignal,
 }
 
 export async function completeAndExtract(cwd: string, prompt: string, signal?: AbortSignal, preferredModel?: ModelSelection): Promise<string> {
-  return extractCodeFenceMessage(await completePrompt(cwd, prompt, signal, preferredModel));
+  return extractCodeBlock(await completePrompt(cwd, prompt, signal, preferredModel));
 }

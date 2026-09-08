@@ -6,6 +6,7 @@ import { isResolvedSelection, mapDiagnostics, resolveSelectionFromDocument } fro
 import { getWorkspaceCwd, reportError } from '@pi-code/extension/utilities/vscode';
 import { COMMAND_IDS } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
+import { wrapCodeBlock } from '@pi-code/shared/utilities/markdown';
 
 import type { Diagnostic, Disposable } from 'vscode';
 import type { ChatViewProvider } from '@pi-code/extension/structures/agent-webview/provider';
@@ -22,7 +23,7 @@ function resolveSelection(args: unknown[]): ResolvedSelection | null {
 }
 
 function formatSelectionBlock(selection: ResolvedSelection): string {
-  return `${selection.filePath}:${selection.startLine}-${selection.endLine}\n\`\`\`\n${selection.selectedText}\n\`\`\`\n\n`;
+  return `${selection.filePath}:${selection.startLine}-${selection.endLine}\n${wrapCodeBlock(selection.selectedText)}\n\n`;
 }
 
 function getDiagnosticText(args: unknown[], selection: ResolvedSelection): string {

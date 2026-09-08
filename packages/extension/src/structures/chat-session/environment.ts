@@ -8,6 +8,7 @@ import { getGitRepository, getIgnoredPaths } from '@pi-code/extension/utilities/
 import { toRelativePath, toWorkspaceRelativePath } from '@pi-code/extension/utilities/vscode';
 import { logger } from '@pi-code/shared/core/logger';
 import { pathCollator } from '@pi-code/shared/utilities/common';
+import { wrapCodeBlock } from '@pi-code/shared/utilities/markdown';
 import { buildFileTree, renderFileTree } from '@pi-code/shared/utilities/tree';
 
 import type { Change, Repository } from '@pi-code/extension/types/git';
@@ -280,12 +281,11 @@ export async function getEnvironmentDetails(cwd: string, includeFileDetails = fa
   ]);
 
   if (gitStatusEnabled && gitLines.length > 0) {
-    details += '\n\n### Git Status\n\n```\n';
-    details += gitLines.slice(0, maxGitStatusFiles).join('\n');
+    const files = gitLines.slice(0, maxGitStatusFiles);
     if (gitLines.length > maxGitStatusFiles) {
-      details += `\n... and ${gitLines.length - maxGitStatusFiles} more files`;
+      files.push(`... and ${gitLines.length - maxGitStatusFiles} more files`);
     }
-    details += '\n```';
+    details += `\n\n### Git Status\n\n${wrapCodeBlock(files.join('\n'))}`;
   }
 
   if (workspaceFilesEnabled) {

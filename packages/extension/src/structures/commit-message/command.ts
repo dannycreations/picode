@@ -3,12 +3,12 @@ import { commands, Disposable, ProgressLocation, window } from 'vscode';
 import { COMMIT_MESSAGE_PROMPT } from '@pi-code/extension/core/prompt';
 import { readCommitMessageModelSelection } from '@pi-code/extension/core/settings';
 import { completeAndExtract } from '@pi-code/extension/structures/agent-runtime/helpers/complete';
-import { buildGitContext, getGitChanges, getGitDiffContext, getRepoContext } from '@pi-code/extension/structures/commit-message/git';
+import { getGitChanges, getGitDiffContext } from '@pi-code/extension/structures/commit-message/git';
 import { getGitRepository } from '@pi-code/extension/utilities/git';
-import { fencedMarkdown } from '@pi-code/extension/utilities/markdown';
 import { getWorkspaceUri, reportError } from '@pi-code/extension/utilities/vscode';
 import { COMMAND_IDS } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
+import { wrapCodeBlock } from '@pi-code/shared/utilities/markdown';
 
 import type { Uri } from 'vscode';
 import type { Repository } from '@pi-code/extension/types/git';
@@ -45,12 +45,12 @@ function buildPrompt(gitContext: string, userContext: string, rejectedMessage: s
   const sections = [COMMIT_MESSAGE_PROMPT.trim()];
 
   if (userContext.trim()) {
-    sections.push(`## User-Provided Context\n\n${fencedMarkdown(userContext.trim())}`);
+    sections.push(`## User-Provided Context\n\n${wrapCodeBlock(userContext, 'markdown')}`);
   }
   if (rejectedMessage.trim()) {
     sections.push(
       '## Rejected Commit Message',
-      `Previously generated commit message (which was not accepted):\n\n${fencedMarkdown(rejectedMessage.trim())}`,
+      `Previously generated commit message (which was not accepted):\n\n${wrapCodeBlock(rejectedMessage, 'markdown')}`,
       'Please generate a new, different commit message that follows the same requirements.',
     );
   }
@@ -89,12 +89,10 @@ async function generateAndApply(
   signal: AbortSignal,
 ): Promise<void> {
   logger.debug('Generating diff and repo context...');
-  const [diff, { branch, recentCommits }] = await Promise.all([getGitDiffContext(repo, changes, useStaged), getRepoContext(repo)]);
+  const diff = await getGitDiffContext(repo, changes, useStaged);
   logger.debug(`Generated diff context (character length: ${diff.length})`);
-  logger.debug(`Current Branch: ${branch}`);
-  logger.debug(`Recent Commits count: ${recentCommits.split('\n').filter(Boolean).length}`);
 
-  const gitContext = buildGitContext(changes, diff, branch, recentCommits, useStaged);
+  const gitContext = `## Git Context\n\n${wrapCodeBlock(diff, 'diff')}`;
   const prompt = buildPrompt(gitContext, userContext, rejectedMessage);
   logger.debug(`Fully assembled prompt (character length: ${prompt.length})`);
 

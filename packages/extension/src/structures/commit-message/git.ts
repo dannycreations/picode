@@ -5,11 +5,8 @@ import { Uri, workspace } from 'vscode';
 import { isBinaryFile } from '@pi-code/extension/utilities/fs';
 import { GIT_STATUS } from '@pi-code/extension/utilities/git';
 import { toRelativePath } from '@pi-code/extension/utilities/vscode';
-import { SHORT_HASH_LENGTH } from '@pi-code/shared/core/constants';
 
 import type { Change, Repository } from '@pi-code/extension/types/git';
-
-const RECENT_COMMIT_COUNT = 5;
 
 interface ResolvedGitChange {
   readonly relativePath: string;
@@ -78,49 +75,4 @@ export async function getGitDiffContext(repo: Repository, changes: ResolvedGitCh
   }
 
   return diffContext;
-}
-
-export async function getRepoContext(repo: Repository): Promise<{ branch: string; recentCommits: string }> {
-  const branch = repo.state.HEAD?.name ?? 'unknown';
-
-  let recentCommits = '';
-  try {
-    const commits = await repo.log({ maxEntries: RECENT_COMMIT_COUNT });
-    recentCommits = commits.map((commit) => `${commit.hash.substring(0, SHORT_HASH_LENGTH)} ${commit.message.split('\n')[0]}`).join('\n');
-  } catch {
-    recentCommits = '';
-  }
-
-  return { branch, recentCommits };
-}
-
-export function buildGitContext(changes: ResolvedGitChange[], diff: string, branch: string, recentCommits: string, useStaged: boolean): string {
-  let context = '## Git Context\n\n';
-
-  const changeDescriptor = useStaged ? 'Staged' : 'Unstaged';
-  context += `### Full Diff of ${changeDescriptor} Changes\n\n\`\`\`diff\n${diff}\n\`\`\`\n\n`;
-
-  if (changes.length > 0) {
-    const summaryLines = changes.map((c) => {
-      const scope = c.isStaged ? 'staged' : 'unstaged';
-      let statusName = 'Modified';
-      if (c.isUntracked) {
-        statusName = 'Added';
-      } else if (c.isDeleted) {
-        statusName = 'Deleted';
-      }
-      return `${statusName} (${scope}): ${c.relativePath}`;
-    });
-    context += '### Change Summary\n\n```\n' + summaryLines.join('\n') + '\n```\n\n';
-  }
-
-  context += '### Repository Context\n\n';
-  if (branch && branch !== 'unknown') {
-    context += `**Current branch:** \`${branch}\`\n\n`;
-  }
-  if (recentCommits) {
-    context += `**Recent commits:**\n\n\`\`\`\n${recentCommits}\n\`\`\`\n`;
-  }
-
-  return context;
 }

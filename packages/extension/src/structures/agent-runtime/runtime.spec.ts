@@ -440,7 +440,7 @@ describe('Runtime cancel during init', () => {
         timestamp: expect.any(Number),
       }),
     );
-    expect(session.sessionManager.appendCustomMessageEntry).toHaveBeenCalledWith('text_attachment', '``` ts\nSECRET\n```', false, undefined);
+    expect(session.sessionManager.appendCustomMessageEntry).toHaveBeenCalledWith('text_attachment', '```ts\nSECRET\n```', false, undefined);
   });
 });
 

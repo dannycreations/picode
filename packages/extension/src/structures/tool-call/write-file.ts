@@ -5,9 +5,9 @@ import { Type } from 'typebox';
 import { readOutputLimits } from '@pi-code/extension/core/settings';
 import { runFileMutation } from '@pi-code/extension/structures/tool-call/helpers';
 import { checkReadableFile, writeFileAtomic } from '@pi-code/extension/utilities/fs';
-import { stripCodeFence } from '@pi-code/extension/utilities/markdown';
 import { buildFileChangeResult } from '@pi-code/extension/utilities/truncate';
 import { logger } from '@pi-code/shared/core/logger';
+import { stripCodeBlock } from '@pi-code/shared/utilities/markdown';
 
 import type { ToolName } from '@pi-code/shared/core/types';
 
@@ -21,7 +21,7 @@ export const writeFileTool = defineTool({
   }),
   async execute(_toolCallId, params, signal, onUpdate, ctx) {
     const result = await runFileMutation(ctx.cwd, params.path, 'writing to file', signal, async (resolvedPath) => {
-      const finalContent = stripCodeFence(params.content);
+      const finalContent = stripCodeBlock(params.content);
 
       // Only build a diff from the prior content when the file is small enough
       // to load safely; large files are written without a diff.

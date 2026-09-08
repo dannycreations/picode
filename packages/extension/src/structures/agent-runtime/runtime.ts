@@ -17,7 +17,8 @@ import { loadSessionTranscript } from '@pi-code/extension/structures/chat-sessio
 import { parseAttachments } from '@pi-code/extension/utilities/codec';
 import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
 import { logger } from '@pi-code/shared/core/logger';
-import { formatTextAttachment, resolveContextLimit } from '@pi-code/shared/utilities/common';
+import { resolveContextLimit } from '@pi-code/shared/utilities/common';
+import { wrapCodeBlock } from '@pi-code/shared/utilities/markdown';
 
 import type { AgentSession, AgentSessionEvent, AgentSessionServices } from '@earendil-works/pi-coding-agent';
 import type { Webview } from 'vscode';
@@ -73,7 +74,7 @@ export class Runtime {
         appendAgentMessage(session, {
           role: 'custom',
           customType: 'text_attachment',
-          content: formatTextAttachment(attachment),
+          content: wrapCodeBlock(attachment.content, attachment.language),
           display: false,
           details: undefined,
           timestamp: Date.now(),
@@ -439,7 +440,7 @@ export class Runtime {
         appendAgentMessage(session, {
           role: 'custom',
           customType: 'text_attachment',
-          content: formatTextAttachment(attachment),
+          content: wrapCodeBlock(attachment.content, attachment.language),
           display: false,
           details: undefined,
           timestamp: Date.now(),

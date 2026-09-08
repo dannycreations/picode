@@ -4,7 +4,7 @@ import { CONFIG_DIR_NAME, getAgentDir, loadProjectContextFiles } from '@earendil
 
 import { SUBAGENT_MESSAGE_PROMPT } from '@pi-code/extension/core/prompt';
 import { getActiveMcpConfig } from '@pi-code/extension/structures/agent-runtime/mcp/config';
-import { fencedMarkdown } from '@pi-code/extension/utilities/markdown';
+import { wrapCodeBlock } from '@pi-code/shared/utilities/markdown';
 
 import type {
   BeforeAgentStartEventResult,
@@ -141,7 +141,7 @@ function renderSubagentGuidance(selectedTools: readonly string[] | undefined): s
 function renderProjectContext(contextFiles: ReadonlyArray<{ path: string; content: string }> | undefined): string {
   const files = contextFiles ?? [];
   if (files.length === 0) return '';
-  const sections = files.map((file) => [`### ${file.path}`, '', fencedMarkdown(file.content)].join('\n'));
+  const sections = files.map((file) => [`### ${file.path}`, '', wrapCodeBlock(file.content, 'markdown')].join('\n'));
   return ['## Project Context', 'Project-specific instructions and guidelines:', ...sections].join('\n\n');
 }
 

@@ -16,7 +16,7 @@ function readOpeningFence(line: string): Fence | null {
   return { char: marker[0], length: marker.length };
 }
 
-function readFencedBody(raw: string, anchored: boolean): string | null {
+function readCodeBlock(raw: string, anchored: boolean): string | null {
   const lines = raw.split('\n');
 
   let start: number;
@@ -45,16 +45,17 @@ function readFencedBody(raw: string, anchored: boolean): string | null {
   return lines.slice(start + 1).join('\n');
 }
 
-export function stripCodeFence(raw: string): string {
-  return readFencedBody(raw, true) ?? raw;
+export function stripCodeBlock(raw: string): string {
+  return readCodeBlock(raw, true) ?? raw;
 }
 
-export function extractCodeFenceMessage(raw: string): string {
-  const body = readFencedBody(raw, false) ?? raw;
+export function extractCodeBlock(raw: string): string {
+  const body = readCodeBlock(raw, false) ?? raw;
   return body.trim().replace(SURROUNDING_QUOTES, '').trim();
 }
 
-export function fencedMarkdown(content: string): string {
+export function wrapCodeBlock(content: string, language?: string): string {
   const fence = content.includes('```') ? '````' : '```';
-  return [`${fence}markdown`, content.trim(), fence].join('\n');
+  const info = language ? `${language}` : '';
+  return [`${fence}${info}`, content.trim(), fence].join('\n');
 }
