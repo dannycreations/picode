@@ -148,8 +148,9 @@ export const executeCommandTool = defineTool({
         if (!streamDirty || !onUpdate) return;
         streamDirty = false;
         if (streamBuffer.length <= streamSent) return;
-        const delta = streamBuffer.slice(streamSent);
-        streamSent = streamBuffer.length;
+        const available = streamBuffer.slice(streamSent);
+        const delta = available.length > limits.maxBytes ? available.slice(0, limits.maxBytes) : available;
+        streamSent += delta.length;
         onUpdate({
           content: [{ type: 'text', text: delta }],
           details: { exitCode: null, signalCode: null, output: delta, timedOut: false },

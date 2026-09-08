@@ -38,6 +38,33 @@ describe('executeCommandTool', () => {
     )) as any;
     expect(result.details.timedOut).toBe(true);
   });
+
+  it('caps streaming deltas to the configured byte limit', async () => {
+    configValues['maxToolOutputLines'] = 2000;
+    configValues['maxToolOutputSizeKb'] = 1; // 1 KB = 1024 bytes
+
+    const updates: string[] = [];
+    const onUpdate = (...args: any[]) => {
+      const params = args[1];
+      if (params?.details?.output) {
+        updates.push(params.details.output);
+      }
+    };
+
+    // Produce ~3 KB of output. With a 1 KB limit, streaming deltas should be capped.
+    const command = `node -e "console.log('${'x'.repeat(1000)}')"`;
+
+    const result = (await executeCommandTool.execute('streaming-cap-test', { command, timeout: 5000 }, undefined, onUpdate, {
+      cwd: process.cwd(),
+    } as any)) as any;
+
+    expect(result.details.timedOut).toBe(false);
+
+    // Each streaming delta should be at most the configured byte limit.
+    for (const delta of updates) {
+      expect(delta.length).toBeLessThanOrEqual(1024);
+    }
+  });
 });
 
 describe('executeCommandTool cancellation', () => {
