@@ -77,10 +77,10 @@ describe('truncateOutput', () => {
   });
 
   it('appends the actionable hint to the notice', () => {
-    const { text } = truncateOutput(buildLines(10), { limits, hint: 'Use line_ranges to continue.' });
+    const { text } = truncateOutput(buildLines(10), { limits, hint: 'Use `ranges` to continue.' });
 
     expect(text).toContain('(5 line output limit).');
-    expect(text).toContain('Use line_ranges to continue.');
+    expect(text).toContain('Use `ranges` to continue.');
   });
 
   it('derives the hint from the retained content', () => {

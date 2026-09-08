@@ -35,7 +35,7 @@ export type ToolArguments =
   // execute_command
   | { command: string; cwd?: string | null; timeout?: number }
   // read_file
-  | { files: Array<{ path: string; line_ranges?: Array<[number, number]> }> }
+  | { files: Array<{ path: string; ranges?: Array<{ start: number; end: number }> }> }
   // spawn_subagent
   | { agent: string; description: string; task: string }
   // update_todo

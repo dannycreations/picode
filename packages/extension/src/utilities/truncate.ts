@@ -83,7 +83,10 @@ export function truncateOutput(content: string, options: TruncateOutputOptions):
 }
 
 interface ReadNumberedTextOptions {
-  readonly ranges?: readonly (readonly [number, number])[];
+  readonly ranges?: ReadonlyArray<{
+    start: number;
+    end: number;
+  }>;
   readonly hint?: TruncationHint;
 }
 
@@ -91,7 +94,7 @@ export async function readNumberedText(filePath: string, limits: OutputLimits, o
   const ranges = options?.ranges;
   const maxLines =
     ranges !== undefined && ranges.length > 0
-      ? Math.max(...ranges.map((range) => Math.max(1, range[1])))
+      ? Math.max(...ranges.map((range) => Math.max(1, range.end)))
       : limits.maxLines > 0
         ? limits.maxLines
         : undefined;

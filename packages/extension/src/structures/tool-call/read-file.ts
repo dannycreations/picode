@@ -21,7 +21,10 @@ function nextLineAfter(text: string): number | undefined {
 
 interface FileRequest {
   readonly path: string;
-  readonly line_ranges?: readonly (readonly [number, number])[];
+  readonly ranges?: ReadonlyArray<{
+    start: number;
+    end: number;
+  }>;
 }
 
 interface FileSection {
@@ -40,7 +43,7 @@ async function readFileSection(cwd: string, file: FileRequest, limits: OutputLim
       return { path: file.path, header: '', body: check.body, hasError: true };
     }
 
-    const ranges = file.line_ranges;
+    const ranges = file.ranges;
     const header = ranges !== undefined && ranges.length > 0 ? `File: ${file.path} (Ranges: ${JSON.stringify(ranges)})` : `File: ${file.path}`;
 
     const numbered = await readNumberedText(resolvedPath, limits, {
@@ -48,8 +51,8 @@ async function readFileSection(cwd: string, file: FileRequest, limits: OutputLim
       hint: (truncation) => {
         const next = nextLineAfter(truncation.content);
         return next === undefined
-          ? `Use \`line_ranges\` on "${file.path}" to read a narrower slice.`
-          : `Use \`line_ranges\` starting at line ${next} on "${file.path}" to continue.`;
+          ? `Use \`ranges\` on "${file.path}" to read a narrower slice.`
+          : `Use \`ranges\` starting at line ${next} on "${file.path}" to continue.`;
       },
     });
     return { path: file.path, header, body: numbered, hasError: false };
@@ -98,13 +101,13 @@ export const readFileTool = defineTool({
     files: Type.Array(
       Type.Object({
         path: Type.String({ description: 'Workspace-relative path of the file.' }),
-        line_ranges: Type.Optional(
+        ranges: Type.Optional(
           Type.Array(
-            Type.Tuple([
-              Type.Integer({ minimum: 1, description: '1-based start line.' }),
-              Type.Integer({ minimum: 1, description: '1-based end line, inclusive.' }),
-            ]),
-            { description: 'Optional [start, end] ranges of 1-based inclusive line numbers.' },
+            Type.Object({
+              start: Type.Integer({ minimum: 1, description: '1-based start line.' }),
+              end: Type.Integer({ minimum: 1, description: '1-based end line, inclusive.' }),
+            }),
+            { description: 'Optional line-number ranges.' },
           ),
         ),
       }),

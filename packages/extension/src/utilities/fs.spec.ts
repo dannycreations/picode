@@ -149,14 +149,14 @@ describe('numberLines', () => {
   });
 
   it('numbers a single range with 1-based line numbers', () => {
-    expect(numberLines(lines, [[2, 4]])).toBe('2|b\n3|c\n4|d');
+    expect(numberLines(lines, [{ start: 2, end: 4 }])).toBe('2|b\n3|c\n4|d');
   });
 
   it('keeps a gap between disjoint ranges', () => {
     expect(
       numberLines(lines, [
-        [1, 2],
-        [4, 5],
+        { start: 1, end: 2 },
+        { start: 4, end: 5 },
       ]),
     ).toBe('1|a\n2|b\n4|d\n5|e');
   });
@@ -164,17 +164,17 @@ describe('numberLines', () => {
   it('numbers each line once when ranges overlap instead of repeating shared lines', () => {
     expect(
       numberLines(lines, [
-        [1, 3],
-        [3, 5],
+        { start: 1, end: 3 },
+        { start: 3, end: 5 },
       ]),
     ).toBe('1|a\n2|b\n3|c\n4|d\n5|e');
   });
 
   it('reports an invalid range without emitting its lines', () => {
-    expect(numberLines(lines, [[5, 3]])).toBe('Invalid range: 5-3');
+    expect(numberLines(lines, [{ start: 5, end: 3 }])).toBe('Invalid range: 5-3');
   });
 
   it('clamps ranges to the available line count', () => {
-    expect(numberLines(lines, [[1, 100]])).toBe('1|a\n2|b\n3|c\n4|d\n5|e');
+    expect(numberLines(lines, [{ start: 1, end: 100 }])).toBe('1|a\n2|b\n3|c\n4|d\n5|e');
   });
 });

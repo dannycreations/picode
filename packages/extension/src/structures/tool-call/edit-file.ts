@@ -163,7 +163,7 @@ export const editFileTool = defineTool({
       } else if (old_string !== '' || (await pathExists(resolvedPath))) {
         // A present-but-unreadable file must never fall through to creation,
         // which would overwrite it with `new_string`.
-        return toolError(`${check.body} Use \`write_file\` to overwrite this file, or \`read_file\` with \`line_ranges\` to inspect a portion.`);
+        return toolError(`${check.body} Use \`write_file\` to overwrite this file, or \`read_file\` with \`ranges\` to inspect a portion.`);
       }
 
       if (originalContent === null) {
