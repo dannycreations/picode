@@ -35,7 +35,7 @@ vi.mock('node:fs/promises', async (importOriginal) => {
 const OVERSIZED = { isFile: () => true, size: 20 * 1024 * 1024 };
 const READABLE = { isFile: () => true, size: 128 };
 
-function execute(params: { file_path: string; old_string: string; new_string: string }) {
+function execute(params: { path: string; search: string; replace: string }) {
   return editFileTool.execute('test-id', params, undefined, undefined, { cwd: process.cwd() } as any) as Promise<any>;
 }
 
@@ -46,7 +46,7 @@ describe('editFileTool', () => {
   });
 
   it('rejects editing an oversized existing file instead of loading it', async () => {
-    const result = await execute({ file_path: 'big.txt', old_string: 'a', new_string: 'b' });
+    const result = await execute({ path: 'big.txt', search: 'a', replace: 'b' });
 
     expect(readFile).not.toHaveBeenCalled();
     expect(rename).not.toHaveBeenCalled();
@@ -54,8 +54,8 @@ describe('editFileTool', () => {
     expect(result.content[0].text).toContain('write_file');
   });
 
-  it('refuses to overwrite an existing unreadable file when creating with an empty old_string', async () => {
-    const result = await execute({ file_path: 'big.txt', old_string: '', new_string: 'replacement' });
+  it('refuses to overwrite an existing unreadable file when creating with an empty search', async () => {
+    const result = await execute({ path: 'big.txt', search: '', replace: 'replacement' });
 
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain('exceeds');
@@ -66,7 +66,7 @@ describe('editFileTool', () => {
   it('creates a missing file through the atomic write path', async () => {
     stat.mockRejectedValue(Object.assign(new Error('missing'), { code: 'ENOENT' }));
 
-    const result = await execute({ file_path: 'fresh.txt', old_string: '', new_string: 'created' });
+    const result = await execute({ path: 'fresh.txt', search: '', replace: 'created' });
 
     expect(mkdir).toHaveBeenCalled();
     expect(writeFile).toHaveBeenCalledTimes(1);
@@ -80,7 +80,7 @@ describe('editFileTool', () => {
     stat.mockResolvedValue(READABLE);
     readFile.mockResolvedValue('original content');
 
-    const result = await execute({ file_path: 'note.txt', old_string: 'content', new_string: 'CONTENT' });
+    const result = await execute({ path: 'note.txt', search: 'content', replace: 'CONTENT' });
 
     expect(readFile).toHaveBeenCalled();
     expect(writeFile).toHaveBeenCalledTimes(1);
@@ -93,11 +93,11 @@ describe('editFileTool', () => {
     stat.mockResolvedValue(READABLE);
     readFile.mockResolvedValue('value:\tone\ttwo');
 
-    const result = await execute({ file_path: 'tabs.txt', old_string: 'one  two', new_string: 'ONE  TWO' });
+    const result = await execute({ path: 'tabs.txt', search: 'one  two', replace: 'ONE  TWO' });
 
     expect(writeFile).toHaveBeenCalledTimes(1);
     expect(result.isError).toBeFalsy();
     expect(result.content[0].text).toContain('whitespace-tolerant matching');
-    expect(result.content[0].text).toContain('differed from `old_string`');
+    expect(result.content[0].text).toContain('differed from `search`');
   });
 });

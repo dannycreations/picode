@@ -68,10 +68,7 @@ function extractToolPaths(message: ToolChatMessage): readonly string[] {
   }
 
   const args = message.toolArgs;
-  if (args) {
-    if ('path' in args && typeof args.path === 'string' && args.path) paths.push(args.path);
-    else if ('file_path' in args && typeof args.file_path === 'string' && args.file_path) paths.push(args.file_path);
-  }
+  if (args && 'path' in args && typeof args.path === 'string' && args.path) paths.push(args.path);
 
   return paths;
 }

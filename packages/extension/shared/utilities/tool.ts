@@ -120,7 +120,6 @@ function toolMeta(toolName?: string): ToolMeta {
 function getToolFilePath(toolArgs?: ToolArguments): string | undefined {
   if (!toolArgs) return undefined;
   if ('path' in toolArgs && typeof toolArgs.path === 'string') return toolArgs.path;
-  if ('file_path' in toolArgs && typeof toolArgs.file_path === 'string') return toolArgs.file_path;
   if ('files' in toolArgs && Array.isArray(toolArgs.files)) {
     const first = toolArgs.files[0];
     if (first && typeof first.path === 'string') return first.path;

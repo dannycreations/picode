@@ -55,9 +55,7 @@ export const spawnSubagentTool = defineTool({
   parameters: Type.Object({
     agent: StringEnum(SUBAGENT_NAMES, { description: 'Name of the sub-agent to delegate to.' }),
     description: Type.String({ description: 'A 3-5 word description of the delegated task, shown to the user.' }),
-    task: Type.String({
-      description: 'The complete brief for the sub-agent, including the goal, relevant paths, and what to report back.',
-    }),
+    task: Type.String({ description: 'The complete brief for the sub-agent, including the goal, relevant paths, and what to report back.' }),
   }),
   async execute(toolCallId, params, signal, onUpdate, ctx): Promise<CustomToolResult<SubagentDetails>> {
     const failure = (text: string, agentName: string): CustomToolResult<SubagentDetails> =>

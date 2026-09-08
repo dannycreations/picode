@@ -76,19 +76,19 @@ describe('createPolicyExtension tool_call gating', () => {
     expect(mocks.requestApproval).not.toHaveBeenCalled();
   });
 
-  it('reads write_file paths from args.path and edit_file paths from args.file_path', async () => {
+  it('reads write_file paths from args.path and edit_file paths from args.path', async () => {
     activeSettings = { ...DEFAULT_SETTINGS, autoApproveWrite: true, allowedWritePaths: ['docs/**'] };
 
     expect(await decide('write_file', { path: 'docs/a.md' })).toEqual({ block: false });
-    expect(await decide('edit_file', { file_path: 'docs/b.md' })).toEqual({ block: false });
+    expect(await decide('edit_file', { path: 'docs/b.md' })).toEqual({ block: false });
     expect(mocks.requestApproval).not.toHaveBeenCalled();
 
-    // A swapped or missing field must fail closed instead of approving nothing.
+    // A missing field must fail closed instead of approving nothing.
     expect(await decide('write_file', {})).toEqual({
       block: true,
       reason: 'Access to write/edit this file path is explicitly denied by settings.',
     });
-    expect(await decide('edit_file', { path: 'docs/c.md' })).toEqual({
+    expect(await decide('edit_file', {})).toEqual({
       block: true,
       reason: 'Access to write/edit this file path is explicitly denied by settings.',
     });

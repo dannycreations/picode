@@ -31,7 +31,7 @@ export type ToolArguments =
   // delete_file
   | { path: string }
   // edit_file
-  | { file_path: string; old_string: string; new_string: string; expected?: number }
+  | { path: string; search: string; replace: string; expected?: number }
   // execute_command
   | { command: string; cwd?: string | null; timeout?: number }
   // read_file

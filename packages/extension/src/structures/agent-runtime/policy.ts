@@ -18,7 +18,6 @@ import type { ToolName } from '@pi-code/shared/core/types';
 interface ToolCallArgs {
   readonly files?: ReadonlyArray<{ path?: string }>;
   readonly path?: string;
-  readonly file_path?: string;
   readonly command?: string;
   readonly cwd?: string | null;
 }
@@ -57,13 +56,7 @@ function evaluateToolCall(toolName: ToolName, cwd: string, input: unknown): Appr
     }
     case 'write_file':
     case 'edit_file':
-      action = resolvePathAction(
-        cwd,
-        (toolName === 'write_file' ? args.path : args.file_path) ?? '',
-        settings.autoApproveWrite,
-        settings.allowedWritePaths,
-        settings.deniedWritePaths,
-      );
+      action = resolvePathAction(cwd, args.path ?? '', settings.autoApproveWrite, settings.allowedWritePaths, settings.deniedWritePaths);
       denyReason = 'Access to write/edit this file path is explicitly denied by settings.';
       break;
     case 'delete_file':
