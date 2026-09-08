@@ -1,4 +1,7 @@
-import { formatThrownValue, StringEnum } from '@earendil-works/pi-ai';
+import { writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { formatThrownValue, StringEnum, uuidv7 } from '@earendil-works/pi-ai';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
@@ -13,6 +16,7 @@ import {
 } from '@pi-code/extension/structures/agent-runtime/subagent';
 import { toolError, toolResult } from '@pi-code/extension/structures/tool-call/helpers';
 import { truncateOutput } from '@pi-code/extension/utilities/truncate';
+import { logger } from '@pi-code/shared/core/logger';
 
 import type { SubagentOutcome, SubagentUsage } from '@pi-code/extension/structures/agent-runtime/subagent';
 import type { CustomToolResult } from '@pi-code/extension/types/extension';
@@ -24,6 +28,7 @@ interface SubagentDetails {
   readonly usage?: SubagentUsage;
   readonly subtitle?: string;
   readonly duration?: number;
+  readonly tempFilePath?: string;
 }
 
 function formatUsage(usage: SubagentUsage): string {
@@ -31,19 +36,47 @@ function formatUsage(usage: SubagentUsage): string {
   return `${turns}, ${usage.tokensIn.toLocaleString()} in / ${usage.tokensOut.toLocaleString()} out, $${usage.cost.toFixed(4)}`;
 }
 
-function renderOutcome(outcome: SubagentOutcome, state: 'completed' | 'error'): string {
-  const { text } = truncateOutput(outcome.text, {
-    limits: readOutputLimits(),
+async function renderOutcome(outcome: SubagentOutcome, state: 'completed' | 'error'): Promise<{ text: string; tempFilePath?: string }> {
+  const limits = readOutputLimits();
+  const baseHint = `Re-run the "${outcome.agent}" sub-agent with a narrower brief to get the rest.`;
+  const { truncation, text: baseText } = truncateOutput(outcome.text, {
+    limits,
     keep: 'head',
-    hint: `Re-run the "${outcome.agent}" sub-agent with a narrower brief to get the rest.`,
+    hint: baseHint,
   });
+
+  let text: string;
+  let tempFilePath: string | undefined;
+
+  if (truncation.truncated) {
+    try {
+      tempFilePath = join(tmpdir(), `pi-code-subagent-${Date.now()}-${uuidv7().slice(0, 8)}.log`);
+      await writeFile(tempFilePath, outcome.text, 'utf8');
+    } catch (err) {
+      logger.warn('Failed to write sub-agent output to temp file:', err);
+      tempFilePath = undefined;
+    }
+
+    const resolution = tempFilePath
+      ? `Full output saved to: "${tempFilePath}". Read this file with \`read_file\` to inspect the rest.`
+      : `Re-run with a narrower brief to inspect the rest.`;
+
+    const { text: retruncated } = truncateOutput(outcome.text, {
+      limits,
+      keep: 'head',
+      hint: `${resolution}\n${baseHint}`,
+    });
+    text = retruncated;
+  } else {
+    text = baseText;
+  }
 
   const body =
     state === 'error'
       ? [...(outcome.steps ? ['### Steps Taken', '', outcome.steps, ''] : []), '### Error', '', outcome.error]
       : ['### Result', '', text];
 
-  return [`## Sub-agent ${outcome.agent} (${state})`, '', ...body, '', formatUsage(outcome.usage)].join('\n');
+  return { text: [`## Sub-agent ${outcome.agent} (${state})`, '', ...body, '', formatUsage(outcome.usage)].join('\n'), tempFilePath };
 }
 
 const SUBAGENT_NAMES = SUBAGENTS.map((agent) => agent.name);
@@ -102,6 +135,8 @@ export const spawnSubagentTool = defineTool({
       // decide whether to retry or do the work itself, and needs the steps to
       // judge how far the sub-agent got.
       const failed = outcome.error !== undefined || outcome.text === '';
+      const { text: report, tempFilePath } = await renderOutcome(outcome, failed ? 'error' : 'completed');
+
       const details: SubagentDetails = {
         agent: outcome.agent,
         description: params.description,
@@ -109,9 +144,9 @@ export const spawnSubagentTool = defineTool({
         usage: outcome.usage,
         subtitle: outcome.usage ? formatUsage(outcome.usage) : undefined,
         duration: outcome.duration,
+        tempFilePath,
       };
 
-      const report = renderOutcome(outcome, failed ? 'error' : 'completed');
       return failed ? toolError(report, details) : toolResult(report, details);
     } catch (err) {
       return failure(`Error running the ${agent.name} sub-agent: ${formatThrownValue(err)}`, agent.name);
