@@ -64,6 +64,7 @@ export const SETTING_FIELDS: SettingFieldRegistry = {
   maxConcurrentFileReads: { tab: 'behaviour', label: 'Concurrent file reads limit' },
   maxCommandTimeoutMs: { tab: 'behaviour', label: 'Command timeout limit' },
   retryOnError: { tab: 'behaviour', label: 'Retry on error' },
+  minTextAttachment: { tab: 'behaviour', label: 'Text attachment threshold' },
 
   autoCompactContext: { tab: 'context', label: 'Automatic trigger compaction' },
   autoCompactContextPercent: { tab: 'context', label: 'Compaction threshold', parent: 'autoCompactContext' },

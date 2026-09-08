@@ -48,8 +48,6 @@ const AttachedAttachmentsPreview: FC<{
   );
 };
 
-const TEXT_ATTACHMENT_THRESHOLD = 2000;
-
 export const ChatInput: FC<ChatInputProps> = ({ onSend, sendingDisabled, placeholderText, textareaRef, supportsImages }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
@@ -58,6 +56,7 @@ export const ChatInput: FC<ChatInputProps> = ({ onSend, sendingDisabled, placeho
   const commands = useChatStore((state) => state.commands);
   const selectedAttachments = useChatStore((state) => state.inputAttachments);
   const setSelectedAttachments = useChatStore((state) => state.setInputAttachments);
+  const settings = useChatStore((state) => state.settings);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const matchRef = useRef<HTMLDivElement>(null);
 
@@ -65,6 +64,7 @@ export const ChatInput: FC<ChatInputProps> = ({ onSend, sendingDisabled, placeho
   const mention = useChatMention({ value: inputValue, setValue: setInputValue, textareaRef });
   const commit = useChatTag({ value: inputValue, setValue: setInputValue, textareaRef });
   const segments = useMemo(() => splitTokenSegments(inputValue, commands), [inputValue, commands]);
+  const minTextAttachment = useMemo(() => settings?.minTextAttachment ?? 2000, [settings]);
 
   // Drop any staged images when the active model cannot accept them, so the
   // user cannot send attachments the model would reject. Text attachments stay,
@@ -106,14 +106,17 @@ export const ChatInput: FC<ChatInputProps> = ({ onSend, sendingDisabled, placeho
     if (command.handleKeyDown(e)) return;
     if (commit.handleKeyDown(e)) return;
 
-    // Ctrl+Shift+V (or Cmd+Shift+V on Mac) forces pasting large text
-    // directly into the textarea instead of converting it to a text attachment.
+    // Ctrl+Shift+V (or Cmd+Shift+V on Mac) invert default behaviour.
     if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'v' || e.key === 'V')) {
       e.preventDefault();
       try {
         const text = await navigator.clipboard.readText();
         if (text) {
-          insertTextAtCursor(text);
+          if (text.length >= minTextAttachment) {
+            insertTextAtCursor(text);
+          } else {
+            addTextAttachment(text);
+          }
         }
       } catch {
         // Clipboard access denied or failed - ignore
@@ -173,7 +176,7 @@ export const ChatInput: FC<ChatInputProps> = ({ onSend, sendingDisabled, placeho
     // the composer, so the transcript keeps a short prompt and the pasted
     // content reaches the model as a markdown block.
     const pasted = e.clipboardData.getData('text');
-    if (pasted.length >= TEXT_ATTACHMENT_THRESHOLD) {
+    if (pasted.length >= minTextAttachment) {
       e.preventDefault();
       addTextAttachment(pasted);
     }

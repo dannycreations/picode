@@ -246,6 +246,13 @@
           "minimum": 0,
           "maximum": 61,
           "description": "Maximum times the agent retries a turn that fails with a transient error such as a rate limit, server overload, or provider error."
+        },
+        "pi-code.minTextAttachment": {
+          "type": "number",
+          "default": 2000,
+          "minimum": 100,
+          "maximum": 100000,
+          "description": "Minimum number of characters before it is attached as a text file instead of inserted into the composer."
         }
       }
     },

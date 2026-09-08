@@ -242,6 +242,14 @@ const SETTINGS_SCHEMA = {
     maximum: 61,
     description: 'Maximum times the agent retries a turn that fails with a transient error such as a rate limit, server overload, or provider error.',
   },
+  minTextAttachment: {
+    type: 'number',
+    default: 2000,
+    minimum: 100,
+    maximum: 100000,
+    step: 100,
+    description: 'Minimum number of characters before it is attached as a text file instead of inserted into the composer.',
+  },
 } as const satisfies Record<string, SettingSpec>;
 
 export type SettingKey = keyof typeof SETTINGS_SCHEMA;
