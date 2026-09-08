@@ -59,9 +59,10 @@ describe('extractCodeBlock', () => {
     expect(extractCodeBlock('Here is the message:\n\n```text\nfeat: add thing\n```')).toBe('feat: add thing');
   });
 
-  it('drops wrapping quotes', () => {
+  it('preserves backticks inside a fenced code block', () => {
     expect(extractCodeBlock('"feat: add thing"')).toBe('feat: add thing');
-    expect(extractCodeBlock('```\n`feat: add thing`\n```')).toBe('feat: add thing');
+    expect(extractCodeBlock('```\n`feat: add thing`\n```')).toBe('`feat: add thing`');
+    expect(extractCodeBlock('```\n```function()```\n```')).toBe('```function()```');
   });
 
   it('keeps a multi-line body', () => {

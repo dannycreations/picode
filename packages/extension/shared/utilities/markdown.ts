@@ -1,7 +1,7 @@
 // CommonMark fenced code blocks: up to three leading spaces, then three or more
 // backticks or tildes. Backtick fences may not carry a backtick in the info string.
 const OPENING_FENCE = /^ {0,3}(?:(`{3,})(?![^`]*`)|(~{3,}))/;
-const SURROUNDING_QUOTES = /^["'`]+|["'`]+$/g;
+const SURROUNDING_QUOTES = /^["']+|["']+$/g;
 
 interface Fence {
   readonly char: string;
@@ -51,7 +51,9 @@ export function stripCodeBlock(raw: string): string {
 
 export function extractCodeBlock(raw: string): string {
   const body = readCodeBlock(raw, false) ?? raw;
-  return body.trim().replace(SURROUNDING_QUOTES, '').trim();
+  const trimmed = body.trim();
+  const withoutQuotes = trimmed.replace(SURROUNDING_QUOTES, '').trim();
+  return trimmed.length > withoutQuotes.length ? withoutQuotes : trimmed;
 }
 
 export function wrapCodeBlock(content: string, language?: string): string {
