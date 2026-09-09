@@ -1,4 +1,4 @@
-import { ChevronDown, Sparkles } from 'lucide-react';
+import { ChevronDown, ImageIcon, Sparkles } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { DropdownMenu, DropdownMenuItem } from '@pi-code/webview/components/shared/DropdownMenu';
@@ -68,6 +68,7 @@ const ModelDropdownMenu: FC<ModelDropdownMenuProps> = ({ models, currentModel, o
                 selected={isSelected}
                 onSelect={() => onSelectModel(m.id)}
                 buttonRef={isSelected ? selectedItemRef : undefined}
+                icon={m.supportsImages ? <ImageIcon size={12} className="text-muted" /> : undefined}
               />
             );
           })

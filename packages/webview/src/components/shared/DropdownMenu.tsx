@@ -8,9 +8,10 @@ interface DropdownMenuItemProps {
   readonly onSelect: () => void;
   readonly className?: string;
   readonly buttonRef?: Ref<HTMLButtonElement>;
+  readonly icon?: ReactNode;
 }
 
-export const DropdownMenuItem: FC<DropdownMenuItemProps> = ({ label, selected, onSelect, className = '', buttonRef }) => (
+export const DropdownMenuItem: FC<DropdownMenuItemProps> = ({ label, selected, onSelect, className = '', buttonRef, icon }) => (
   <button
     ref={buttonRef}
     onClick={onSelect}
@@ -22,7 +23,8 @@ export const DropdownMenuItem: FC<DropdownMenuItemProps> = ({ label, selected, o
         : 'bg-transparent text-vscode-descriptionForeground hover:bg-vscode-list-hoverBackground/50 hover:text-vscode-foreground',
     )}
   >
-    <span className="truncate mr-2">{label}</span>
+    <span className="truncate min-w-0 mr-2">{label}</span>
+    {icon}
   </button>
 );
 
