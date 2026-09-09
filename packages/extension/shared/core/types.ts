@@ -118,6 +118,11 @@ interface InfoChatMessage extends ChatMessageBase {
   readonly sender: 'info';
 }
 
+export interface CompactionChatMessage extends ChatMessageBase {
+  readonly sender: 'compaction';
+  readonly cost?: number;
+}
+
 export interface QueueChatMessage extends ChatMessageBase {
   readonly sender: 'queue';
   readonly attachments?: readonly Attachment[];
@@ -150,6 +155,7 @@ export type ChatMessage =
   | ApiRequestChatMessage
   | AssistantChatMessage
   | CheckpointChatMessage
+  | CompactionChatMessage
   | ErrorChatMessage
   | InfoChatMessage
   | QueueChatMessage

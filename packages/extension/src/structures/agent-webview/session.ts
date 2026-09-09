@@ -183,7 +183,7 @@ export async function loadSessionDetails(
   stats: StatsData;
 }> {
   const sessionManager = SessionManager.open(sessionPath);
-  const entries = sessionManager.buildContextEntries();
+  const entries = sessionManager.getBranch();
 
   const modelRuntime = (await createAgentResources(cwd)).modelRuntime;
 
@@ -266,7 +266,7 @@ export async function deleteSessions(paths: string[]): Promise<void> {
 export async function exportSession(sessionPath: string, defaultId?: string): Promise<boolean> {
   let chatMessages: ChatMessage[];
   try {
-    chatMessages = convertSessionEntries(SessionManager.open(sessionPath).buildContextEntries());
+    chatMessages = convertSessionEntries(SessionManager.open(sessionPath).getBranch());
   } catch {
     window.showWarningMessage(SESSION_FILE_UNAVAILABLE);
     return false;

@@ -176,7 +176,7 @@ export class Runtime {
     this.bindSessionHooks(newSession);
     this.unsubscribeSessionEvents = newSession.subscribe((event) => this.handleSessionEvent(event, newSession));
 
-    const entries = newSession.sessionManager.buildContextEntries();
+    const entries = newSession.sessionManager.getBranch();
     const transcript = loadSessionTranscript(entries, resolveContextLimit(newSession.model?.contextWindow));
     return { messages: transcript.messages, stats: transcript.stats };
   }
@@ -195,7 +195,7 @@ export class Runtime {
     try {
       const compaction = await session.compact();
 
-      const entries = session.sessionManager.buildContextEntries();
+      const entries = session.sessionManager.getBranch();
       const transcript = loadSessionTranscript(entries, resolveContextLimit(session.model?.contextWindow));
 
       // loadSessionTranscript derives contextTokens from the last assistant usage,

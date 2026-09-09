@@ -461,7 +461,7 @@ describe('Runtime compaction', () => {
     return {
       ...makeStartableSession(),
       compact: vi.fn(impl),
-      sessionManager: { appendMessage: vi.fn(() => 'persisted-id'), appendCustomMessageEntry: vi.fn(), buildContextEntries: () => [] },
+      sessionManager: { appendMessage: vi.fn(() => 'persisted-id'), appendCustomMessageEntry: vi.fn(), getBranch: () => [] },
       getSessionStats: SESSION_STATS,
     } as unknown as AgentSession & { compact: ReturnType<typeof vi.fn> };
   }
@@ -523,7 +523,6 @@ describe('Runtime compaction before turns', () => {
       ...base,
       getContextUsage: () => ({ tokens, contextWindow: 1000, percent: Math.round((tokens / 1000) * 100) }),
       compact: vi.fn(async () => ({ estimatedTokensAfter: 120 })),
-      sessionManager: { ...base.sessionManager, buildContextEntries: () => [] },
     } as unknown as AgentSession & { compact: ReturnType<typeof vi.fn> };
   }
 
@@ -607,10 +606,10 @@ describe('Runtime compaction before turns', () => {
     const branchedPath = '/tmp/forked.json';
     const newSession = makeStartableSession() as unknown as {
       sessionFile: string;
-      sessionManager: { appendMessage: () => string; buildContextEntries: () => unknown[] };
+      sessionManager: { appendMessage: () => string; getBranch: () => unknown[] };
     };
     newSession.sessionFile = branchedPath;
-    newSession.sessionManager = { appendMessage: vi.fn(() => 'persisted-id'), buildContextEntries: () => [] };
+    newSession.sessionManager = { appendMessage: vi.fn(() => 'persisted-id'), getBranch: () => [] };
     mocks.createSession.mockResolvedValueOnce({ session: newSession, services: SERVICES });
     mocks.loadSessionTranscript.mockReturnValue({
       messages: [{ id: 'm1', sender: 'user', text: 'forked hi', timestamp: 1 }],

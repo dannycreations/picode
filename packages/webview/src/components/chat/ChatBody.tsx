@@ -1,6 +1,7 @@
 import { memo } from 'react';
 
 import { AssistantMessage } from '@pi-code/webview/components/chat/messages/AssistantMessage';
+import { CompactionMessage } from '@pi-code/webview/components/chat/messages/CompactionMessage';
 import { QuestionMessage } from '@pi-code/webview/components/chat/messages/QuestionMessage';
 import { ApiRequestMessage, ErrorMessage, InfoMessage } from '@pi-code/webview/components/chat/messages/StatusMessage';
 import { ToolMessage } from '@pi-code/webview/components/chat/messages/ToolMessage';
@@ -43,6 +44,8 @@ export const ChatBody = memo<ChatBodyProps>(({ message, oldTodos, commands, sear
         return <ApiRequestMessage message={message} />;
       case 'error':
         return <ErrorMessage message={message} search={search} />;
+      case 'compaction':
+        return <CompactionMessage message={message} search={search} />;
       case 'checkpoint':
       case 'info':
         return <InfoMessage message={message} search={search} />;

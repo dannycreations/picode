@@ -44,7 +44,7 @@ export function convertSessionEntries(entries: readonly SessionEntry[]): ChatMes
 
     switch (entry.type) {
       case 'compaction':
-        result.push({ id: entry.id, sender: 'info', text: `Compacted: ${entry.summary}`, timestamp });
+        result.push({ id: entry.id, sender: 'compaction', text: entry.summary, cost: entry.usage?.cost?.total, timestamp });
         break;
 
       case 'label':
