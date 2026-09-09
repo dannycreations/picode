@@ -1,9 +1,10 @@
 import { cn } from 'cn';
-import { Image as ImageIcon, Send } from 'lucide-react';
+import { Paperclip, Send } from 'lucide-react';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
 
 import { logger } from '@pi-code/shared/core/logger';
+import { classifyFileByContent, getFileExtension } from '@pi-code/webview/components/chat/helpers/attachment';
 import { splitTokenSegments } from '@pi-code/webview/components/chat/helpers/highlight';
 import { useChatCommand, useChatMention, useChatTag } from '@pi-code/webview/components/chat/hooks/useSuggestion';
 import { CommandMenu, CommitMenu, MentionMenu } from '@pi-code/webview/components/chat/SuggestionMenu';
@@ -23,7 +24,15 @@ interface ChatInputProps {
   readonly supportsImages: boolean;
 }
 
-const AttachedAttachmentsPreview: FC<{
+interface SuggestionController {
+  readonly isOpen: boolean;
+  readonly handleKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => boolean;
+  readonly handleChange: (event: ChangeEvent<HTMLTextAreaElement>) => void;
+  readonly close: () => void;
+  readonly syncCaret: () => void;
+}
+
+const AttachmentsPreview: FC<{
   readonly attachments: readonly Attachment[];
   readonly onRemove: (index: number) => void;
 }> = ({ attachments, onRemove }) => {
@@ -63,8 +72,10 @@ export const ChatInput: FC<ChatInputProps> = ({ onSend, sendingDisabled, placeho
   const command = useChatCommand({ commands, value: inputValue, setValue: setInputValue, textareaRef });
   const mention = useChatMention({ value: inputValue, setValue: setInputValue, textareaRef });
   const commit = useChatTag({ value: inputValue, setValue: setInputValue, textareaRef });
+  const suggestionControllers: readonly SuggestionController[] = [command, mention, commit];
+
   const segments = useMemo(() => splitTokenSegments(inputValue, commands), [inputValue, commands]);
-  const minTextAttachment = useMemo(() => settings?.minTextAttachment ?? 2000, [settings]);
+  const minTextAttachment = settings?.minTextAttachment ?? 2000;
 
   // Drop any staged images when the active model cannot accept them, so the
   // user cannot send attachments the model would reject. Text attachments stay,
@@ -72,6 +83,30 @@ export const ChatInput: FC<ChatInputProps> = ({ onSend, sendingDisabled, placeho
   useEffect(() => {
     if (!supportsImages) setSelectedAttachments((prev) => prev.filter((attachment) => attachment.kind !== 'image'));
   }, [supportsImages]);
+
+  const pushAttachment = (attachment: Attachment): void => {
+    setSelectedAttachments((prev) => [...prev, attachment]);
+  };
+
+  const attachImage = async (file: File): Promise<void> => {
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      pushAttachment({ kind: 'image', dataUrl });
+    } catch (err) {
+      logger.error('Failed to attach image:', err);
+    }
+  };
+
+  const attachTextFile = async (file: File): Promise<void> => {
+    try {
+      const content = await file.text();
+      pushAttachment({ kind: 'text', content, language: getFileExtension(file.name) || undefined });
+    } catch (err) {
+      logger.error('Failed to attach text file:', err);
+    }
+  };
+
+  const addTextAttachment = (content: string): void => pushAttachment({ kind: 'text', content });
 
   const handleSend = () => {
     if ((inputValue.trim() || selectedAttachments.length > 0) && !sendingDisabled) {
@@ -90,8 +125,7 @@ export const ChatInput: FC<ChatInputProps> = ({ onSend, sendingDisabled, placeho
 
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    const newValue = inputValue.slice(0, start) + text + inputValue.slice(end);
-    setInputValue(newValue);
+    setInputValue(inputValue.slice(0, start) + text + inputValue.slice(end));
 
     // Move cursor after the inserted text on next tick
     requestAnimationFrame(() => {
@@ -101,23 +135,19 @@ export const ChatInput: FC<ChatInputProps> = ({ onSend, sendingDisabled, placeho
   };
 
   const handleKeyDown = async (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    // The picker owns navigation and acceptance keys while it is open.
-    if (mention.handleKeyDown(e)) return;
-    if (command.handleKeyDown(e)) return;
-    if (commit.handleKeyDown(e)) return;
+    // An open suggestion popover owns navigation and acceptance keys.
+    if (suggestionControllers.some((controller) => controller.handleKeyDown(e))) return;
 
-    // Ctrl+Shift+V (or Cmd+Shift+V on Mac) invert default behaviour.
-    if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'v' || e.key === 'V')) {
+    // Ctrl+Shift+V (or Cmd+Shift+V on Mac) inverts the default paste
+    // behaviour: long text is inserted inline, short text becomes an
+    // explicit attachment.
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'v') {
       e.preventDefault();
       try {
         const text = await navigator.clipboard.readText();
-        if (text) {
-          if (text.length >= minTextAttachment) {
-            insertTextAtCursor(text);
-          } else {
-            addTextAttachment(text);
-          }
-        }
+        if (!text) return;
+        if (text.length >= minTextAttachment) insertTextAtCursor(text);
+        else addTextAttachment(text);
       } catch {
         // Clipboard access denied or failed - ignore
       }
@@ -132,27 +162,22 @@ export const ChatInput: FC<ChatInputProps> = ({ onSend, sendingDisabled, placeho
 
   const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     setInputValue(e.target.value);
-    command.handleChange(e);
-    mention.handleChange(e);
-    commit.handleChange(e);
+    suggestionControllers.forEach((controller) => controller.handleChange(e));
   };
 
-  const attachImage = async (file: File): Promise<void> => {
-    try {
-      const dataUrl = await readFileAsDataUrl(file);
-      setSelectedAttachments((prev) => [...prev, { kind: 'image', dataUrl }]);
-    } catch (err) {
-      logger.error('Failed to attach image:', err);
-    }
-  };
-
-  const addTextAttachment = (content: string): void => {
-    setSelectedAttachments((prev) => [...prev, { kind: 'text', content }]);
-  };
-
-  const handleAttachImage = async (e: ChangeEvent<HTMLInputElement>) => {
+  const handleAttachFile = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) await attachImage(file);
+    if (!file) return;
+
+    const kind = await classifyFileByContent(file);
+    if (kind === 'text') {
+      await attachTextFile(file);
+    } else if (kind === 'image' && supportsImages) {
+      await attachImage(file);
+    }
+
+    // Reset input so the same file can be re-selected if needed.
+    e.target.value = '';
   };
 
   const handlePaste = async (e: ClipboardEvent<HTMLTextAreaElement>) => {
@@ -160,16 +185,16 @@ export const ChatInput: FC<ChatInputProps> = ({ onSend, sendingDisabled, placeho
     if (!items) return;
 
     if (supportsImages) {
-      let attachedImage = false;
-      for (let i = 0; i < items.length; i++) {
-        if (!items[i].type.includes('image')) continue;
-        const file = items[i].getAsFile();
-        if (!file) continue;
+      const imageFiles = Array.from(items)
+        .filter((item) => item.type.startsWith('image/'))
+        .map((item) => item.getAsFile())
+        .filter((file): file is File => file !== null);
+
+      if (imageFiles.length > 0) {
         e.preventDefault();
-        await attachImage(file);
-        attachedImage = true;
+        await Promise.all(imageFiles.map(attachImage));
+        return;
       }
-      if (attachedImage) return;
     }
 
     // A large plain-text paste becomes a text attachment instead of filling
@@ -183,15 +208,39 @@ export const ChatInput: FC<ChatInputProps> = ({ onSend, sendingDisabled, placeho
   };
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
-    // Only a Shift-drag may drop files as mentions; otherwise the textarea
-    // keeps its ordinary behaviour and the drop is ignored.
-    if (!e.shiftKey) {
-      setIsDraggingOver(false);
+    // Shift-drag still inserts @mentions. Without Shift, allow drops for
+    // model-supported attachments: text files and, when the model supports
+    // them, images. Unsupported or mixed-type drops are ignored.
+    const hasFiles = e.dataTransfer.types.includes('Files');
+
+    if (hasFiles) {
+      e.preventDefault();
+
+      // Shift-drag without real files still targets @mention insertion;
+      // leave the drag-over state untouched.
+      if (e.shiftKey && e.dataTransfer.files.length === 0) return;
+
+      const mimeTypes = new Set(Array.from(e.dataTransfer.files, (file) => file.type));
+      const [soleType] = mimeTypes;
+      const isDroppableText = mimeTypes.size === 1 && soleType.startsWith('text/');
+      const isDroppableImage = mimeTypes.size === 1 && supportsImages && soleType.startsWith('image/');
+
+      if (isDroppableText || isDroppableImage) {
+        e.dataTransfer.dropEffect = 'copy';
+        setIsDraggingOver(true);
+      } else {
+        setIsDraggingOver(false);
+      }
       return;
     }
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'copy';
-    setIsDraggingOver(true);
+
+    if (e.shiftKey) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      setIsDraggingOver(true);
+    } else {
+      setIsDraggingOver(false);
+    }
   };
 
   const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
@@ -201,33 +250,43 @@ export const ChatInput: FC<ChatInputProps> = ({ onSend, sendingDisabled, placeho
     setIsDraggingOver(false);
   };
 
-  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+  const handleDrop = async (e: DragEvent<HTMLDivElement>) => {
     setIsDraggingOver(false);
-    if (!e.shiftKey) return;
+
+    // Shift-drag inserts @mentions for paths/URIs; if no usable path text is
+    // present, it falls through to plain file-attachment handling below.
+    if (e.shiftKey) {
+      e.preventDefault();
+      const text = e.dataTransfer.getData('text') || e.dataTransfer.getData('application/vnd.code.uri-list');
+      const paths = text
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0 && !line.startsWith('#'));
+
+      if (paths.length > 0) {
+        useChatStore.getState().send({ type: 'insert_mentions', paths });
+        return;
+      }
+    }
+
+    // Plain file drop: convert to model-supported attachments,
+    // ignoring unsupported file types.
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length === 0) return;
     e.preventDefault();
 
-    // VS Code delivers dragged editor tabs and files as a uri-list; a plain
-    // text payload covers the remaining drag sources.
-    const text = e.dataTransfer.getData('text') || e.dataTransfer.getData('application/vnd.code.uri-list');
-    if (!text) return;
+    const classified = await Promise.all(files.map(async (file) => ({ file, kind: await classifyFileByContent(file) })));
+    const textFiles = classified.filter(({ kind }) => kind === 'text').map(({ file }) => file);
+    const imageFiles = supportsImages ? classified.filter(({ kind }) => kind === 'image').map(({ file }) => file) : [];
 
-    const paths = text
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0 && !line.startsWith('#'));
-    if (paths.length === 0) return;
-
-    useChatStore.getState().send({ type: 'insert_mentions', paths });
+    await Promise.all([...textFiles.map(attachTextFile), ...imageFiles.map(attachImage)]);
   };
 
   const isSendButtonActive = (inputValue.trim().length > 0 || selectedAttachments.length > 0) && !sendingDisabled;
 
   return (
     <div className={cn('relative flex flex-col px-3.5 pt-2 pb-1 outline-none w-full box-border bg-vscode-sideBar-background shrink-0')}>
-      <AttachedAttachmentsPreview
-        attachments={selectedAttachments}
-        onRemove={(idx) => setSelectedAttachments((prev) => prev.filter((_, i) => i !== idx))}
-      />
+      <AttachmentsPreview attachments={selectedAttachments} onRemove={(idx) => setSelectedAttachments((prev) => prev.filter((_, i) => i !== idx))} />
 
       <div
         className={cn(
@@ -274,21 +333,13 @@ export const ChatInput: FC<ChatInputProps> = ({ onSend, sendingDisabled, placeho
             ref={textareaRef}
             value={inputValue}
             onChange={handleChange}
-            onFocus={() => {
-              setIsFocused(true);
-            }}
+            onFocus={() => setIsFocused(true)}
             onBlur={() => {
               setIsFocused(false);
-              command.close();
-              mention.close();
-              commit.close();
+              suggestionControllers.forEach((controller) => controller.close());
             }}
             onKeyDown={handleKeyDown}
-            onSelect={() => {
-              command.syncCaret();
-              mention.syncCaret();
-              commit.syncCaret();
-            }}
+            onSelect={() => suggestionControllers.forEach((controller) => controller.syncCaret())}
             onPaste={handlePaste}
             onScroll={(e) => {
               if (matchRef.current) matchRef.current.scrollTop = e.currentTarget.scrollTop;
@@ -306,14 +357,10 @@ export const ChatInput: FC<ChatInputProps> = ({ onSend, sendingDisabled, placeho
 
         <div className="flex justify-between items-center px-2.5 pb-2 pt-1 z-20 pointer-events-auto">
           <div className="flex items-center gap-1.5 ml-auto">
-            <input type="file" ref={fileInputRef} onChange={handleAttachImage} accept="image/*" className="hidden" />
-            <Tooltip content={supportsImages ? 'Add image attachment' : 'Model does not support image attachments'}>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={!supportsImages}
-                className={cn('icon-button', supportsImages ? '' : 'opacity-40 cursor-not-allowed')}
-              >
-                <ImageIcon size={14} />
+            <input type="file" ref={fileInputRef} onChange={handleAttachFile} className="hidden" />
+            <Tooltip content="Add attachment">
+              <button onClick={() => fileInputRef.current?.click()} className={cn('icon-button')}>
+                <Paperclip size={14} />
               </button>
             </Tooltip>
 
