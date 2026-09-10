@@ -19,8 +19,11 @@ interface UseChatActionsReturn {
 
 export const useChatActions = (): UseChatActionsReturn => {
   const handleAnswerQuestion = useCallback((questionId: string, text: string, attachments: Attachment[] = []): void => {
-    const answer = text.trim();
-    if (!answer) return;
+    const trimmed = text.trim();
+    const hasText = attachments.some((attachment) => attachment.kind === 'text');
+    const hasImage = attachments.some((attachment) => attachment.kind === 'image');
+    const answer = trimmed || (hasText ? '(see attached text)' : '') || (hasImage ? '(see attached image)' : '');
+    if (!answer && attachments.length === 0) return;
 
     const store = useChatStore.getState();
     store.setActiveTask((prev) =>
@@ -42,10 +45,9 @@ export const useChatActions = (): UseChatActionsReturn => {
   const handleSendPrompt = useCallback(
     (text: string, attachments: Attachment[]): void => {
       const trimmed = text.trim();
+      const hasText = attachments.some((attachment) => attachment.kind === 'text');
       const hasImage = attachments.some((attachment) => attachment.kind === 'image');
-      // Keeps the transcript bubble, task title, and steered turn non-empty
-      // when the user sends image attachments without any words.
-      const displayText = trimmed || (hasImage ? '(see attached image)' : '');
+      const displayText = trimmed || (hasText ? '(see attached text)' : '') || (hasImage ? '(see attached image)' : '');
       if (!displayText && attachments.length === 0) return;
 
       const store = useChatStore.getState();
