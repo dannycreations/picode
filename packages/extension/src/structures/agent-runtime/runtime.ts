@@ -205,6 +205,8 @@ export class Runtime {
           ? { ...transcript.stats, contextTokens: compaction.estimatedTokensAfter }
           : transcript.stats;
 
+      const compactionEntry = entries.find((entry) => entry.type === 'compaction') ?? null;
+      this.messenger.post({ type: 'compaction_end', payload: { ...stats, compactionEntry } });
       return { messages: transcript.messages, stats };
     } catch (err) {
       // A user cancel aborts the in-flight compaction, which the session rethrows
@@ -213,9 +215,8 @@ export class Runtime {
       if (!isAbort) {
         this.messenger.postError(err);
       }
-      return null;
-    } finally {
       this.messenger.post({ type: 'compaction_end' });
+      return null;
     }
   }
 

@@ -147,17 +147,23 @@ describe('mapEvent', () => {
     }
   });
 
-  it('replays header refreshes around compaction and maps nothing without stats', () => {
+  it('maps compaction start to a dedicated compaction start event', () => {
     const start = mapEvent({ type: 'compaction_start', reason: 'threshold' } as any, makeSession(), 'api-req-3');
-    expect(start.message?.type).toBe('agent_start');
+    expect(start.message).toEqual({ type: 'compaction_start' });
+    expect(start.apiRequestId).toBe('api-req-3');
+  });
 
+  it('maps compaction end to a compaction end event with stats', () => {
     const end = mapEvent(
       { type: 'compaction_end', reason: 'threshold', result: undefined, aborted: false, willRetry: false } as any,
       makeSession(),
       'api-req-3',
     );
     expect(end.message?.type).toBe('compaction_end');
+    expect(end.apiRequestId).toBe('api-req-3');
+  });
 
+  it('maps compaction end to null when stats creation fails', () => {
     const logError = vi.spyOn(logger, 'error').mockImplementation(() => {});
     try {
       const broken = makeSession({

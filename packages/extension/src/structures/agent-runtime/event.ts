@@ -217,7 +217,7 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
     }
 
     case 'compaction_start':
-      return agentStart(session, apiRequestId);
+      return { message: { type: 'compaction_start' }, apiRequestId };
 
     case 'compaction_end': {
       const stats = createStats(session);

@@ -141,7 +141,27 @@ export const useChatStore = create<ChatState>((set, get) => {
       set({ isCompacting: true });
     },
     compaction_end: (msg) => {
-      set((state) => ({ isCompacting: false, ...patchActiveTask(state, (task) => ({ ...task, ...msg.payload })) }));
+      set((state) => {
+        const { compactionEntry, ...stats } = msg.payload ?? {};
+        const basePatch = patchActiveTask(state, (task) => ({ ...task, ...stats }));
+        const nextTask =
+          compactionEntry && state.activeTask
+            ? {
+                ...basePatch,
+                messages: [
+                  ...state.activeTask.messages,
+                  {
+                    id: compactionEntry.id,
+                    sender: 'compaction' as const,
+                    text: compactionEntry.summary,
+                    cost: compactionEntry.usage?.cost?.total,
+                    timestamp: Date.now(),
+                  },
+                ],
+              }
+            : basePatch;
+        return { isCompacting: false, ...nextTask };
+      });
     },
     reply_queue_data: (msg) => {
       set((state) => patchActiveTask(state, (task) => ({ ...task, messages: patchReplyQueue(task.messages, msg.payload.queue) })));

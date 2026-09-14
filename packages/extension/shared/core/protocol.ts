@@ -139,7 +139,16 @@ export type ExtensionToWebviewMessage =
   | { type: 'agent_error'; payload: { message: string } }
   | { type: 'agent_settled'; payload?: StatsData }
   | { type: 'compaction_start' }
-  | { type: 'compaction_end'; payload?: StatsData }
+  | {
+      type: 'compaction_end';
+      payload?: StatsData & {
+        compactionEntry?: {
+          id: string;
+          summary: string;
+          usage?: { cost?: { total: number } };
+        } | null;
+      };
+    }
   | { type: 'show_settings' }
   | { type: 'set_chat_input'; payload: { text: string } }
   | { type: 'search_results'; payload: { query: string; paths: string[] } }
