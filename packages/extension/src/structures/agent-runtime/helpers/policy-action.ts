@@ -16,22 +16,98 @@ export function applyYoloDecision(settings: AppSettings, decision: ApprovalDecis
 }
 
 const DANGEROUS_PATTERNS: readonly RegExp[] = [
-  /\$\{([^}]*@[PQEAak][^}]*)\}/, // Parameter expansion flags
-  /\$\{([^}]*[=+\-?][^}]*\\(?:[0-7]{3}|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}))[^}]*\}/i, // Escapes in parameter defaults
-  /\$\{![^}]+\}/, // Indirect parameter expansion
-  /\$\(/, // Command and arithmetic substitution
-  /`/, // Backtick command substitution
-  /<<<\s*(?:\$\(|`)/, // Here-string command substitutions
-  /=\([^)]+\)/, // Zsh process substitution
-  /[<>]\(/, // Bash and zsh process substitution
-  /[*?+@!]\(e:[^:]+:\)/, // Zsh glob evaluation
-  /\0/, // Null bytes
+  // Parameter expansion flags.
+  /\$\{([^}]*@[PQEAak][^}]*)\}/,
+  // Escapes in parameter defaults.
+  /\$\{([^}]*[=+\-?][^}]*\\(?:[0-7]{3}|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}))[^}]*\}/i,
+  // Indirect parameter expansion.
+  /\$\{![^}]+\}/,
+  // Command and arithmetic substitution.
+  /\$\(/,
+  // Backtick command substitution.
+  /`/,
+  // Here-string command substitutions.
+  /<<<\s*(?:\$\(|`)/,
+  // Zsh process substitution.
+  /=\([^)]+\)/,
+  // Bash and zsh process substitution.
+  /[<>]\(/,
+  // Zsh glob evaluation.
+  /[*?+@!]\(e:[^:]+:\)/,
+  // Null bytes.
+  /\0/,
 ];
+
+export function containsDangerousSubstitution(source: string): boolean {
+  if (!source) return false;
+  if (DANGEROUS_PATTERNS.some((pattern) => pattern.test(source))) {
+    return true;
+  }
+  return process.platform === 'win32' && hasCaretQuoteEscape(source);
+}
+
+export function hasCaretQuoteEscape(source: string): boolean {
+  // Cmd treats "^" outside double quotes as an escape character, so "^" can
+  // terminate a quoted argument early and smuggle extra tokens past prefix matching.
+  let inDoubleQuote = false;
+  for (let i = 0; i < source.length; i++) {
+    const char = source[i];
+    if (char === '"') {
+      inDoubleQuote = !inDoubleQuote;
+    } else if (char === '^' && !inDoubleQuote && source[i + 1] === '"') {
+      return true;
+    }
+  }
+  return false;
+}
+
+const MAX_REGEX_PATTERN_LENGTH = 256;
+const MAX_REGEX_INPUT_LENGTH = 8_192;
+
+const UNSAFE_REGEX_PATTERNS: readonly RegExp[] = [
+  // Lookahead / lookbehind.
+  /\(\?[=!<]/,
+  // Backreferences.
+  /\\[1-9][0-9]*/,
+  // Recursive / subroutine-style constructs.
+  /\(\?(?:R|[+-]R|[0-9]+)\)/i,
+  // A quantifier immediately followed by another quantifier.
+  /(?:[+*?]|\{[0-9]+(?:,[0-9]*)?\})\s*(?:[+*?]|\{[0-9]+(?:,[0-9]*)?\})/,
+  // A quantified group containing another quantifier, such as (a+)+ or (.*)+. This is intentionally conservative.
+  /\((?:[^()\\]|\\.)*(?:[+*?]|\{[0-9]+(?:,[0-9]*)?\})(?:[^()\\]|\\.)*\)(?:[+*?]|\{[0-9]+(?:,[0-9]*)?\})/,
+  // Ambiguous alternation under repetition, such as (a|aa)+.
+  /\((?:[^()\\|]|\\.)*\|(?:[^()\\|]|\\.)*\)(?:[+*?]|\{[0-9]+(?:,[0-9]*)?\})/,
+];
+
+function isRegexPattern(pattern: string): boolean {
+  return pattern.length >= 3 && pattern.startsWith('/') && pattern.endsWith('/');
+}
+
+function regexSource(pattern: string): string {
+  return pattern.slice(1, -1);
+}
+
+function isSafeRegexPattern(source: string): boolean {
+  if (!source || source.length > MAX_REGEX_PATTERN_LENGTH) {
+    return false;
+  }
+  return !UNSAFE_REGEX_PATTERNS.some((pattern) => pattern.test(source));
+}
+
+function matchesRegexPattern(source: string, candidate: string): boolean {
+  if (!isSafeRegexPattern(source) || candidate.length > MAX_REGEX_INPUT_LENGTH) {
+    return false;
+  }
+  try {
+    return new RegExp(source, 'i').test(candidate);
+  } catch {
+    return false;
+  }
+}
 
 export function matchesGlob(pattern: string, filePath: string): boolean {
   if (!pattern || !filePath) return false;
-  const normalizedFile = normalizeSeparators(filePath);
-  return minimatch(normalizedFile, pattern, { nocase: true, dot: true });
+  return minimatch(normalizeSeparators(filePath), pattern, { nocase: true, dot: true });
 }
 
 function looksAbsolute(path: string): boolean {
@@ -39,77 +115,83 @@ function looksAbsolute(path: string): boolean {
   return normalized.startsWith('/') || /^[a-z]:\//i.test(normalized);
 }
 
-// Strips a Windows drive prefix so POSIX-style patterns compare against
-// drive-rooted resolutions the same way on every platform.
 function comparableForm(path: string): string {
   return normalizeSeparators(path).replace(/^[a-z]:/i, '');
 }
 
-// Patterns judge the same spellings a tool executor will act on. Absolute
-// patterns (a leading "/" or drive letter, including an expanded "~") match
-// the resolved location itself; relative patterns match workspace-facing
-// spellings only, so "**/*.ts" can never bless "/etc/cron.d/x.ts". Denial is
-// fail-closed: relative deny patterns also reach the resolved location.
-function matchesPathForms(
-  pattern: string,
-  filePath: string,
-  absoluteFile: string | undefined,
-  insideRelative: string | undefined,
-  denyBreadth: boolean,
-): boolean {
+function normalizePatternForPathMatch(pattern: string): { comparable: string; isAbsolute: boolean } {
+  const expanded = pattern.startsWith('~') ? resolvePath(pattern) : pattern;
+  return { comparable: comparableForm(expanded), isAbsolute: looksAbsolute(expanded) };
+}
+
+function matchesPathRegex(source: string, filePath: string, absoluteFile: string | undefined, insideRelative: string | undefined): boolean {
+  const candidates = [
+    normalizeSeparators(filePath),
+    insideRelative !== undefined ? normalizeSeparators(insideRelative) : undefined,
+    absoluteFile !== undefined ? comparableForm(absoluteFile) : undefined,
+  ].filter((candidate): candidate is string => candidate !== undefined);
+  return candidates.some((candidate) => matchesRegexPattern(source, candidate));
+}
+
+function matchesPathForms(pattern: string, filePath: string, absoluteFile: string | undefined, insideRelative: string | undefined): boolean {
   if (!pattern) return false;
   if (pattern === '*') return true;
-
-  const expandedForm = normalizeSeparators(pattern.startsWith('~') ? resolvePath(pattern) : pattern);
-  const patternForMatch = comparableForm(expandedForm);
-  if (looksAbsolute(expandedForm)) {
-    return absoluteFile !== undefined && matchesGlob(patternForMatch, comparableForm(absoluteFile));
+  if (isRegexPattern(pattern)) {
+    return matchesPathRegex(regexSource(pattern), filePath, absoluteFile, insideRelative);
   }
 
-  // Workspace-facing spellings only: the raw input when relative, plus the
-  // cwd-relative form of wherever it resolves.
-  if (!looksAbsolute(filePath) && matchesGlob(patternForMatch, normalizeSeparators(filePath))) return true;
-  if (insideRelative !== undefined && matchesGlob(patternForMatch, normalizeSeparators(insideRelative))) return true;
-  // Denial is fail-closed: relative deny patterns also reach wherever the
-  // path resolves, compared at every segment boundary so a name-rooted or
-  // folder-rooted pattern cannot be escaped by moving the file out of the
-  // workspace.
-  if (!denyBreadth || absoluteFile === undefined) return false;
+  const { comparable, isAbsolute } = normalizePatternForPathMatch(pattern);
+  if (isAbsolute) {
+    return absoluteFile !== undefined && matchesGlob(comparable, comparableForm(absoluteFile));
+  }
+  if (!looksAbsolute(filePath) && matchesGlob(comparable, normalizeSeparators(filePath))) {
+    return true;
+  }
+  return insideRelative !== undefined && matchesGlob(comparable, normalizeSeparators(insideRelative));
+}
+
+function matchesResolvedSegments(pattern: string, absoluteFile: string): boolean {
+  const { comparable, isAbsolute } = normalizePatternForPathMatch(pattern);
+  if (isAbsolute) return false;
+
   const segments = comparableForm(absoluteFile).split('/').filter(Boolean);
-  // Test every segment-rooted suffix so a name- or folder-rooted pattern still
-  // matches after the file resolves outside the workspace. Build each suffix
-  // from the previous one instead of re-slicing the array at every step.
   let suffix = '';
   for (let index = segments.length - 1; index >= 0; index--) {
     suffix = suffix === '' ? segments[index] : `${segments[index]}/${suffix}`;
-    if (matchesGlob(patternForMatch, suffix)) return true;
+    if (matchesGlob(comparable, suffix)) return true;
   }
   return false;
 }
 
+interface FileLocation {
+  readonly absoluteFile: string | undefined;
+  readonly insideRelative: string | undefined;
+}
+
+function resolveFileLocation(cwd: string | undefined, filePath: string): FileLocation {
+  const absoluteFile = cwd ? resolvePath(filePath, cwd) : undefined;
+  const insideRelative = cwd && absoluteFile ? getCwdRelativePath(absoluteFile, resolve(cwd)) : undefined;
+  return { absoluteFile, insideRelative };
+}
+
+function isPathDenied(pattern: string, filePath: string, absoluteFile: string | undefined, insideRelative: string | undefined): boolean {
+  if (matchesPathForms(pattern, filePath, absoluteFile, insideRelative)) return true;
+  return !isRegexPattern(pattern) && absoluteFile !== undefined && matchesResolvedSegments(pattern, absoluteFile);
+}
+
 function decidePathAction(
-  cwd: string | undefined,
   filePath: string,
+  { absoluteFile, insideRelative }: FileLocation,
   allowedPatterns: readonly string[],
   deniedPatterns: readonly string[],
 ): ApprovalDecision['action'] {
-  // One resolution shared by matching and by the tools themselves, so approval
-  // and execution never see different paths for one input.
-  const absoluteFile = cwd ? resolvePath(filePath, cwd) : undefined;
-  const insideRelative = cwd && absoluteFile ? getCwdRelativePath(absoluteFile, resolve(cwd)) : undefined;
-
-  if (deniedPatterns.some((pattern) => matchesPathForms(pattern, filePath, absoluteFile, insideRelative, true))) {
+  if (deniedPatterns.some((pattern) => isPathDenied(pattern, filePath, absoluteFile, insideRelative))) {
     return 'deny';
   }
-  if (allowedPatterns.some((pattern) => matchesPathForms(pattern, filePath, absoluteFile, insideRelative, false))) {
+  if (allowedPatterns.some((pattern) => matchesPathForms(pattern, filePath, absoluteFile, insideRelative))) {
     return 'approve';
   }
-
-  if (insideRelative !== undefined) {
-    return 'approve';
-  }
-
-  return 'confirm';
+  return insideRelative !== undefined ? 'approve' : 'confirm';
 }
 
 export function resolvePathAction(
@@ -119,196 +201,89 @@ export function resolvePathAction(
   allowedPatterns: readonly string[],
   deniedPatterns: readonly string[],
 ): ApprovalDecision['action'] {
-  if (!approveEnabled) {
-    return 'confirm';
-  }
-
-  if (!filePath || filePath.includes('\0')) {
-    return 'deny';
-  }
-
-  return decidePathAction(cwd, filePath, allowedPatterns, deniedPatterns);
+  if (!approveEnabled) return 'confirm';
+  if (!filePath || filePath.includes('\0')) return 'deny';
+  return decidePathAction(filePath, resolveFileLocation(cwd, filePath), allowedPatterns, deniedPatterns);
 }
 
-export function resolveCommandAction(
-  command: string,
-  approveEnabled: boolean,
-  allowedPatterns: readonly string[],
-  deniedPatterns: readonly string[],
-  tokenize: Tokenizer = parse,
-): ApprovalDecision['action'] {
-  if (!approveEnabled) {
-    return 'confirm';
-  }
+export type Tokenizer = (command: string) => unknown[];
 
-  if (containsDangerousSubstitution(command)) {
-    return 'confirm';
-  }
+const SEPARATOR_OPS = ['&&', '||', ';', '|', '&'];
 
-  let subCommands: string[];
-  try {
-    subCommands = parseCommand(command, tokenize);
-  } catch {
-    return 'confirm';
-  }
-
-  if (subCommands.length === 0) {
-    return 'approve';
-  }
-
-  let hasConfirm = false;
-
-  for (const subCmd of subCommands) {
-    const decision = evaluateSubCommand(subCmd, allowedPatterns, deniedPatterns);
-    if (decision === 'deny') {
-      return 'deny';
-    }
-    if (decision === 'confirm') {
-      hasConfirm = true;
-    }
-  }
-
-  return hasConfirm ? 'confirm' : 'approve';
-}
-
-function evaluateSubCommand(subCmd: string, allowedPatterns: readonly string[], deniedPatterns: readonly string[]): ApprovalDecision['action'] {
-  const decisionWithRedirection = getSingleCommandDecision(subCmd, allowedPatterns, deniedPatterns);
-  if (decisionWithRedirection === 'deny') {
-    return 'deny';
-  }
-
-  const cmdWithoutRedirection = subCmd.replace(/\d*>&\d*/g, '').trim();
-  if (cmdWithoutRedirection === subCmd) {
-    return decisionWithRedirection;
-  }
-
-  return getSingleCommandDecision(cmdWithoutRedirection, allowedPatterns, deniedPatterns);
-}
-
-// Injectable for tests; production always uses shell-quote's parse.
-type Tokenizer = (command: string) => unknown[];
-
-// Newlines never reach the tokenizer as an operator token, so a second line
-// would otherwise ride along inside the first command's prefix match. Split
-// lines up front and judge each like any other chained sub-command.
-export function parseCommand(command: string, tokenize: Tokenizer = parse): string[] {
-  return command.split(/\r?\n/).flatMap((line) => parseCommandLine(line, tokenize));
-}
-
-function parseCommandLine(command: string, tokenize: Tokenizer): string[] {
-  if (!command || !command.trim()) {
-    return [];
-  }
-
+function tokenize(command: string, tokenizer: Tokenizer): unknown[] {
   let tokens: unknown[];
   try {
-    tokens = tokenize(command);
+    tokens = tokenizer(command);
   } catch {
     throw new Error('Command could not be parsed into tokens.');
   }
-
   if (!Array.isArray(tokens)) {
     throw new Error('Command could not be parsed into tokens.');
   }
+  return tokens;
+}
+
+function parseCommandLine(command: string, tokenizer: Tokenizer): string[] {
+  if (!command.trim()) return [];
 
   const subCommands: string[] = [];
-  let currentCommand: string[] = [];
+  let current: string[] = [];
+  const flush = () => {
+    if (current.length > 0) {
+      subCommands.push(current.join(' '));
+      current = [];
+    }
+  };
 
-  for (let i = 0; i < tokens.length; i++) {
-    const token = tokens[i];
-
+  for (const token of tokenize(command, tokenizer)) {
+    if (typeof token === 'string') {
+      current.push(token);
+      continue;
+    }
     if (typeof token !== 'object' || token === null) {
-      if (typeof token === 'string') {
-        currentCommand.push(token);
-      }
       continue;
     }
 
-    const tok = token as Readonly<{
-      op: string;
-      pattern: string;
-    }>;
+    const tok = token as { op?: string; pattern?: string; comment?: string };
+    if ('comment' in tok) continue;
 
-    if ('comment' in tok) {
+    const { op, pattern } = tok;
+    if (typeof op !== 'string') {
+      if (typeof pattern === 'string') current.push(pattern);
       continue;
     }
-
-    const isOp = 'op' in tok && typeof tok.op === 'string';
-    if (!isOp) {
-      if ('pattern' in tok && typeof tok.pattern === 'string') {
-        currentCommand.push(tok.pattern);
-      }
-      continue;
+    if (op === 'glob' && typeof pattern === 'string') {
+      current.push(pattern);
+    } else if (SEPARATOR_OPS.includes(op)) {
+      flush();
+    } else {
+      current.push(op);
     }
-
-    if (tok.op === 'glob' && 'pattern' in tok && typeof tok.pattern === 'string') {
-      currentCommand.push(tok.pattern);
-      continue;
-    }
-
-    const SEPARATOR_OPS = ['&&', '||', ';', '|', '&'];
-    if (SEPARATOR_OPS.includes(tok.op)) {
-      if (currentCommand.length > 0) {
-        subCommands.push(currentCommand.join(' '));
-        currentCommand = [];
-      }
-      continue;
-    }
-
-    currentCommand.push(tok.op);
   }
-
-  if (currentCommand.length > 0) {
-    subCommands.push(currentCommand.join(' '));
-  }
-
+  flush();
   return subCommands;
 }
 
-export function containsDangerousSubstitution(source: string): boolean {
-  if (!source) return false;
-
-  for (let i = 0; i < DANGEROUS_PATTERNS.length; i++) {
-    if (DANGEROUS_PATTERNS[i].test(source)) {
-      return true;
-    }
-  }
-
-  return process.platform === 'win32' && hasCaretQuoteEscape(source);
-}
-
-// cmd.exe treats "^" outside double quotes as an escape character, so "^" can
-// terminate a quoted argument early and smuggle extra tokens past prefix matching.
-export function hasCaretQuoteEscape(source: string): boolean {
-  let inDoubleQuote = false;
-  for (let i = 0; i < source.length; i++) {
-    const char = source[i];
-    if (char === '"') {
-      inDoubleQuote = !inDoubleQuote;
-    } else if (char === '^' && !inDoubleQuote && i + 1 < source.length && source[i + 1] === '"') {
-      return true;
-    }
-  }
-  return false;
+export function parseCommand(command: string, tokenizer: Tokenizer = parse): string[] {
+  return command.split(/\r?\n/).flatMap((line) => parseCommandLine(line, tokenizer));
 }
 
 function matchesCommandPattern(pattern: string, command: string): boolean {
   if (pattern === '*') return true;
+  if (isRegexPattern(pattern)) {
+    return matchesRegexPattern(regexSource(pattern), command);
+  }
 
   const pLower = pattern.toLowerCase();
   const cLower = command.toLowerCase();
-
   if (pLower === cLower) return true;
-
   if (pLower.includes('*') || pLower.includes('?')) {
     return matchesGlob(pLower, cLower);
   }
-
   if (cLower.startsWith(pLower)) {
     const nextChar = cLower.charAt(pLower.length);
     return nextChar === '' || nextChar === ' ' || nextChar === '\t';
   }
-
   return false;
 }
 
@@ -318,18 +293,49 @@ function getSingleCommandDecision(
   deniedPatterns: readonly string[],
 ): ApprovalDecision['action'] {
   const trimmedCmd = command.trim();
-  if (!trimmedCmd) {
-    return 'approve';
-  }
-
-  if (deniedPatterns.some((pat) => matchesCommandPattern(pat, trimmedCmd))) {
-    return 'deny';
-  }
-  if (allowedPatterns.some((pat) => matchesCommandPattern(pat, trimmedCmd))) {
-    return 'approve';
-  }
-
+  if (!trimmedCmd) return 'approve';
+  if (deniedPatterns.some((pattern) => matchesCommandPattern(pattern, trimmedCmd))) return 'deny';
+  if (allowedPatterns.some((pattern) => matchesCommandPattern(pattern, trimmedCmd))) return 'approve';
   return 'confirm';
+}
+
+const FD_REDIRECT_PATTERN = /\d*>&\d*/g;
+
+function evaluateSubCommand(subCmd: string, allowedPatterns: readonly string[], deniedPatterns: readonly string[]): ApprovalDecision['action'] {
+  const decision = getSingleCommandDecision(subCmd, allowedPatterns, deniedPatterns);
+  if (decision === 'deny') return decision;
+
+  const withoutRedirection = subCmd.replace(FD_REDIRECT_PATTERN, '').trim();
+  if (withoutRedirection === subCmd) return decision;
+
+  return getSingleCommandDecision(withoutRedirection, allowedPatterns, deniedPatterns);
+}
+
+export function resolveCommandAction(
+  command: string,
+  approveEnabled: boolean,
+  allowedPatterns: readonly string[],
+  deniedPatterns: readonly string[],
+  tokenizer: Tokenizer = parse,
+): ApprovalDecision['action'] {
+  if (!approveEnabled) return 'confirm';
+  if (containsDangerousSubstitution(command)) return 'confirm';
+
+  let subCommands: string[];
+  try {
+    subCommands = parseCommand(command, tokenizer);
+  } catch {
+    return 'confirm';
+  }
+  if (subCommands.length === 0) return 'approve';
+
+  let hasConfirm = false;
+  for (const subCmd of subCommands) {
+    const decision = evaluateSubCommand(subCmd, allowedPatterns, deniedPatterns);
+    if (decision === 'deny') return 'deny';
+    if (decision === 'confirm') hasConfirm = true;
+  }
+  return hasConfirm ? 'confirm' : 'approve';
 }
 
 function getSkillDirectories(cwd: string): readonly string[] {
@@ -337,20 +343,15 @@ function getSkillDirectories(cwd: string): readonly string[] {
 }
 
 export function resolveReadPath(cwd: string, filePath: string, settings: AppSettings): ApprovalDecision['action'] {
-  const base = decidePathAction(cwd, filePath, settings.allowedReadPaths, settings.deniedReadPaths);
-  if (base === 'deny') {
-    return 'deny';
-  }
+  const location = resolveFileLocation(cwd, filePath);
+  const base = decidePathAction(filePath, location, settings.allowedReadPaths, settings.deniedReadPaths);
+  if (base === 'deny') return 'deny';
+  if (!settings.autoApproveRead) return 'confirm';
 
-  if (!settings.autoApproveRead) {
-    return 'confirm';
-  }
-
-  if (settings.autoApproveSkillReads) {
-    const absoluteFile = resolvePath(filePath, cwd);
+  const { absoluteFile } = location;
+  if (settings.autoApproveSkillReads && absoluteFile !== undefined) {
     const insideSkillDir = getSkillDirectories(cwd).some((dir) => getCwdRelativePath(absoluteFile, dir) !== undefined);
     if (insideSkillDir) return 'approve';
   }
-
   return base;
 }

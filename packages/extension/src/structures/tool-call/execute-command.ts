@@ -333,8 +333,9 @@ export const executeCommandTool = defineTool({
           modelText = `${modelText}\n\nCommand timed out after ${effectiveTimeout} ms. If it is not waiting for input, rerun with a larger \`timeout\`.`;
         }
 
+        const finalText = modelText || `Command completed with no output. ${exitInfo}`;
         res({
-          content: [{ type: 'text', text: modelText || `Command completed with no output. ${exitInfo}` }],
+          content: [{ type: 'text', text: finalText.trim() }],
           details: { exitCode, signalCode, output: cleanOutput, timedOut, ...(tempFilePath ? { tempFilePath } : {}) },
           isError: exitCode !== 0,
         });

@@ -293,6 +293,35 @@ describe('resolveCommandAction', () => {
   });
 });
 
+describe('regex pattern support (/pattern/) in allow/deny lists', () => {
+  it('approves a command via a regex allow pattern', () => {
+    const action = resolveCommandAction('git status', true, ['/^git (status|diff)$/'], []);
+    expect(action).toBe('approve');
+  });
+
+  it('denies a command via a regex deny pattern, winning over a regex allow pattern', () => {
+    const action = resolveCommandAction('npm run build', true, ['/^npm run .*/'], ['/^npm run build$/']);
+    expect(action).toBe('deny');
+  });
+
+  it('denies a path via a regex deny pattern matched against the relative form', () => {
+    const action = resolvePathAction('/workspace', 'config/.env', true, [], ['/\\.env$/']);
+    expect(action).toBe('deny');
+  });
+
+  it('approves a path via a regex allow pattern matched against the absolute form', () => {
+    const action = resolvePathAction('/workspace', '/etc/cron.d/x.ts', true, ['/^\\/etc\\/.*\\.ts$/'], []);
+    expect(action).toBe('approve');
+  });
+
+  it('treats catastrophically backtracking regex patterns as non-matching instead of using them', () => {
+    // (a+)+$ would match "aaaa" under a naive engine; the implementation must
+    // reject this shape outright rather than risk ReDoS, so it never denies.
+    const action = resolveCommandAction('aaaa', true, [], ['/(a+)+$/']);
+    expect(action).toBe('confirm');
+  });
+});
+
 describe('applyYoloDecision', () => {
   it('returns the decision unchanged when YOLO mode is off', () => {
     const settings = { ...DEFAULT_SETTINGS, yolo: false };
