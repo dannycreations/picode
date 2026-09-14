@@ -67,7 +67,7 @@ export const TodoHeader: FC<TodoHeaderProps> = ({ todos }) => {
       </div>
 
       <Accordion open={!isCollapsed}>
-        <ul className="list-none max-h-[300px] overflow-y-auto pt-2 -mb-1 pb-0 px-3 cursor-default">
+        <ul className="list-none max-h-[300px] overflow-y-auto pt-2 pb-0 px-3 cursor-default">
           {todos.map((todo, idx) => (
             <li
               key={idx}
@@ -75,7 +75,7 @@ export const TodoHeader: FC<TodoHeaderProps> = ({ todos }) => {
                 itemRefs.current[idx] = el;
               }}
               className={cn(
-                'font-light flex flex-row gap-2 items-start min-h-[20px] leading-normal mb-2 text-xs',
+                'font-light flex flex-row gap-2 items-start min-h-[20px] leading-normal text-xs',
                 todo.status === 'active' && 'text-vscode-charts-yellow',
                 todo.status !== 'active' && todo.status !== 'closed' && 'opacity-60',
               )}
