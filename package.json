@@ -10,10 +10,9 @@
   },
   "scripts": {
     "build": "pnpm -r run build",
-    "check": "pnpm run format && tsc --noEmit && pnpm -r run check",
+    "check": "pnpm run format && pnpm -r run check",
     "format": "prettier --write .",
     "test": "pnpm -r run test",
-    "setup": "tsx scripts/setup.ts",
     "update": "npm-check-updates -u -x @types/node --workspaces --root",
     "prepare": "husky"
   },

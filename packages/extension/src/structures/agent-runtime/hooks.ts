@@ -7,7 +7,6 @@ import type { AgentSession } from '@earendil-works/pi-coding-agent';
 
 interface SessionHookServices {
   readonly isDisposed: () => boolean;
-  readonly isCompacting: () => boolean;
   readonly prepareTurn: (session: AgentSession) => Promise<void>;
   readonly isContextAboveThreshold: (session: AgentSession) => boolean;
   readonly requestCompaction: (session: AgentSession) => Promise<void>;
@@ -18,39 +17,34 @@ export function initSessionHooks(session: AgentSession, services: SessionHookSer
   const sessionManager = session.sessionManager;
   const baseAppendMessage = sessionManager.appendMessage.bind(sessionManager);
   sessionManager.appendMessage = (message): string => {
-    if (message.role === 'assistant' && message.stopReason === 'aborted' && (services.isDisposed() || services.isCompacting())) {
+    if (message.role === 'assistant' && (message.stopReason === 'aborted' || message.errorMessage?.includes('aborted')) && services.isDisposed()) {
       return uuidv7();
     }
     return baseAppendMessage(message);
   };
 
   const baseShouldStop = session.agent.shouldStopAfterTurn;
-  session.agent.shouldStopAfterTurn = (context, signal): boolean | Promise<boolean> => {
-    if (services.isDisposed() || signal?.aborted) return true;
+  session.agent.shouldStopAfterTurn = async (context, signal): Promise<boolean> => {
+    if (services.isDisposed() || signal?.aborted) {
+      return true;
+    }
+    if (services.isContextAboveThreshold(session)) {
+      void services.requestCompaction(session);
+      return true;
+    }
     return baseShouldStop?.(context) ?? false;
   };
 
   const basePrepareContext = session.agent.prepareNextTurnWithContext;
   session.agent.prepareNextTurnWithContext = async (context, signal) => {
-    // Above the threshold the next turn must not build against the bloated
-    // context. Signal the compaction to abort this turn, compact, and resume.
-    // Return early so we do not prepare a turn the abort will tear down.
-    if (services.isContextAboveThreshold(session)) {
-      void services.requestCompaction(session);
-      return;
-    }
-
     await services.prepareTurn(session);
     await services.contextPrepared(session);
 
-    const liveMessages = session.messages;
-    const liveContext = liveMessages ? { ...context, context: { ...context.context, messages: liveMessages } } : context;
-
-    const snapshot = await basePrepareContext?.(liveContext, signal);
-    const baseContext = snapshot?.context ?? liveContext.context;
+    const snapshot = await basePrepareContext?.(context, signal);
+    const baseContext = snapshot?.context ?? context.context;
     if (baseContext?.messages) {
       const settings = readAppSettings();
-      const todoList = settings.enableTodoTool ? getLatestTodoList(liveMessages ?? context.context.messages) : undefined;
+      const todoList = settings.enableTodoTool ? getLatestTodoList(context.context.messages) : undefined;
       const messages = withTodoProgress(baseContext.messages, todoList);
       return { ...(snapshot ?? {}), context: { ...baseContext, messages } };
     }

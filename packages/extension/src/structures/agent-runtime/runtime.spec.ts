@@ -77,7 +77,7 @@ function makeFakeWebview(): Webview {
 // Shape of the services createSession hands back; startTask reads skills and prompts from it.
 const SERVICES = { resourceLoader: { getSkills: () => ({ skills: [] }), getPrompts: () => ({ prompts: [] }) } };
 
-// A session shaped for the start/continue paths: _runAgentPrompt drives the run,
+// A session shaped for the start/continue paths: prompt() drives the run,
 // subscribe is called during preparation, and the rest satisfy dispose hooks.
 function makeStartableSession() {
   return {
@@ -89,7 +89,7 @@ function makeStartableSession() {
     isStreaming: false,
     subscribe: vi.fn(() => () => {}),
     sendCustomMessage: vi.fn(async () => undefined),
-    _runAgentPrompt: vi.fn(async () => undefined),
+    prompt: vi.fn(async () => undefined),
     abort: vi.fn(async () => undefined),
     dispose: vi.fn(),
   };
@@ -340,7 +340,7 @@ describe('Runtime cancel during init', () => {
     gate.resolve({ session, services: SERVICES });
     await flush();
 
-    expect(session['_runAgentPrompt']).not.toHaveBeenCalled();
+    expect(session.prompt).not.toHaveBeenCalled();
     expect(session.dispose).toHaveBeenCalledTimes(1);
     const messages = (webview.postMessage as ReturnType<typeof vi.fn>).mock.calls.map((call) => call[0]);
     expect(messages.filter((msg) => msg.type === 'agent_settled')).toHaveLength(1);
@@ -363,7 +363,7 @@ describe('Runtime cancel during init', () => {
     envGate.resolve('');
     await flush();
 
-    expect(session['_runAgentPrompt']).not.toHaveBeenCalled();
+    expect(session.prompt).not.toHaveBeenCalled();
     // Disposed once by cancelTask; the stale resume must not dispose again.
     expect(session.dispose).toHaveBeenCalledTimes(1);
     expect(session.abort).toHaveBeenCalledTimes(1);
@@ -416,7 +416,7 @@ describe('Runtime cancel during init', () => {
     await runtime.startTask('hello');
     await flush();
 
-    expect(session['_runAgentPrompt']).toHaveBeenCalledTimes(1);
+    expect(session.prompt).toHaveBeenCalledTimes(1);
     const messages = (webview.postMessage as ReturnType<typeof vi.fn>).mock.calls.map((call) => call[0]);
     expect(messages.some((msg) => msg.type === 'agent_settled')).toBe(false);
   });
@@ -432,7 +432,7 @@ describe('Runtime cancel during init', () => {
     await runtime.startTask('hi', [{ kind: 'text', content: 'SECRET', language: 'ts' }]);
     await flush();
 
-    expect(session['_runAgentPrompt']).toHaveBeenCalledTimes(1);
+    expect(session.prompt).toHaveBeenCalledTimes(1);
     expect(appendMessage).toHaveBeenCalledWith(
       expect.objectContaining({
         role: 'user',
@@ -469,6 +469,7 @@ describe('Runtime compaction', () => {
   it('returns the post-compaction estimate and brackets the run with start and end messages', async () => {
     const webview = makeFakeWebview();
     const session = makeCompactSession(async () => ({ estimatedTokensAfter: 123 }));
+    session.getContextUsage = () => ({ tokens: 900, contextWindow: 1000, percent: 90 });
     mocks.createSession.mockResolvedValue({ session, services: SERVICES });
     mocks.loadSessionTranscript.mockReturnValue({
       messages: [{ id: 'm1', sender: 'user', text: 'hi', timestamp: 1 }],
@@ -490,6 +491,7 @@ describe('Runtime compaction', () => {
     const session = makeCompactSession(async () => {
       throw Object.assign(new Error('Compaction cancelled'), { name: 'AbortError' });
     });
+    session.getContextUsage = () => ({ tokens: 900, contextWindow: 1000, percent: 90 });
     mocks.createSession.mockResolvedValue({ session, services: SERVICES });
     const runtime = new Runtime(webview);
 
@@ -505,6 +507,7 @@ describe('Runtime compaction', () => {
     const session = makeCompactSession(async () => {
       throw new Error('disk full');
     });
+    session.getContextUsage = () => ({ tokens: 900, contextWindow: 1000, percent: 90 });
     mocks.createSession.mockResolvedValue({ session, services: SERVICES });
     const runtime = new Runtime(webview);
 
@@ -513,6 +516,22 @@ describe('Runtime compaction', () => {
     expect(result).toBeNull();
     expect(posted(webview)).toContainEqual({ type: 'agent_error', payload: { message: expect.stringContaining('disk full') } });
     expect(posted(webview).filter((message) => message.type === 'compaction_end')).toHaveLength(1);
+  });
+
+  it('does not compact and does not post an error when the session is below threshold', async () => {
+    const webview = makeFakeWebview();
+    const session = makeCompactSession(async () => ({ estimatedTokensAfter: 123 }));
+    session.getContextUsage = () => ({ tokens: 100, contextWindow: 1000, percent: 10 });
+    mocks.createSession.mockResolvedValue({ session, services: SERVICES });
+    const runtime = new Runtime(webview);
+
+    const result = await runtime.compact(undefined);
+
+    expect(result).toBeNull();
+    expect(session.compact).not.toHaveBeenCalled();
+    expect(posted(webview).some((message) => message.type === 'agent_error')).toBe(false);
+    expect(posted(webview).filter((message) => message.type === 'compaction_start')).toHaveLength(0);
+    expect(posted(webview).filter((message) => message.type === 'compaction_end')).toHaveLength(0);
   });
 });
 
@@ -530,6 +549,10 @@ describe('Runtime compaction before turns', () => {
     return (webview.postMessage as ReturnType<typeof vi.fn>).mock.calls.map((call) => (call[0] as { type: string }).type);
   }
 
+  function posted(webview: Webview): Array<{ type: string }> {
+    return (webview.postMessage as ReturnType<typeof vi.fn>).mock.calls.map((call) => call[0] as { type: string });
+  }
+
   it('compacts before startTask when the context is above the threshold', async () => {
     const webview = makeFakeWebview();
     const session = makeThresholdSession(950);
@@ -540,7 +563,7 @@ describe('Runtime compaction before turns', () => {
     await flush();
 
     expect(session.compact).toHaveBeenCalledTimes(1);
-    expect(session['_runAgentPrompt']).toHaveBeenCalledTimes(1);
+    expect(session.prompt).toHaveBeenCalledTimes(1);
 
     const types = postedTypes(webview);
     expect(types.filter((type) => type === 'compaction_start')).toHaveLength(1);
@@ -557,7 +580,7 @@ describe('Runtime compaction before turns', () => {
     await flush();
 
     expect(session.compact).not.toHaveBeenCalled();
-    expect(session['_runAgentPrompt']).toHaveBeenCalledTimes(1);
+    expect(session.prompt).toHaveBeenCalledTimes(1);
   });
 
   it('compacts before continueTask when the context is above the threshold', async () => {
@@ -575,7 +598,7 @@ describe('Runtime compaction before turns', () => {
     expect(session.sessionManager.appendCustomMessageEntry).toHaveBeenCalledWith('environment_details', '', false, undefined);
   });
 
-  it('compacts before resuming an errored turn that is already past the threshold', async () => {
+  it('forwards errored agent_end events without reactive compaction', async () => {
     const webview = makeFakeWebview();
     const session = makeThresholdSession(950);
     mocks.createSession.mockResolvedValue({ session, services: SERVICES });
@@ -592,14 +615,36 @@ describe('Runtime compaction before turns', () => {
     );
     await flush();
 
-    expect(session.compact).toHaveBeenCalledTimes(1);
-    expect(mocks.getEnvironmentDetails).toHaveBeenCalledTimes(1);
-    expect(session.sessionManager.appendCustomMessageEntry).toHaveBeenCalledWith('environment_details', '', false, undefined);
+    // Compaction is now triggered from shouldStopAfterTurn during the turn,
+    // not reactively from agent_end events.
+    expect(session.compact).not.toHaveBeenCalled();
+    expect(mocks.getEnvironmentDetails).not.toHaveBeenCalled();
+    expect(session.sessionManager.appendCustomMessageEntry).not.toHaveBeenCalled();
   });
 
-  function posted(webview: Webview): Array<{ type: string }> {
-    return (webview.postMessage as ReturnType<typeof vi.fn>).mock.calls.map((call) => call[0] as { type: string });
-  }
+  it('forwards aborted agent_end events without reactive compaction', async () => {
+    const webview = makeFakeWebview();
+    const session = makeThresholdSession(950);
+    mocks.createSession.mockResolvedValue({ session, services: SERVICES });
+    const runtime = new Runtime(webview);
+    runtime['session'] = session;
+
+    runtime['handleSessionEvent'](
+      {
+        type: 'agent_end',
+        messages: [{ role: 'assistant', stopReason: 'aborted' } as never],
+        willRetry: false,
+      } as never,
+      session,
+    );
+    await flush();
+
+    // Compaction is now triggered from shouldStopAfterTurn during the turn,
+    // not reactively from agent_end events.
+    expect(session.compact).not.toHaveBeenCalled();
+    expect(mocks.getEnvironmentDetails).not.toHaveBeenCalled();
+    expect(session.sessionManager.appendCustomMessageEntry).not.toHaveBeenCalled();
+  });
 
   it('returns the forked session transcript', async () => {
     const webview = makeFakeWebview();
@@ -654,27 +699,5 @@ describe('Runtime compaction before turns', () => {
 
     expect(result).toBeNull();
     expect(posted(webview)).toContainEqual({ type: 'agent_error', payload: { message: expect.stringContaining('forked session') } });
-  });
-
-  it('compacts before resuming a turn whose API request aborted past the threshold', async () => {
-    const webview = makeFakeWebview();
-    const session = makeThresholdSession(950);
-    mocks.createSession.mockResolvedValue({ session, services: SERVICES });
-    const runtime = new Runtime(webview);
-    runtime['session'] = session;
-
-    runtime['handleSessionEvent'](
-      {
-        type: 'agent_end',
-        messages: [{ role: 'assistant', stopReason: 'aborted' } as never],
-        willRetry: false,
-      } as never,
-      session,
-    );
-    await flush();
-
-    expect(session.compact).toHaveBeenCalledTimes(1);
-    expect(mocks.getEnvironmentDetails).toHaveBeenCalledTimes(1);
-    expect(session.sessionManager.appendCustomMessageEntry).toHaveBeenCalledWith('environment_details', '', false, undefined);
   });
 });

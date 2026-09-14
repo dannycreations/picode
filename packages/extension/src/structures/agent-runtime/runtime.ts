@@ -29,8 +29,6 @@ export class Runtime {
   private session: AgentSession | null = null;
   private unsubscribeSessionEvents: (() => void) | null = null;
   private apiRequestId: string | null = null;
-  private compacting = false;
-  private runEndedWithFailure = false;
   private taskGeneration = 0;
 
   private readonly messenger: Messenger;
@@ -104,8 +102,7 @@ export class Runtime {
       if (this.discardIfStale(generation, session)) return;
 
       await this.compactContextIfNeeded(session);
-      const runAgentPrompt = session['_runAgentPrompt'].bind(session) as (messages: string[]) => Promise<void>;
-      await runAgentPrompt([]).catch((err) => this.messenger.postError(err));
+      await session.prompt('').catch((err) => this.messenger.postError(err));
     } catch (err) {
       // A cancel landing mid-preparation makes the disposed session throw here;
       // that is the deliberate stop already reported by cancelTask.
@@ -135,8 +132,7 @@ export class Runtime {
         timestamp: Date.now(),
       });
 
-      const runAgentPrompt = session['_runAgentPrompt'].bind(session) as (messages: string[]) => Promise<void>;
-      await runAgentPrompt([]).catch((err) => this.messenger.postError(err));
+      await session.prompt('').catch((err) => this.messenger.postError(err));
     } catch (err) {
       if (generation !== this.taskGeneration) {
         logger.debug('Task continuation abandoned after cancel:', err);
@@ -190,7 +186,10 @@ export class Runtime {
   }
 
   private async runCompaction(session: AgentSession): Promise<{ messages: ChatMessage[]; stats: StatsData } | null> {
-    this.compacting = true;
+    if (!this.isContextAtCompactionThreshold(session)) {
+      return null;
+    }
+
     this.messenger.post({ type: 'compaction_start' });
     try {
       const compaction = await session.compact();
@@ -216,7 +215,6 @@ export class Runtime {
       }
       return null;
     } finally {
-      this.compacting = false;
       this.messenger.post({ type: 'compaction_end' });
     }
   }
@@ -330,15 +328,14 @@ export class Runtime {
   private bindSessionHooks(session: AgentSession): void {
     initSessionHooks(session, {
       isDisposed: () => !this.session,
-      isCompacting: () => this.compacting,
       prepareTurn: (target) => applyPersistedModelAndThinking(target),
       isContextAboveThreshold: (target) => this.isContextAtCompactionThreshold(target),
       requestCompaction: async (target) => {
         if (!this.isContextAtCompactionThreshold(target)) return;
         this.taskGeneration++;
 
-        await this.runCompaction(session);
-        if (this.session === session && session.sessionFile) {
+        const result = await this.runCompaction(session);
+        if (result && this.session === session && session.sessionFile) {
           void this.continueTask(session.sessionFile);
         }
       },
@@ -376,33 +373,12 @@ export class Runtime {
   }
 
   private handleSessionEvent(event: AgentSessionEvent, session: AgentSession): void {
-    if (event.type === 'agent_end') {
-      // agent_end fires at the end of every turn, not only the final one.
-      // A turn that ends in error or an aborted API request (context overflow)
-      // sits on a bloated context; record it so the settle below can compact
-      // and resume. Keep queued replies so a later turn can still drain them.
-      this.runEndedWithFailure = event.messages.some((m) => m.role === 'assistant' && (m.stopReason === 'error' || m.stopReason === 'aborted'));
-    }
-
-    if (event.type === 'agent_settled' || event.type === 'agent_end') {
-      // Don't start a second compaction while one is already running, which is
-      // the case when the extension itself aborts the turn to compact.
-      if (this.runEndedWithFailure && !this.compacting && this.session?.sessionFile && this.isContextAtCompactionThreshold(this.session)) {
-        this.runEndedWithFailure = false;
-        // Resume the agent; continueTask compacts again if the limit is still exceeded.
-        void this.continueTask(this.session.sessionFile);
-      } else if (!this.runEndedWithFailure && event.type === 'agent_settled' && this.session?.sessionFile && this.replyQueue.all().length > 0) {
-        // The agent stopped but the user queued replies while it ran. Drain
-        // them into a fresh turn instead of discarding them.
-        void this.continueTask(this.session.sessionFile);
-      } else if (!this.runEndedWithFailure && event.type === 'agent_settled') {
-        this.replyQueue.clear();
-      }
-      this.runEndedWithFailure = false;
-    }
-
-    if (this.compacting && (event.type === 'compaction_start' || event.type === 'compaction_end')) {
-      return;
+    if (event.type === 'agent_settled' && this.session?.sessionFile && this.replyQueue.all().length > 0) {
+      // The agent stopped but the user queued replies while it ran. Drain
+      // them into a fresh turn instead of discarding them.
+      void this.continueTask(this.session.sessionFile);
+    } else if (event.type === 'agent_settled') {
+      this.replyQueue.clear();
     }
 
     const { message, apiRequestId } = mapEvent(event, session, this.apiRequestId);
