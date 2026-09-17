@@ -300,7 +300,7 @@ export const executeCommandTool = defineTool({
         const cleanOutput = cleanCommandOutput(rawTailOutput);
 
         const dropped = totalLength > retainedLength;
-        const droppedNote = dropped ? ` The command produced ${formatSize(totalLength)} in total.` : '';
+        const droppedNote = dropped ? `The command produced ${formatSize(totalLength)} in total.` : '';
 
         // If not already dumped to a file via streaming, check if the output exceeded line/byte limits.
         // If truncated, dump the full raw output to a temp file now.

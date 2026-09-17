@@ -192,22 +192,40 @@ export class Runtime {
 
     this.messenger.post({ type: 'compaction_start' });
     try {
-      const compaction = await session.compact();
+      // Ensure the summarization prompt always fits inside the context window.
+      // findCutPoint() keeps the most recent N tokens and summarizes everything
+      // before that cut. If N is too small relative to the window, the prefix
+      // can exceed the window and the summarization API call overflows. We
+      // raise N dynamically so the prefix is always safely below the window.
+      const originalSettings = session.settingsManager.getCompactionSettings();
+      const contextWindow = session.model?.contextWindow ?? 0;
+      if (contextWindow > 0) {
+        const safeKeepRecent = Math.max(20000, Math.floor(contextWindow * 0.4));
+        session.settingsManager.applyOverrides({
+          compaction: { ...originalSettings, keepRecentTokens: safeKeepRecent },
+        });
+      }
 
-      const entries = session.sessionManager.getBranch();
-      const transcript = loadSessionTranscript(entries, resolveContextLimit(session.model?.contextWindow));
+      try {
+        const compaction = await session.compact();
 
-      // loadSessionTranscript derives contextTokens from the last assistant usage,
-      // which is the pre-compaction size once the context is rebuilt. Use the
-      // session's post-compaction estimate so the header reflects the shrink.
-      const stats: StatsData =
-        typeof compaction?.estimatedTokensAfter === 'number'
-          ? { ...transcript.stats, contextTokens: compaction.estimatedTokensAfter }
-          : transcript.stats;
+        const entries = session.sessionManager.getBranch();
+        const transcript = loadSessionTranscript(entries, resolveContextLimit(session.model?.contextWindow));
 
-      const compactionEntry = entries.find((entry) => entry.type === 'compaction') ?? null;
-      this.messenger.post({ type: 'compaction_end', payload: { ...stats, compactionEntry } });
-      return { messages: transcript.messages, stats };
+        // loadSessionTranscript derives contextTokens from the last assistant usage,
+        // which is the pre-compaction size once the context is rebuilt. Use the
+        // session's post-compaction estimate so the header reflects the shrink.
+        const stats: StatsData =
+          typeof compaction?.estimatedTokensAfter === 'number'
+            ? { ...transcript.stats, contextTokens: compaction.estimatedTokensAfter }
+            : transcript.stats;
+
+        const compactionEntry = entries.find((entry) => entry.type === 'compaction') ?? null;
+        this.messenger.post({ type: 'compaction_end', payload: { ...stats, compactionEntry } });
+        return { messages: transcript.messages, stats };
+      } finally {
+        session.settingsManager.applyOverrides({ compaction: originalSettings });
+      }
     } catch (err) {
       // A user cancel aborts the in-flight compaction, which the session rethrows
       // as an AbortError. Don't surface that as a spurious error bubble.

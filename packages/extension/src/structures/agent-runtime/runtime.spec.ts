@@ -83,7 +83,10 @@ function makeStartableSession() {
   return {
     agent: { state: { messages: [] }, steer: vi.fn(), shouldStopAfterTurn: undefined, prepareNextTurnWithContext: undefined },
     sessionManager: { appendMessage: vi.fn(() => 'persisted-id'), appendCustomMessageEntry: vi.fn() },
-    settingsManager: { applyOverrides: vi.fn() },
+    settingsManager: {
+      applyOverrides: vi.fn(),
+      getCompactionSettings: vi.fn(() => ({ enabled: true, reserveTokens: 16384, keepRecentTokens: 20000 })),
+    },
     sessionFile: '/tmp/task.json',
     sessionId: 'session-1',
     isStreaming: false,
@@ -532,6 +535,33 @@ describe('Runtime compaction', () => {
     expect(posted(webview).some((message) => message.type === 'agent_error')).toBe(false);
     expect(posted(webview).filter((message) => message.type === 'compaction_start')).toHaveLength(0);
     expect(posted(webview).filter((message) => message.type === 'compaction_end')).toHaveLength(0);
+  });
+
+  it('raises keepRecentTokens during compaction so the prefix fits the context window, then restores original settings', async () => {
+    const webview = makeFakeWebview();
+    const session = makeCompactSession(async () => ({ estimatedTokensAfter: 123 }));
+    session.getContextUsage = () => ({ tokens: 900, contextWindow: 1000, percent: 90 });
+    (session as any).model = { contextWindow: 262144 };
+    const originalSettings = { enabled: true, reserveTokens: 16384, keepRecentTokens: 20000 };
+    const settingsManager = {
+      getCompactionSettings: vi.fn(() => originalSettings),
+      applyOverrides: vi.fn(),
+    };
+    (session as any).settingsManager = settingsManager;
+    mocks.createSession.mockResolvedValue({ session, services: SERVICES });
+    mocks.loadSessionTranscript.mockReturnValue({
+      messages: [{ id: 'm1', sender: 'user', text: 'hi', timestamp: 1 }],
+      stats: { contextTokens: 999 },
+    });
+    const runtime = new Runtime(webview);
+
+    await runtime.compact(undefined);
+
+    expect(session.compact).toHaveBeenCalledTimes(1);
+    expect(settingsManager.applyOverrides).toHaveBeenCalledTimes(2);
+    const firstOverride = settingsManager.applyOverrides.mock.calls[0][0];
+    expect(firstOverride.compaction.keepRecentTokens).toBeGreaterThanOrEqual(Math.floor(262144 * 0.4));
+    expect(settingsManager.applyOverrides).toHaveBeenLastCalledWith({ compaction: originalSettings });
   });
 });
 
