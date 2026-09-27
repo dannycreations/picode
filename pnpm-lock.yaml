@@ -163,7 +163,7 @@ settings:
   excludeLinksFromLockfile: false
 
 patchedDependencies:
-  '@earendil-works/pi-coding-agent': 3860878392acf47ba64cd30c778fe8a680386369b7675bd396c07ccddaeda646
+  '@earendil-works/pi-coding-agent': fbbcd0276be0cbd8190ff0bd11522cd5a6b82f1e4d05bbdc2d3b99945c4d140a
 
 importers:
 
@@ -204,7 +204,7 @@ importers:
         version: 0.85.1(@modelcontextprotocol/sdk@1.30.0(supports-color@7.2.0)(zod@4.5.4))(supports-color@7.2.0)(ws@8.21.3)(zod@4.5.4)
       '@earendil-works/pi-coding-agent':
         specifier: ^0.85.1
-        version: 0.85.1(patch_hash=3860878392acf47ba64cd30c778fe8a680386369b7675bd396c07ccddaeda646)(@modelcontextprotocol/sdk@1.30.0(supports-color@7.2.0)(zod@4.5.4))(supports-color@7.2.0)(ws@8.21.3)(zod@4.5.4)
+        version: 0.85.1(patch_hash=fbbcd0276be0cbd8190ff0bd11522cd5a6b82f1e4d05bbdc2d3b99945c4d140a)(@modelcontextprotocol/sdk@1.30.0(supports-color@7.2.0)(zod@4.5.4))(supports-color@7.2.0)(ws@8.21.3)(zod@4.5.4)
       '@modelcontextprotocol/sdk':
         specifier: ^1.30.0
         version: 1.30.0(supports-color@7.2.0)(zod@4.5.4)
@@ -261,8 +261,8 @@ importers:
         specifier: ^0.18.7
         version: 0.18.7
       lucide-react:
-        specifier: ^1.46.0
-        version: 1.46.0(react@19.3.0)
+        specifier: ^1.47.0
+        version: 1.47.0(react@19.3.0)
       mermaid-compact:
         specifier: ^0.0.1
         version: 0.0.1
@@ -2567,8 +2567,8 @@ packages:
     resolution: {integrity: sha512-Jo6dJ04CmSjuznwJSS3pUeWmd/H0ffTlkXXgwZi+eq1UCmqQwCh+eLsYOYCwY991i2Fah4h1BEMCx4qThGbsiA==}
     engines: {node: '>=10'}
 
-  lucide-react@1.46.0:
-    resolution: {integrity: sha512-Bv+FZXgZPrxc/NCl1e7JJVQFLdiCxYgxNVhqoV7X0p6I8ADJo8DxBnK1auH0fZz4AmqOJ3jgneL4f1i8LJQRAA==}
+  lucide-react@1.47.0:
+    resolution: {integrity: sha512-o8C23aXpNQypRY73W7fW02EyvWJinEMXgKeGjFoKym0zj3Q73hD97A1IQps1g8C14HTGsOpZL0Am+xjfgFZAbg==}
     peerDependencies:
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
@@ -3861,7 +3861,7 @@ snapshots:
       - ws
       - zod
 
-  '@earendil-works/pi-coding-agent@0.85.1(patch_hash=3860878392acf47ba64cd30c778fe8a680386369b7675bd396c07ccddaeda646)(@modelcontextprotocol/sdk@1.30.0(supports-color@7.2.0)(zod@4.5.4))(supports-color@7.2.0)(ws@8.21.3)(zod@4.5.4)':
+  '@earendil-works/pi-coding-agent@0.85.1(patch_hash=fbbcd0276be0cbd8190ff0bd11522cd5a6b82f1e4d05bbdc2d3b99945c4d140a)(@modelcontextprotocol/sdk@1.30.0(supports-color@7.2.0)(zod@4.5.4))(supports-color@7.2.0)(ws@8.21.3)(zod@4.5.4)':
     dependencies:
       '@earendil-works/chord': 0.85.1
       '@earendil-works/pi-agent-core': 0.85.1(@modelcontextprotocol/sdk@1.30.0(supports-color@7.2.0)(zod@4.5.4))(supports-color@7.2.0)(ws@8.21.3)(zod@4.5.4)
@@ -5563,7 +5563,7 @@ snapshots:
     dependencies:
       yallist: 4.0.0
 
-  lucide-react@1.46.0(react@19.3.0):
+  lucide-react@1.47.0(react@19.3.0):
     dependencies:
       react: 19.3.0
 

@@ -18,3 +18,4 @@ minimumReleaseAgeExclude:
   - '@types/vscode@1.138.0'
   - prettier@3.9.7
   - typebox@1.3.33
+  - lucide-react@1.47.0

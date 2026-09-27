@@ -1,5 +1,40 @@
+diff --git a/dist/core/agent-session.d.ts b/dist/core/agent-session.d.ts
+index 89f96e8769496a952cbf29efded4dd52b7eaad97..0e5f5d8e3068fc66b5cb41e3aef6ab663a06ac34 100644
+--- a/dist/core/agent-session.d.ts
++++ b/dist/core/agent-session.d.ts
+@@ -356,7 +356,7 @@ export declare class AgentSession {
+      * @throws Error if streaming and no streamingBehavior specified
+      * @throws Error if no model selected or no API key available (when not streaming)
+      */
+-    prompt(text: string, options?: PromptOptions): Promise<void>;
++    prompt(text: string | null, options?: PromptOptions): Promise<void>;
+     private _tryExecuteExtensionCommand;
+     /**
+      * Expand skill commands (/skill:name args) to their full content.
+diff --git a/dist/core/agent-session.js b/dist/core/agent-session.js
+index 66e874efd252470d00d3cdaad2e2b4b6121de15b..fb8ad6a0d188e6a3432e306a1b4964fc5adb5530 100644
+--- a/dist/core/agent-session.js
++++ b/dist/core/agent-session.js
+@@ -819,6 +819,8 @@ export class AgentSession {
+      * @throws Error if no model selected or no API key available (when not streaming)
+      */
+     async prompt(text, options) {
++        const isTriggerTurn = text === null;
++        if (isTriggerTurn) text = '';
+         const expandPromptTemplates = options?.expandPromptTemplates ?? true;
+         const preflightResult = options?.preflightResult;
+         let messages;
+@@ -946,7 +948,7 @@ export class AgentSession {
+             return;
+         }
+         preflightResult?.(true);
+-        await this._runAgentPrompt(messages);
++        await this._runAgentPrompt(isTriggerTurn ? [] : messages);
+     }
+     /**
+      * Try to execute an extension command. Returns true if command was found and executed.
 diff --git a/dist/index.d.ts b/dist/index.d.ts
-index 3e9241d..6663d64 100644
+index e2b640b661a7712fa3f86ed5ecb494b98a6f9e4d..c1b625cbf9f779351fe9e84ff1d169689e824d4d 100644
 --- a/dist/index.d.ts
 +++ b/dist/index.d.ts
 @@ -33,4 +33,9 @@ export { convertToPng } from "./utils/image-convert.ts";
@@ -14,7 +49,7 @@ index 3e9241d..6663d64 100644
  //# sourceMappingURL=index.d.ts.map
 \ No newline at end of file
 diff --git a/dist/index.js b/dist/index.js
-index 01017cd..08afe83 100644
+index 01017cdbf6a26b3d36e236c7f9e835fbf0fa5c3a..08afe83f3a503b6f67ea5b45f8df05edce6d0e27 100644
 --- a/dist/index.js
 +++ b/dist/index.js
 @@ -45,4 +45,9 @@ export { formatDimensionNote, resizeImage } from "./utils/image-resize.js";

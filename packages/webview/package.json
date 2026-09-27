@@ -21,7 +21,7 @@
     "cn": "^0.3.0",
     "hast-util-to-jsx-runtime": "^2.3.6",
     "katex": "^0.18.7",
-    "lucide-react": "^1.46.0",
+    "lucide-react": "^1.47.0",
     "mermaid-compact": "^0.0.1",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",

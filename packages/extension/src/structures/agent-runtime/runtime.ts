@@ -102,7 +102,7 @@ export class Runtime {
       if (this.discardIfStale(generation, session)) return;
 
       await this.compactContextIfNeeded(session);
-      await session.prompt('').catch((err) => this.messenger.postError(err));
+      await session.prompt(null).catch((err) => this.messenger.postError(err));
     } catch (err) {
       // A cancel landing mid-preparation makes the disposed session throw here;
       // that is the deliberate stop already reported by cancelTask.
@@ -132,7 +132,7 @@ export class Runtime {
         timestamp: Date.now(),
       });
 
-      await session.prompt('').catch((err) => this.messenger.postError(err));
+      await session.prompt(null).catch((err) => this.messenger.postError(err));
     } catch (err) {
       if (generation !== this.taskGeneration) {
         logger.debug('Task continuation abandoned after cancel:', err);
