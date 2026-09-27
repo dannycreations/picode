@@ -1,8 +1,8 @@
 diff --git a/dist/core/agent-session.d.ts b/dist/core/agent-session.d.ts
-index 89f96e8769496a952cbf29efded4dd52b7eaad97..0e5f5d8e3068fc66b5cb41e3aef6ab663a06ac34 100644
+index 5620ac3..4d0560d 100644
 --- a/dist/core/agent-session.d.ts
 +++ b/dist/core/agent-session.d.ts
-@@ -356,7 +356,7 @@ export declare class AgentSession {
+@@ -414,7 +414,7 @@ export declare class AgentSession {
       * @throws Error if streaming and no streamingBehavior specified
       * @throws Error if no model selected or no API key available (when not streaming)
       */
@@ -12,19 +12,19 @@ index 89f96e8769496a952cbf29efded4dd52b7eaad97..0e5f5d8e3068fc66b5cb41e3aef6ab66
      /**
       * Expand skill commands (/skill:name args) to their full content.
 diff --git a/dist/core/agent-session.js b/dist/core/agent-session.js
-index 66e874efd252470d00d3cdaad2e2b4b6121de15b..fb8ad6a0d188e6a3432e306a1b4964fc5adb5530 100644
+index 36fdb31..7cfd787 100644
 --- a/dist/core/agent-session.js
 +++ b/dist/core/agent-session.js
-@@ -819,6 +819,8 @@ export class AgentSession {
-      * @throws Error if no model selected or no API key available (when not streaming)
-      */
-     async prompt(text, options) {
+@@ -1209,6 +1209,8 @@ export class AgentSession {
+             this._deferredSettledActions.push(async () => await this.prompt(text, options));
+             return;
+         }
 +        const isTriggerTurn = text === null;
 +        if (isTriggerTurn) text = '';
          const expandPromptTemplates = options?.expandPromptTemplates ?? true;
          const preflightResult = options?.preflightResult;
          let messages;
-@@ -946,7 +948,7 @@ export class AgentSession {
+@@ -1328,7 +1330,7 @@ export class AgentSession {
              return;
          }
          preflightResult?.(true);
@@ -34,10 +34,10 @@ index 66e874efd252470d00d3cdaad2e2b4b6121de15b..fb8ad6a0d188e6a3432e306a1b4964fc
      /**
       * Try to execute an extension command. Returns true if command was found and executed.
 diff --git a/dist/index.d.ts b/dist/index.d.ts
-index e2b640b661a7712fa3f86ed5ecb494b98a6f9e4d..c1b625cbf9f779351fe9e84ff1d169689e824d4d 100644
+index 52dcaaf..54ed2de 100644
 --- a/dist/index.d.ts
 +++ b/dist/index.d.ts
-@@ -33,4 +33,9 @@ export { convertToPng } from "./utils/image-convert.ts";
+@@ -34,4 +34,9 @@ export { convertToPng } from "./utils/image-convert.ts";
  export { formatDimensionNote, type ResizedImage, resizeImage } from "./utils/image-resize.ts";
  export { detectSupportedImageMimeTypeFromFile } from "./utils/mime.ts";
  export { getPowerShellConfig, getShellConfig } from "./utils/shell.ts";
@@ -49,7 +49,7 @@ index e2b640b661a7712fa3f86ed5ecb494b98a6f9e4d..c1b625cbf9f779351fe9e84ff1d16968
  //# sourceMappingURL=index.d.ts.map
 \ No newline at end of file
 diff --git a/dist/index.js b/dist/index.js
-index 01017cdbf6a26b3d36e236c7f9e835fbf0fa5c3a..08afe83f3a503b6f67ea5b45f8df05edce6d0e27 100644
+index d833966..69d3a43 100644
 --- a/dist/index.js
 +++ b/dist/index.js
 @@ -45,4 +45,9 @@ export { formatDimensionNote, resizeImage } from "./utils/image-resize.js";
