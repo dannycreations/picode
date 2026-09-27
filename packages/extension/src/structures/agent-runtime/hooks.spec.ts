@@ -12,7 +12,7 @@ function makeFakeSession(appendMessage = vi.fn(() => 'persisted-id')): AgentSess
   return {
     agent: {
       steer: vi.fn(),
-      shouldStopAfterTurn: undefined,
+      finishTurn: undefined,
       prepareNextTurnWithContext: undefined,
     },
     sessionManager: {
@@ -29,7 +29,7 @@ const noopServices = {
   contextPrepared: async () => {},
 };
 
-type ShouldStop = (context: unknown, signal?: AbortSignal) => boolean | Promise<boolean>;
+const normalTurn = { message: { stopReason: 'stop' } } as never;
 
 describe('initSessionHooks', () => {
   it('suppresses only the aborted assistant entry while cancelled', () => {
@@ -56,10 +56,10 @@ describe('initSessionHooks', () => {
     expect(appendMessage).toHaveBeenCalledTimes(2);
   });
 
-  it('forces a turn stop when cancelled or the signal aborted, else defers to the base predicate', async () => {
-    const baseShouldStop = vi.fn(() => false);
+  it('ends the run when cancelled or the signal aborted, else defers to the base decision', async () => {
+    const baseFinishTurn = vi.fn(() => ({ action: 'continue' as const }));
     const session = makeFakeSession();
-    (session.agent as { shouldStopAfterTurn?: unknown }).shouldStopAfterTurn = baseShouldStop;
+    session.agent.finishTurn = baseFinishTurn;
     let cancelled = false;
 
     initSessionHooks(session, {
@@ -67,34 +67,32 @@ describe('initSessionHooks', () => {
       isDisposed: () => cancelled,
     });
 
-    const stop = session.agent.shouldStopAfterTurn as unknown as ShouldStop;
+    const finish = session.agent.finishTurn!;
 
-    await expect(stop({}, undefined)).resolves.toBe(false);
+    await expect(finish(normalTurn, undefined)).resolves.toEqual({ action: 'continue' });
 
     const controller = new AbortController();
     controller.abort();
-    await expect(stop({}, controller.signal)).resolves.toBe(true);
+    await expect(finish(normalTurn, controller.signal)).resolves.toEqual({ action: 'end' });
 
     cancelled = true;
-    await expect(stop({}, undefined)).resolves.toBe(true);
+    await expect(finish(normalTurn, undefined)).resolves.toEqual({ action: 'end' });
 
-    // Only the healthy call reached the library predicate.
-    expect(baseShouldStop).toHaveBeenCalledTimes(1);
+    // Only the healthy call reached the library decision.
+    expect(baseFinishTurn).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps turns running when no base predicate exists and nothing demands a stop', async () => {
+  it('leaves the run to the loop when no base decision exists and nothing demands a stop', async () => {
     const session = makeFakeSession();
 
     initSessionHooks(session, noopServices);
 
-    const stop = session.agent.shouldStopAfterTurn as unknown as ShouldStop;
-    await expect(stop({}, new AbortController().signal)).resolves.toBe(false);
+    await expect(session.agent.finishTurn!(normalTurn, new AbortController().signal)).resolves.toBeUndefined();
   });
 
-  it('signals compaction from shouldStopAfterTurn when the context is above threshold', async () => {
+  it('ends the turn and requests compaction when the context is above threshold', async () => {
     const requestCompaction = vi.fn();
     const session = makeFakeSession();
-    (session.agent as { shouldStopAfterTurn?: unknown }).shouldStopAfterTurn = undefined;
 
     initSessionHooks(session, {
       ...noopServices,
@@ -102,11 +100,27 @@ describe('initSessionHooks', () => {
       requestCompaction,
     });
 
-    const stop = session.agent.shouldStopAfterTurn as unknown as ShouldStop;
-    await expect(stop({} as never, undefined)).resolves.toBe(true);
+    await expect(session.agent.finishTurn!(normalTurn, undefined)).resolves.toEqual({ action: 'end' });
 
     expect(requestCompaction).toHaveBeenCalledTimes(1);
     expect(requestCompaction).toHaveBeenCalledWith(session);
+  });
+
+  it('never requests compaction for an errored or aborted turn', async () => {
+    const requestCompaction = vi.fn();
+    const session = makeFakeSession();
+
+    initSessionHooks(session, {
+      ...noopServices,
+      isContextAboveThreshold: () => true,
+      requestCompaction,
+    });
+
+    for (const stopReason of ['error', 'aborted']) {
+      await session.agent.finishTurn!({ message: { stopReason } } as never, undefined);
+    }
+
+    expect(requestCompaction).not.toHaveBeenCalled();
   });
 
   it('prepares the turn normally when the context is below threshold', async () => {

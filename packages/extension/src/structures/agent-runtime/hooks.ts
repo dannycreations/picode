@@ -3,6 +3,7 @@ import { uuidv7 } from '@earendil-works/pi-ai';
 import { readAppSettings } from '@pi-code/extension/core/settings';
 import { getLatestTodoList, withTodoProgress } from '@pi-code/extension/structures/chat-session/reminder';
 
+import type { AgentTurnDecision } from '@earendil-works/pi-agent-core';
 import type { AgentSession } from '@earendil-works/pi-coding-agent';
 
 interface SessionHookServices {
@@ -23,16 +24,20 @@ export function initSessionHooks(session: AgentSession, services: SessionHookSer
     return baseAppendMessage(message);
   };
 
-  const baseShouldStop = session.agent.shouldStopAfterTurn;
-  session.agent.shouldStopAfterTurn = async (context, signal): Promise<boolean> => {
+  // The agent loop treats an errored or aborted turn as a hard exit and ignores
+  // the decision made there, so those turns skip the threshold check: the
+  // request must not fire off a compaction for a turn the loop is about to drop.
+  const baseFinishTurn = session.agent.finishTurn;
+  session.agent.finishTurn = async (turn, signal): Promise<AgentTurnDecision | undefined> => {
+    const isHardExit = turn.message.stopReason === 'error' || turn.message.stopReason === 'aborted';
     if (services.isDisposed() || signal?.aborted) {
-      return true;
+      return { action: 'end' };
     }
-    if (services.isContextAboveThreshold(session)) {
+    if (!isHardExit && services.isContextAboveThreshold(session)) {
       void services.requestCompaction(session);
-      return true;
+      return { action: 'end' };
     }
-    return baseShouldStop?.(context) ?? false;
+    return (await baseFinishTurn?.(turn, signal)) ?? undefined;
   };
 
   const basePrepareContext = session.agent.prepareNextTurnWithContext;

@@ -196,7 +196,7 @@ function patchToolCall(result: ChatMessage[], msg: Extract<SessionMessage, { rol
   if (existing.sender !== 'tool') return;
 
   const resultText = contentText(msg.content);
-  const details: ToolResultDetails | undefined = msg.details;
+  const details = msg.details as ToolResultDetails;
 
   const rawDuration = elapsedSeconds(existing.timestamp, timestamp);
   const approvalMs = msg.toolCallId ? getApprovalDuration(msg.toolCallId) : undefined;

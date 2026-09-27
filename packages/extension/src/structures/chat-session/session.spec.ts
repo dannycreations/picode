@@ -33,7 +33,7 @@ function toolResultMessage(toolCallId: string, toolName: string, text: string, d
     details,
     isError: false,
     timestamp: Date.now(),
-  };
+  } as never;
 }
 
 describe('convertSessionEntries todo parsing', () => {

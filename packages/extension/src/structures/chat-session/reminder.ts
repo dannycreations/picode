@@ -51,7 +51,7 @@ export function getLatestTodoList(messages: readonly AgentMessage[]): TodoItem[]
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i];
     if (msg.role === 'toolResult' && msg.toolName === 'update_todo') {
-      const details: { todos?: TodoItem[] } | undefined = msg.details;
+      const details = msg.details as { todos?: TodoItem[] };
       if (details?.todos) return details.todos;
     }
   }

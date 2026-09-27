@@ -220,7 +220,8 @@ export class Runtime {
             ? { ...transcript.stats, contextTokens: compaction.estimatedTokensAfter }
             : transcript.stats;
 
-        const compactionEntry = entries.find((entry) => entry.type === 'compaction') ?? null;
+        // getBranch() runs oldest to newest, so the entry just written is the last one.
+        const compactionEntry = entries.findLast((entry) => entry.type === 'compaction') ?? null;
         this.messenger.post({ type: 'compaction_end', payload: { ...stats, compactionEntry } });
         return { messages: transcript.messages, stats };
       } finally {

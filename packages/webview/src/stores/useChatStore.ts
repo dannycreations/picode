@@ -137,19 +137,26 @@ export const useChatStore = create<ChatState>((set, get) => {
     session_loaded: (msg) => {
       set({ activeTask: msg.payload, isRunning: false, isCompacting: false, view: 'chat' });
     },
+    // The banner is owned by this pair alone. An auto-compaction outlives the
+    // turn that triggered it, so agent_settled and the follow-up agent_start
+    // both land while the summarization request is still in flight.
     compaction_start: (_msg) => {
       set({ isCompacting: true });
     },
     compaction_end: (msg) => {
       set((state) => {
         const { compactionEntry, ...stats } = msg.payload ?? {};
-        const basePatch = patchActiveTask(state, (task) => ({ ...task, ...stats }));
-        const nextTask =
-          compactionEntry && state.activeTask
-            ? {
-                ...basePatch,
-                messages: [
-                  ...state.activeTask.messages,
+        return {
+          isCompacting: false,
+          ...patchActiveTask(state, (task) => ({
+            ...task,
+            ...stats,
+            // The summary is the only record of what compaction dropped, so it
+            // joins the transcript as its own row. A payload without an entry
+            // (a cancelled run) only refreshes the header.
+            messages: compactionEntry
+              ? [
+                  ...task.messages,
                   {
                     id: compactionEntry.id,
                     sender: 'compaction' as const,
@@ -157,10 +164,10 @@ export const useChatStore = create<ChatState>((set, get) => {
                     cost: compactionEntry.usage?.cost?.total,
                     timestamp: Date.now(),
                   },
-                ],
-              }
-            : basePatch;
-        return { isCompacting: false, ...nextTask };
+                ]
+              : task.messages,
+          })),
+        };
       });
     },
     reply_queue_data: (msg) => {
@@ -173,7 +180,6 @@ export const useChatStore = create<ChatState>((set, get) => {
       const { path, stats } = msg.payload;
       set((state) => ({
         isRunning: true,
-        isCompacting: false,
         ...patchActiveTask(state, (task) => ({ ...task, path: path ?? task.path, ...stats })),
       }));
     },
@@ -332,7 +338,6 @@ export const useChatStore = create<ChatState>((set, get) => {
     agent_settled: (msg) => {
       set((state) => ({
         isRunning: false,
-        isCompacting: false,
         ...patchActiveTask(state, (task) => ({ ...task, messages: settlePendingTurns(task.messages), ...msg.payload })),
       }));
     },

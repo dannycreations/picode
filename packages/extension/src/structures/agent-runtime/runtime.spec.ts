@@ -85,7 +85,7 @@ const SERVICES = { resourceLoader: { getSkills: () => ({ skills: [] }), getPromp
 // subscribe is called during preparation, and the rest satisfy dispose hooks.
 function makeStartableSession() {
   return {
-    agent: { state: { messages: [] }, steer: vi.fn(), shouldStopAfterTurn: undefined, prepareNextTurnWithContext: undefined },
+    agent: { state: { messages: [] }, steer: vi.fn(), finishTurn: undefined, prepareNextTurnWithContext: undefined },
     sessionManager: { appendMessage: vi.fn(() => 'persisted-id'), appendCustomMessageEntry: vi.fn() },
     settingsManager: {
       applyOverrides: vi.fn(),
@@ -121,7 +121,7 @@ function makeFakeSession(steer: () => void, appendMessage: ReturnType<typeof vi.
     agent: {
       state: { messages: [] },
       steer,
-      shouldStopAfterTurn: undefined,
+      finishTurn: undefined,
       prepareNextTurnWithContext: undefined,
     },
     sessionManager: {
@@ -650,7 +650,7 @@ describe('Runtime compaction before turns', () => {
     );
     await flush();
 
-    // Compaction is now triggered from shouldStopAfterTurn during the turn,
+    // Compaction is now triggered from the finishTurn hook during the turn,
     // not reactively from agent_end events.
     expect(session.compact).not.toHaveBeenCalled();
     expect(mocks.getEnvironmentDetails).not.toHaveBeenCalled();
@@ -674,7 +674,7 @@ describe('Runtime compaction before turns', () => {
     );
     await flush();
 
-    // Compaction is now triggered from shouldStopAfterTurn during the turn,
+    // Compaction is now triggered from the finishTurn hook during the turn,
     // not reactively from agent_end events.
     expect(session.compact).not.toHaveBeenCalled();
     expect(mocks.getEnvironmentDetails).not.toHaveBeenCalled();

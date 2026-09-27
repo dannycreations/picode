@@ -37,7 +37,7 @@ describe('getLatestTodoList', () => {
         timestamp: 0,
       },
       { role: 'toolResult', toolCallId: '2', toolName: 'read_file', content: [], details: {}, isError: false, timestamp: 0 },
-      { role: 'toolResult', toolCallId: '3', toolName: 'update_todo', content: [], details: { todos: todos }, isError: false, timestamp: 0 },
+      { role: 'toolResult', toolCallId: '3', toolName: 'update_todo', content: [], details: { todos: todos } as never, isError: false, timestamp: 0 },
     ];
     expect(getLatestTodoList(messages)).toEqual(todos);
   });
