@@ -7,7 +7,7 @@ import { mapEvent } from '@pi-code/extension/structures/agent-runtime/event';
 import { appendAgentMessage } from '@pi-code/extension/structures/agent-runtime/helpers/agent-message';
 import { applyPersistedModelAndThinking } from '@pi-code/extension/structures/agent-runtime/helpers/model-selection';
 import { initSessionHooks } from '@pi-code/extension/structures/agent-runtime/hooks';
-import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
+import { createAgentResources, invalidateAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { createSession } from '@pi-code/extension/structures/agent-runtime/session';
 import { collectCommands } from '@pi-code/extension/structures/chat-command/command';
 import { injectResourceMessages } from '@pi-code/extension/structures/chat-command/invocation';
@@ -248,6 +248,7 @@ export class Runtime {
       return 'busy';
     }
 
+    invalidateAgentResources();
     await this.session?.reload();
 
     const services = await createAgentResources(getWorkspaceCwd());

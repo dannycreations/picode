@@ -20,9 +20,12 @@ function deferred<T>(): Deferred<T> {
 
 const mocks = vi.hoisted(() => ({
   createSession: vi.fn(),
-  createAgentResources: vi.fn(async () => ({
-    resourceLoader: { getSkills: () => ({ skills: [] }), getPrompts: () => ({ prompts: [] }) },
-  })),
+  createAgentResources: vi.fn(
+    async (): Promise<{ resourceLoader: { getSkills: () => { skills: unknown[] }; getPrompts: () => { prompts: unknown[] } } }> => ({
+      resourceLoader: { getSkills: () => ({ skills: [] }), getPrompts: () => ({ prompts: [] }) },
+    }),
+  ),
+  invalidateAgentResources: vi.fn(),
   applyPersistedModelAndThinking: vi.fn(async () => {}),
   getEnvironmentDetails: vi.fn(async () => ''),
   expandMentions: vi.fn(async (text: string) => ({ text, mentionContent: undefined as string | undefined })),
@@ -47,6 +50,7 @@ vi.mock('@pi-code/extension/structures/agent-runtime/session', async (importOrig
 vi.mock('@pi-code/extension/structures/agent-runtime/resource', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@pi-code/extension/structures/agent-runtime/resource')>()),
   createAgentResources: mocks.createAgentResources,
+  invalidateAgentResources: mocks.invalidateAgentResources,
 }));
 vi.mock('@pi-code/extension/structures/agent-runtime/helpers/model-selection', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@pi-code/extension/structures/agent-runtime/helpers/model-selection')>()),
@@ -108,6 +112,7 @@ afterEach(() => {
   mocks.createAgentResources.mockResolvedValue({
     resourceLoader: { getSkills: () => ({ skills: [] }), getPrompts: () => ({ prompts: [] }) },
   });
+  mocks.invalidateAgentResources.mockReset();
   mocks.getEnvironmentDetails.mockResolvedValue('');
 });
 
@@ -729,5 +734,58 @@ describe('Runtime compaction before turns', () => {
 
     expect(result).toBeNull();
     expect(posted(webview)).toContainEqual({ type: 'agent_error', payload: { message: expect.stringContaining('forked session') } });
+  });
+});
+
+describe('Runtime reload', () => {
+  function postedPromptNames(webview: Webview): string[][] {
+    return (webview.postMessage as ReturnType<typeof vi.fn>).mock.calls
+      .map((call) => call[0])
+      .filter((message) => message.type === 'commands_data')
+      .map((message) =>
+        message.payload.commands.map((command: { name: string }) => command.name).filter((name: string) => name.startsWith('prompt:')),
+      );
+  }
+
+  it('serves the edited prompt file instead of the memoized loader', async () => {
+    const webview = makeFakeWebview();
+    const runtime = new Runtime(webview);
+
+    let prompts: Array<{ name: string; description: string }> = [{ name: 'old', description: '' }];
+    let cached: Awaited<ReturnType<typeof mocks.createAgentResources>> | undefined;
+    mocks.invalidateAgentResources.mockImplementation(() => {
+      cached = undefined;
+    });
+    mocks.createAgentResources.mockImplementation(async () => {
+      if (!cached) {
+        const snapshot = [...prompts];
+        cached = { resourceLoader: { getSkills: () => ({ skills: [] }), getPrompts: () => ({ prompts: snapshot }) } };
+      }
+      return cached;
+    });
+
+    await runtime.reload();
+    // The prompt file gains a template on disk between the two reads.
+    prompts = [...prompts, { name: 'new', description: '' }];
+    await runtime.reload();
+
+    expect(postedPromptNames(webview)).toEqual([['prompt:old'], ['prompt:new', 'prompt:old']]);
+  });
+
+  it('reloads the session loader and reports busy while a task is streaming', async () => {
+    const webview = makeFakeWebview();
+    const runtime = new Runtime(webview);
+    const session = makeStartableSession() as unknown as { reload: ReturnType<typeof vi.fn>; isStreaming: boolean };
+    session.reload = vi.fn(async () => {});
+    runtime['session'] = session as never;
+
+    const outcome = await runtime.reload();
+
+    expect(outcome).toBe('reloaded');
+    expect(session.reload).toHaveBeenCalledTimes(1);
+
+    session.isStreaming = true;
+    expect(await runtime.reload()).toBe('busy');
+    expect(session.reload).toHaveBeenCalledTimes(1);
   });
 });
