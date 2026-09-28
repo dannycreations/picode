@@ -68,18 +68,19 @@ function formatTruncationNotice(truncation: TruncationResult, keep: TruncateKeep
   return `Truncated: ${scope} (${sizes}).${suffix}`;
 }
 
+export function renderTruncatedText(truncation: TruncationResult, keep: TruncateKeep, hint?: string): string {
+  const notice = formatTruncationNotice(truncation, keep, hint);
+  if (!notice) {
+    return truncation.content;
+  }
+  return truncation.content ? `${truncation.content}\n\n${notice}` : notice;
+}
+
 export function truncateOutput(content: string, options: TruncateOutputOptions): TruncatedOutput {
   const keep = options.keep ?? 'head';
   const truncation = keep === 'tail' ? truncateTail(content, options.limits) : truncateHead(content, options.limits);
-
   const hint = typeof options.hint === 'function' ? options.hint(truncation) : options.hint;
-  const notice = formatTruncationNotice(truncation, keep, hint);
-  if (!notice) {
-    return { text: truncation.content, truncation };
-  }
-
-  const text = truncation.content ? `${truncation.content}\n\n${notice}` : notice;
-  return { text, truncation };
+  return { text: renderTruncatedText(truncation, keep, hint), truncation };
 }
 
 interface ReadNumberedTextOptions {

@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULT_CONTEXT_LIMIT, findReplaceableFailedRequest, relativeToWorkspace, resolveContextLimit, splitOnOccurrences } from './common';
+import {
+  DEFAULT_CONTEXT_LIMIT,
+  elapsedSeconds,
+  findReplaceableFailedRequest,
+  relativeToWorkspace,
+  resolveContextLimit,
+  splitOnOccurrences,
+} from './common';
 
 import type { ChatMessage } from '../core/types';
 
@@ -39,6 +46,17 @@ describe('splitOnOccurrences', () => {
 
   it('treats an empty needle as no match', () => {
     expect(splitOnOccurrences('abc', '')).toEqual([{ text: 'abc', matchIndex: null }]);
+  });
+});
+
+describe('elapsedSeconds', () => {
+  it('rounds a millisecond span to whole seconds', () => {
+    expect(elapsedSeconds(0, 1499)).toBe(1);
+    expect(elapsedSeconds(0, 1500)).toBe(2);
+  });
+
+  it('clamps a negative span to zero', () => {
+    expect(elapsedSeconds(1000, 0)).toBe(0);
   });
 });
 

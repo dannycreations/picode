@@ -38,7 +38,7 @@ interface ResolvedMention {
   readonly content: string;
 }
 
-interface ExpandedMentions {
+export interface ExpandedMentions {
   // The prompt with the original `@token` references left intact, ready to be
   // shown to the user and persisted as the user message.
   readonly text: string;

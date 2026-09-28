@@ -3,7 +3,7 @@ import { dirname } from 'node:path';
 import { parseCommandArgs, substituteArgs } from '@earendil-works/pi-agent-core';
 import { stripFrontmatter } from '@earendil-works/pi-coding-agent';
 
-import { appendAgentMessage } from '@pi-code/extension/structures/agent-runtime/helpers/agent-message';
+import { appendHiddenMessage } from '@pi-code/extension/structures/agent-runtime/helpers/agent-message';
 import { logger } from '@pi-code/shared/core/logger';
 import { wrapCodeBlock } from '@pi-code/shared/utilities/markdown';
 
@@ -84,14 +84,7 @@ async function injectSkillMessage(session: AgentSession, skills: readonly Skill[
     return;
   }
 
-  appendAgentMessage(session, {
-    role: 'custom',
-    customType: SKILL_CONTENT_TYPE,
-    content: buildSkillBlock(skill.name, skill.filePath, body),
-    display: false,
-    details: undefined,
-    timestamp: Date.now(),
-  });
+  appendHiddenMessage(session, SKILL_CONTENT_TYPE, buildSkillBlock(skill.name, skill.filePath, body));
 }
 
 async function injectPromptMessage(session: AgentSession, prompts: readonly PromptTemplate[], text: string): Promise<void> {
@@ -99,14 +92,7 @@ async function injectPromptMessage(session: AgentSession, prompts: readonly Prom
   if (!matched) return;
 
   const content = substituteArgs(matched.content, parseCommandArgs(matched.args));
-  appendAgentMessage(session, {
-    role: 'custom',
-    customType: PROMPT_CONTENT_TYPE,
-    content: buildPromptBlock(matched, content),
-    display: false,
-    details: undefined,
-    timestamp: Date.now(),
-  });
+  appendHiddenMessage(session, PROMPT_CONTENT_TYPE, buildPromptBlock(matched, content));
 }
 
 export async function injectResourceMessages(session: AgentSession, resources: RuntimeResources, text: string): Promise<void> {

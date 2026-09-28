@@ -18,7 +18,7 @@ import {
 import { Type } from 'typebox';
 
 import { readAppSettings, readOutputLimits } from '@pi-code/extension/core/settings';
-import { truncateOutput } from '@pi-code/extension/utilities/truncate';
+import { renderTruncatedText, truncateOutput } from '@pi-code/extension/utilities/truncate';
 import { logger } from '@pi-code/shared/core/logger';
 
 import type { SpawnOptions } from 'node:child_process';
@@ -302,18 +302,20 @@ export const executeCommandTool = defineTool({
         const dropped = totalLength > retainedLength;
         const droppedNote = dropped ? `The command produced ${formatSize(totalLength)} in total.` : '';
 
-        // If not already dumped to a file via streaming, check if the output exceeded line/byte limits.
-        // If truncated, dump the full raw output to a temp file now.
-        if (!tempFilePath && !tempFileError) {
-          const probe = truncateOutput(cleanOutput, { limits, keep: 'tail' });
-          if (dropped || probe.truncation.truncated) {
-            try {
-              tempFilePath = join(tmpdir(), `pi-code-command-${Date.now()}-${uuidv7().slice(0, 8)}.log`);
-              await writeFile(tempFilePath, initialRawChunks.join(''), 'utf8');
-            } catch (err) {
-              logger.warn('Failed to dump command output to temp file:', err);
-              tempFilePath = null;
-            }
+        // Truncate once. Whether the tail is truncated decides if the raw output
+        // is worth dumping, and that decision decides the hint wording, so the
+        // text is rendered from this result rather than truncating again.
+        const { truncation } = truncateOutput(cleanOutput, { limits, keep: 'tail' });
+
+        // If not already dumped to a file via streaming, dump the full raw output
+        // to a temp file now whenever the model only sees part of it.
+        if (!tempFilePath && !tempFileError && (dropped || truncation.truncated)) {
+          try {
+            tempFilePath = join(tmpdir(), `pi-code-command-${Date.now()}-${uuidv7().slice(0, 8)}.log`);
+            await writeFile(tempFilePath, initialRawChunks.join(''), 'utf8');
+          } catch (err) {
+            logger.warn('Failed to dump command output to temp file:', err);
+            tempFilePath = null;
           }
         }
 
@@ -322,11 +324,9 @@ export const executeCommandTool = defineTool({
           ? `Full raw output saved to: "${tempFilePath}".\nRead this file with a search or pager (findstr, grep, head, tail) to inspect the rest.\n${droppedNote}`
           : `Re-run with a search or pager (findstr, grep, head, tail) to inspect the rest.\n${droppedNote}`;
 
-        const { text, truncation } = truncateOutput(cleanOutput, { limits, keep: 'tail', hint: resolution });
-
-        let modelText = text;
+        let modelText = renderTruncatedText(truncation, 'tail', resolution);
         if (dropped && !truncation.truncated) {
-          modelText = `${text}\n\nTruncated to the last ${formatSize(limits.maxBytes)} of output.\n${resolution}`;
+          modelText = `${modelText}\n\nTruncated to the last ${formatSize(limits.maxBytes)} of output.\n${resolution}`;
         }
 
         if (timedOut) {

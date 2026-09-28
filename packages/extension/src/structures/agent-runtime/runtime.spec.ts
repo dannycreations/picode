@@ -30,7 +30,6 @@ const mocks = vi.hoisted(() => ({
   getEnvironmentDetails: vi.fn(async () => ''),
   expandMentions: vi.fn(async (text: string) => ({ text, mentionContent: undefined as string | undefined })),
   injectResourceMessages: vi.fn(async () => {}),
-  sendHiddenContent: vi.fn(async () => {}),
   loadSessionTranscript: vi.fn((): { messages: unknown[]; stats: { contextTokens: number } } => ({ messages: [], stats: { contextTokens: 0 } })),
 }));
 
@@ -67,7 +66,6 @@ vi.mock('@pi-code/extension/structures/chat-command/mention', async (importOrigi
 vi.mock('@pi-code/extension/structures/chat-command/invocation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@pi-code/extension/structures/chat-command/invocation')>()),
   injectResourceMessages: mocks.injectResourceMessages,
-  sendHiddenContent: mocks.sendHiddenContent,
 }));
 vi.mock('@pi-code/extension/structures/chat-session/session', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@pi-code/extension/structures/chat-session/session')>()),

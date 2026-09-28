@@ -4,7 +4,7 @@ import { cancelAllQuestions } from '@pi-code/extension/structures/agent-runtime/
 import { Messenger } from '@pi-code/extension/structures/agent-runtime/core/messenger';
 import { ReplyQueue } from '@pi-code/extension/structures/agent-runtime/core/reply-queue';
 import { mapEvent } from '@pi-code/extension/structures/agent-runtime/event';
-import { appendAgentMessage } from '@pi-code/extension/structures/agent-runtime/helpers/agent-message';
+import { appendHiddenMessage, appendUserTurn } from '@pi-code/extension/structures/agent-runtime/helpers/agent-message';
 import { applyPersistedModelAndThinking } from '@pi-code/extension/structures/agent-runtime/helpers/model-selection';
 import { initSessionHooks } from '@pi-code/extension/structures/agent-runtime/hooks';
 import { createAgentResources, invalidateAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
@@ -14,16 +14,14 @@ import { injectResourceMessages } from '@pi-code/extension/structures/chat-comma
 import { expandMentions } from '@pi-code/extension/structures/chat-command/mention';
 import { getEnvironmentDetails } from '@pi-code/extension/structures/chat-session/environment';
 import { loadSessionTranscript } from '@pi-code/extension/structures/chat-session/session';
-import { parseAttachments } from '@pi-code/extension/utilities/codec';
 import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
 import { logger } from '@pi-code/shared/core/logger';
 import { resolveContextLimit } from '@pi-code/shared/utilities/common';
-import { wrapCodeBlock } from '@pi-code/shared/utilities/markdown';
 
 import type { AgentSession, AgentSessionEvent, AgentSessionServices } from '@earendil-works/pi-coding-agent';
 import type { Webview } from 'vscode';
 import type { ExtensionToWebviewMessage } from '@pi-code/shared/core/protocol';
-import type { Attachment, ChatMessage, QueueChatMessage, StatsData, TextAttachment } from '@pi-code/shared/core/types';
+import type { Attachment, ChatMessage, QueueChatMessage, StatsData } from '@pi-code/shared/core/types';
 
 export class Runtime {
   private session: AgentSession | null = null;
@@ -57,47 +55,11 @@ export class Runtime {
       const skills = services.resourceLoader.getSkills().skills;
       const prompts = services.resourceLoader.getPrompts().prompts;
       const expanded = await expandMentions(promptText, getWorkspaceCwd());
-      const imageAttachments = parseAttachments(attachments);
 
       await injectResourceMessages(session, { skills, prompts }, expanded.text);
 
-      appendAgentMessage(session, {
-        role: 'user',
-        content: [{ type: 'text', text: expanded.text }, ...imageAttachments],
-        timestamp: Date.now(),
-      });
-
-      const textAttachments = (attachments ?? []).filter((attachment): attachment is TextAttachment => attachment.kind === 'text');
-      for (const attachment of textAttachments) {
-        appendAgentMessage(session, {
-          role: 'custom',
-          customType: 'text_attachment',
-          content: wrapCodeBlock(attachment.content, attachment.language),
-          display: false,
-          details: undefined,
-          timestamp: Date.now(),
-        });
-      }
-
-      if (expanded.mentionContent) {
-        appendAgentMessage(session, {
-          role: 'custom',
-          customType: 'mention_content',
-          content: expanded.mentionContent,
-          display: false,
-          details: undefined,
-          timestamp: Date.now(),
-        });
-      }
-
-      appendAgentMessage(session, {
-        role: 'custom',
-        customType: 'environment_details',
-        content: envDetails,
-        display: false,
-        details: undefined,
-        timestamp: Date.now(),
-      });
+      appendUserTurn(session, expanded, attachments, Date.now());
+      appendHiddenMessage(session, 'environment_details', envDetails);
 
       if (this.discardIfStale(generation, session)) return;
 
@@ -123,14 +85,7 @@ export class Runtime {
 
       await this.compactContextIfNeeded(session);
 
-      appendAgentMessage(session, {
-        role: 'custom',
-        customType: 'environment_details',
-        content: envDetails,
-        display: false,
-        details: undefined,
-        timestamp: Date.now(),
-      });
+      appendHiddenMessage(session, 'environment_details', envDetails);
 
       await session.prompt(null).catch((err) => this.messenger.postError(err));
     } catch (err) {
@@ -424,37 +379,7 @@ export class Runtime {
   private async processQueuedReply(msg: QueueChatMessage, cwd: string, session: AgentSession): Promise<ChatMessage | undefined> {
     try {
       const expanded = await expandMentions(msg.text, cwd);
-      const imageAttachments = parseAttachments(msg.attachments);
-
-      appendAgentMessage(session, {
-        role: 'user',
-        content: [{ type: 'text', text: expanded.text }, ...imageAttachments],
-        timestamp: msg.timestamp,
-      });
-
-      const textAttachments = (msg.attachments ?? []).filter((attachment): attachment is TextAttachment => attachment.kind === 'text');
-      for (const attachment of textAttachments) {
-        appendAgentMessage(session, {
-          role: 'custom',
-          customType: 'text_attachment',
-          content: wrapCodeBlock(attachment.content, attachment.language),
-          display: false,
-          details: undefined,
-          timestamp: Date.now(),
-        });
-      }
-
-      if (expanded.mentionContent) {
-        appendAgentMessage(session, {
-          role: 'custom',
-          customType: 'mention_content',
-          content: expanded.mentionContent,
-          display: false,
-          details: undefined,
-          timestamp: Date.now(),
-        });
-      }
-
+      appendUserTurn(session, expanded, msg.attachments, msg.timestamp);
       return { id: msg.id, sender: 'user', text: msg.text, attachments: msg.attachments, timestamp: msg.timestamp };
     } catch (err) {
       logger.error('Failed to process queued reply, keeping it for later:', err);
