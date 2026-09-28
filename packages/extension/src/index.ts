@@ -5,12 +5,7 @@ import { mcpGateway } from '@pi-code/extension/structures/agent-runtime/mcp/mana
 import { invalidateAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { ChatViewProvider } from '@pi-code/extension/structures/agent-webview/provider';
 import { registerCommitMessageCommands } from '@pi-code/extension/structures/commit-message/command';
-import {
-  registerAddProblemToContextCommand,
-  registerAddToContextCommand,
-  registerFillCodeCommand,
-  registerFixCodeCommand,
-} from '@pi-code/extension/structures/context-command/command';
+import { registerContextCommands } from '@pi-code/extension/structures/context-command/command';
 import { PiCodeActionProvider } from '@pi-code/extension/structures/context-command/provider';
 import { flushDebugLog, installFetchInterceptor } from '@pi-code/extension/utilities/interceptor';
 import { getWorkspaceUri } from '@pi-code/extension/utilities/vscode';
@@ -44,10 +39,7 @@ export function activate(context: ExtensionContext): void {
         webviewOptions: { retainContextWhenHidden: true },
       }),
       registerCommitMessageCommands(),
-      registerAddToContextCommand(chatViewProvider),
-      registerAddProblemToContextCommand(chatViewProvider),
-      registerFillCodeCommand(),
-      registerFixCodeCommand(),
+      ...registerContextCommands(chatViewProvider),
       languages.registerCodeActionsProvider('*', new PiCodeActionProvider(), PiCodeActionProvider.metadata),
       commands.registerCommand(COMMAND_IDS.settingsButtonClicked, () => {
         chatViewProvider.postMessage({ type: 'show_settings' });

@@ -30,7 +30,7 @@ interface UseSuggestionProps<T> {
   readonly resolveItems: (query: string) => readonly T[];
 }
 
-interface UseSuggestionReturn<T> {
+export interface UseSuggestionReturn<T> {
   readonly isOpen: boolean;
   readonly items: readonly T[];
   readonly query: string | null;

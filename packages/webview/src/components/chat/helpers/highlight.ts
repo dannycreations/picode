@@ -46,7 +46,7 @@ function splitOnPattern(text: string, pattern: RegExp, accepts: (token: string) 
   const segments: TokenSegment[] = [];
   let cursor = 0;
   for (const match of text.matchAll(pattern)) {
-    const start = match.index ?? 0;
+    const start = match.index;
     const end = start + match[0].length;
     if (!accepts(match[1])) continue;
     if (start > cursor) segments.push({ text: text.slice(cursor, start), highlighted: false });

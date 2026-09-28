@@ -103,7 +103,7 @@ export function parseMcpServer(raw: unknown): ParsedServer {
         command,
         ...(args && { args }),
         ...(env && { env }),
-        ...(typeof cwd === 'string' && cwd.trim() !== '' && { cwd }),
+        ...(cwd !== undefined && { cwd }),
         ...(timeoutMs && { timeoutMs }),
         ...(autorun && { autorun }),
         ...(description && { description }),

@@ -93,10 +93,7 @@ export function matchesQuery(key: SettingKey, query: string): boolean {
   const field = SETTING_FIELDS[key];
   const spec = getSettingSpec(key);
 
-  const label = field?.label || '';
-  const description = spec?.description || '';
-
-  return key.toLowerCase().includes(q) || label.toLowerCase().includes(q) || description.toLowerCase().includes(q);
+  return key.toLowerCase().includes(q) || field.label.toLowerCase().includes(q) || spec.description.toLowerCase().includes(q);
 }
 
 export function isFieldVisible(key: SettingKey, query: string, parentMatched = false): boolean {

@@ -35,14 +35,7 @@ export const TaskActions: FC<TaskActionsProps> = ({
     <div className={cn('flex flex-row items-center gap-1', wrapperClassName)} onClick={stop}>
       {onExport && (
         <Tooltip content="Export task">
-          <button
-            type="button"
-            className={buttonClassName}
-            onClick={(e) => {
-              stop(e);
-              onExport();
-            }}
-          >
+          <button type="button" className={buttonClassName} onClick={onExport}>
             <Download size={iconSize} />
           </button>
         </Tooltip>
@@ -56,10 +49,7 @@ export const TaskActions: FC<TaskActionsProps> = ({
             type="button"
             disabled={deleteDisabled}
             className={cn(deleteButtonClassName ?? buttonClassName, 'disabled:opacity-40 disabled:cursor-default')}
-            onClick={(e) => {
-              stop(e);
-              onDelete();
-            }}
+            onClick={onDelete}
           >
             <Trash2 size={iconSize} />
           </button>
@@ -67,14 +57,7 @@ export const TaskActions: FC<TaskActionsProps> = ({
       )}
       {onViewRaw && (
         <Tooltip content="View raw task">
-          <button
-            type="button"
-            className={buttonClassName}
-            onClick={(e) => {
-              stop(e);
-              onViewRaw();
-            }}
-          >
+          <button type="button" className={buttonClassName} onClick={onViewRaw}>
             <FileJson size={iconSize} />
           </button>
         </Tooltip>

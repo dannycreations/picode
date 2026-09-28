@@ -63,7 +63,7 @@ export class Runtime {
 
       if (this.discardIfStale(generation, session)) return;
 
-      await this.compactContextIfNeeded(session);
+      await this.runCompaction(session);
       await session.prompt(null).catch((err) => this.messenger.postError(err));
     } catch (err) {
       // A cancel landing mid-preparation makes the disposed session throw here;
@@ -83,7 +83,7 @@ export class Runtime {
       const { session, envDetails } = await this.prepareSession(path);
       if (this.discardIfStale(generation, session)) return;
 
-      await this.compactContextIfNeeded(session);
+      await this.runCompaction(session);
 
       appendHiddenMessage(session, 'environment_details', envDetails);
 
@@ -192,11 +192,6 @@ export class Runtime {
       this.messenger.post({ type: 'compaction_end' });
       return null;
     }
-  }
-
-  private async compactContextIfNeeded(session: AgentSession): Promise<void> {
-    if (!this.isContextAtCompactionThreshold(session)) return;
-    await this.runCompaction(session);
   }
 
   public async reload(): Promise<'busy' | 'reloaded'> {

@@ -32,7 +32,6 @@ interface UriNode {
 interface WalkEntry {
   readonly child: FileChild;
   readonly uri: Uri;
-  readonly fsPath: string;
 }
 
 const textDecoder = new TextDecoder();
@@ -144,10 +143,7 @@ export async function walkWorkspace(
     const childCount = children.length;
     if (childCount === 0) return [];
 
-    const entries: WalkEntry[] = children.map((child) => {
-      const childUri = Uri.joinPath(uri, child.name);
-      return { child, uri: childUri, fsPath: childUri.fsPath };
-    });
+    const entries: WalkEntry[] = children.map((child) => ({ child, uri: Uri.joinPath(uri, child.name) }));
 
     let localIgnores = ignores;
     if (useLocalGitignore) {
@@ -162,18 +158,18 @@ export async function walkWorkspace(
       repo && childCount > 0
         ? await getIgnoredPaths(
             repo,
-            entries.map((entry) => entry.fsPath),
+            entries.map((entry) => entry.uri.fsPath),
           ).catch(() => null)
         : null;
 
     const nextNodes: UriNode[] = [];
     const relativePrefix = relative === '' ? '' : `${relative}/`;
 
-    for (const { child, uri: childUri, fsPath } of entries) {
+    for (const { child, uri: childUri } of entries) {
       const childRelative = relativePrefix + child.name;
 
       if (repo) {
-        if (ignoredPaths?.has(fsPath)) continue;
+        if (ignoredPaths?.has(childUri.fsPath)) continue;
       } else if (excludeIgnoredFiles && localIgnores.length > 0) {
         if (isIgnoredByLocalRules(childRelative, child.isDir, localIgnores)) continue;
       }
@@ -243,11 +239,7 @@ export async function getEnvironmentDetails(cwd: string, includeFileDetails = fa
   const maxOpenTabsContext = settings.maxOpenTabsContext;
 
   if (maxOpenTabsContext > 0) {
-    const visibleFiles = window.visibleTextEditors
-      .map((editor) => editor.document?.uri)
-      .filter((uri) => uri !== undefined)
-      .map((uri) => toWorkspaceRelativePath(uri))
-      .filter((path) => path !== undefined);
+    const visibleFiles = window.visibleTextEditors.map((editor) => toWorkspaceRelativePath(editor.document.uri)).filter((path) => path !== undefined);
     details = appendPathSection(details, 'VS Code Visible Files', 'visible files', visibleFiles, maxOpenTabsContext);
 
     const openTabs = window.tabGroups.all

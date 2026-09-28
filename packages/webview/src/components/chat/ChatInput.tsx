@@ -16,6 +16,7 @@ import { readFileAsDataUrl } from '@pi-code/webview/utilities/common';
 
 import type { ChangeEvent, ClipboardEvent, DragEvent, FC, KeyboardEvent, RefObject } from 'react';
 import type { Attachment } from '@pi-code/shared/core/types';
+import type { UseSuggestionReturn } from '@pi-code/webview/components/chat/hooks/useSuggestion';
 
 interface ChatInputProps {
   readonly onSend: (text: string, attachments: Attachment[]) => void;
@@ -25,13 +26,7 @@ interface ChatInputProps {
   readonly supportsImages: boolean;
 }
 
-interface SuggestionController {
-  readonly isOpen: boolean;
-  readonly handleKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => boolean;
-  readonly handleChange: (event: ChangeEvent<HTMLTextAreaElement>) => void;
-  readonly close: () => void;
-  readonly syncCaret: () => void;
-}
+type SuggestionController = Pick<UseSuggestionReturn<unknown>, 'isOpen' | 'handleKeyDown' | 'handleChange' | 'close' | 'syncCaret'>;
 
 const AttachmentsPreview: FC<{
   readonly attachments: readonly Attachment[];
@@ -286,7 +281,7 @@ export const ChatInput: FC<ChatInputProps> = ({ onSend, sendingDisabled, placeho
   const isSendButtonActive = (inputValue.trim().length > 0 || selectedAttachments.length > 0) && !sendingDisabled;
 
   return (
-    <div className={cn('relative flex flex-col px-3.5 pt-2 pb-1 outline-none w-full box-border bg-vscode-sideBar-background shrink-0')}>
+    <div className="relative flex flex-col px-3.5 pt-2 pb-1 outline-none w-full box-border bg-vscode-sideBar-background shrink-0">
       <AttachmentsPreview attachments={selectedAttachments} onRemove={(idx) => setSelectedAttachments((prev) => prev.filter((_, i) => i !== idx))} />
 
       <div
@@ -360,7 +355,7 @@ export const ChatInput: FC<ChatInputProps> = ({ onSend, sendingDisabled, placeho
           <div className="flex items-center gap-1.5 ml-auto">
             <input type="file" ref={fileInputRef} onChange={handleAttachFile} className="hidden" />
             <Tooltip content="Add attachment">
-              <button onClick={() => fileInputRef.current?.click()} className={cn('icon-button')}>
+              <button onClick={() => fileInputRef.current?.click()} className="icon-button">
                 <Paperclip size={14} />
               </button>
             </Tooltip>

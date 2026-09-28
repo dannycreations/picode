@@ -72,21 +72,10 @@ export function resolveContextLimit(contextWindow: number | undefined): number {
 
 export function findOccurrences(haystack: string, needle: string, caseSensitive = false): number[] {
   if (needle === '') return [];
-  if (caseSensitive) {
-    const positions: number[] = [];
-    let from = 0;
-    let index = haystack.indexOf(needle, from);
-    while (index !== -1) {
-      positions.push(index);
-      from = index + needle.length;
-      index = haystack.indexOf(needle, from);
-    }
-    return positions;
-  }
 
   const positions: number[] = [];
-  for (const match of haystack.matchAll(new RegExp(escapeRegExp(needle), 'gi'))) {
-    if (match.index !== undefined) positions.push(match.index);
+  for (const match of haystack.matchAll(new RegExp(escapeRegExp(needle), caseSensitive ? 'g' : 'gi'))) {
+    positions.push(match.index);
   }
   return positions;
 }

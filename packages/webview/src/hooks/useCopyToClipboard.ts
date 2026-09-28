@@ -20,31 +20,30 @@ interface UseCopyToClipboardReturn {
   readonly copy: (text: string, e?: MouseEvent) => Promise<boolean>;
 }
 
-export const useCopyToClipboard = (feedbackDuration = 2000): UseCopyToClipboardReturn => {
+const COPY_FEEDBACK_MS = 2000;
+
+export const useCopyToClipboard = (): UseCopyToClipboardReturn => {
   const [showCopy, setShowCopy] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const copy = useCallback(
-    async (text: string, e?: MouseEvent): Promise<boolean> => {
-      e?.stopPropagation();
+  const copy = useCallback(async (text: string, e?: MouseEvent): Promise<boolean> => {
+    e?.stopPropagation();
 
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
 
-      const success = await copyToClipboard(text);
-      if (success) {
-        setShowCopy(true);
-        timeoutRef.current = setTimeout(() => {
-          setShowCopy(false);
-          timeoutRef.current = null;
-        }, feedbackDuration);
-      }
+    const success = await copyToClipboard(text);
+    if (success) {
+      setShowCopy(true);
+      timeoutRef.current = setTimeout(() => {
+        setShowCopy(false);
+        timeoutRef.current = null;
+      }, COPY_FEEDBACK_MS);
+    }
 
-      return success;
-    },
-    [feedbackDuration],
-  );
+    return success;
+  }, []);
 
   useEffect(() => {
     return () => {

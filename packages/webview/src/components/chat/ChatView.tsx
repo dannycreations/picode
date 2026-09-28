@@ -200,8 +200,7 @@ export const ChatView: FC = () => {
   // ChatBody a new identity each render and defeat its memo.
   const isSearching = searchOpen && searchQuery !== '';
   const searchContexts = useMemo(
-    () =>
-      isSearching ? renderItems.map((_, index) => ({ query: searchQuery, globalOffset: globalOffsets[index] ?? 0, activeIndex: activeMatch })) : [],
+    () => (isSearching ? renderItems.map((_, index) => ({ query: searchQuery, globalOffset: globalOffsets[index], activeIndex: activeMatch })) : []),
     [isSearching, searchQuery, renderItems, globalOffsets, activeMatch],
   );
 
@@ -360,8 +359,8 @@ export const ChatView: FC = () => {
             onDelete={activeTask.path ? () => setShowDeleteActiveConfirm(true) : undefined}
             onViewRaw={() => viewRaw(activeTask.path)}
             onArchive={handleArchive}
-            isArchived={activeTask?.isArchived}
-            archiveDisabled={isRunning || !activeTask?.path}
+            isArchived={activeTask.isArchived}
+            archiveDisabled={isRunning || !activeTask.path}
             deleteDisabled={isRunning}
             onSearchOpen={() => setSearchOpen(true)}
           />

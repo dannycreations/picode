@@ -14,16 +14,11 @@ import type { ShikiTransformer } from 'shiki';
 const CODE_BLOCK_BG_COLOR = 'var(--vscode-editor-background, var(--vscode-sideBar-background, rgb(30, 30, 30)))';
 
 interface CodeBlockProps {
-  readonly source?: string;
-  readonly language: string;
-}
-
-interface PlainCodeProps {
   readonly source: string;
   readonly language: string;
 }
 
-const PlainCode: FC<PlainCodeProps> = ({ source, language }) => (
+const PlainCode: FC<CodeBlockProps> = ({ source, language }) => (
   <pre className="p-0 m-0 bg-transparent">
     <code className={cn('hljs', `language-${language || 'txt'}`)}>{source}</code>
   </pre>
@@ -78,7 +73,7 @@ const useShikiHighlighter = (source: string, language: string, enabled: boolean)
   return highlightedCode;
 };
 
-export const CodeBlock = memo(({ source = '', language }: CodeBlockProps) => {
+export const CodeBlock = memo(({ source, language }: CodeBlockProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const { ref: codeBlockRef, hasBeenVisible } = useInViewport<HTMLDivElement>();
 

@@ -64,26 +64,18 @@ function fitToLimits(text: string, limits: OutputLimits): string {
   return truncateOutput(text, { limits, keep: 'head' }).text;
 }
 
-function buildCommitBlock(token: string, show: string): string {
-  return [`## Commit: ${token}`, '', show.trim()].join('\n');
-}
-
-function buildWorkingChangesBlock(status: string, diff: string): string {
-  return ['## Working Changes', '', 'Status:', '', status.trim() || '(clean)', '', 'Diff vs HEAD:', '', diff.trim() || '(no diff)'].join('\n');
-}
-
-async function resolveCommitContent(token: string, root: string, limits: OutputLimits): Promise<string> {
+async function commitBody(token: string, root: string, limits: OutputLimits): Promise<string> {
   const show = await execGit(root, ['show', '--no-color', '--stat', '--patch', token]);
-  return buildCommitBlock(token, fitToLimits(show, limits));
+  return fitToLimits(show, limits).trim();
 }
 
-async function resolveWorkingChanges(root: string, limits: OutputLimits): Promise<string> {
+async function workingChangesBody(root: string, limits: OutputLimits): Promise<string> {
   // The two reads are independent; a failed diff must not hide a useful status.
   const [status, diff] = await Promise.all([
     execGit(root, ['status', '--short']),
     execGit(root, ['diff', '--no-color', 'HEAD']).catch((err) => `Unavailable: ${formatThrownValue(err)}`),
   ]);
-  return buildWorkingChangesBlock(status, fitToLimits(diff, limits));
+  return ['Status:', '', status.trim() || '(clean)', '', 'Diff vs HEAD:', '', fitToLimits(diff, limits).trim() || '(no diff)'].join('\n');
 }
 
 export async function resolveCommitTag(token: string, cwd: string, limits: OutputLimits): Promise<string | null> {
@@ -95,7 +87,8 @@ export async function resolveCommitTag(token: string, cwd: string, limits: Outpu
   if (!root) return `${header}\n\nUnavailable: no git repository found.`;
 
   try {
-    return isWorkingChanges ? await resolveWorkingChanges(root, limits) : await resolveCommitContent(token, root, limits);
+    const body = isWorkingChanges ? await workingChangesBody(root, limits) : await commitBody(token, root, limits);
+    return `${header}\n\n${body}`;
   } catch (err) {
     return `${header}\n\nUnavailable: ${formatThrownValue(err)}`;
   }

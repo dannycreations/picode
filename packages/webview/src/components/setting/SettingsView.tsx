@@ -18,6 +18,10 @@ interface SettingsViewProps {
   readonly onDone: () => void;
 }
 
+function tabHasMatch(tabId: SettingsTabId, searchQuery: string): boolean {
+  return getRootFieldKeys(tabId).some((key) => isFieldVisible(key, searchQuery));
+}
+
 export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
   const [activeTabId, setActiveTabId] = useState(SETTINGS_TABS[0].id);
   const [isDiscardDialogShow, setDiscardDialogShow] = useState(false);
@@ -28,15 +32,13 @@ export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
 
   const { containerRef, isCollapsed, shouldAnimate } = useResponsive(550);
 
-  const tabHasMatch = (tabId: SettingsTabId): boolean => getRootFieldKeys(tabId).some((key) => isFieldVisible(key, searchQuery));
-
   useEffect(() => {
-    if (!searchQuery.trim() || tabHasMatch(activeTabId)) return;
-    const firstTabWithMatch = SETTINGS_TABS.find((tab) => tabHasMatch(tab.id));
+    if (!searchQuery.trim() || tabHasMatch(activeTabId, searchQuery)) return;
+    const firstTabWithMatch = SETTINGS_TABS.find((tab) => tabHasMatch(tab.id, searchQuery));
     if (firstTabWithMatch) {
       setActiveTabId(firstTabWithMatch.id);
     }
-  }, [searchQuery, activeTabId, tabHasMatch]);
+  }, [searchQuery, activeTabId]);
 
   const checkUnsavedChanges = (proceed: () => void) => {
     if (isChangeDetected) {
@@ -125,7 +127,7 @@ export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
           {SETTINGS_TABS.map((tab) => {
             const TabIcon = tab.icon;
             const isActive = tab.id === activeTabId;
-            const hasMatch = tabHasMatch(tab.id);
+            const hasMatch = tabHasMatch(tab.id, searchQuery);
             return (
               <Tooltip key={tab.id} content={tab.label} side="right" disabled={!isCollapsed}>
                 <button
@@ -141,7 +143,7 @@ export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
                   )}
                 >
                   <TabIcon className={cn('w-4 h-4 shrink-0', isActive ? 'text-vscode-foreground' : 'text-vscode-descriptionForeground')} />
-                  {!isCollapsed && <span className="tab-label">{tab.label}</span>}
+                  {!isCollapsed && <span>{tab.label}</span>}
                 </button>
               </Tooltip>
             );

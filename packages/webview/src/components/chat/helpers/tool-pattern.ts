@@ -79,9 +79,9 @@ export function extractPathPatterns(filePath: string): readonly string[] {
 
   const lastSlash = normalized.lastIndexOf('/');
   const dir = lastSlash > 0 ? normalized.slice(0, lastSlash) : '';
-  const candidates = dir ? [normalized, `${dir}/**`] : [normalized];
 
-  return Array.from(new Set(candidates));
+  // The exact path plus a glob covering everything under its directory.
+  return dir ? [normalized, `${dir}/**`] : [normalized];
 }
 
 export function getToolPatternConfig(message: ToolChatMessage, settings: AppSettings | null): ToolPatternConfig | null {
@@ -93,8 +93,6 @@ export function getToolPatternConfig(message: ToolChatMessage, settings: AppSett
     for (const section of message.toolSections ?? []) {
       if (section.title) commands.push(section.title);
     }
-    if (commands.length === 0) return null;
-
     const patterns = mergeCommandPatterns(commands);
     if (patterns.length === 0) return null;
 
@@ -114,7 +112,6 @@ export function getToolPatternConfig(message: ToolChatMessage, settings: AppSett
   for (const section of message.toolSections ?? []) {
     if (section.openPath) paths.push(section.openPath);
   }
-  if (paths.length === 0) return null;
 
   const seen = new Set<string>();
   const patterns: string[] = [];

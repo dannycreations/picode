@@ -53,16 +53,6 @@ function registerChatInputCommand(
   });
 }
 
-export function registerAddToContextCommand(sender: ChatViewProvider): Disposable {
-  return registerChatInputCommand(sender, COMMAND_IDS.addToContext, formatSelectionBlock);
-}
-
-export function registerAddProblemToContextCommand(sender: ChatViewProvider): Disposable {
-  return registerChatInputCommand(sender, COMMAND_IDS.addProblemToContext, (selection, args) =>
-    composePrompt(getDiagnosticText(args, selection), selection, ''),
-  );
-}
-
 function formatDiagnosticBlock(diagnostics: readonly MappedDiagnostic[]): string {
   const lines = diagnostics.map((d) => `- [${d.source || 'Error'}] ${d.message}${d.code ? ` (${d.code})` : ''}`).join('\n');
   return `Current problems:\n${lines}`;
@@ -173,12 +163,15 @@ function composePrompt(instruction: string, selection: ResolvedSelection, diagno
   return [instruction, diagnosticText, formatSelectionBlock(selection)].filter(Boolean).join('\n\n');
 }
 
-export function registerFillCodeCommand(): Disposable {
-  return registerInlineEditCommand(COMMAND_IDS.fillCode, 'Filling code with Pi...', (selection) => composePrompt(FILL_CODE_PROMPT, selection, ''));
-}
-
-export function registerFixCodeCommand(): Disposable {
-  return registerInlineEditCommand(COMMAND_IDS.fixCode, 'Fixing code with Pi...', (selection, diagnosticText) =>
-    composePrompt(FIX_CODE_PROMPT, selection, diagnosticText),
-  );
+export function registerContextCommands(sender: ChatViewProvider): Disposable[] {
+  return [
+    registerChatInputCommand(sender, COMMAND_IDS.addToContext, formatSelectionBlock),
+    registerChatInputCommand(sender, COMMAND_IDS.addProblemToContext, (selection, args) =>
+      composePrompt(getDiagnosticText(args, selection), selection, ''),
+    ),
+    registerInlineEditCommand(COMMAND_IDS.fillCode, 'Filling code with Pi...', (selection) => composePrompt(FILL_CODE_PROMPT, selection, '')),
+    registerInlineEditCommand(COMMAND_IDS.fixCode, 'Fixing code with Pi...', (selection, diagnosticText) =>
+      composePrompt(FIX_CODE_PROMPT, selection, diagnosticText),
+    ),
+  ];
 }
