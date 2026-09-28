@@ -126,27 +126,34 @@ export function hasPendingApproval(messages: ReadonlyArray<ChatMessage>): boolea
   );
 }
 
+function todoListOf(message: ChatMessage): TodoItem[] | undefined {
+  return message.sender === 'tool' && message.toolName === 'update_todo' ? message.todos : undefined;
+}
+
 // The newest update_todo row holds the checklist the task header should show.
 export function latestTodos(messages: ReadonlyArray<ChatMessage>): TodoItem[] | undefined {
   for (let i = messages.length - 1; i >= 0; i--) {
-    const message = messages[i];
-    if (message.sender === 'tool' && message.toolName === 'update_todo' && message.todos) {
-      return message.todos;
-    }
+    const todos = todoListOf(messages[i]);
+    if (todos) return todos;
   }
   return undefined;
 }
 
-export function previousTodos(messages: ReadonlyArray<ChatMessage>, currentId: string): TodoItem[] | undefined {
-  const currentIndex = messages.findIndex((message) => message.id === currentId);
-  if (currentIndex === -1) return undefined;
-  for (let index = currentIndex - 1; index >= 0; index--) {
-    const message = messages[index];
-    if (message.sender === 'tool' && message.toolName === 'update_todo' && message.todos) {
-      return message.todos;
-    }
+// Every update_todo row needs the checklist that was in effect before it, so
+// the chat body can show only what that step changed. One forward pass answers
+// all of them; resolving each row on its own rescans the transcript per row.
+export function previousTodosById(messages: ReadonlyArray<ChatMessage>): ReadonlyMap<string, TodoItem[]> {
+  const previousById = new Map<string, TodoItem[]>();
+  let previous: TodoItem[] | undefined;
+
+  for (const message of messages) {
+    const todos = todoListOf(message);
+    if (!todos) continue;
+    if (previous) previousById.set(message.id, previous);
+    previous = todos;
   }
-  return undefined;
+
+  return previousById;
 }
 
 // Sub-agent events can arrive before the webview has rendered the parent tool

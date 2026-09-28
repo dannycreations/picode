@@ -6,7 +6,7 @@ import {
   groupToolMessages,
   isRenderableMessage,
   patchReplyQueue,
-  previousTodos,
+  previousTodosById,
   resolveApproval,
   settlePendingTurns,
   upsertToolMessage,
@@ -61,8 +61,8 @@ function updateTodo(id: string, todos: TodoItem[]): ChatMessage {
   return { id, sender: 'tool', toolName: 'update_todo', text: '', timestamp: 1, todos } as ChatMessage;
 }
 
-describe('previousTodos', () => {
-  it('returns the todos from the most recent prior update_todo', () => {
+describe('previousTodosById', () => {
+  it('maps each update_todo row to the todos from the most recent prior one', () => {
     const messages: ChatMessage[] = [
       updateTodo('a', [
         { content: 'one', status: 'closed' },
@@ -74,20 +74,23 @@ describe('previousTodos', () => {
         { content: 'three', status: 'active' },
       ]),
     ];
-    expect(previousTodos(messages, 'b')).toEqual([
+    const previous = previousTodosById(messages);
+    expect(previous.get('b')).toEqual([
       { content: 'one', status: 'closed' },
       { content: 'two', status: 'open' },
     ]);
   });
 
-  it('returns undefined for the first update_todo', () => {
-    const messages: ChatMessage[] = [updateTodo('a', [{ content: 'one', status: 'closed' }]), updateTodo('b', [{ content: 'two', status: 'open' }])];
-    expect(previousTodos(messages, 'a')).toBeUndefined();
-  });
-
-  it('returns undefined when the id is missing', () => {
-    const messages: ChatMessage[] = [updateTodo('a', [{ content: 'one', status: 'closed' }])];
-    expect(previousTodos(messages, 'missing')).toBeUndefined();
+  it('omits the first update_todo and any row that carries no todos', () => {
+    const messages: ChatMessage[] = [
+      updateTodo('a', [{ content: 'one', status: 'closed' }]),
+      updateTodo('b', [{ content: 'two', status: 'open' }]),
+      { id: 'u', sender: 'user', text: 'hi', timestamp: 2 },
+    ];
+    const previous = previousTodosById(messages);
+    expect(previous.get('a')).toBeUndefined();
+    expect(previous.has('u')).toBe(false);
+    expect(previous.get('b')).toEqual([{ content: 'one', status: 'closed' }]);
   });
 });
 

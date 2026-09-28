@@ -12,3 +12,15 @@ export function getScrollIndex(todos: readonly TodoItem[]): number {
   if (inProgressIdx !== -1) return inProgressIdx;
   return todos.findIndex((todo) => todo.status !== 'closed');
 }
+
+export function getVisibleTodos(oldTodos: readonly TodoItem[], newTodos: readonly TodoItem[]): readonly TodoItem[] {
+  if (oldTodos.length === 0) return newTodos;
+
+  const changed = newTodos.filter((todo) => {
+    if (todo.status !== 'closed' && todo.status !== 'active') return false;
+    const previous = oldTodos.find((p) => p.content === todo.content);
+    return !previous || previous.status !== todo.status;
+  });
+
+  return changed.length > 0 ? changed : newTodos;
+}

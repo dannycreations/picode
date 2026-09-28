@@ -1,3 +1,4 @@
+import { readFile, unlink } from 'node:fs/promises';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { invalidateAppSettings } from '@pi-code/extension/core/settings';
@@ -64,6 +65,48 @@ describe('executeCommandTool', () => {
     for (const delta of updates) {
       expect(delta.length).toBeLessThanOrEqual(1024);
     }
+  });
+});
+
+describe('executeCommandTool output dumps', () => {
+  const writtenTempFiles: string[] = [];
+
+  afterEach(async () => {
+    await Promise.all(writtenTempFiles.splice(0).map((path) => unlink(path).catch(() => undefined)));
+  });
+
+  const dumpFor = async (command: string) => {
+    const result = (await executeCommandTool.execute('dump-test', { command, timeout: 20_000 }, undefined, undefined, {
+      cwd: process.cwd(),
+    } as any)) as any;
+    expect(result.details.tempFilePath).toBeTypeOf('string');
+    writtenTempFiles.push(result.details.tempFilePath);
+    return readFile(result.details.tempFilePath, 'utf8');
+  };
+
+  it('spills the complete output, not the retained tail, once the byte budget is exceeded', async () => {
+    // Both limits are clamped to their package.json minimums, so 5 KB and 100
+    // lines are the smallest budgets the tool will actually run with.
+    configValues['maxToolOutputLines'] = 2000;
+    configValues['maxToolOutputSizeKb'] = 5; // 5 KB budget
+
+    const dumped = await dumpFor(`node -e "console.log('MARKER-FIRST-LINE'); for (let i = 0; i < 400; i++) console.log('x'.repeat(100))"`);
+
+    // ~40 KB of output. The spill fires at 5 KB, well before the 10 KB tail
+    // window starts discarding chunks, and the file is what the model is told to
+    // read instead, so it still has to start at the first line emitted.
+    expect(dumped.startsWith('MARKER-FIRST-LINE')).toBe(true);
+  });
+
+  it('dumps the full output when only the line limit truncates it', async () => {
+    configValues['maxToolOutputLines'] = 100; // the clamped minimum
+    configValues['maxToolOutputSizeKb'] = 500; // far above the ~5 KB below
+
+    const dumped = await dumpFor(`node -e "console.log('line 1'); for (let i = 2; i <= 400; i++) console.log('line ' + i)"`);
+
+    // No spill is possible here, so this covers the dump that happens at the end.
+    expect(dumped.startsWith('line 1')).toBe(true);
+    expect(dumped).toContain('line 400');
   });
 });
 

@@ -5,15 +5,18 @@ import { createAgentResources } from '@pi-code/extension/structures/agent-runtim
 import { logger } from '@pi-code/shared/core/logger';
 import { extractCodeBlock } from '@pi-code/shared/utilities/markdown';
 
+import type { ModelRuntime } from '@earendil-works/pi-coding-agent';
 import type { ModelSelection } from '@pi-code/shared/core/protocol';
+
+function resolveModel(runtime: ModelRuntime, selection: Partial<ModelSelection> | undefined) {
+  return selection?.provider && selection.id ? runtime.getModel(selection.provider, selection.id) : undefined;
+}
 
 async function completePrompt(cwd: string, prompt: string, signal?: AbortSignal, preferred?: ModelSelection): Promise<string> {
   const runtime = (await createAgentResources(cwd)).modelRuntime;
-  const candidates = [preferred, await getDefaultModelSelection(cwd)];
-  const model =
-    candidates
-      .map((selection) => (selection?.provider && selection.id ? runtime.getModel(selection.provider, selection.id) : undefined))
-      .find(Boolean) ?? runtime.getAvailableSnapshot()[0];
+  // Reading the default model reloads the agent settings, so only pay for it
+  // when the preferred selection does not name a model this runtime knows.
+  const model = resolveModel(runtime, preferred) ?? resolveModel(runtime, await getDefaultModelSelection(cwd)) ?? runtime.getAvailableSnapshot()[0];
   if (!model) {
     throw new Error('No model configured or available. Please configure your model settings in pi-agent.');
   }

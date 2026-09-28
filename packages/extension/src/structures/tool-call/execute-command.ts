@@ -23,6 +23,7 @@ import { logger } from '@pi-code/shared/core/logger';
 
 import type { SpawnOptions } from 'node:child_process';
 import type { WriteStream } from 'node:fs';
+import type { Readable } from 'node:stream';
 import type { CustomToolResult } from '@pi-code/extension/types/extension';
 import type { ToolName } from '@pi-code/shared/core/types';
 
@@ -126,8 +127,6 @@ export const executeCommandTool = defineTool({
       let retainedLength = 0;
       let totalLength = 0;
 
-      // Retain initial chunks before deciding to spill to a temp file.
-      const initialRawChunks: string[] = [];
       let tempFilePath: string | null = null;
       let tempFileStream: WriteStream | null = null;
       let tempFileError = false;
@@ -181,39 +180,37 @@ export const executeCommandTool = defineTool({
         output.push(text);
         retainedLength += text.length;
 
-        // Rolling window for the model/UI: drop oldest chunks to keep tail.
-        while (retainedLength > retainedBytes && output.length > 1) {
-          retainedLength -= output.shift()!.length;
-        }
-
-        // Spill to an OS temp file as soon as output exceeds the truncation byte budget.
+        // Spill to an OS temp file as soon as output exceeds the truncation byte
+        // budget. This has to run before the rolling trim below: the spill
+        // writes everything captured so far, and the spill threshold is reached
+        // before the tail window fills, so `output` is still complete here.
         if (tempFileStream) {
           if (!tempFileError) {
             tempFileStream.write(text);
           }
-        } else {
-          initialRawChunks.push(text);
-          if (totalLength > limits.maxBytes && !tempFileError) {
-            try {
-              tempFilePath = join(tmpdir(), `pi-code-command-${Date.now()}-${uuidv7().slice(0, 8)}.log`);
-              const stream = createWriteStream(tempFilePath, { flags: 'a', encoding: 'utf8' });
-              stream.on('error', (err) => {
-                logger.warn('Failed writing to command output temp file:', err);
-                tempFileError = true;
-              });
-              tempFileStream = stream;
-              for (const chunk of initialRawChunks) {
-                stream.write(chunk);
-              }
-              // Free memory of initial raw chunks once written to disk
-              initialRawChunks.length = 0;
-            } catch (err) {
-              logger.warn('Failed to initialize command output temp file stream:', err);
+        } else if (totalLength > limits.maxBytes && !tempFileError) {
+          try {
+            tempFilePath = join(tmpdir(), `pi-code-command-${Date.now()}-${uuidv7().slice(0, 8)}.log`);
+            const stream = createWriteStream(tempFilePath, { flags: 'a', encoding: 'utf8' });
+            stream.on('error', (err) => {
+              logger.warn('Failed writing to command output temp file:', err);
               tempFileError = true;
-              tempFilePath = null;
-              tempFileStream = null;
+            });
+            tempFileStream = stream;
+            for (const chunk of output) {
+              stream.write(chunk);
             }
+          } catch (err) {
+            logger.warn('Failed to initialize command output temp file stream:', err);
+            tempFileError = true;
+            tempFilePath = null;
+            tempFileStream = null;
           }
+        }
+
+        // Rolling window for the model/UI: drop oldest chunks to keep tail.
+        while (retainedLength > retainedBytes && output.length > 1) {
+          retainedLength -= output.shift()!.length;
         }
       };
 
@@ -308,11 +305,13 @@ export const executeCommandTool = defineTool({
         const { truncation } = truncateOutput(cleanOutput, { limits, keep: 'tail' });
 
         // If not already dumped to a file via streaming, dump the full raw output
-        // to a temp file now whenever the model only sees part of it.
-        if (!tempFilePath && !tempFileError && (dropped || truncation.truncated)) {
+        // to a temp file now whenever the model only sees part of it. No spill
+        // happened and none can still happen, so `output` was never trimmed and
+        // `rawTailOutput` is the complete output.
+        if (!tempFilePath && !tempFileError && truncation.truncated) {
           try {
             tempFilePath = join(tmpdir(), `pi-code-command-${Date.now()}-${uuidv7().slice(0, 8)}.log`);
-            await writeFile(tempFilePath, initialRawChunks.join(''), 'utf8');
+            await writeFile(tempFilePath, rawTailOutput, 'utf8');
           } catch (err) {
             logger.warn('Failed to dump command output to temp file:', err);
             tempFilePath = null;
@@ -356,27 +355,21 @@ export const executeCommandTool = defineTool({
         exitGraceTimer = setTimeout(() => void finish(exitCode, exitSignal), EXIT_STDIO_GRACE_MS);
       };
 
-      cp.stdout?.on('data', (chunk: Buffer) => {
-        try {
-          const text = stdoutDecoder.write(chunk);
-          appendOutput(text);
-          streamUpdate(text);
-          if (exited && !finished) armExitGrace();
-        } catch (err) {
-          logger.warn('Failed to process command stdout chunk:', err);
-        }
-      });
+      const attachOutput = (stream: Readable | null, decoder: StringDecoder, label: string): void => {
+        stream?.on('data', (chunk: Buffer) => {
+          try {
+            const text = decoder.write(chunk);
+            appendOutput(text);
+            streamUpdate(text);
+            if (exited && !finished) armExitGrace();
+          } catch (err) {
+            logger.warn(`Failed to process command ${label} chunk:`, err);
+          }
+        });
+      };
 
-      cp.stderr?.on('data', (chunk: Buffer) => {
-        try {
-          const text = stderrDecoder.write(chunk);
-          appendOutput(text);
-          streamUpdate(text);
-          if (exited && !finished) armExitGrace();
-        } catch (err) {
-          logger.warn('Failed to process command stderr chunk:', err);
-        }
-      });
+      attachOutput(cp.stdout, stdoutDecoder, 'stdout');
+      attachOutput(cp.stderr, stderrDecoder, 'stderr');
 
       cp.on('error', (err) => {
         appendOutput(`\nError spawning process: ${err.message}\n`);

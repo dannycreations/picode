@@ -15,7 +15,7 @@ import {
   SUBAGENT_FORWARDED_EVENTS,
 } from '@pi-code/extension/structures/agent-runtime/subagent';
 import { toolError, toolResult } from '@pi-code/extension/structures/tool-call/helpers';
-import { truncateOutput } from '@pi-code/extension/utilities/truncate';
+import { renderTruncatedText, truncateOutput } from '@pi-code/extension/utilities/truncate';
 import { logger } from '@pi-code/shared/core/logger';
 
 import type { SubagentOutcome, SubagentUsage } from '@pi-code/extension/structures/agent-runtime/subagent';
@@ -39,13 +39,11 @@ function formatUsage(usage: SubagentUsage): string {
 async function renderOutcome(outcome: SubagentOutcome, state: 'completed' | 'error'): Promise<{ text: string; tempFilePath?: string }> {
   const limits = readOutputLimits();
   const baseHint = `Re-run the "${outcome.agent}" sub-agent with a narrower brief to get the rest.`;
-  const { truncation, text: baseText } = truncateOutput(outcome.text, {
-    limits,
-    keep: 'head',
-    hint: baseHint,
-  });
+  // Truncate once. Whether the report needs a file decides the hint wording, so
+  // the text is rendered from this one result rather than truncating again.
+  const { truncation } = truncateOutput(outcome.text, { limits, keep: 'head', hint: baseHint });
 
-  let text: string;
+  let hint = baseHint;
   let tempFilePath: string | undefined;
 
   if (truncation.truncated) {
@@ -60,16 +58,10 @@ async function renderOutcome(outcome: SubagentOutcome, state: 'completed' | 'err
     const resolution = tempFilePath
       ? `Full output saved to: "${tempFilePath}". Read this file with \`read_file\` to inspect the rest.`
       : `Re-run with a narrower brief to inspect the rest.`;
-
-    const { text: retruncated } = truncateOutput(outcome.text, {
-      limits,
-      keep: 'head',
-      hint: `${resolution}\n${baseHint}`,
-    });
-    text = retruncated;
-  } else {
-    text = baseText;
+    hint = `${resolution}\n${baseHint}`;
   }
+
+  const text = renderTruncatedText(truncation, 'head', hint);
 
   const body =
     state === 'error'
@@ -131,10 +123,11 @@ export const spawnSubagentTool = defineTool({
       // Fold the delegated run's spend into the parent's live header stats.
       recordSubagentUsage(ctx.sessionManager.getSessionId(), outcome.usage);
 
-      // An empty report is a failure from the caller's perspective: it has to
-      // decide whether to retry or do the work itself, and needs the steps to
-      // judge how far the sub-agent got.
-      const failed = outcome.error !== undefined || outcome.text === '';
+      // A report with no text is a failure from the caller's perspective: it has
+      // to decide whether to retry or do the work itself, and needs the steps to
+      // judge how far the sub-agent got. `spawnSubagent` pairs an empty report
+      // with an error on every path, so the error alone decides it.
+      const failed = outcome.error !== undefined;
       const { text: report, tempFilePath } = await renderOutcome(outcome, failed ? 'error' : 'completed');
 
       const details: SubagentDetails = {

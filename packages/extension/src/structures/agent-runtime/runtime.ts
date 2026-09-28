@@ -119,13 +119,9 @@ export class Runtime {
       return null;
     }
 
-    this.cleanupSession();
-
-    const { session: newSession } = await createSession(cwd, branchedPath);
-    this.session = newSession;
-
-    this.bindSessionHooks(newSession);
-    this.unsubscribeSessionEvents = newSession.subscribe((event) => this.handleSessionEvent(event, newSession));
+    // Adopting the branch goes through the same path as any session swap, so the
+    // old session is disposed and the new one is bound and subscribed in one place.
+    const { session: newSession } = await this.getOrCreateSession(branchedPath, cwd);
 
     const entries = newSession.sessionManager.getBranch();
     const transcript = loadSessionTranscript(entries, resolveContextLimit(newSession.model?.contextWindow));
@@ -301,8 +297,7 @@ export class Runtime {
       isDisposed: () => !this.session,
       prepareTurn: (target) => applyPersistedModelAndThinking(target),
       isContextAboveThreshold: (target) => this.isContextAtCompactionThreshold(target),
-      requestCompaction: async (target) => {
-        if (!this.isContextAtCompactionThreshold(target)) return;
+      requestCompaction: async () => {
         this.taskGeneration++;
 
         const result = await this.runCompaction(session);

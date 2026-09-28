@@ -27,7 +27,7 @@ export class Messenger {
   }
 
   public post(message: ExtensionToWebviewMessage): void {
-    if (this.isDisposed || !this.webview) {
+    if (this.isDisposed) {
       return;
     }
 
@@ -102,7 +102,7 @@ export class Messenger {
       this.flushTimer = null;
     }
 
-    if (this.isDisposed || !this.webview) {
+    if (this.isDisposed) {
       this.textBuffer = '';
       this.thinkingBuffer = '';
       this.toolUpdates.clear();

@@ -1,6 +1,6 @@
 import { cn } from 'cn';
 import { Play, X } from 'lucide-react';
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 
 import { relativeToWorkspace } from '@pi-code/shared/utilities/common';
 import { buildToolSections, getDiffStat, getFirstDiffLine, getToolHeaderMeta } from '@pi-code/shared/utilities/tool';
@@ -48,7 +48,9 @@ const ElapsedTimer: FC<{ startTs: number; isRunning: boolean; isActive: boolean;
 };
 
 const DiffStat: FC<{ content?: string; className?: string }> = ({ content, className }) => {
-  const stat = getDiffStat(content);
+  // Counting walks every diff line, and the section header renders even while
+  // collapsed, so keep the result for as long as the content is unchanged.
+  const stat = useMemo(() => getDiffStat(content), [content]);
   if (!stat) return null;
   return (
     <span className={cn('flex items-center gap-1 text-xs font-mono select-none', className)}>
@@ -64,7 +66,6 @@ interface ToolSectionProps {
   readonly isFirst: boolean;
   readonly isLast: boolean;
   readonly showTimer: boolean;
-  readonly isActive?: boolean;
   readonly isRunning: boolean;
   readonly isWaiting?: boolean;
   readonly startTs: number;
@@ -79,7 +80,6 @@ const ToolSection: FC<ToolSectionProps> = ({
   isFirst,
   isLast,
   showTimer,
-  isActive,
   isRunning,
   isWaiting,
   startTs,
@@ -149,13 +149,7 @@ const ToolSection: FC<ToolSectionProps> = ({
             </span>
           </div>
         ) : showTimer ? (
-          <ElapsedTimer
-            startTs={startTs}
-            isActive={isActive ?? isRunning}
-            isRunning={isRunning}
-            duration={duration}
-            revealOnHover={revealTimerOnHover}
-          />
+          <ElapsedTimer startTs={startTs} isActive={isRunning} isRunning={isRunning} duration={duration} revealOnHover={revealTimerOnHover} />
         ) : null}
       </div>
 
@@ -208,16 +202,13 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onRespondTool }) =>
   const hasMore = hiddenCount > 0;
   const approvalIndex = sections.findIndex((s) => s.approvalMessage !== undefined);
   const shouldExpandForApproval = hasMore && approvalIndex > 0;
-  const [isExpanded, setIsExpanded] = useState(shouldExpandForApproval);
+  // A pending approval always forces the extra sections open, so that is an
+  // input to the state rather than something an effect has to keep asserting.
+  const [userExpanded, setUserExpanded] = useState(shouldExpandForApproval);
+  const isExpanded = userExpanded || shouldExpandForApproval;
 
-  useEffect(() => {
-    if (shouldExpandForApproval && !isExpanded) {
-      setIsExpanded(true);
-    }
-  }, [shouldExpandForApproval, isExpanded]);
-
+  // Only called from the openPath branch, so the path is always a real file.
   const openFile = (target: string, content?: string) => {
-    if (!target) return;
     if (message.toolName === 'edit_file') {
       useChatStore.getState().send({ type: 'open_file', text: target, values: { line: getFirstDiffLine(content), diff: true } });
       return;
@@ -263,7 +254,6 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onRespondTool }) =>
                   isFirst={index === 0}
                   isLast={sections.length === 1 && !hasSecApproval}
                   showTimer={showTimer && !subagentDone}
-                  isActive={isRunning}
                   isRunning={isRunning}
                   isWaiting={isWaiting}
                   startTs={section.timestamp ?? message.timestamp}
@@ -308,7 +298,7 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onRespondTool }) =>
             <Tooltip content={isExpanded ? 'Collapse' : `Show ${hiddenCount} more item${hiddenCount === 1 ? '' : 's'}`}>
               <button
                 type="button"
-                onClick={() => setIsExpanded(!isExpanded)}
+                onClick={() => setUserExpanded(!isExpanded)}
                 aria-label={isExpanded ? 'Collapse' : 'Expand'}
                 className="action-button w-full rounded-none! cursor-pointer"
               >

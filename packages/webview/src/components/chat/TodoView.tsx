@@ -2,7 +2,7 @@ import { cn } from 'cn';
 import { ArrowRight, Check, ListChecks, SquareDashed } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { getScrollIndex } from '@pi-code/shared/utilities/todo';
+import { getScrollIndex, getVisibleTodos } from '@pi-code/shared/utilities/todo';
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
 import { Accordion } from '@pi-code/webview/components/shared/Accordion';
 
@@ -97,21 +97,14 @@ interface TodoBodyProps {
 }
 
 export const TodoBody: FC<TodoBodyProps> = ({ timestamp, oldTodos, newTodos }) => {
-  const changedTodos =
-    oldTodos.length === 0
-      ? newTodos
-      : newTodos.filter((todo) => {
-          if (todo.status !== 'closed' && todo.status !== 'active') return false;
-          const previous = oldTodos.find((p) => p.content === todo.content);
-          return !previous || previous.status !== todo.status;
-        });
+  const visibleTodos = getVisibleTodos(oldTodos, newTodos);
 
   return (
     <div data-todo-changes className="overflow-hidden">
       <MessageHeader icon={<ListChecks className="w-3.5 h-3.5 shrink-0" />} title="Updated to-dos" timestamp={timestamp} />
-      {changedTodos.length > 0 && (
+      {visibleTodos.length > 0 && (
         <ul className="list-none space-y-1 my-1 pr-1 pt-1 font-light leading-normal">
-          {changedTodos.map((todo) => (
+          {visibleTodos.map((todo) => (
             <li
               key={todo.content}
               className={cn(

@@ -64,8 +64,6 @@ interface MappedEvent {
 }
 
 export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiRequestId: string | null): MappedEvent {
-  const subagent = getSubagentSession(session.sessionId)?.name;
-
   switch (event.type) {
     case 'agent_start':
       return {
@@ -140,7 +138,10 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
         apiRequestId,
       };
 
+    // Only the tool cases need the owning sub-agent, and a session can emit
+    // thousands of streaming deltas per turn, so the lookup stays inside them.
     case 'tool_execution_start': {
+      const subagent = getSubagentSession(session.sessionId)?.name;
       return {
         message: {
           type: 'tool_execution_start',
@@ -156,6 +157,7 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
     }
 
     case 'tool_execution_update': {
+      const subagent = getSubagentSession(session.sessionId)?.name;
       const result = toolResultText(event.partialResult);
       const steps = (event.partialResult as { details?: { steps?: string } } | undefined)?.details?.steps;
       const subtitle = event.toolName === SPAWN_SUBAGENT_TOOL_NAME ? latestStep(steps) : undefined;
@@ -169,6 +171,7 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
     }
 
     case 'tool_execution_end': {
+      const subagent = getSubagentSession(session.sessionId)?.name;
       const toolResult = event.result as { details?: ToolResultDetails } | undefined;
       return {
         message: {
