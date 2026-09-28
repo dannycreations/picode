@@ -1,6 +1,7 @@
 import { findOccurrences, splitOnOccurrences } from '@pi-code/shared/utilities/common';
 
 import type { FC } from 'react';
+import type { OccurrenceSegment } from '@pi-code/shared/utilities/common';
 
 export const SEARCH_HIT_CLASS = 'search-hit';
 export const SEARCH_HIT_ACTIVE_CLASS = 'search-hit-active';
@@ -33,14 +34,15 @@ export function locateOccurrences(text: string, search: SearchContext | undefine
 interface HighlightProps {
   readonly text: string;
   readonly query: string;
+  readonly segments: ReadonlyArray<OccurrenceSegment>;
   readonly activeOccurrence: number;
 }
 
-const Highlight: FC<HighlightProps> = ({ text, query, activeOccurrence }) => {
+const Highlight: FC<HighlightProps> = ({ text, query, segments, activeOccurrence }) => {
   if (!query) return <>{text}</>;
 
-  const segments = splitOnOccurrences(text, query);
-  if (segments.length === 1 && segments[0].matchIndex === null) return <>{text}</>;
+  const first = segments[0];
+  if (segments.length === 1 && first.matchIndex === null) return <>{text}</>;
 
   return (
     <>
@@ -66,6 +68,18 @@ interface SearchableTextProps {
 }
 
 export const SearchableText: FC<SearchableTextProps> = ({ text, search }) => {
-  const { active } = locateOccurrences(text, search);
-  return <Highlight text={text} query={search?.query ?? ''} activeOccurrence={active} />;
+  const query = search?.query ?? '';
+  // One scan feeds both the split and the count, so the text is not walked
+  // twice for every render pass while a search is open.
+  const segments = query ? splitOnOccurrences(text, query) : [{ text, matchIndex: null }];
+  const count = segments.filter((segment) => segment.matchIndex !== null).length;
+
+  return (
+    <Highlight
+      text={text}
+      query={query}
+      segments={segments}
+      activeOccurrence={localActiveIndex(search?.globalOffset ?? 0, count, search?.activeIndex ?? -1)}
+    />
+  );
 };

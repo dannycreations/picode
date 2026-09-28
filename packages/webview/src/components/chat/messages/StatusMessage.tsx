@@ -8,12 +8,11 @@ import { Spinner } from '@pi-code/webview/components/shared/Spinner';
 import { formatTime } from '@pi-code/webview/utilities/common';
 
 import type { FC } from 'react';
-import type { ChatMessage } from '@pi-code/shared/core/types';
+import type { ApiRequestChatMessage, CheckpointChatMessage, ErrorChatMessage, InfoChatMessage } from '@pi-code/shared/core/types';
 import type { SearchContext } from '@pi-code/webview/components/shared/Highlight';
 
-export const ApiRequestMessage: FC<{ readonly message: ChatMessage }> = ({ message }) => {
+export const ApiRequestMessage: FC<{ readonly message: ApiRequestChatMessage }> = ({ message }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  if (message.sender !== 'api_request') return null;
 
   const isRunning = message.toolStatus === 'running';
   const error = message.toolStatus === 'denied' ? message.errorMessage : undefined;
@@ -65,9 +64,7 @@ export const ApiRequestMessage: FC<{ readonly message: ChatMessage }> = ({ messa
   );
 };
 
-export const ErrorMessage: FC<{ readonly message: ChatMessage; readonly search?: SearchContext }> = ({ message, search }) => {
-  if (message.sender !== 'error') return null;
-
+export const ErrorMessage: FC<{ readonly message: ErrorChatMessage; readonly search?: SearchContext }> = ({ message, search }) => {
   return (
     <div className="p-3 rounded-md bg-vscode-editorError-background/10 border border-vscode-editorError-foreground/30 flex gap-2 text-xs text-vscode-editorError-foreground">
       <AlertTriangle size={16} className="shrink-0 mt-0.5" />
@@ -81,7 +78,10 @@ export const ErrorMessage: FC<{ readonly message: ChatMessage; readonly search?:
   );
 };
 
-export const InfoMessage: FC<{ readonly message: ChatMessage; readonly search?: SearchContext }> = ({ message, search }) => {
+export const InfoMessage: FC<{ readonly message: CheckpointChatMessage | InfoChatMessage; readonly search?: SearchContext }> = ({
+  message,
+  search,
+}) => {
   return (
     <div className="flex items-start justify-between gap-2 text-xs select-none">
       <div className="flex items-start gap-2 text-vscode-foreground min-w-0">

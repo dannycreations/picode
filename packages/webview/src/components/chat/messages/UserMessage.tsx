@@ -10,7 +10,7 @@ import { useChatStore } from '@pi-code/webview/stores/useChatStore';
 
 import type { FC } from 'react';
 import type { CommandItem } from '@pi-code/shared/core/protocol';
-import type { ChatMessage, QueueChatMessage } from '@pi-code/shared/core/types';
+import type { QueueChatMessage, UserChatMessage } from '@pi-code/shared/core/types';
 import type { SearchContext } from '@pi-code/webview/components/shared/Highlight';
 
 interface TokenizedTextProps {
@@ -111,14 +111,12 @@ export const QueueMessage: FC<QueueMessageProps> = ({ message, commands, search 
 };
 
 interface UserMessageProps {
-  readonly message: ChatMessage;
+  readonly message: UserChatMessage;
   readonly commands: readonly CommandItem[];
   readonly search?: SearchContext;
 }
 
 export const UserMessage: FC<UserMessageProps> = ({ message, commands, search }) => {
-  if (message.sender !== 'user') return null;
-
   return (
     <div className="group flex flex-col gap-1">
       <MessageHeader icon={<User size={14} className="text-vscode-focusBorder shrink-0" />} title="Ask" timestamp={message.timestamp} />

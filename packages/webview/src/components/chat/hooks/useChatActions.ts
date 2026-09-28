@@ -17,12 +17,19 @@ interface UseChatActionsReturn {
   readonly handleDeleteActiveTask: () => void;
 }
 
+// A message that carries only attachments still needs text for the transcript
+// and for the model, so describe what was attached instead of sending nothing.
+function displayText(text: string, attachments: readonly Attachment[]): string {
+  const trimmed = text.trim();
+  if (trimmed) return trimmed;
+  if (attachments.some((attachment) => attachment.kind === 'text')) return '(see attached text)';
+  if (attachments.some((attachment) => attachment.kind === 'image')) return '(see attached image)';
+  return '';
+}
+
 export const useChatActions = (): UseChatActionsReturn => {
   const handleAnswerQuestion = useCallback((questionId: string, text: string, attachments: Attachment[] = []): void => {
-    const trimmed = text.trim();
-    const hasText = attachments.some((attachment) => attachment.kind === 'text');
-    const hasImage = attachments.some((attachment) => attachment.kind === 'image');
-    const answer = trimmed || (hasText ? '(see attached text)' : '') || (hasImage ? '(see attached image)' : '');
+    const answer = displayText(text, attachments);
     if (!answer && attachments.length === 0) return;
 
     const store = useChatStore.getState();
@@ -45,10 +52,8 @@ export const useChatActions = (): UseChatActionsReturn => {
   const handleSendPrompt = useCallback(
     (text: string, attachments: Attachment[]): void => {
       const trimmed = text.trim();
-      const hasText = attachments.some((attachment) => attachment.kind === 'text');
-      const hasImage = attachments.some((attachment) => attachment.kind === 'image');
-      const displayText = trimmed || (hasText ? '(see attached text)' : '') || (hasImage ? '(see attached image)' : '');
-      if (!displayText && attachments.length === 0) return;
+      const promptText = displayText(text, attachments);
+      if (!promptText && attachments.length === 0) return;
 
       const store = useChatStore.getState();
       const { activeTask, isRunning } = store;
@@ -57,7 +62,7 @@ export const useChatActions = (): UseChatActionsReturn => {
       // A pending question owns the input box: the reply answers the tool call
       // instead of starting a new turn.
       if (pendingQuestion) {
-        handleAnswerQuestion(pendingQuestion.id, displayText, attachments);
+        handleAnswerQuestion(pendingQuestion.id, promptText, attachments);
         return;
       }
 
@@ -65,46 +70,43 @@ export const useChatActions = (): UseChatActionsReturn => {
       // chat bubble or start an agent run. This is parsed from the text itself
       // rather than the fetched command list, so it stays correct before the
       // `init_data` response arrives.
-      const builtin = parseBuiltinCommand(trimmed);
-      if (builtin === 'reload') {
-        store.send({ type: 'builtin_command', command: 'reload' });
-        return;
-      }
-      if (builtin === 'compact') {
-        store.compact();
-        return;
-      }
-      if (builtin === 'update') {
-        store.send({ type: 'builtin_command', command: 'update' });
-        return;
-      }
-      if (builtin === 'fork') {
-        store.send({ type: 'builtin_command', command: 'fork', id: '', path: activeTask?.path, title: activeTask?.title ?? '' });
-        return;
+      switch (parseBuiltinCommand(trimmed)) {
+        case 'reload':
+          store.send({ type: 'builtin_command', command: 'reload' });
+          return;
+        case 'update':
+          store.send({ type: 'builtin_command', command: 'update' });
+          return;
+        case 'compact':
+          store.compact();
+          return;
+        case 'fork':
+          store.send({ type: 'builtin_command', command: 'fork', id: '', path: activeTask?.path, title: activeTask?.title ?? '' });
+          return;
       }
 
       // A running agent cannot take a new turn, so the reply is queued and
       // steered into the current one instead.
       if (activeTask && isRunning) {
-        store.send({ type: 'add_to_reply_queue', text: displayText, attachments: attachments.length > 0 ? attachments : undefined });
+        store.send({ type: 'add_to_reply_queue', text: promptText, attachments: attachments.length > 0 ? attachments : undefined });
         return;
       }
 
       const userMsg: ChatMessage = {
         id: crypto.randomUUID(),
         sender: 'user',
-        text: displayText,
+        text: promptText,
         attachments,
         timestamp: Date.now(),
       };
 
       store.setIsRunning(true);
       store.setActiveTask((prev) =>
-        prev ? { ...prev, messages: [...prev.messages, userMsg] } : createActiveTask(ACTIVE_TASK_ID, displayText, [userMsg]),
+        prev ? { ...prev, messages: [...prev.messages, userMsg] } : createActiveTask(ACTIVE_TASK_ID, promptText, [userMsg]),
       );
       store.send({
         type: 'send_message',
-        text: displayText,
+        text: promptText,
         path: activeTask?.path,
         attachments: attachments.length > 0 ? attachments : undefined,
       });

@@ -3,11 +3,11 @@ import ignore from 'ignore';
 import { FileType, TabInputText, Uri, window, workspace } from 'vscode';
 
 import { readAppSettings } from '@pi-code/extension/core/settings';
-import { excludeVcsEntries, normalizeSeparators } from '@pi-code/extension/utilities/fs';
+import { excludeVcsEntries } from '@pi-code/extension/utilities/fs';
 import { getGitRepository, getIgnoredPaths } from '@pi-code/extension/utilities/git';
 import { toRelativePath, toWorkspaceRelativePath } from '@pi-code/extension/utilities/vscode';
 import { logger } from '@pi-code/shared/core/logger';
-import { pathCollator } from '@pi-code/shared/utilities/common';
+import { normalizeSeparators, pathCollator } from '@pi-code/shared/utilities/common';
 import { wrapCodeBlock } from '@pi-code/shared/utilities/markdown';
 import { buildFileTree, renderFileTree } from '@pi-code/shared/utilities/tree';
 
@@ -115,10 +115,9 @@ export async function walkWorkspace(
   cwd: string,
   limit: number,
   excludeIgnoredFiles: boolean,
-  sharedRepo?: Repository | null,
+  repo: Repository | null = null,
 ): Promise<{ paths: string[]; hitLimit: boolean }> {
   const rootUri = Uri.file(cwd);
-  const repo = excludeIgnoredFiles ? (sharedRepo ?? (await getGitRepository(rootUri).catch(() => null))) : null;
   const useLocalGitignore = excludeIgnoredFiles && !repo;
 
   const fileResults: string[] = [];
@@ -200,8 +199,7 @@ export async function walkWorkspace(
   return { paths: fileResults.slice(0, limit), hitLimit: fileResults.length > limit };
 }
 
-async function getGitStatusLines(cwd: string, sharedRepo?: Repository | null): Promise<string[]> {
-  const repo = sharedRepo ?? (await getGitRepository(Uri.file(cwd)));
+async function getGitStatusLines(repo: Repository | null): Promise<string[]> {
   if (!repo) return [];
 
   const describe = (change: Change, label: string): string => `${label} ${toRelativePath(change.uri)}`;
@@ -274,7 +272,7 @@ export async function getEnvironmentDetails(cwd: string, includeFileDetails = fa
     gitStatusEnabled || (workspaceFilesEnabled && settings.excludeIgnoredFiles) ? await getGitRepository(Uri.file(cwd)).catch(() => null) : null;
 
   const [gitLines, listing] = await Promise.all([
-    gitStatusEnabled ? getGitStatusLines(cwd, repo).catch(() => []) : Promise.resolve<string[]>([]),
+    gitStatusEnabled ? getGitStatusLines(repo).catch(() => []) : Promise.resolve<string[]>([]),
     workspaceFilesEnabled
       ? walkWorkspace(cwd, maxWorkspaceFiles, settings.excludeIgnoredFiles, repo).catch(() => ({ paths: [], hitLimit: false }))
       : Promise.resolve({ paths: [], hitLimit: false }),

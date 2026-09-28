@@ -27,6 +27,7 @@ export function activate(context: ExtensionContext): void {
     }
   }
 
+  // Prevent error caused by side effect.
   registerSessionResourceCleanup(() => {});
 
   const output = window.createOutputChannel('Pi Code', { log: true });

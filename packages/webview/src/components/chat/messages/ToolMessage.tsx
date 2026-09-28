@@ -261,7 +261,7 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onRespondTool }) =>
                   section={renderedSection}
                   defaultOpen={false}
                   isFirst={index === 0}
-                  isLast={index === (isExpanded ? sections.length - 1 : 0) && !hasMore && !hasSecApproval}
+                  isLast={sections.length === 1 && !hasSecApproval}
                   showTimer={showTimer && !subagentDone}
                   isActive={isRunning}
                   isRunning={isRunning}

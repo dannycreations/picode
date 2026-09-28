@@ -11,6 +11,7 @@ import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 
 import type { FC } from 'react';
 import type { AppSettings } from '@pi-code/shared/core/settings';
+import type { SettingsTabId } from '@pi-code/webview/components/setting/core/types';
 
 interface SettingsViewProps {
   readonly settings: AppSettings;
@@ -27,17 +28,15 @@ export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
 
   const { containerRef, isCollapsed, shouldAnimate } = useResponsive(550);
 
+  const tabHasMatch = (tabId: SettingsTabId): boolean => getRootFieldKeys(tabId).some((key) => isFieldVisible(key, searchQuery));
+
   useEffect(() => {
-    if (searchQuery.trim()) {
-      const activeTabHasMatch = getRootFieldKeys(activeTabId).some((key) => isFieldVisible(key, searchQuery));
-      if (!activeTabHasMatch) {
-        const firstTabWithMatch = SETTINGS_TABS.find((tab) => getRootFieldKeys(tab.id).some((key) => isFieldVisible(key, searchQuery)));
-        if (firstTabWithMatch) {
-          setActiveTabId(firstTabWithMatch.id);
-        }
-      }
+    if (!searchQuery.trim() || tabHasMatch(activeTabId)) return;
+    const firstTabWithMatch = SETTINGS_TABS.find((tab) => tabHasMatch(tab.id));
+    if (firstTabWithMatch) {
+      setActiveTabId(firstTabWithMatch.id);
     }
-  }, [searchQuery, activeTabId]);
+  }, [searchQuery, activeTabId, tabHasMatch]);
 
   const checkUnsavedChanges = (proceed: () => void) => {
     if (isChangeDetected) {
@@ -48,7 +47,7 @@ export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
   };
 
   const activeTab = SETTINGS_TABS.find((tab) => tab.id === activeTabId) || SETTINGS_TABS[0];
-  const visibleRootKeys = getRootFieldKeys(activeTab.id).filter((key) => isFieldVisible(key, searchQuery));
+  const visibleRootKeys = getRootFieldKeys(activeTabId).filter((key) => isFieldVisible(key, searchQuery));
 
   return (
     <div ref={containerRef} className="flex flex-col h-full bg-vscode-sideBar-background text-vscode-foreground select-none overflow-hidden">
@@ -126,7 +125,7 @@ export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
           {SETTINGS_TABS.map((tab) => {
             const TabIcon = tab.icon;
             const isActive = tab.id === activeTabId;
-            const hasMatch = !searchQuery.trim() || getRootFieldKeys(tab.id).some((key) => isFieldVisible(key, searchQuery));
+            const hasMatch = tabHasMatch(tab.id);
             return (
               <Tooltip key={tab.id} content={tab.label} side="right" disabled={!isCollapsed}>
                 <button

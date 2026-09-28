@@ -6,7 +6,7 @@ import { readOutputLimits } from '@pi-code/extension/core/settings';
 import { runFileMutation, toolError } from '@pi-code/extension/structures/tool-call/helpers';
 import { checkReadableFile, pathExists, writeFileAtomic } from '@pi-code/extension/utilities/fs';
 import { buildFileChangeResult } from '@pi-code/extension/utilities/truncate';
-import { findOccurrences } from '@pi-code/shared/utilities/common';
+import { escapeRegExp, findOccurrences } from '@pi-code/shared/utilities/common';
 
 import type { CustomToolResult } from '@pi-code/extension/types/extension';
 import type { ToolName } from '@pi-code/shared/core/types';
@@ -16,10 +16,6 @@ function safeLiteralReplace(str: string, oldString: string, newString: string): 
     return str;
   }
   return str.replaceAll(oldString, () => newString);
-}
-
-function escapeRegExp(input: string): string {
-  return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function buildWhitespaceTolerantRegex(oldLF: string): RegExp {

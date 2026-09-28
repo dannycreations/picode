@@ -195,6 +195,16 @@ export const ChatView: FC = () => {
     // the query keeps navigation stable when messages stream in during a search.
   }, [searchQuery]);
 
+  // Per-row search context, built once per search state rather than inside the
+  // virtualizer map. A fresh object literal per row would give every visible
+  // ChatBody a new identity each render and defeat its memo.
+  const isSearching = searchOpen && searchQuery !== '';
+  const searchContexts = useMemo(
+    () =>
+      isSearching ? renderItems.map((_, index) => ({ query: searchQuery, globalOffset: globalOffsets[index] ?? 0, activeIndex: activeMatch })) : [],
+    [isSearching, searchQuery, renderItems, globalOffsets, activeMatch],
+  );
+
   const goToMatch = useCallback(
     (direction: 1 | -1) => {
       setActiveMatch((prev) => {
@@ -395,11 +405,7 @@ export const ChatView: FC = () => {
                   message={renderItems[item.index]}
                   oldTodos={oldTodosById.get(renderItems[item.index].id)}
                   commands={commands}
-                  search={
-                    searchOpen && searchQuery
-                      ? { query: searchQuery, globalOffset: globalOffsets[item.index] ?? 0, activeIndex: activeMatch }
-                      : undefined
-                  }
+                  search={searchContexts[item.index]}
                   onRespondTool={handleRespondToTool}
                   onAnswerQuestion={handleAnswer}
                   onCopyToInput={appendToInput}

@@ -73,6 +73,22 @@ const MarkdownPre: FC<{ children?: ReactNode }> = ({ children }) => {
   );
 };
 
+// Fenced code arrives with no language or with a filename suffix such as
+// `ts.config.js`; shiki only knows the bare language.
+const normalizeCodeLanguage: () => (tree: MarkdownRoot) => void = () => (tree) => {
+  visit(tree, 'code', (node) => {
+    if (!node.lang) {
+      node.lang = 'text';
+    } else if (node.lang.includes('.')) {
+      node.lang = node.lang.split('.').pop() ?? 'text';
+    }
+  });
+};
+
+// react-markdown keys its parse on the plugin array identity, so this list is
+// module-level: a fresh array per render would reparse every markdown block.
+const REMARK_PLUGINS = [remarkGfm, remarkMath, normalizeCodeLanguage];
+
 const MarkdownBlock = memo(({ markdown, search }: MarkdownProps) => {
   const components = useMemo<Components>(
     () => ({
@@ -92,23 +108,7 @@ const MarkdownBlock = memo(({ markdown, search }: MarkdownProps) => {
 
   return (
     <div className="prose-markdown select-text">
-      <ReactMarkdown
-        remarkPlugins={[
-          remarkGfm,
-          remarkMath,
-          () => (tree: MarkdownRoot) => {
-            visit(tree, 'code', (node) => {
-              if (!node.lang) {
-                node.lang = 'text';
-              } else if (node.lang.includes('.')) {
-                node.lang = node.lang.split('.').pop() ?? 'text';
-              }
-            });
-          },
-        ]}
-        rehypePlugins={rehypePlugins}
-        components={components}
-      >
+      <ReactMarkdown remarkPlugins={REMARK_PLUGINS} rehypePlugins={rehypePlugins} components={components}>
         {markdown || ''}
       </ReactMarkdown>
     </div>

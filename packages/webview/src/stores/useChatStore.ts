@@ -69,9 +69,10 @@ export function setLatestCommitQuery(query: string): void {
   latestCommitQuery = query;
 }
 
-function scopedRecord<T>(fill: (scope: HistoryScope) => T): Record<HistoryScope, T> {
+// Every scope gets the same fresh value, so the callback takes no argument.
+function scopedRecord<T>(fill: () => T): Record<HistoryScope, T> {
   const record = {} as Record<HistoryScope, T>;
-  for (const scope of HISTORY_SCOPES) record[scope] = fill(scope);
+  for (const scope of HISTORY_SCOPES) record[scope] = fill();
   return record;
 }
 
@@ -492,8 +493,8 @@ export const useChatStore = create<ChatState>((set, get) => {
     },
 
     applyMessage: (msg) => {
-      const handler = messageHandlers[msg.type] as ExtensionMessageHandler<typeof msg.type> | undefined;
-      if (handler) handler(msg);
+      // The handler map covers every message type, so the lookup cannot miss.
+      (messageHandlers[msg.type] as ExtensionMessageHandler<typeof msg.type>)(msg);
     },
 
     setActiveTask: (value) =>

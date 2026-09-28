@@ -5,10 +5,11 @@ import { formatPathRelativeToCwdOrAbsolute } from '@earendil-works/pi-coding-age
 
 import { readOutputLimits } from '@pi-code/extension/core/settings';
 import { resolveCommitTag } from '@pi-code/extension/structures/chat-command/helpers/git';
-import { checkReadableFile, normalizeSeparators, walkDirectory } from '@pi-code/extension/utilities/fs';
+import { checkReadableFile, walkDirectory } from '@pi-code/extension/utilities/fs';
 import { readNumberedText } from '@pi-code/extension/utilities/truncate';
 import { MENTION_PATTERN, TAG_PATTERN } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
+import { normalizeSeparators } from '@pi-code/shared/utilities/common';
 import { buildFileTree, renderFileTree } from '@pi-code/shared/utilities/tree';
 
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';

@@ -24,7 +24,7 @@ interface ChatBodyProps {
 }
 
 export const ChatBody = memo<ChatBodyProps>(({ message, oldTodos, commands, search, onRespondTool, onAnswerQuestion, onCopyToInput }) => {
-  const renderMessageContent = () => {
+  const content = (() => {
     switch (message.sender) {
       case 'user':
         return <UserMessage message={message} commands={commands} search={search} />;
@@ -50,9 +50,7 @@ export const ChatBody = memo<ChatBodyProps>(({ message, oldTodos, commands, sear
       case 'info':
         return <InfoMessage message={message} search={search} />;
     }
-  };
+  })();
 
-  const content = renderMessageContent();
-  if (content === null) return null;
   return <div className="chat-row px-3.5 py-2.5 relative border-b border-vscode-editorGroup-border/30">{content}</div>;
 });

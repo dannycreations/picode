@@ -10,8 +10,6 @@ import { readNumberedText, shareOutputLimits } from '@pi-code/extension/utilitie
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
 import type { ToolName } from '@pi-code/shared/core/types';
 
-const DEFAULT_MAX_CONCURRENT_READS = 5;
-
 function nextLineAfter(text: string): number | undefined {
   const lastBreak = text.lastIndexOf('\n');
   const lastLine = lastBreak === -1 ? text : text.slice(lastBreak + 1);
@@ -117,7 +115,6 @@ export const readFileTool = defineTool({
   async execute(_toolCallId, params, signal, onUpdate, ctx) {
     try {
       const settings = readAppSettings();
-      const maxConcurrent = settings.maxConcurrentFileReads > 0 ? settings.maxConcurrentFileReads : DEFAULT_MAX_CONCURRENT_READS;
       const limits = readOutputLimits();
 
       // Split the budget so one large file cannot consume the whole batch.
@@ -125,7 +122,7 @@ export const readFileTool = defineTool({
 
       const sections = await mapConcurrent(
         params.files,
-        maxConcurrent,
+        settings.maxConcurrentFileReads,
         signal,
         (file) => readFileSection(ctx.cwd, file, perFileLimits),
         (partial) => {

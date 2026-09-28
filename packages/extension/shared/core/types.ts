@@ -78,7 +78,6 @@ export interface ToolSection {
   readonly content?: string;
   readonly language?: string;
   readonly openPath?: string;
-  readonly diffLine?: number;
   readonly timestamp?: number;
   readonly duration?: number;
   readonly status?: string;
@@ -105,16 +104,16 @@ export interface AssistantChatMessage extends ChatMessageBase {
   readonly cost?: number;
 }
 
-interface CheckpointChatMessage extends ChatMessageBase {
+export interface CheckpointChatMessage extends ChatMessageBase {
   readonly sender: 'checkpoint';
 }
 
-interface ErrorChatMessage extends ChatMessageBase {
+export interface ErrorChatMessage extends ChatMessageBase {
   readonly sender: 'error';
   readonly errorMessage?: string;
 }
 
-interface InfoChatMessage extends ChatMessageBase {
+export interface InfoChatMessage extends ChatMessageBase {
   readonly sender: 'info';
 }
 
@@ -146,7 +145,7 @@ export interface ToolChatMessage extends ChatMessageBase {
   readonly toolSections?: ReadonlyArray<ToolSection>;
 }
 
-interface UserChatMessage extends ChatMessageBase {
+export interface UserChatMessage extends ChatMessageBase {
   readonly sender: 'user';
   readonly attachments?: readonly Attachment[];
 }

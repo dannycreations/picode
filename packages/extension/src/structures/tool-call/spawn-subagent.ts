@@ -142,7 +142,7 @@ export const spawnSubagentTool = defineTool({
         description: params.description,
         steps: outcome.steps,
         usage: outcome.usage,
-        subtitle: outcome.usage ? formatUsage(outcome.usage) : undefined,
+        subtitle: formatUsage(outcome.usage),
         duration: outcome.duration,
         tempFilePath,
       };

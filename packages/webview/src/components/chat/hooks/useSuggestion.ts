@@ -149,6 +149,12 @@ interface UseCommandProps {
   readonly textareaRef: RefObject<HTMLTextAreaElement | null>;
 }
 
+// These adapters close over nothing, so they are module constants: a new
+// identity per render would rebuild the query memo and the select callback.
+const readCommandQueryAt = (text: string, caret: number): string | null => readCommandQuery(text, caret)?.query ?? null;
+const applyCommandInsertion = (text: string, _caret: number, command: CommandItem): { readonly text: string; readonly caret: number } =>
+  applyCommand(text, command.name);
+
 export const useChatCommand = ({ commands, value, setValue, textareaRef }: UseCommandProps): UseSuggestionReturn<CommandItem> => {
   const resolveItems = useCallback((query: string) => matchCommands(commands, query), [commands]);
 
@@ -156,8 +162,8 @@ export const useChatCommand = ({ commands, value, setValue, textareaRef }: UseCo
     value,
     setValue,
     textareaRef,
-    readQuery: (text, caret) => readCommandQuery(text, caret)?.query ?? null,
-    applyInsertion: (text, _caret, command) => applyCommand(text, command.name),
+    readQuery: readCommandQueryAt,
+    applyInsertion: applyCommandInsertion,
     resolveItems,
   });
 };
@@ -197,6 +203,8 @@ interface UseMentionProps {
   readonly textareaRef: RefObject<HTMLTextAreaElement | null>;
 }
 
+const readMentionQueryAt = (text: string, caret: number): string | null => readMentionQuery(text, caret)?.query ?? null;
+
 export const useChatMention = ({ value, setValue, textareaRef }: UseMentionProps): UseSuggestionReturn<string> => {
   const searchResults = useChatStore((state) => state.searchResults);
 
@@ -208,7 +216,7 @@ export const useChatMention = ({ value, setValue, textareaRef }: UseMentionProps
     value,
     setValue,
     textareaRef,
-    readQuery: (text, caret) => readMentionQuery(text, caret)?.query ?? null,
+    readQuery: readMentionQueryAt,
     applyInsertion: applyMention,
     resolveItems: resolveResults,
   });
@@ -224,6 +232,10 @@ interface UseChatTagProps {
   readonly textareaRef: RefObject<HTMLTextAreaElement | null>;
 }
 
+const readTagQueryAt = (text: string, caret: number): string | null => readTagQuery(text, caret)?.query ?? null;
+const applyTagInsertion = (text: string, caret: number, item: CommitTagItem): { readonly text: string; readonly caret: number } =>
+  applyTag(text, caret, item.value);
+
 export const useChatTag = ({ value, setValue, textareaRef }: UseChatTagProps): UseSuggestionReturn<CommitTagItem> => {
   const commitResults = useChatStore((state) => state.commitResults);
 
@@ -235,8 +247,8 @@ export const useChatTag = ({ value, setValue, textareaRef }: UseChatTagProps): U
     value,
     setValue,
     textareaRef,
-    readQuery: (text, caret) => readTagQuery(text, caret)?.query ?? null,
-    applyInsertion: (text, caret, item) => applyTag(text, caret, item.value),
+    readQuery: readTagQueryAt,
+    applyInsertion: applyTagInsertion,
     resolveItems,
   });
 

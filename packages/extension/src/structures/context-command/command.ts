@@ -58,10 +58,9 @@ export function registerAddToContextCommand(sender: ChatViewProvider): Disposabl
 }
 
 export function registerAddProblemToContextCommand(sender: ChatViewProvider): Disposable {
-  return registerChatInputCommand(sender, COMMAND_IDS.addProblemToContext, (selection, args) => {
-    const diagnosticText = getDiagnosticText(args, selection);
-    return `${diagnosticText}\n\n${formatSelectionBlock(selection)}`;
-  });
+  return registerChatInputCommand(sender, COMMAND_IDS.addProblemToContext, (selection, args) =>
+    composePrompt(getDiagnosticText(args, selection), selection, ''),
+  );
 }
 
 function formatDiagnosticBlock(diagnostics: readonly MappedDiagnostic[]): string {
@@ -164,29 +163,22 @@ function registerInlineEditCommand(
     if (!selection) return;
 
     const cwd = getWorkspaceCwd();
-    if (!cwd) {
-      window.showErrorMessage('No workspace folder is open.');
-      return;
-    }
-
     const diagnosticText = getDiagnosticText(args, selection);
     const prompt = buildPrompt(selection, diagnosticText);
     await runInlineCompletion(cwd, selection, prompt, progressTitle);
   });
 }
 
+function composePrompt(instruction: string, selection: ResolvedSelection, diagnosticText: string): string {
+  return [instruction, diagnosticText, formatSelectionBlock(selection)].filter(Boolean).join('\n\n');
+}
+
 export function registerFillCodeCommand(): Disposable {
-  return registerInlineEditCommand(
-    COMMAND_IDS.fillCode,
-    'Filling code with Pi...',
-    (selection) => FILL_CODE_PROMPT + '\n\n' + formatSelectionBlock(selection),
-  );
+  return registerInlineEditCommand(COMMAND_IDS.fillCode, 'Filling code with Pi...', (selection) => composePrompt(FILL_CODE_PROMPT, selection, ''));
 }
 
 export function registerFixCodeCommand(): Disposable {
-  return registerInlineEditCommand(
-    COMMAND_IDS.fixCode,
-    'Fixing code with Pi...',
-    (selection, diagnosticText) => FIX_CODE_PROMPT + '\n\n' + (diagnosticText ? `${diagnosticText}\n\n` : '') + formatSelectionBlock(selection),
+  return registerInlineEditCommand(COMMAND_IDS.fixCode, 'Fixing code with Pi...', (selection, diagnosticText) =>
+    composePrompt(FIX_CODE_PROMPT, selection, diagnosticText),
   );
 }

@@ -98,6 +98,32 @@ function pushModelCatalog(ctx: MessageHandlerContext, modelRuntime: ModelRuntime
     .catch((err) => logger.error('Failed to refresh model catalog:', err));
 }
 
+// `compact` and `fork` differ only in the runtime call and their notice, so they
+// share one body: resolve the target session, run it, and republish the result.
+type SessionCommand = 'compact' | 'fork';
+type SessionCommandMessage = Extract<WebviewToExtensionMessage, { type: 'builtin_command'; command: SessionCommand }>;
+
+async function runSessionCommand(command: SessionCommand, msg: SessionCommandMessage, ctx: MessageHandlerContext): Promise<void> {
+  const path = msg.path || ctx.runtime.getSessionFile();
+  if (!path) {
+    window.showInformationMessage(`Open or start a task before using /${command}.`);
+    return;
+  }
+
+  const details = command === 'compact' ? await ctx.runtime.compact(path) : await ctx.runtime.fork(path);
+  if (!details) return;
+
+  // Refresh the webview from the in-memory session instead of re-opening and
+  // re-parsing the same session file a second time. Both commands rewrite the
+  // session file, so the current list needs refreshing too.
+  postSession(ctx, msg.id || ACTIVE_TASK_ID, msg.title || '', path, details);
+  await postHistory(ctx, 'current');
+
+  if (command === 'fork') {
+    window.showInformationMessage('Forked session created.');
+  }
+}
+
 const HANDLER_MAP: HandlerMap = {
   init: async (_, ctx) => {
     const services = await createAgentResources(ctx.cwd);
@@ -168,39 +194,10 @@ const HANDLER_MAP: HandlerMap = {
         pushModelCatalog(ctx, services.modelRuntime, true, () => window.showInformationMessage('Model catalog updated.'));
         return;
       }
-      case 'compact': {
-        const path = msg.path || ctx.runtime.getSessionFile();
-        if (!path) {
-          window.showInformationMessage('Open or start a task before using /compact.');
-          return;
-        }
-
-        const details = await ctx.runtime.compact(path);
-        if (!details) return;
-
-        // Refresh the webview from the in-memory session we just compacted instead
-        // of re-opening and re-parsing the same session file a second time.
-        postSession(ctx, msg.id || ACTIVE_TASK_ID, msg.title || '', path, details);
-        // Compaction rewrites the session file, so refresh the current sessions
-        // list the way cancelTask does after it mutates the file on disk.
-        await postHistory(ctx, 'current');
+      case 'compact':
+      case 'fork':
+        await runSessionCommand(msg.command, msg, ctx);
         return;
-      }
-      case 'fork': {
-        const path = msg.path || ctx.runtime.getSessionFile();
-        if (!path) {
-          window.showInformationMessage('Open or start a task before using /fork.');
-          return;
-        }
-
-        const details = await ctx.runtime.fork(path);
-        if (!details) return;
-
-        postSession(ctx, msg.id || ACTIVE_TASK_ID, msg.title || '', path, details);
-        await postHistory(ctx, 'current');
-        window.showInformationMessage('Forked session created.');
-        return;
-      }
       default:
         logger.warn('Unknown builtin command received:', msg);
         return;

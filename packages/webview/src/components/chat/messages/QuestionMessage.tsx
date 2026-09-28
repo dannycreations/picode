@@ -9,19 +9,17 @@ import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { getQuestionView } from '@pi-code/webview/helpers/questions';
 
 import type { FC, MouseEvent } from 'react';
-import type { Attachment, ChatMessage } from '@pi-code/shared/core/types';
+import type { Attachment, ToolChatMessage } from '@pi-code/shared/core/types';
 import type { SearchContext } from '@pi-code/webview/components/shared/Highlight';
 
 interface QuestionMessageProps {
-  readonly message: ChatMessage;
+  readonly message: ToolChatMessage;
   readonly search?: SearchContext;
   readonly onAnswerQuestion: (questionId: string, text: string, attachments?: Attachment[]) => void;
   readonly onCopyToInput: (text: string) => void;
 }
 
 export const QuestionMessage: FC<QuestionMessageProps> = ({ message, search, onAnswerQuestion, onCopyToInput }) => {
-  if (message.sender !== 'tool') return null;
-
   const { question, suggestions, answer } = getQuestionView(message);
 
   // The tool call stays in flight until the user replies, so its status is the

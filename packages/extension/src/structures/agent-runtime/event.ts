@@ -63,21 +63,15 @@ interface MappedEvent {
   readonly apiRequestId: string | null;
 }
 
-// Compaction restarts the turn pipeline, so it replays the same header refresh
-// the webview already renders for `agent_start`.
-function agentStart(session: AgentSession, apiRequestId: string | null): MappedEvent {
-  return {
-    message: { type: 'agent_start', payload: { path: session.sessionFile, stats: createStats(session) } },
-    apiRequestId,
-  };
-}
-
 export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiRequestId: string | null): MappedEvent {
   const subagent = getSubagentSession(session.sessionId)?.name;
 
   switch (event.type) {
     case 'agent_start':
-      return agentStart(session, apiRequestId);
+      return {
+        message: { type: 'agent_start', payload: { path: session.sessionFile, stats: createStats(session) } },
+        apiRequestId,
+      };
 
     case 'turn_start': {
       const nextId = nextApiRequestId();

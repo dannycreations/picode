@@ -2,8 +2,8 @@ import { formatThrownValue } from '@earendil-works/pi-ai';
 import { getAgentDir, hasTrustRequiringProjectResources, ProjectTrustStore } from '@earendil-works/pi-coding-agent';
 import { Uri, window, workspace } from 'vscode';
 
-import { normalizeSeparators } from '@pi-code/extension/utilities/fs';
 import { logger } from '@pi-code/shared/core/logger';
+import { normalizeSeparators } from '@pi-code/shared/utilities/common';
 
 // Session-level choice of which workspace folder Pi targets; undefined means
 // "no explicit pick", so resolution falls back to the first folder.

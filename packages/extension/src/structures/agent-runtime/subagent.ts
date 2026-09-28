@@ -109,10 +109,7 @@ export function formatSubagentStep(toolName: SubagentToolName, args: unknown): s
       .filter((path): path is string => typeof path === 'string' && path.length > 0);
     return `read ${preview(paths.join(', ')) || '(no path)'}`;
   }
-  if (toolName === 'execute_command') {
-    return `execute ${preview(values.command ?? '')}`;
-  }
-  return `${toolName} ${preview(JSON.stringify(args ?? {}))}`;
+  return `execute ${preview(values.command ?? '')}`;
 }
 
 export function lastAssistantText(session: AgentSession): { text: string; error?: string } {

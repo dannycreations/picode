@@ -3,7 +3,7 @@ import { CONFIG_DIR_NAME, getAgentDir, getCwdRelativePath, resolvePath } from '@
 import { minimatch } from 'minimatch';
 import { parse } from 'shell-quote';
 
-import { normalizeSeparators } from '@pi-code/extension/utilities/fs';
+import { normalizeSeparators } from '@pi-code/shared/utilities/common';
 
 import type { AppSettings } from '@pi-code/shared/core/settings';
 

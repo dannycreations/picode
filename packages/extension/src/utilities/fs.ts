@@ -30,10 +30,6 @@ interface DirectoryEntry {
   readonly entry: FileChild;
 }
 
-export function normalizeSeparators(path: string): string {
-  return path.replace(/\\/g, '/');
-}
-
 export async function* walkDirectory(start: string, maxDepth: number, root: string = start): AsyncGenerator<DirectoryEntry> {
   const walk = async function* (dir: string, depth: number): AsyncGenerator<DirectoryEntry> {
     if (depth > maxDepth) return;

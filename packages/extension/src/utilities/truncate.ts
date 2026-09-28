@@ -43,7 +43,7 @@ export function shareOutputLimits(limits: OutputLimits, count: number): OutputLi
   };
 }
 
-function formatTruncationNotice(truncation: TruncationResult, keep: TruncateKeep = 'head', hint?: string): string | undefined {
+function formatTruncationNotice(truncation: TruncationResult, keep: TruncateKeep, hint?: string): string | undefined {
   if (!truncation.truncated) return undefined;
 
   const suffix = hint ? `\n${hint}` : '';
@@ -93,12 +93,7 @@ interface ReadNumberedTextOptions {
 
 export async function readNumberedText(filePath: string, limits: OutputLimits, options?: ReadNumberedTextOptions): Promise<string> {
   const ranges = options?.ranges;
-  const maxLines =
-    ranges !== undefined && ranges.length > 0
-      ? Math.max(...ranges.map((range) => Math.max(1, range.end)))
-      : limits.maxLines > 0
-        ? limits.maxLines
-        : undefined;
+  const maxLines = ranges !== undefined && ranges.length > 0 ? Math.max(...ranges.map((range) => Math.max(1, range.end))) : limits.maxLines;
 
   const lines = await readLines(filePath, maxLines);
   const { text } = truncateOutput(numberLines(lines, ranges), { limits, keep: 'head', hint: options?.hint });

@@ -9,18 +9,16 @@ import { locateOccurrences, SearchableText } from '@pi-code/webview/components/s
 import { Spinner } from '@pi-code/webview/components/shared/Spinner';
 
 import type { FC } from 'react';
-import type { ChatMessage } from '@pi-code/shared/core/types';
+import type { AssistantChatMessage } from '@pi-code/shared/core/types';
 import type { SearchContext } from '@pi-code/webview/components/shared/Highlight';
 
 interface AssistantMessageProps {
-  readonly message: ChatMessage;
+  readonly message: AssistantChatMessage;
   readonly search?: SearchContext;
 }
 
 export const AssistantMessage: FC<AssistantMessageProps> = ({ message, search }) => {
   const [isReasoningExpanded, setIsReasoningExpanded] = useState(false);
-
-  if (message.sender !== 'assistant') return null;
 
   const reasoning = message.reasoning?.trim() ?? '';
   const hasReasoning = reasoning !== '';

@@ -5,6 +5,17 @@ export const DEFAULT_CONTEXT_LIMIT = 200_000;
 // Sorts names with numeric segments in natural order (file2 before file10).
 export const pathCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
+// Windows paths are compared and matched with forward slashes everywhere, so
+// the separator is normalized once at every entry point.
+export function normalizeSeparators(path: string): string {
+  return path.replace(/\\/g, '/');
+}
+
+// Escapes regex metacharacters so a literal needle can be used in a RegExp.
+export function escapeRegExp(input: string): string {
+  return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 export function parseTextAttachment(content: unknown): TextAttachment | null {
   if (typeof content !== 'string') return null;
 
@@ -74,14 +85,13 @@ export function findOccurrences(haystack: string, needle: string, caseSensitive 
   }
 
   const positions: number[] = [];
-  const escapeNeedle = needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  for (const match of haystack.matchAll(new RegExp(escapeNeedle, 'gi'))) {
+  for (const match of haystack.matchAll(new RegExp(escapeRegExp(needle), 'gi'))) {
     if (match.index !== undefined) positions.push(match.index);
   }
   return positions;
 }
 
-interface OccurrenceSegment {
+export interface OccurrenceSegment {
   readonly text: string;
   // Match ordinal when this segment is a needle occurrence; null for the text
   // between occurrences.
@@ -116,8 +126,8 @@ export function elapsedSeconds(start: number, end: number = Date.now()): number 
 export function relativeToWorkspace(path: string, root: string): string {
   if (!root) return path;
 
-  const normPath = path.replace(/\\/g, '/');
-  const normRoot = root.replace(/\\/g, '/').replace(/\/+$/, '');
+  const normPath = normalizeSeparators(path);
+  const normRoot = normalizeSeparators(root).replace(/\/+$/, '');
   if (normRoot === '') return path;
 
   const caseInsensitive = /^[a-zA-Z]:\//.test(normRoot);

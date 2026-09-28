@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getEnvironmentDetails, walkWorkspace } from '@pi-code/extension/structures/chat-session/environment';
 
+import type { Repository } from '@pi-code/extension/types/git';
+
 const hoisted = vi.hoisted(() => ({
   FileType: { File: 1, Directory: 2, SymbolicLink: 64 },
   readDirectory: vi.fn(),
@@ -60,9 +62,23 @@ beforeEach(() => {
   readFile.mockReset();
   getGitRepository.mockResolvedValue(null);
   getIgnoredPaths.mockResolvedValue(new Set());
+  Object.assign(hoisted.mockSettings, { maxGitStatusFiles: 0, excludeIgnoredFiles: false });
 });
 
 describe('getEnvironmentDetails workspace files listing', () => {
+  it('resolves the git repository once when no repository is found', async () => {
+    // A workspace with no git repository is the case that used to re-resolve:
+    // the null fell through to a fresh lookup in each of the two passes.
+    hoisted.mockSettings.maxGitStatusFiles = 20;
+    hoisted.mockSettings.excludeIgnoredFiles = true;
+    readDirectory.mockResolvedValue([['main.ts', FileType.File]]);
+    getGitRepository.mockResolvedValue(null);
+
+    await getEnvironmentDetails('/workspace', true);
+
+    expect(getGitRepository).toHaveBeenCalledTimes(1);
+  });
+
   it('sorts files alphabetically before slicing to the settings limit', async () => {
     readDirectory.mockImplementation(async (uri: { fsPath: string }) => {
       if (uri.fsPath === '/workspace')
@@ -130,10 +146,9 @@ describe('walkWorkspace', () => {
       if (uri.fsPath === '/node_modules') return [['x.js', FileType.File]];
       return [];
     });
-    getGitRepository.mockResolvedValue({});
     getIgnoredPaths.mockImplementation(async (_repo: unknown, paths: string[]) => new Set(paths.filter((p) => p.includes('node_modules'))));
 
-    const { paths } = await walkWorkspace('/', 100, true);
+    const { paths } = await walkWorkspace('/', 100, true, {} as Repository);
 
     expect([...paths].sort()).toEqual(['README.md', 'src/index.ts']);
     const calledDirs = readDirectory.mock.calls.map((c) => c[0].fsPath);

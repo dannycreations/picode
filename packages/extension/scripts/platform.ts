@@ -5,7 +5,7 @@ import { join, relative, resolve } from 'node:path';
 import { walkDirectory } from '@pi-code/extension/utilities/fs';
 
 const packageDir = resolve(import.meta.dirname, '..');
-const sharedDir = join(packageDir, 'src', 'shared');
+const sharedDir = join(packageDir, 'shared');
 
 const NODE_BUILTINS = new Set(builtinModules);
 
