@@ -69,9 +69,13 @@ interface SearchableTextProps {
 
 export const SearchableText: FC<SearchableTextProps> = ({ text, search }) => {
   const query = search?.query ?? '';
+  // Most renders have no active search, and the split below is a full scan of
+  // the text, so return before doing any of it.
+  if (!query) return <>{text}</>;
+
   // One scan feeds both the split and the count, so the text is not walked
   // twice for every render pass while a search is open.
-  const segments = query ? splitOnOccurrences(text, query) : [{ text, matchIndex: null }];
+  const segments = splitOnOccurrences(text, query);
   const count = segments.filter((segment) => segment.matchIndex !== null).length;
 
   return (

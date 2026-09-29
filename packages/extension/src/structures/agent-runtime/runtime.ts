@@ -18,7 +18,7 @@ import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
 import { logger } from '@pi-code/shared/core/logger';
 import { resolveContextLimit } from '@pi-code/shared/utilities/common';
 
-import type { AgentSession, AgentSessionEvent, AgentSessionServices } from '@earendil-works/pi-coding-agent';
+import type { AgentSession, AgentSessionEvent, AgentSessionServices, SessionEntry } from '@earendil-works/pi-coding-agent';
 import type { Webview } from 'vscode';
 import type { ExtensionToWebviewMessage } from '@pi-code/shared/core/protocol';
 import type { Attachment, ChatMessage, QueueChatMessage, StatsData } from '@pi-code/shared/core/types';
@@ -123,9 +123,7 @@ export class Runtime {
     // old session is disposed and the new one is bound and subscribed in one place.
     const { session: newSession } = await this.getOrCreateSession(branchedPath, cwd);
 
-    const entries = newSession.sessionManager.getBranch();
-    const transcript = loadSessionTranscript(entries, resolveContextLimit(newSession.model?.contextWindow));
-    return { messages: transcript.messages, stats: transcript.stats };
+    return this.snapshot(newSession).transcript;
   }
 
   public async compact(path: string | undefined): Promise<{ messages: ChatMessage[]; stats: StatsData } | null> {
@@ -134,6 +132,13 @@ export class Runtime {
 
     const { session } = await this.getOrCreateSession(path, cwd);
     return this.runCompaction(session);
+  }
+
+  private snapshot(session: AgentSession): { entries: readonly SessionEntry[]; transcript: { messages: ChatMessage[]; stats: StatsData } } {
+    const entries = session.sessionManager.getBranch();
+    const context = resolveContextLimit(session.model?.contextWindow);
+    const transcript = loadSessionTranscript(entries, context);
+    return { entries, transcript };
   }
 
   private async runCompaction(session: AgentSession): Promise<{ messages: ChatMessage[]; stats: StatsData } | null> {
@@ -160,8 +165,7 @@ export class Runtime {
       try {
         const compaction = await session.compact();
 
-        const entries = session.sessionManager.getBranch();
-        const transcript = loadSessionTranscript(entries, resolveContextLimit(session.model?.contextWindow));
+        const { entries, transcript } = this.snapshot(session);
 
         // loadSessionTranscript derives contextTokens from the last assistant usage,
         // which is the pre-compaction size once the context is rebuilt. Use the

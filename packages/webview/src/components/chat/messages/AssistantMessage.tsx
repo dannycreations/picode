@@ -1,6 +1,6 @@
 import { cn } from 'cn';
 import { ChevronUp, Lightbulb, MessageCircle } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { Markdown } from '@pi-code/webview/components/chat/markdown/Markdown';
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
@@ -28,6 +28,13 @@ export const AssistantMessage: FC<AssistantMessageProps> = ({ message, search })
   // highlight is visible; collapse it again once the match moves elsewhere
   // (unless the user opened it manually).
   const showReasoning = isReasoningExpanded || reasoningActive !== -1;
+
+  // Markdown is memo'd and reparses on a new `search` identity, so the object
+  // is built only when a value it holds actually changes.
+  const answerSearch = useMemo(
+    () => (search ? { ...search, globalOffset: search.globalOffset + (hasReasoning ? reasoningCount : 0) } : undefined),
+    [search, hasReasoning, reasoningCount],
+  );
 
   return (
     <div className="group flex flex-col gap-1.5">
@@ -69,14 +76,7 @@ export const AssistantMessage: FC<AssistantMessageProps> = ({ message, search })
             timestamp={message.timestamp}
           />
           <div className="ml-6 text-sm leading-normal text-vscode-foreground select-text">
-            <Markdown
-              markdown={message.text}
-              search={
-                search
-                  ? { query: search.query, globalOffset: search.globalOffset + (hasReasoning ? reasoningCount : 0), activeIndex: search.activeIndex }
-                  : undefined
-              }
-            />
+            <Markdown markdown={message.text} search={answerSearch} />
           </div>
         </div>
       )}

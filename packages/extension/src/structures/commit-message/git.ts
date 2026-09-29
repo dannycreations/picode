@@ -11,18 +11,14 @@ import type { Change, Repository } from '@pi-code/extension/types/git';
 interface ResolvedGitChange {
   readonly relativePath: string;
   readonly absolutePath: string;
-  readonly isStaged: boolean;
   readonly isUntracked: boolean;
-  readonly isDeleted: boolean;
 }
 
-function mapChange(change: Change, isStaged: boolean): ResolvedGitChange {
+function mapChange(change: Change): ResolvedGitChange {
   return {
     relativePath: toRelativePath(change.uri),
     absolutePath: change.uri.fsPath,
-    isStaged,
     isUntracked: change.status === GIT_STATUS.UNTRACKED,
-    isDeleted: change.status === GIT_STATUS.INDEX_DELETED || change.status === GIT_STATUS.DELETED,
   };
 }
 
@@ -30,16 +26,13 @@ export async function getGitChanges(repo: Repository): Promise<{ changes: Resolv
   // Refresh before reading so we don't act on stale async state.
   await repo.status();
 
-  const stagedChanges = repo.state.indexChanges.map((c) => mapChange(c, true));
+  const stagedChanges = repo.state.indexChanges.map(mapChange);
 
   if (stagedChanges.length > 0) {
     return { changes: stagedChanges, useStaged: true };
   }
 
-  const unstagedChanges = [
-    ...repo.state.workingTreeChanges.map((c) => mapChange(c, false)),
-    ...repo.state.untrackedChanges.map((c) => mapChange(c, false)),
-  ];
+  const unstagedChanges = [...repo.state.workingTreeChanges, ...repo.state.untrackedChanges].map(mapChange);
   return { changes: unstagedChanges, useStaged: false };
 }
 

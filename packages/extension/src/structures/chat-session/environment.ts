@@ -48,21 +48,16 @@ async function loadGitignoreFilter(gitignoreUri: Uri): Promise<ReturnType<typeof
 }
 
 function isIgnoredByLocalRules(childRelative: string, isDir: boolean, ignores: readonly LocalIgnore[]): boolean {
-  for (let i = 0; i < ignores.length; i++) {
-    const { relativeDir, filter } = ignores[i];
+  // Every relativeDir is the current or an ancestor directory, and
+  // childRelative always extends it, so the entry either covers this child or
+  // is skipped.
+  for (const { relativeDir, filter } of ignores) {
     let testPath = childRelative;
 
     if (relativeDir !== '') {
-      if (childRelative === relativeDir) {
-        testPath = '';
-      } else if (childRelative.startsWith(`${relativeDir}/`)) {
-        testPath = childRelative.slice(relativeDir.length + 1);
-      } else {
-        continue;
-      }
+      if (!childRelative.startsWith(`${relativeDir}/`)) continue;
+      testPath = childRelative.slice(relativeDir.length + 1);
     }
-
-    if (testPath === '') continue;
 
     const pathToTest = isDir ? `${testPath}/` : testPath;
     if (filter.ignores(pathToTest)) return true;

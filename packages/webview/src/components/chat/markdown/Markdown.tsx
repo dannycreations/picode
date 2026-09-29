@@ -89,26 +89,25 @@ const normalizeCodeLanguage: () => (tree: MarkdownRoot) => void = () => (tree) =
 // module-level: a fresh array per render would reparse every markdown block.
 const REMARK_PLUGINS = [remarkGfm, remarkMath, normalizeCodeLanguage];
 
-const MarkdownBlock = memo(({ markdown, search }: MarkdownProps) => {
-  const components = useMemo<Components>(
-    () => ({
-      table: ({ children, ...props }) => (
-        <div className="table-wrapper">
-          <table {...props}>{children}</table>
-        </div>
-      ),
-      a: MarkdownLink,
-      pre: MarkdownPre,
-    }),
-    [],
-  );
+// Every value here is module scoped, so the object is built once. A fresh one
+// per render would reparse every markdown block.
+const MARKDOWN_COMPONENTS: Components = {
+  table: ({ children, ...props }) => (
+    <div className="table-wrapper">
+      <table {...props}>{children}</table>
+    </div>
+  ),
+  a: MarkdownLink,
+  pre: MarkdownPre,
+};
 
+const MarkdownBlock = memo(({ markdown, search }: MarkdownProps) => {
   const searchPlugin = useMemo(() => createSearchHighlightPlugin(search), [search?.query, search?.globalOffset, search?.activeIndex]);
   const rehypePlugins = useMemo(() => [rehypeKatex, ...(searchPlugin ? [searchPlugin as typeof rehypeKatex] : [])], [searchPlugin]);
 
   return (
     <div className="prose-markdown select-text">
-      <ReactMarkdown remarkPlugins={REMARK_PLUGINS} rehypePlugins={rehypePlugins} components={components}>
+      <ReactMarkdown remarkPlugins={REMARK_PLUGINS} rehypePlugins={rehypePlugins} components={MARKDOWN_COMPONENTS}>
         {markdown || ''}
       </ReactMarkdown>
     </div>

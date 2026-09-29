@@ -206,7 +206,7 @@ export function resolvePathAction(
   return decidePathAction(filePath, resolveFileLocation(cwd, filePath), allowedPatterns, deniedPatterns);
 }
 
-export type Tokenizer = (command: string) => unknown[];
+type Tokenizer = (command: string) => unknown[];
 
 const SEPARATOR_OPS = ['&&', '||', ';', '|', '&'];
 

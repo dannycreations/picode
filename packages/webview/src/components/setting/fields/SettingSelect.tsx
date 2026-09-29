@@ -6,7 +6,7 @@ import { useClickOutside } from '@pi-code/webview/hooks/useClickOutside';
 
 import type { FC } from 'react';
 
-export interface SelectOption {
+interface SelectOption {
   readonly value: string;
   readonly label: string;
 }

@@ -137,7 +137,8 @@ export const readFileTool = defineTool({
       }
 
       const { text, files } = assembleReadOutput(sections);
-      const allFailed = sections.length > 0 && sections.every((section) => section.hasError);
+      // params.files has minItems 1, so a request always produces one section.
+      const allFailed = sections.every((section) => section.hasError);
       const result = allFailed ? toolError(text, { files }) : toolResult(text, { files });
       onUpdate?.(result);
       return result;

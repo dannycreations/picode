@@ -5,7 +5,7 @@ import { editFileTool } from '@pi-code/extension/structures/tool-call/edit-file'
 const { stat, readFile, writeFile, mkdir, rename, unlink, open } = vi.hoisted(() => ({
   stat: vi.fn(),
   readFile: vi.fn(async () => 'original content'),
-  writeFile: vi.fn(async () => undefined),
+  writeFile: vi.fn(async (_path: string, _data: string) => undefined),
   mkdir: vi.fn(async () => undefined),
   rename: vi.fn(async (_from: string, _to: string) => undefined),
   unlink: vi.fn(async () => undefined),
@@ -87,6 +87,17 @@ describe('editFileTool', () => {
     expect(rename).toHaveBeenCalledTimes(1);
     expect(result.isError).toBeFalsy();
     expect(result.content[0].text).toContain('CONTENT');
+  });
+
+  it('writes replacement text containing $& literally instead of expanding it', async () => {
+    stat.mockResolvedValue(READABLE);
+    readFile.mockResolvedValue('keep');
+
+    const result = await execute({ path: 'dollar.txt', search: 'keep', replace: '$& and $1' });
+
+    expect(writeFile).toHaveBeenCalledTimes(1);
+    expect(String(writeFile.mock.calls[0][1])).toContain('$& and $1');
+    expect(result.isError).toBeFalsy();
   });
 
   it('discloses a whitespace-tolerant match instead of claiming an exact replacement', async () => {

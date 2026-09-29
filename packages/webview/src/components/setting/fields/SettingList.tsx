@@ -13,7 +13,7 @@ interface SettingListProps {
   readonly onChange: (inputs: string[]) => void;
 }
 
-export const SettingList: FC<SettingListProps> = ({ label, description, placeholder, inputs = [], onChange }) => {
+export const SettingList: FC<SettingListProps> = ({ label, description, placeholder, inputs, onChange }) => {
   const [input, setInput] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -66,25 +66,25 @@ export const SettingList: FC<SettingListProps> = ({ label, description, placehol
       </div>
       {inputs.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mt-1">
-          {inputs.map((input, idx) => (
+          {inputs.map((value, idx) => (
             <div
-              key={`${input}-${idx}`}
+              key={`${value}-${idx}`}
               className="flex items-center gap-1.5 pl-2 pr-1.5 py-0.5 text-xs rounded bg-vscode-badge-background text-vscode-badge-foreground border border-vscode-editorGroup-border/30"
             >
-              <Tooltip content={`Click to edit: ${input}`}>
+              <Tooltip content={`Click to edit: ${value}`}>
                 <span
                   role="button"
                   tabIndex={0}
                   className="font-mono truncate max-w-[200px] cursor-pointer hover:underline outline-none"
-                  onClick={() => handleEdit(idx, input)}
+                  onClick={() => handleEdit(idx, value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
-                      handleEdit(idx, input);
+                      handleEdit(idx, value);
                     }
                   }}
                 >
-                  {input}
+                  {value}
                 </span>
               </Tooltip>
               <Tooltip content="Remove entry">

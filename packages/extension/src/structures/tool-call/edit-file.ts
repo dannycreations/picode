@@ -11,13 +11,6 @@ import { escapeRegExp, findOccurrences } from '@pi-code/shared/utilities/common'
 import type { CustomToolResult } from '@pi-code/extension/types/extension';
 import type { ToolName } from '@pi-code/shared/core/types';
 
-function safeLiteralReplace(str: string, oldString: string, newString: string): string {
-  if (oldString === '' || !str.includes(oldString)) {
-    return str;
-  }
-  return str.replaceAll(oldString, () => newString);
-}
-
 function buildWhitespaceTolerantRegex(oldLF: string): RegExp {
   if (oldLF === '') {
     return /(?!)/g;
@@ -100,7 +93,10 @@ type ReplacementOutcome =
 function replaceExpected(originalLF: string, oldLF: string, newLF: string, expected: number, filePath: string): ReplacementOutcome {
   const exact = findOccurrences(originalLF, oldLF, true).length;
   if (exact === expected) {
-    return { content: safeLiteralReplace(originalLF, oldLF, newLF), strategy: 'exact', matched: exact };
+    // The function replacer keeps `$&` and friends in `newLF` literal; a
+    // string replacement would expand them. `expected` is at least 1 and
+    // `search` is non-empty by this point, so the needle is present and usable.
+    return { content: originalLF.replaceAll(oldLF, () => newLF), strategy: 'exact', matched: exact };
   }
 
   const wsRegex = buildWhitespaceTolerantRegex(oldLF);

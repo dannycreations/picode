@@ -7,8 +7,6 @@ import type { Uri } from 'vscode';
 import type { API, GitExtension, Repository } from '@pi-code/extension/types/git';
 
 export const GIT_STATUS = {
-  INDEX_DELETED: 2,
-  DELETED: 6,
   UNTRACKED: 7,
 } as const;
 

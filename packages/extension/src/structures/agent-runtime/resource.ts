@@ -14,6 +14,7 @@ interface CachedResources {
 }
 
 const resourceCache = new Map<string, CachedResources>();
+let sharedModelRuntime: ModelRuntime | undefined;
 
 export function invalidateAgentResources(): void {
   resourceCache.clear();
@@ -21,8 +22,6 @@ export function invalidateAgentResources(): void {
   // so a trust change or settings rotation rebuilds a current one.
   sharedModelRuntime = undefined;
 }
-
-let sharedModelRuntime: ModelRuntime | undefined;
 
 type ServicesFactory = typeof createAgentSessionServices;
 

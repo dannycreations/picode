@@ -84,7 +84,7 @@ beforeEach(() => {
   mocks.getGitRepository.mockResolvedValue(repo);
   mocks.getWorkspaceUri.mockReturnValue(repo.rootUri);
   mocks.getGitChanges.mockResolvedValue({
-    changes: [{ relativePath: 'a.ts', absolutePath: '/repo/a.ts', isStaged: false, isUntracked: false, isDeleted: false }],
+    changes: [{ relativePath: 'a.ts', absolutePath: '/repo/a.ts', isUntracked: false }],
     useStaged: false,
   });
   mocks.getGitDiffContext.mockResolvedValue('');

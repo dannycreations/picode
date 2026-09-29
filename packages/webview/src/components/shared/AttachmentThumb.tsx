@@ -8,7 +8,7 @@ import type { Attachment } from '@pi-code/shared/core/types';
 
 export const AttachmentThumb: FC<Attachment> = (attachment) => {
   const isImage = attachment.kind === 'image';
-  const dataUrl = isImage ? (attachment as { kind: 'image'; dataUrl: string }).dataUrl : undefined;
+  const dataUrl = isImage ? attachment.dataUrl : undefined;
 
   return (
     <Tooltip content="Click to view">
