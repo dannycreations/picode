@@ -25,9 +25,18 @@ import { logger } from '@pi-code/shared/core/logger';
 import { HISTORY_SCOPES } from '@pi-code/shared/core/protocol';
 
 import type { ModelRuntime } from '@earendil-works/pi-coding-agent';
-import type { MessageHandlerContext } from '@pi-code/extension/structures/agent-webview/types';
+import type { Runtime } from '@pi-code/extension/structures/agent-runtime/runtime';
+import type { WorkspaceService } from '@pi-code/extension/structures/agent-webview/workspace';
 import type { ExtensionToWebviewMessage, HistoryItem, HistoryScope, WebviewToExtensionMessage } from '@pi-code/shared/core/protocol';
 import type { ChatMessage, StatsData } from '@pi-code/shared/core/types';
+
+export interface MessageHandlerContext {
+  readonly runtime: Runtime;
+  readonly workspace: WorkspaceService;
+
+  cwd: string;
+  historyEpoch: number;
+}
 
 type CommandHandler<T extends WebviewToExtensionMessage['type']> = (
   message: Extract<WebviewToExtensionMessage, { type: T }>,

@@ -8,9 +8,10 @@ import { dispatch } from '@pi-code/extension/structures/agent-webview/dispatcher
 import { WorkspaceService } from '@pi-code/extension/structures/agent-webview/workspace';
 import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
 import { COMMAND_IDS, DEFAULT_APP_ID } from '@pi-code/shared/core/constants';
+import { logger } from '@pi-code/shared/core/logger';
 
 import type { CancellationToken, ExtensionContext, Webview, WebviewView, WebviewViewProvider, WebviewViewResolveContext } from 'vscode';
-import type { MessageHandlerContext } from '@pi-code/extension/structures/agent-webview/types';
+import type { MessageHandlerContext } from '@pi-code/extension/structures/agent-webview/dispatcher';
 import type { ExtensionToWebviewMessage, WebviewToExtensionMessage } from '@pi-code/shared/core/protocol';
 import type { ToolArguments } from '@pi-code/shared/core/types';
 
@@ -63,6 +64,13 @@ function buildChatViewHtml(webview: Webview, extensionUri: Uri): string {
 export class ChatViewProvider implements WebviewViewProvider {
   public static readonly viewType = COMMAND_IDS.chatView;
 
+  private static postToWebview(webview: Webview | null, message: ExtensionToWebviewMessage): void {
+    const sent = webview?.postMessage(message);
+    if (sent) {
+      void Promise.resolve(sent).catch((err) => logger.error('Failed to post webview message:', err));
+    }
+  }
+
   private readonly workspace: WorkspaceService;
   private runtime: Runtime | null = null;
   private activeWebview: Webview | null = null;
@@ -75,7 +83,7 @@ export class ChatViewProvider implements WebviewViewProvider {
   // extension commands that run independently of any agent. Per-agent streaming
   // events travel through the Runtime Messenger instead.
   public postMessage(message: ExtensionToWebviewMessage): void {
-    void this.activeWebview?.postMessage(message);
+    ChatViewProvider.postToWebview(this.activeWebview, message);
   }
 
   public resolveWebviewView(webviewView: WebviewView, _context: WebviewViewResolveContext, _token: CancellationToken): void {
@@ -132,7 +140,7 @@ export class ChatViewProvider implements WebviewViewProvider {
       workspace.onDidChangeConfiguration((event) => {
         if (!event.affectsConfiguration(DEFAULT_APP_ID)) return;
         invalidateAppSettings();
-        void webview.postMessage({ type: 'settings_data', payload: { settings: readAppSettings() } });
+        ChatViewProvider.postToWebview(webview, { type: 'settings_data', payload: { settings: readAppSettings() } });
       }),
     );
 

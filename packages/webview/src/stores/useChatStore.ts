@@ -119,7 +119,6 @@ interface ChatState {
   readonly compact: () => void;
   readonly setSelectedModel: (id: string) => void;
   readonly setSelectedThinkingLevel: (level: ModelThinkingLevel | null) => void;
-  readonly syncSelectedThinkingLevel: (level: ModelThinkingLevel | null) => void;
   readonly getHistory: (scope: HistoryScope) => void;
   readonly deleteSessions: (paths: string[]) => void;
   readonly applyMessage: (msg: ExtensionToWebviewMessage) => void;
@@ -469,8 +468,6 @@ export const useChatStore = create<ChatState>((set, get) => {
       get().send({ type: 'set_model', model: { id: selectedModel, provider }, thinkingLevel: level ?? undefined });
     },
 
-    syncSelectedThinkingLevel: (level) => set({ selectedThinkingLevel: level }),
-
     getHistory: (scope) => {
       const fetched = get().fetchedScopes;
       if (fetched.has(scope)) return;
@@ -512,8 +509,9 @@ export const useChatStore = create<ChatState>((set, get) => {
 
     appendToInput: (text) => {
       const textarea = composerTextarea?.current;
+      // Before the composer mounts there is no caret to insert at, so append.
       if (!textarea) {
-        set((state) => ({ inputValue: state.inputValue ? `${state.inputValue}\n${text}` : text }));
+        set((state) => ({ inputValue: state.inputValue ? `${state.inputValue}${text}` : text }));
         return;
       }
 
@@ -549,6 +547,14 @@ export const useChatStore = create<ChatState>((set, get) => {
 });
 
 export const selectPendingQuestion = (state: ChatState): ChatMessage | undefined => findPendingQuestion(state.activeTask?.messages ?? []);
+
+// The level shown to the user, clamped to what the selected model supports.
+// The stored value is the raw preference, so a catalog refresh never has to
+// write back to the store to keep the display valid.
+export const selectThinkingLevel = (state: ChatState): ModelThinkingLevel | null => {
+  const levels = state.models.find((model) => model.id === state.selectedModel)?.thinkingLevels ?? [];
+  return resolveThinkingLevel(levels, state.selectedThinkingLevel);
+};
 
 if (typeof window !== 'undefined') {
   window.addEventListener('message', (event: MessageEvent) => {

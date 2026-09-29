@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildToolSections, getDiffStat, getFirstDiffLine, getToolHeaderMeta, GROUP_TOOLS } from '@pi-code/shared/utilities/tool';
+import { buildToolSections, getDiffStat, getFirstDiffLine, getToolFilePaths, getToolHeaderMeta, GROUP_TOOLS } from '@pi-code/shared/utilities/tool';
 
-import type { ChatMessage, ToolChatMessage } from '@pi-code/shared/core/types';
+import type { ToolChatMessage } from '@pi-code/shared/core/types';
 
-function mcpMessage(patch: Partial<ToolChatMessage>): ChatMessage {
+function mcpMessage(patch: Partial<ToolChatMessage>): ToolChatMessage {
   return { id: 't1', sender: 'tool', text: 'mcp', timestamp: 1_700_000_000_000, ...patch };
 }
 
@@ -114,5 +114,26 @@ describe('getDiffStat', () => {
   it('returns undefined for empty or missing diff', () => {
     expect(getDiffStat('')).toBeUndefined();
     expect(getDiffStat(undefined)).toBeUndefined();
+  });
+});
+
+describe('getToolFilePaths', () => {
+  it('prefers the files the result reported over the requested path', () => {
+    const message = mcpMessage({
+      toolName: 'read_file',
+      toolStatus: 'completed',
+      toolArgs: { path: 'requested.ts' },
+      files: [{ path: 'actual.ts', content: '' }],
+    });
+    expect(getToolFilePaths(message)).toEqual(['actual.ts']);
+  });
+
+  it('falls back to the requested path, then to the first requested file', () => {
+    expect(getToolFilePaths(mcpMessage({ toolArgs: { path: 'a.ts', files: [{ path: 'b.ts' }] } }))).toEqual(['a.ts']);
+    expect(getToolFilePaths(mcpMessage({ toolArgs: { files: [{ path: 'b.ts' }] } }))).toEqual(['b.ts']);
+  });
+
+  it('returns nothing when no path is available', () => {
+    expect(getToolFilePaths(mcpMessage({}))).toEqual([]);
   });
 });

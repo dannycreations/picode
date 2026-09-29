@@ -1,4 +1,4 @@
-import type { ChatMessage, ToolArguments, ToolChatMessage, ToolName, ToolSection, ToolStatus } from '@pi-code/shared/core/types';
+import type { ChatMessage, ToolChatMessage, ToolName, ToolSection, ToolStatus } from '@pi-code/shared/core/types';
 
 interface ToolMeta {
   readonly fileIcon: string;
@@ -117,14 +117,16 @@ function toolMeta(toolName?: string): ToolMeta {
   return meta ?? DEFAULT_TOOL_META;
 }
 
-function getToolFilePath(toolArgs?: ToolArguments): string | undefined {
-  if (!toolArgs) return undefined;
-  if ('path' in toolArgs && typeof toolArgs.path === 'string') return toolArgs.path;
-  if ('files' in toolArgs && Array.isArray(toolArgs.files)) {
-    const first = toolArgs.files[0];
-    if (first && typeof first.path === 'string') return first.path;
-  }
-  return undefined;
+export function getToolFilePaths(message: ToolChatMessage): readonly string[] {
+  const resultPaths = (message.files ?? []).map((file) => file.path).filter((path): path is string => Boolean(path));
+  if (resultPaths.length > 0) return resultPaths;
+
+  const args = message.toolArgs;
+  if (!args) return [];
+  if ('path' in args && typeof args.path === 'string' && args.path) return [args.path];
+
+  const requested = 'files' in args && Array.isArray(args.files) ? args.files[0] : undefined;
+  return requested && typeof requested.path === 'string' ? [requested.path] : [];
 }
 
 function commandSection(message: ToolChatMessage): ToolSection[] {
@@ -196,7 +198,7 @@ function fileToolSections(message: ToolChatMessage): ToolSection[] {
     }));
   }
 
-  const path = getToolFilePath(message.toolArgs);
+  const [path] = getToolFilePaths(message);
   if (path || message.diff) {
     return [{ title: path ?? 'File', content: message.diff, language: toolMeta(message.toolName).language, openPath: path }];
   }

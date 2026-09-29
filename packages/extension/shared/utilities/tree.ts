@@ -1,6 +1,6 @@
 import { pathCollator } from '@pi-code/shared/utilities/common';
 
-export interface FileTreeNode {
+interface FileTreeNode {
   readonly name: string;
   isDir: boolean;
   readonly children: Map<string, FileTreeNode>;

@@ -1,3 +1,5 @@
+import { getToolFilePaths } from '@pi-code/shared/utilities/tool';
+
 import type { AppSettings, SettingKey } from '@pi-code/shared/core/settings';
 import type { ToolChatMessage } from '@pi-code/shared/core/types';
 
@@ -57,22 +59,6 @@ interface ToolPatternConfig {
   readonly denyKey: SettingKey;
 }
 
-function extractToolPaths(message: ToolChatMessage): readonly string[] {
-  const paths: string[] = [];
-
-  if (message.files && message.files.length > 0) {
-    for (const file of message.files) {
-      if (file.path) paths.push(file.path);
-    }
-    if (paths.length > 0) return paths;
-  }
-
-  const args = message.toolArgs;
-  if (args && 'path' in args && typeof args.path === 'string' && args.path) paths.push(args.path);
-
-  return paths;
-}
-
 export function extractPathPatterns(filePath: string): readonly string[] {
   const normalized = filePath.trim().replace(/\\/g, '/').replace(/\/+$/, '');
   if (!normalized) return [];
@@ -108,7 +94,7 @@ export function getToolPatternConfig(message: ToolChatMessage, settings: AppSett
   const keys = PATH_TOOL_KEYS[message.toolName ?? ''];
   if (!keys) return null;
 
-  const paths = [...extractToolPaths(message)];
+  const paths = [...getToolFilePaths(message)];
   for (const section of message.toolSections ?? []) {
     if (section.openPath) paths.push(section.openPath);
   }

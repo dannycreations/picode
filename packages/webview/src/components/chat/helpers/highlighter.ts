@@ -4,7 +4,7 @@ import { logger } from '@pi-code/shared/core/logger';
 
 import type { BundledLanguage, Highlighter } from 'shiki';
 
-export type ExtendedLanguage = BundledLanguage | 'txt';
+type ExtendedLanguage = BundledLanguage | 'txt';
 
 const warnedLanguages = new Set<string>();
 

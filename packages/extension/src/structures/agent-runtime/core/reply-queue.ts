@@ -36,8 +36,7 @@ export class ReplyQueue {
   }
 
   public clear(): void {
-    this.messages = [];
-    this.onChange(this.messages);
+    this.retain([]);
   }
 
   // Keeps only undelivered entries after a steering pass; delivered ones are

@@ -4,7 +4,7 @@ import { Type } from 'typebox';
 
 import { readOutputLimits } from '@pi-code/extension/core/settings';
 import { runFileMutation, toolError } from '@pi-code/extension/structures/tool-call/helpers';
-import { checkReadableFile, pathExists, writeFileAtomic } from '@pi-code/extension/utilities/fs';
+import { checkReadableFile, writeFileAtomic } from '@pi-code/extension/utilities/fs';
 import { buildFileChangeResult } from '@pi-code/extension/utilities/truncate';
 import { escapeRegExp, findOccurrences } from '@pi-code/shared/utilities/common';
 
@@ -152,7 +152,7 @@ export const editFileTool = defineTool({
           return toolError(`Error: \`path\` already exists: ${path}. Use a non-empty \`search\` to modify it.`);
         }
         originalContent = await readFile(resolvedPath, 'utf8');
-      } else if (search !== '' || (await pathExists(resolvedPath))) {
+      } else if (search !== '' || !check.missing) {
         // A present-but-unreadable file must never fall through to creation,
         // which would overwrite it with `replace`.
         return toolError(`${check.body} Use \`write_file\` to overwrite this file, or \`read_file\` with \`ranges\` to inspect a portion.`);

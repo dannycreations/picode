@@ -165,7 +165,7 @@ export async function walkWorkspace(
 
       if (repo) {
         if (ignoredPaths?.has(childUri.fsPath)) continue;
-      } else if (excludeIgnoredFiles && localIgnores.length > 0) {
+      } else if (localIgnores.length > 0) {
         if (isIgnoredByLocalRules(childRelative, child.isDir, localIgnores)) continue;
       }
 

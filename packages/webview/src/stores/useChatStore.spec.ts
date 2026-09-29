@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { useChatStore } from '@pi-code/webview/stores/useChatStore';
+import { selectThinkingLevel, useChatStore } from '@pi-code/webview/stores/useChatStore';
 
-import type { ExtensionToWebviewMessage } from '@pi-code/shared/core/protocol';
+import type { ExtensionToWebviewMessage, ModelItem } from '@pi-code/shared/core/protocol';
 import type { StatsData } from '@pi-code/shared/core/types';
 
 const stats = (contextTokens: number): StatsData => ({
@@ -60,5 +60,28 @@ describe('useChatStore compaction', () => {
 
     const messages = useChatStore.getState().activeTask?.messages ?? [];
     expect(messages).toEqual([{ id: 'cmp-1', sender: 'compaction', text: 'Earlier work summary', cost: undefined, timestamp: expect.any(Number) }]);
+  });
+});
+
+const model = (id: string, thinkingLevels: ModelItem['thinkingLevels']): ModelItem => ({
+  id,
+  name: id,
+  provider: 'test',
+  thinkingLevels,
+});
+
+describe('selectThinkingLevel', () => {
+  beforeEach(() => {
+    useChatStore.setState({ models: [model('fast', ['off', 'low']), model('deep', ['high'])], selectedModel: 'deep', selectedThinkingLevel: 'low' });
+  });
+
+  it('clamps a stored level the selected model does not support', () => {
+    // "low" is supported by `fast` only, so the deep model falls back.
+    expect(selectThinkingLevel(useChatStore.getState())).toBe('high');
+  });
+
+  it('keeps a stored level the selected model supports', () => {
+    useChatStore.setState({ selectedThinkingLevel: 'high' });
+    expect(selectThinkingLevel(useChatStore.getState())).toBe('high');
   });
 });

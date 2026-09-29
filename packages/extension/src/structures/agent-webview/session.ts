@@ -8,6 +8,7 @@ import { getDefaultModelSelection, getSettingsManager, readAppSettings } from '@
 import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { collectCommands } from '@pi-code/extension/structures/chat-command/command';
 import { convertSessionEntries, loadSessionTranscript } from '@pi-code/extension/structures/chat-session/session';
+import { mapConcurrent } from '@pi-code/extension/utilities/common';
 import { streamLines } from '@pi-code/extension/utilities/fs';
 import { logger, readEnvLevel } from '@pi-code/shared/core/logger';
 import { resolveContextLimit } from '@pi-code/shared/utilities/common';
@@ -236,17 +237,7 @@ export async function* streamHistory(cwd: string, scope: HistoryScope): AsyncGen
   ).filter((meta): meta is { path: string; mtime: number } => meta !== null);
   metas.sort((a, b) => b.mtime - a.mtime);
 
-  const previews = new Array<HistoryItem | null>(metas.length);
-  let cursor = 0;
-  await Promise.all(
-    Array.from({ length: Math.min(HISTORY_PREVIEW_CONCURRENCY, metas.length) }, async () => {
-      while (true) {
-        const index = cursor++;
-        if (index >= metas.length) return;
-        previews[index] = await readSessionPreview(metas[index].path, metas[index].mtime);
-      }
-    }),
-  );
+  const previews = await mapConcurrent(metas, HISTORY_PREVIEW_CONCURRENCY, undefined, (meta) => readSessionPreview(meta.path, meta.mtime));
 
   let chunk: HistoryItem[] = [];
   for (const preview of previews) {

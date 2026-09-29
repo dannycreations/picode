@@ -126,27 +126,30 @@ export async function searchWorkspaceFiles(query: string, cwd: string): Promise<
 const MEGABYTE = 1024 * 1024;
 const MAX_FILE_SIZE_BYTES = 10 * MEGABYTE;
 
-export async function checkReadableFile(path: string): Promise<{ ok: true } | { ok: false; body: string }> {
+export type ReadableFileCheck = { ok: true } | { ok: false; body: string; missing: boolean };
+
+export async function checkReadableFile(path: string): Promise<ReadableFileCheck> {
   try {
     const fileStat = await stat(path);
     if (!fileStat.isFile()) {
-      return { ok: false, body: `Error: "${path}" is not a regular file.` };
+      return { ok: false, missing: false, body: `Error: "${path}" is not a regular file.` };
     }
     if (fileStat.size > MAX_FILE_SIZE_BYTES) {
       return {
         ok: false,
+        missing: false,
         body: `Error: ${path} exceeds the ${MAX_FILE_SIZE_BYTES / MEGABYTE} MB size limit (${(fileStat.size / MEGABYTE).toFixed(2)} MB).`,
       };
     }
     if (await isBinaryFile(path)) {
-      return { ok: false, body: `Error: ${path} is binary and cannot be read as text.` };
+      return { ok: false, missing: false, body: `Error: ${path} is binary and cannot be read as text.` };
     }
     return { ok: true };
   } catch (err) {
     // A missing file is an expected, non-error outcome for callers that probe
     // existence, so report it as not-found instead of throwing.
     if (isEnoent(err)) {
-      return { ok: false, body: `Error: "${path}" does not exist.` };
+      return { ok: false, missing: true, body: `Error: "${path}" does not exist.` };
     }
     throw err;
   }
@@ -156,18 +159,6 @@ export async function checkReadableFile(path: string): Promise<{ ok: true } | { 
 // expected rather than as a failure.
 export function isEnoent(err: unknown): boolean {
   return (err as NodeJS.ErrnoException)?.code === 'ENOENT';
-}
-
-export async function pathExists(path: string): Promise<boolean> {
-  try {
-    await stat(path);
-    return true;
-  } catch (err) {
-    if (isEnoent(err)) {
-      return false;
-    }
-    throw err;
-  }
 }
 
 export async function writeFileAtomic(filePath: string, content: string): Promise<void> {

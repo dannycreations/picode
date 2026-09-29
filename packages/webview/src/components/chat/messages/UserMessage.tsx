@@ -19,7 +19,7 @@ interface TokenizedTextProps {
   readonly search?: SearchContext;
 }
 
-export const TokenizedText: FC<TokenizedTextProps> = ({ text, commands, search }) => {
+const TokenizedText: FC<TokenizedTextProps> = ({ text, commands, search }) => {
   const body = text.trim();
 
   if (search) {
