@@ -16,7 +16,7 @@ import { resolveContextLimit } from '@pi-code/shared/utilities/common';
 import type { Api, Model, TextContent } from '@earendil-works/pi-ai';
 import type { AgentSessionServices, ModelRuntime } from '@earendil-works/pi-coding-agent';
 import type { ExtensionToWebviewMessage, HistoryItem, HistoryScope, ModelItem } from '@pi-code/shared/core/protocol';
-import type { ChatMessage, ModelThinkingLevel, StatsData } from '@pi-code/shared/core/types';
+import type { ChatMessage, StatsData } from '@pi-code/shared/core/types';
 
 type SessionInitData = Extract<ExtensionToWebviewMessage, { type: 'init_data' }>['payload'];
 
@@ -31,13 +31,6 @@ const HISTORY_PREVIEW_CONCURRENCY = 6;
 
 const CATALOG_TIMEOUT_MS = 60_000;
 
-function resolveThinkingLevels(model: Model<Api>): ModelThinkingLevel[] {
-  if (!model.reasoning) return [];
-
-  const map = model.thinkingLevelMap;
-  return map ? (Object.keys(map) as ModelThinkingLevel[]).filter((level) => map[level] !== null) : getSupportedThinkingLevels(model);
-}
-
 async function listSelectableModels(modelRuntime: ModelRuntime): Promise<ModelItem[]> {
   const available = await modelRuntime.getAvailable();
   const models = available.length > 0 ? available : modelRuntime.getModels();
@@ -47,12 +40,12 @@ async function listSelectableModels(modelRuntime: ModelRuntime): Promise<ModelIt
     provider: model.provider,
     contextWindow: model.contextWindow,
     supportsImages: model.input.includes('image'),
-    thinkingLevels: resolveThinkingLevels(model),
+    thinkingLevels: getSupportedThinkingLevels(model),
   }));
 }
 
 function resolveDefaultModelId(models: ModelItem[], preferred: { id?: string; provider?: string }): string | undefined {
-  if (preferred.id && models.some((model) => model.id === preferred.id)) return preferred.id;
+  if (preferred.id) return preferred.id;
   if (preferred.provider) {
     const sameProvider = models.find((model) => model.provider === preferred.provider);
     if (sameProvider) return sameProvider.id;

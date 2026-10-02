@@ -103,6 +103,7 @@ interface ChatState {
   readonly models: ModelItem[];
   readonly settings: AppSettings | null;
   readonly commands: CommandItem[];
+  readonly defaultModel: string | undefined;
   readonly selectedModel: string;
   readonly selectedThinkingLevel: ModelThinkingLevel | null;
   readonly scope: HistoryScope;
@@ -373,6 +374,7 @@ export const useChatStore = create<ChatState>((set, get) => {
         models,
         settings: settings ?? null,
         commands: commands ?? [],
+        defaultModel: default_model,
         selectedModel: default_model || models[0]?.id || DEFAULT_APP_ID,
         selectedThinkingLevel: default_thinking_level ?? null,
         fetchedScopes: new Set<HistoryScope>(['current']),
@@ -383,7 +385,14 @@ export const useChatStore = create<ChatState>((set, get) => {
       set({ commands: msg.payload.commands });
     },
     models_data: (msg) => {
-      set({ models: msg.payload.models });
+      const models = msg.payload.models;
+      const { defaultModel, selectedModel, selectedThinkingLevel } = get();
+      const next = models.find((model) => model.id === selectedModel) ?? models.find((model) => model.id === defaultModel) ?? models[0];
+      set({
+        models,
+        selectedModel: next?.id ?? DEFAULT_APP_ID,
+        selectedThinkingLevel: resolveThinkingLevel(next?.thinkingLevels ?? [], selectedThinkingLevel),
+      });
     },
     settings_data: (msg) => {
       set({ settings: msg.payload.settings });
@@ -426,6 +435,7 @@ export const useChatStore = create<ChatState>((set, get) => {
     models: [],
     settings: null,
     commands: [],
+    defaultModel: undefined,
     selectedModel: DEFAULT_APP_ID,
     selectedThinkingLevel: null,
     scope: 'current',

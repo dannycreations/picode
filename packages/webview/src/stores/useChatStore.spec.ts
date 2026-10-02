@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { coerceSetting, SETTING_KEYS } from '@pi-code/shared/core/settings';
 import { selectThinkingLevel, useChatStore } from '@pi-code/webview/stores/useChatStore';
 
 import type { ExtensionToWebviewMessage, ModelItem } from '@pi-code/shared/core/protocol';
+import type { AppSettings } from '@pi-code/shared/core/settings';
 import type { StatsData } from '@pi-code/shared/core/types';
 
 const stats = (contextTokens: number): StatsData => ({
@@ -92,6 +94,50 @@ describe('memoized chat chrome', () => {
     expect(after.setSelectedModel).toBe(before.setSelectedModel);
     expect(after.setSelectedThinkingLevel).toBe(before.setSelectedThinkingLevel);
     expect(selectThinkingLevel(after)).toBe(selectThinkingLevel(before));
+  });
+});
+
+describe('model catalog refresh', () => {
+  // init_data requires a full settings snapshot; the defaults keep it irrelevant here.
+  const settings = Object.fromEntries(SETTING_KEYS.map((key) => [key, coerceSetting(key, undefined)])) as AppSettings;
+  const initData = (models: ModelItem[], defaultModel?: string): ExtensionToWebviewMessage => ({
+    type: 'init_data',
+    payload: { models, default_model: defaultModel, settings, commands: [] },
+  });
+
+  beforeEach(() => {
+    useChatStore.setState({ models: [], defaultModel: undefined, selectedModel: '', selectedThinkingLevel: null });
+  });
+
+  it('lands on the persisted default once the refreshed catalog carries it', () => {
+    // init_data kept the persisted id even though the local catalog had no zen
+    // models. models_data is the first list that can actually serve it.
+    apply([initData([model('claude-opus-4-8', ['high'])], 'stealth-alpha')]);
+    expect(useChatStore.getState().selectedModel).toBe('stealth-alpha');
+
+    apply([{ type: 'models_data', payload: { models: [model('claude-opus-4-8', ['high']), model('stealth-alpha', ['low', 'high'])] } }]);
+    expect(useChatStore.getState().selectedModel).toBe('stealth-alpha');
+  });
+
+  it('keeps a selection that the refreshed catalog still offers', () => {
+    apply([initData([model('claude-opus-4-8', ['high'])], 'claude-opus-4-8')]);
+    apply([{ type: 'models_data', payload: { models: [model('claude-opus-4-8', ['high']), model('stealth-alpha', ['low'])] } }]);
+    expect(useChatStore.getState().selectedModel).toBe('claude-opus-4-8');
+  });
+
+  it('falls back to the refreshed default when the selection is gone and none was persisted', () => {
+    apply([initData([], undefined)]);
+    apply([{ type: 'models_data', payload: { models: [model('claude-opus-4-8', ['high'])] } }]);
+    expect(useChatStore.getState().selectedModel).toBe('claude-opus-4-8');
+  });
+
+  it('clamps the thinking level to the re-resolved model', () => {
+    apply([initData([model('claude-opus-4-8', ['high'])], 'stealth-alpha')]);
+    useChatStore.setState({ selectedThinkingLevel: 'high' });
+
+    apply([{ type: 'models_data', payload: { models: [model('claude-opus-4-8', ['high']), model('stealth-alpha', ['off', 'low'])] } }]);
+    expect(useChatStore.getState().selectedModel).toBe('stealth-alpha');
+    expect(useChatStore.getState().selectedThinkingLevel).toBe('low');
   });
 });
 

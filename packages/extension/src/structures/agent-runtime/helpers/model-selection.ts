@@ -31,6 +31,8 @@ export async function applyPersistedModelAndThinking(session: AgentSession): Pro
       } catch (err) {
         logger.warn(`Could not apply persisted model ${provider}/${modelId}:`, err);
       }
+    } else {
+      logger.debug(`Persisted model ${provider}/${modelId} is not in the catalog yet; keeping ${session.model?.provider}/${session.model?.id}.`);
     }
   }
 
