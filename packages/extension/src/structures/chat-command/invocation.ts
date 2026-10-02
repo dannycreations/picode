@@ -1,7 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { parseCommandArgs, substituteArgs } from '@earendil-works/pi-agent-core';
-import { stripFrontmatter } from '@earendil-works/pi-coding-agent';
+import { parseCommandArgs, stripFrontmatter, substituteArgs } from '@earendil-works/pi-coding-agent';
 
 import { appendHiddenMessage } from '@pi-code/extension/structures/agent-runtime/helpers/agent-message';
 import { logger } from '@pi-code/shared/core/logger';

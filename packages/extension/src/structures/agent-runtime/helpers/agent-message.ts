@@ -1,9 +1,8 @@
 import { parseAttachments } from '@pi-code/extension/utilities/codec';
 import { wrapCodeBlock } from '@pi-code/shared/utilities/markdown';
 
-import type { CustomMessage } from '@earendil-works/pi-agent-core';
 import type { Message } from '@earendil-works/pi-ai';
-import type { AgentSession } from '@earendil-works/pi-coding-agent';
+import type { AgentSession, CustomMessage } from '@earendil-works/pi-coding-agent';
 import type { ExpandedMentions } from '@pi-code/extension/structures/chat-command/mention';
 import type { Attachment } from '@pi-code/shared/core/types';
 

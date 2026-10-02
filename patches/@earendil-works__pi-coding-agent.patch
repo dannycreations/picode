@@ -1,21 +1,21 @@
 diff --git a/dist/core/agent-session.d.ts b/dist/core/agent-session.d.ts
-index 5620ac3..4d0560d 100644
+index 0ff6862..c3191b9 100644
 --- a/dist/core/agent-session.d.ts
 +++ b/dist/core/agent-session.d.ts
-@@ -414,7 +414,7 @@ export declare class AgentSession {
+@@ -502,7 +502,7 @@ export declare class AgentSession {
       * @throws Error if streaming and no streamingBehavior specified
       * @throws Error if no model selected or no API key available (when not streaming)
       */
 -    prompt(text: string, options?: PromptOptions): Promise<void>;
 +    prompt(text: string | null, options?: PromptOptions): Promise<void>;
-     private _tryExecuteExtensionCommand;
      /**
-      * Expand skill commands (/skill:name args) to their full content.
+      * Try to execute an extension command. Returns true if command was found and executed.
+      */
 diff --git a/dist/core/agent-session.js b/dist/core/agent-session.js
-index 36fdb31..7cfd787 100644
+index 1da213f..9715add 100644
 --- a/dist/core/agent-session.js
 +++ b/dist/core/agent-session.js
-@@ -1209,6 +1209,8 @@ export class AgentSession {
+@@ -1483,6 +1483,8 @@ export class AgentSession {
              this._deferredSettledActions.push(async () => await this.prompt(text, options));
              return;
          }
@@ -23,43 +23,44 @@ index 36fdb31..7cfd787 100644
 +        if (isTriggerTurn) text = '';
          const expandPromptTemplates = options?.expandPromptTemplates ?? true;
          const preflightResult = options?.preflightResult;
-         let messages;
-@@ -1328,7 +1330,7 @@ export class AgentSession {
-             return;
-         }
-         preflightResult?.(true);
+         // Handle extension commands first (execute immediately, even during streaming)
+@@ -1592,7 +1594,7 @@ export class AgentSession {
+         if (updateMessage)
+             messages.unshift(updateMessage);
+         preflightResult?.("started");
 -        await this._runAgentPrompt(messages);
 +        await this._runAgentPrompt(isTriggerTurn ? [] : messages);
      }
      /**
       * Try to execute an extension command. Returns true if command was found and executed.
 diff --git a/dist/index.d.ts b/dist/index.d.ts
-index 52dcaaf..54ed2de 100644
+index eda1c08..cf0e23d 100644
 --- a/dist/index.d.ts
 +++ b/dist/index.d.ts
-@@ -34,4 +34,9 @@ export { convertToPng } from "./utils/image-convert.ts";
+@@ -41,4 +41,10 @@ export { convertToPng } from "./utils/image-convert.ts";
  export { formatDimensionNote, type ResizedImage, resizeImage } from "./utils/image-resize.ts";
  export { detectSupportedImageMimeTypeFromFile } from "./utils/mime.ts";
  export { getPowerShellConfig, getShellConfig } from "./utils/shell.ts";
++export type { CustomMessage } from "./core/messages.ts";
 +export { stripAnsi } from "./utils/ansi.ts";
 +export { detectLineEnding, normalizeToLF, restoreLineEndings } from "./core/tools/edit-diff.ts";
-+export { resolvePath, getCwdRelativePath } from "./utils/paths.ts";
-+export { formatPathRelativeToCwdOrAbsolute } from "./utils/paths.ts";
++export { resolvePath, getCwdRelativePath, formatPathRelativeToCwdOrAbsolute } from "./utils/paths.ts";
 +export { killProcessTree, trackDetachedChildPid, untrackDetachedChildPid } from "./utils/shell.ts";
++export { parseCommandArgs, substituteArgs } from "./core/prompt-templates.ts";
  //# sourceMappingURL=index.d.ts.map
 \ No newline at end of file
 diff --git a/dist/index.js b/dist/index.js
-index d833966..69d3a43 100644
+index c48934f..8d8aa77 100644
 --- a/dist/index.js
 +++ b/dist/index.js
-@@ -45,4 +45,9 @@ export { formatDimensionNote, resizeImage } from "./utils/image-resize.js";
+@@ -50,4 +50,9 @@ export { formatDimensionNote, resizeImage } from "./utils/image-resize.js";
  export { detectSupportedImageMimeTypeFromFile } from "./utils/mime.js";
  // Shell utilities
  export { getPowerShellConfig, getShellConfig } from "./utils/shell.js";
 +export { stripAnsi } from "./utils/ansi.js";
 +export { detectLineEnding, normalizeToLF, restoreLineEndings } from "./core/tools/edit-diff.js";
-+export { resolvePath, getCwdRelativePath } from "./utils/paths.js";
-+export { formatPathRelativeToCwdOrAbsolute } from "./utils/paths.js";
++export { resolvePath, getCwdRelativePath, formatPathRelativeToCwdOrAbsolute } from "./utils/paths.js";
 +export { killProcessTree, trackDetachedChildPid, untrackDetachedChildPid } from "./utils/shell.js";
++export { parseCommandArgs, substituteArgs } from "./core/prompt-templates.js";
  //# sourceMappingURL=index.js.map
 \ No newline at end of file
