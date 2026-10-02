@@ -19,19 +19,17 @@ import type { FC } from 'react';
 import type { AppSettings } from '@pi-code/shared/core/settings';
 import type { ToolChatMessage, ToolSection } from '@pi-code/shared/core/types';
 
-interface ToolMessageProps {
-  readonly message: ToolChatMessage;
-  readonly onRespondTool: (msgId: string, approved: boolean) => void;
+interface ElapsedTimerProps {
+  readonly startTs: number;
+  readonly isRunning: boolean;
+  readonly duration?: number;
+  readonly revealOnHover?: boolean;
 }
 
-const ElapsedTimer: FC<{ startTs: number; isRunning: boolean; isActive: boolean; duration?: number; revealOnHover?: boolean }> = ({
-  startTs,
-  isRunning,
-  isActive,
-  duration,
-  revealOnHover,
-}) => {
-  const elapsed = useElapsedSeconds(startTs, isActive && duration === undefined);
+const ElapsedTimer: FC<ElapsedTimerProps> = ({ startTs, isRunning, duration, revealOnHover }) => {
+  // A tool that reported its own duration shows that; otherwise the live
+  // counter runs only while the call is still going.
+  const elapsed = useElapsedSeconds(startTs, isRunning && duration === undefined);
   const displaySeconds = duration !== undefined ? duration : elapsed;
   return (
     <span
@@ -149,7 +147,7 @@ const ToolSection: FC<ToolSectionProps> = ({
             </span>
           </div>
         ) : showTimer ? (
-          <ElapsedTimer startTs={startTs} isActive={isRunning} isRunning={isRunning} duration={duration} revealOnHover={revealTimerOnHover} />
+          <ElapsedTimer startTs={startTs} isRunning={isRunning} duration={duration} revealOnHover={revealTimerOnHover} />
         ) : null}
       </div>
 
@@ -167,6 +165,11 @@ const ToolSection: FC<ToolSectionProps> = ({
 function appendElapsed(subtitle: string | undefined, duration: number): string {
   const elapsed = formatDuration(duration);
   return subtitle ? `${subtitle} · ${elapsed}` : elapsed;
+}
+
+interface ToolMessageProps {
+  readonly message: ToolChatMessage;
+  readonly onRespondTool: (msgId: string, approved: boolean) => void;
 }
 
 export const ToolMessage: FC<ToolMessageProps> = ({ message, onRespondTool }) => {

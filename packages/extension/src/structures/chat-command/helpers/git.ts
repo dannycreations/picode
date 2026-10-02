@@ -60,13 +60,9 @@ export async function searchCommits(query: string, cwd: string): Promise<CommitI
   }
 }
 
-function fitToLimits(text: string, limits: OutputLimits): string {
-  return truncateOutput(text, { limits, keep: 'head' }).text;
-}
-
 async function commitBody(token: string, root: string, limits: OutputLimits): Promise<string> {
   const show = await execGit(root, ['show', '--no-color', '--stat', '--patch', token]);
-  return fitToLimits(show, limits).trim();
+  return truncateOutput(show, { limits, keep: 'head' }).text.trim();
 }
 
 async function workingChangesBody(root: string, limits: OutputLimits): Promise<string> {
@@ -75,7 +71,15 @@ async function workingChangesBody(root: string, limits: OutputLimits): Promise<s
     execGit(root, ['status', '--short']),
     execGit(root, ['diff', '--no-color', 'HEAD']).catch((err) => `Unavailable: ${formatThrownValue(err)}`),
   ]);
-  return ['Status:', '', status.trim() || '(clean)', '', 'Diff vs HEAD:', '', fitToLimits(diff, limits).trim() || '(no diff)'].join('\n');
+  return [
+    'Status:',
+    '',
+    status.trim() || '(clean)',
+    '',
+    'Diff vs HEAD:',
+    '',
+    truncateOutput(diff, { limits, keep: 'head' }).text.trim() || '(no diff)',
+  ].join('\n');
 }
 
 export async function resolveCommitTag(token: string, cwd: string, limits: OutputLimits): Promise<string | null> {

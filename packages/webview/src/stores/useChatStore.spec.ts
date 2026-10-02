@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { coerceSetting, SETTING_KEYS } from '@pi-code/shared/core/settings';
-import { selectThinkingLevel, useChatStore } from '@pi-code/webview/stores/useChatStore';
+import { selectThinkingLevel, setComposerTextarea, useChatStore } from '@pi-code/webview/stores/useChatStore';
 
 import type { ExtensionToWebviewMessage, ModelItem, ModelSelection } from '@pi-code/shared/core/protocol';
 import type { AppSettings } from '@pi-code/shared/core/settings';
@@ -203,5 +203,39 @@ describe('selectThinkingLevel', () => {
   it('keeps a stored level the selected model supports', () => {
     useChatStore.setState({ selectedThinkingLevel: 'high' });
     expect(selectThinkingLevel(useChatStore.getState())).toBe('high');
+  });
+});
+
+describe('appendToInput', () => {
+  // The composer reads its caret from a real textarea, so the range has to be
+  // one the store can read synchronously.
+  const withSelection = (start: number, end: number) => {
+    const textarea = { selectionStart: start, selectionEnd: end, focus: vi.fn(), setSelectionRange: vi.fn() };
+    setComposerTextarea({ current: textarea } as never);
+    return textarea;
+  };
+
+  afterEach(() => setComposerTextarea(null));
+
+  it('replaces the selected range instead of duplicating it', () => {
+    // Inserting over a selection used to write at the caret and leave the
+    // selected text in place, so the composer's contents doubled up.
+    withSelection(5, 12);
+    useChatStore.setState({ inputValue: 'keep REPLACE keep' });
+    useChatStore.getState().appendToInput('X');
+    expect(useChatStore.getState().inputValue).toBe('keep X keep');
+  });
+
+  it('inserts at the caret when nothing is selected', () => {
+    withSelection(3, 3);
+    useChatStore.setState({ inputValue: 'abcdef' });
+    useChatStore.getState().appendToInput('X');
+    expect(useChatStore.getState().inputValue).toBe('abcXdef');
+  });
+
+  it('appends when the composer has not mounted yet', () => {
+    useChatStore.setState({ inputValue: 'existing' });
+    useChatStore.getState().appendToInput(' more');
+    expect(useChatStore.getState().inputValue).toBe('existing more');
   });
 });

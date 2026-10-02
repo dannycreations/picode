@@ -5,17 +5,16 @@ import { Type } from 'typebox';
 import { readAppSettings, readOutputLimits } from '@pi-code/extension/core/settings';
 import { toolError, toolErrorFrom, toolResult } from '@pi-code/extension/structures/tool-call/helpers';
 import { mapConcurrent } from '@pi-code/extension/utilities/common';
-import { checkReadableFile, hasRanges } from '@pi-code/extension/utilities/fs';
+import { checkReadableFile, hasRanges, parseNumberedLine } from '@pi-code/extension/utilities/fs';
 import { readNumberedText, shareOutputLimits } from '@pi-code/extension/utilities/truncate';
 
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
 import type { LineRange, ToolName } from '@pi-code/shared/core/types';
 
 function nextLineAfter(text: string): number | undefined {
-  const lastBreak = text.lastIndexOf('\n');
-  const lastLine = lastBreak === -1 ? text : text.slice(lastBreak + 1);
-  const match = /^(\d+)\|/.exec(lastLine);
-  return match ? Number(match[1]) + 1 : undefined;
+  // The last numbered line tells the model where to resume after truncation.
+  const lastLine = parseNumberedLine(text);
+  return lastLine === undefined ? undefined : lastLine + 1;
 }
 
 interface FileRequest {

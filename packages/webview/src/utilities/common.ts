@@ -33,7 +33,7 @@ export function formatTimeAgo(ts: number): string {
     }
   }
 
-  return TIME_AGO.format(diffSeconds, 'second');
+  return 'Just now';
 }
 
 export function formatDuration(totalSeconds: number): string {
@@ -41,6 +41,10 @@ export function formatDuration(totalSeconds: number): string {
   const minutes = Math.floor(safe / 60);
   const seconds = safe % 60;
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+export function formatCost(cost: number): string {
+  return `$${cost.toFixed(4)}`;
 }
 
 export function readFileAsDataUrl(file: File): Promise<string> {

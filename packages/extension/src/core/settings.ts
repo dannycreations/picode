@@ -1,6 +1,7 @@
 import { getAgentDir, SettingsManager } from '@earendil-works/pi-coding-agent';
 import { ConfigurationTarget, workspace } from 'vscode';
 
+import { BYTES_PER_KILOBYTE } from '@pi-code/extension/utilities/truncate';
 import { isProjectTrusted } from '@pi-code/extension/utilities/vscode';
 import { DEFAULT_APP_ID } from '@pi-code/shared/core/constants';
 import { parseModelSelection } from '@pi-code/shared/core/protocol';
@@ -10,8 +11,6 @@ import type { WorkspaceConfiguration } from 'vscode';
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
 import type { ModelSelection } from '@pi-code/shared/core/protocol';
 import type { AppSettings } from '@pi-code/shared/core/settings';
-
-const BYTES_PER_KILOBYTE = 1024;
 
 // VS Code settings are read from the editor on demand and only change in
 // response to `onDidChangeConfiguration`, so the snapshot is memoized and invalidated

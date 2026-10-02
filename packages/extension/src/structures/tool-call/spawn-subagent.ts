@@ -1,7 +1,4 @@
-import { writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { formatThrownValue, StringEnum, uuidv7 } from '@earendil-works/pi-ai';
+import { formatThrownValue, StringEnum } from '@earendil-works/pi-ai';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
@@ -15,8 +12,7 @@ import {
   SUBAGENT_FORWARDED_EVENTS,
 } from '@pi-code/extension/structures/agent-runtime/subagent';
 import { toolError, toolResult } from '@pi-code/extension/structures/tool-call/helpers';
-import { renderTruncatedText, truncateOutput } from '@pi-code/extension/utilities/truncate';
-import { logger } from '@pi-code/shared/core/logger';
+import { renderTruncatedText, spillToTempLog, truncateOutput } from '@pi-code/extension/utilities/truncate';
 
 import type { SubagentOutcome, SubagentUsage } from '@pi-code/extension/structures/agent-runtime/subagent';
 import type { CustomToolResult } from '@pi-code/extension/types/extension';
@@ -61,13 +57,7 @@ async function renderOutcome(outcome: SubagentOutcome, state: 'completed' | 'err
   let tempFilePath: string | undefined;
 
   if (truncation.truncated) {
-    try {
-      tempFilePath = join(tmpdir(), `pi-code-subagent-${Date.now()}-${uuidv7().slice(0, 8)}.log`);
-      await writeFile(tempFilePath, outcome.text, 'utf8');
-    } catch (err) {
-      logger.warn('Failed to write sub-agent output to temp file:', err);
-      tempFilePath = undefined;
-    }
+    tempFilePath = await spillToTempLog('subagent', outcome.text);
 
     const resolution = tempFilePath
       ? `Full output saved to: "${tempFilePath}". Read this file with \`read_file\` to inspect the rest.`

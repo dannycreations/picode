@@ -4,6 +4,7 @@ import { Client } from '@modelcontextprotocol/sdk/client';
 import { getDefaultEnvironment, StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp';
 
+import { DEFAULT_APP_ID } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
 
 import type { TextContent, Tool } from '@modelcontextprotocol/sdk/types';
@@ -27,8 +28,16 @@ export interface McpConnection {
 
 export type McpConnector = (server: McpServerConfig, cwd: string) => Promise<McpConnection>;
 
+// Servers identify the client by name and version. The version comes from the
+// host at activation so a release bump does not leave a stale literal behind.
+let clientVersion = '0.0.0';
+
+export function setMcpClientVersion(version: string): void {
+  clientVersion = version;
+}
+
 async function connectMcpServer(server: McpServerConfig, cwd: string): Promise<McpConnection> {
-  const client = new Client({ name: 'pi-code', version: '0.0.1' });
+  const client = new Client({ name: DEFAULT_APP_ID, version: clientVersion });
   const timeoutMs = server.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
   const transport =

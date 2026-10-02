@@ -57,6 +57,7 @@ export const ChatInput = memo(({ onSend, sendingDisabled, placeholderText, texta
   const [isFocused, setIsFocused] = useState(false);
   const inputValue = useChatStore((state) => state.inputValue);
   const setInputValue = useChatStore((state) => state.setInputValue);
+  const appendToInput = useChatStore((state) => state.appendToInput);
   const commands = useChatStore((state) => state.commands);
   const selectedAttachments = useChatStore((state) => state.inputAttachments);
   const setSelectedAttachments = useChatStore((state) => state.setInputAttachments);
@@ -113,24 +114,6 @@ export const ChatInput = memo(({ onSend, sendingDisabled, placeholderText, texta
     }
   };
 
-  const insertTextAtCursor = (text: string): void => {
-    const textarea = textareaRef.current;
-    if (!textarea) {
-      setInputValue(inputValue + text);
-      return;
-    }
-
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    setInputValue(inputValue.slice(0, start) + text + inputValue.slice(end));
-
-    // Move cursor after the inserted text on next tick
-    requestAnimationFrame(() => {
-      textarea.selectionStart = textarea.selectionEnd = start + text.length;
-      textarea.focus();
-    });
-  };
-
   const handleKeyDown = async (e: KeyboardEvent<HTMLTextAreaElement>) => {
     // An open suggestion popover owns navigation and acceptance keys.
     if (suggestionControllers.some((controller) => controller.handleKeyDown(e))) return;
@@ -143,7 +126,7 @@ export const ChatInput = memo(({ onSend, sendingDisabled, placeholderText, texta
       try {
         const text = await navigator.clipboard.readText();
         if (!text) return;
-        if (text.length >= minTextAttachment) insertTextAtCursor(text);
+        if (text.length >= minTextAttachment) appendToInput(text);
         else addTextAttachment(text);
       } catch {
         // Clipboard access denied or failed - ignore

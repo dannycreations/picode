@@ -209,9 +209,21 @@ export function hasRanges(ranges: ReadonlyArray<LineRange> | undefined): ranges 
   return ranges !== undefined && ranges.length > 0;
 }
 
+const NUMBERED_LINE = /^(\d+)\|/;
+
+export function numberedLine(lineNumber: number, line: string): string {
+  return `${lineNumber}|${line}`;
+}
+
+export function parseNumberedLine(text: string): number | undefined {
+  const lastBreak = text.lastIndexOf('\n');
+  const match = NUMBERED_LINE.exec(lastBreak === -1 ? text : text.slice(lastBreak + 1));
+  return match ? Number(match[1]) : undefined;
+}
+
 export function numberLines(lines: readonly string[], ranges: ReadonlyArray<LineRange> | undefined): string {
   if (!hasRanges(ranges)) {
-    return lines.map((line, index) => `${index + 1}|${line}`).join('\n');
+    return lines.map((line, index) => numberedLine(index + 1, line)).join('\n');
   }
 
   const parts: string[] = [];
@@ -248,7 +260,7 @@ export function numberLines(lines: readonly string[], ranges: ReadonlyArray<Line
 
   for (const { start, end } of merged) {
     for (let i = start; i <= end; i++) {
-      parts.push(`${i}|${lines[i - 1]}`);
+      parts.push(numberedLine(i, lines[i - 1]));
     }
   }
   return parts.join('\n');

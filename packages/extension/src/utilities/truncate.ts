@@ -1,12 +1,35 @@
+import { writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { uuidv7 } from '@earendil-works/pi-ai';
 import { formatSize, generateDiffString, truncateHead, truncateTail } from '@earendil-works/pi-coding-agent';
 
 import { hasRanges, numberLines, readLines } from '@pi-code/extension/utilities/fs';
+import { logger } from '@pi-code/shared/core/logger';
 
 import type { TruncationResult } from '@earendil-works/pi-coding-agent';
 import type { CustomToolResult } from '@pi-code/extension/types/extension';
 import type { LineRange } from '@pi-code/shared/core/types';
 
-const BYTES_PER_KILOBYTE = 1024;
+export const BYTES_PER_KILOBYTE = 1024;
+
+export function tempLogPath(kind: string): string {
+  return join(tmpdir(), `pi-code-${kind}-${Date.now()}-${uuidv7().slice(0, 8)}.log`);
+}
+
+// Output that outgrew the budget is spilled so the model can read the rest
+// instead of re-running the tool. A failed write is not fatal: the caller
+// falls back to hinting at a narrower re-run.
+export async function spillToTempLog(kind: string, content: string): Promise<string | undefined> {
+  const path = tempLogPath(kind);
+  try {
+    await writeFile(path, content, 'utf8');
+    return path;
+  } catch (err) {
+    logger.warn(`Failed to write ${kind} output to temp file:`, err);
+    return undefined;
+  }
+}
 
 export interface OutputLimits {
   readonly maxLines: number;

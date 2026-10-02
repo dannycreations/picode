@@ -1,7 +1,7 @@
 import { ChevronDown, ImageIcon, Sparkles } from 'lucide-react';
 import { memo, useEffect, useRef, useState } from 'react';
 
-import { formatModelSelection } from '@pi-code/shared/core/protocol';
+import { findModel, formatModelSelection, isSameModel } from '@pi-code/shared/core/protocol';
 import { DropdownMenu, DropdownMenuItem } from '@pi-code/webview/components/shared/DropdownMenu';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { useClickOutside } from '@pi-code/webview/hooks/useClickOutside';
@@ -23,10 +23,6 @@ interface ModelDropdownMenuProps {
   readonly models: ModelItem[];
   readonly currentModel: ModelSelection;
   readonly onSelectModel: (model: ModelItem) => void;
-}
-
-function isSelected(model: ModelItem, currentModel: ModelSelection): boolean {
-  return model.id === currentModel.id && model.provider === currentModel.provider;
 }
 
 const ModelDropdownMenu: FC<ModelDropdownMenuProps> = ({ models, currentModel, onSelectModel }) => {
@@ -65,7 +61,7 @@ const ModelDropdownMenu: FC<ModelDropdownMenuProps> = ({ models, currentModel, o
       <div ref={listRef} className="overflow-y-auto flex-1 min-h-0 flex flex-col py-1">
         {filteredModels.length > 0 ? (
           filteredModels.map((m) => {
-            const selected = isSelected(m, currentModel);
+            const selected = isSameModel(m, currentModel);
             return (
               <DropdownMenuItem
                 key={formatModelSelection(m)}
@@ -95,12 +91,14 @@ export const ChatFooter = memo(
     useClickOutside(dropdownRef, () => setShowModelMenu(false));
     useClickOutside(thinkingRef, () => setShowThinkingMenu(false));
 
+    // A selection the catalog does not carry still needs a row, otherwise the
+    // footer would show a different model than the chat is running on.
     const displayModels = [...models];
-    if (currentModel && !models.some((m) => isSelected(m, currentModel))) {
+    if (!findModel(models, currentModel)) {
       displayModels.unshift({ id: currentModel.id, name: currentModel.id, provider: currentModel.provider });
     }
 
-    const selectedModelObj = displayModels.find((m) => isSelected(m, currentModel)) || displayModels[0] || { id: '', name: 'No model selected' };
+    const selectedModelObj = findModel(displayModels, currentModel) ?? displayModels[0];
 
     // Only surface the control once the model exposes more than its "off" baseline.
     const showThinking = thinkingLevels.length > 1 && currentThinkingLevel !== null;

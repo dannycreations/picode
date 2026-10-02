@@ -1,10 +1,8 @@
 import { spawn } from 'node:child_process';
 import { createWriteStream } from 'node:fs';
-import { stat, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { stat } from 'node:fs/promises';
 import { StringDecoder } from 'node:string_decoder';
-import { formatThrownValue, uuidv7 } from '@earendil-works/pi-ai';
+import { formatThrownValue } from '@earendil-works/pi-ai';
 import {
   defineTool,
   formatSize,
@@ -18,7 +16,7 @@ import {
 import { Type } from 'typebox';
 
 import { readAppSettings, readOutputLimits } from '@pi-code/extension/core/settings';
-import { renderTruncatedText, truncateOutput } from '@pi-code/extension/utilities/truncate';
+import { renderTruncatedText, spillToTempLog, tempLogPath, truncateOutput } from '@pi-code/extension/utilities/truncate';
 import { logger } from '@pi-code/shared/core/logger';
 
 import type { SpawnOptions } from 'node:child_process';
@@ -190,7 +188,7 @@ export const executeCommandTool = defineTool({
           }
         } else if (totalLength > limits.maxBytes && !tempFileError) {
           try {
-            tempFilePath = join(tmpdir(), `pi-code-command-${Date.now()}-${uuidv7().slice(0, 8)}.log`);
+            tempFilePath = tempLogPath('command');
             const stream = createWriteStream(tempFilePath, { flags: 'a', encoding: 'utf8' });
             stream.on('error', (err) => {
               logger.warn('Failed writing to command output temp file:', err);
@@ -309,13 +307,7 @@ export const executeCommandTool = defineTool({
         // happened and none can still happen, so `output` was never trimmed and
         // `rawTailOutput` is the complete output.
         if (!tempFilePath && !tempFileError && truncation.truncated) {
-          try {
-            tempFilePath = join(tmpdir(), `pi-code-command-${Date.now()}-${uuidv7().slice(0, 8)}.log`);
-            await writeFile(tempFilePath, rawTailOutput, 'utf8');
-          } catch (err) {
-            logger.warn('Failed to dump command output to temp file:', err);
-            tempFilePath = null;
-          }
+          tempFilePath = (await spillToTempLog('command', rawTailOutput)) ?? null;
         }
 
         // Instruct the agent to inspect the temp file instead of re-running the command.

@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Accordion } from '@pi-code/webview/components/shared/Accordion';
 import { SearchableText } from '@pi-code/webview/components/shared/Highlight';
 import { Spinner } from '@pi-code/webview/components/shared/Spinner';
-import { formatTime } from '@pi-code/webview/utilities/common';
+import { formatCost, formatTime } from '@pi-code/webview/utilities/common';
 
 import type { FC } from 'react';
 import type { ApiRequestChatMessage, CheckpointChatMessage, ErrorChatMessage, InfoChatMessage } from '@pi-code/shared/core/types';
@@ -49,7 +49,7 @@ export const ApiRequestMessage: FC<{ readonly message: ApiRequestChatMessage }> 
         <div className="flex items-center gap-2 ml-auto">
           {message.cost !== undefined && message.cost > 0 && (
             <span className="text-xs text-vscode-dropdown-foreground border border-vscode-dropdown-border/50 px-1.5 py-0.5 rounded bg-vscode-dropdown-background font-mono">
-              ${message.cost.toFixed(4)}
+              {formatCost(message.cost)}
             </span>
           )}
           <span className="text-muted font-normal">{formatTime(message.timestamp)}</span>

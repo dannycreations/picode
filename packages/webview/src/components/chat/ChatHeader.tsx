@@ -18,6 +18,7 @@ import { TodoHeader } from '@pi-code/webview/components/chat/TodoView';
 import { Accordion } from '@pi-code/webview/components/shared/Accordion';
 import { TaskActions } from '@pi-code/webview/components/shared/TaskActions';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
+import { formatCost } from '@pi-code/webview/utilities/common';
 
 import type { FC, KeyboardEvent, MouseEvent } from 'react';
 import type { StatsData } from '@pi-code/shared/core/types';
@@ -180,7 +181,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
               </div>
             </Tooltip>
             <div className="flex items-center gap-2">
-              {totalCost > 0 && <span className="text-xs font-mono text-vscode-foreground/80">${totalCost.toFixed(4)}</span>}
+              {totalCost > 0 && <span className="text-xs font-mono text-vscode-foreground/80">{formatCost(totalCost)}</span>}
               <Tooltip content="Search chat" side="bottom">
                 <button onClick={onSearchOpen} className="icon-button">
                   <Search size={14} />
@@ -262,7 +263,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-1.5">
                         <Coins size={12} className="text-vscode-descriptionForeground" />
-                        <span className="text-vscode-editorWarning-foreground font-bold">${(totalCost || 0).toFixed(4)}</span>
+                        <span className="text-vscode-editorWarning-foreground font-bold">{formatCost(totalCost)}</span>
                         <span className="text-muted/60 font-normal">USD</span>
                       </div>
                       <div className="flex items-center gap-1.5">

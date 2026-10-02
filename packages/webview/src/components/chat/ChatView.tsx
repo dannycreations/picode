@@ -230,7 +230,7 @@ export const ChatView: FC = () => {
 
   useEffect(() => {
     if (activeMatch < 0) return;
-    const itemIndex = globalOffsets.findIndex((offset, index) => activeMatch >= offset && activeMatch < offset + (matchCounts[index] ?? 0));
+    const itemIndex = globalOffsets.findIndex((offset, index) => activeMatch >= offset && activeMatch < offset + matchCounts[index]);
     if (itemIndex < 0) return;
 
     let innerRaf = 0;

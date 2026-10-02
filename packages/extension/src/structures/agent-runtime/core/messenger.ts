@@ -7,6 +7,13 @@ import type { ExtensionToWebviewMessage } from '@pi-code/shared/core/protocol';
 
 const FLUSH_INTERVAL_MS = 16;
 
+export function postToWebview(webview: Webview | null, message: ExtensionToWebviewMessage): void {
+  const sent = webview?.postMessage(message);
+  if (sent) {
+    void Promise.resolve(sent).catch((err) => logger.error('Failed to post webview message:', err));
+  }
+}
+
 interface CoalescedToolUpdate {
   toolName?: string;
   result: string;
@@ -86,14 +93,7 @@ export class Messenger {
 
   private send(message: ExtensionToWebviewMessage): void {
     this.flush();
-    this.postToWebview(message);
-  }
-
-  private postToWebview(message: ExtensionToWebviewMessage): void {
-    const sent = this.webview?.postMessage(message);
-    if (sent) {
-      void Promise.resolve(sent).catch((err) => logger.error('Failed to post webview message:', err));
-    }
+    postToWebview(this.webview, message);
   }
 
   private flush(): void {
@@ -110,7 +110,7 @@ export class Messenger {
     }
 
     if (this.textBuffer || this.thinkingBuffer) {
-      this.postToWebview({
+      postToWebview(this.webview, {
         type: 'stream_delta',
         payload: {
           text: this.textBuffer || undefined,
@@ -124,7 +124,7 @@ export class Messenger {
     if (this.toolUpdates.size > 0) {
       for (const [id, update] of this.toolUpdates) {
         if (update.result || update.subtitle !== undefined) {
-          this.postToWebview({
+          postToWebview(this.webview, {
             type: 'tool_execution_update',
             payload: { id, result: update.result, subagent: update.subagent, subtitle: update.subtitle },
           });

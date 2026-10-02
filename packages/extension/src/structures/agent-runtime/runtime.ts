@@ -366,7 +366,7 @@ export class Runtime {
     const usage = session.getContextUsage?.();
     if (!usage || usage.tokens === null || usage.contextWindow <= 0) return false;
 
-    const threshold = settings.autoCompactContextPercent ?? 100;
+    const threshold = settings.autoCompactContextPercent;
     return usage.tokens > (usage.contextWindow * threshold) / 100;
   }
 

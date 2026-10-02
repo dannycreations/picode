@@ -35,6 +35,16 @@ export interface ModelItem {
 
 export type ModelSelection = Pick<ModelItem, 'id' | 'provider'>;
 
+export function isSameModel(model: ModelSelection, selection: ModelSelection): boolean {
+  // Providers can ship the same model id, so a selection only matches when both
+  // fields agree. Every lookup of "is this the selected model" goes through here.
+  return model.id === selection.id && model.provider === selection.provider;
+}
+
+export function findModel<T extends ModelSelection>(models: readonly T[], selection: ModelSelection | undefined): T | undefined {
+  return selection ? models.find((model) => isSameModel(model, selection)) : undefined;
+}
+
 // Providers never contain slashes while model ids may, so the provider is
 // everything before the first slash.
 export function formatModelSelection(selection: ModelSelection): string {

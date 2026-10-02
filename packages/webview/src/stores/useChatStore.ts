@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 import { DEFAULT_APP_ID } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
-import { HISTORY_SCOPES } from '@pi-code/shared/core/protocol';
+import { findModel, HISTORY_SCOPES } from '@pi-code/shared/core/protocol';
 import { elapsedSeconds, findReplaceableFailedRequest } from '@pi-code/shared/utilities/common';
 import {
   appendOnce,
@@ -135,11 +135,6 @@ interface ChatState {
 }
 
 const NO_MODEL: ModelSelection = { id: DEFAULT_APP_ID, provider: '' };
-
-function findModel(models: readonly ModelItem[], selection: ModelSelection | undefined): ModelItem | undefined {
-  if (!selection) return undefined;
-  return models.find((model) => model.id === selection.id && model.provider === selection.provider);
-}
 
 function toSelection(model: ModelItem | ModelSelection | undefined): ModelSelection {
   return model ? { id: model.id, provider: model.provider } : NO_MODEL;
@@ -424,7 +419,7 @@ export const useChatStore = create<ChatState>((set, get) => {
         latestEpoch: { ...state.latestEpoch, [scope]: epoch },
         historyByScope: {
           ...state.historyByScope,
-          [scope]: isNewRefresh ? items : [...(state.historyByScope[scope] ?? []), ...items],
+          [scope]: isNewRefresh ? items : [...state.historyByScope[scope], ...items],
         },
       }));
     },
@@ -541,12 +536,12 @@ export const useChatStore = create<ChatState>((set, get) => {
         return;
       }
 
-      const caret = textarea.selectionStart;
-      set((state) => ({ inputValue: `${state.inputValue.slice(0, caret)}${text}${state.inputValue.slice(caret)}` }));
-      const nextCaret = caret + text.length;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      set((state) => ({ inputValue: state.inputValue.slice(0, start) + text + state.inputValue.slice(end) }));
       setTimeout(() => {
         textarea.focus();
-        textarea.setSelectionRange(nextCaret, nextCaret);
+        textarea.setSelectionRange(start + text.length, start + text.length);
       }, 0);
     },
 

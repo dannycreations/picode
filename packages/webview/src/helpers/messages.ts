@@ -167,23 +167,21 @@ export function settlePendingTurns(messages: ChatMessage[], patch: RequestSettle
   const next = messages.map((m) => {
     if (m.sender !== 'api_request' && m.sender !== 'assistant') return m;
     if (m.toolStatus !== 'running') return m;
-    if (m.sender === 'api_request') {
-      changed = true;
-      return {
-        ...m,
-        toolStatus: patch.error ? ('denied' as const) : ('completed' as const),
-        cost: patch.cost ?? m.cost,
-        errorMessage: patch.error ?? m.errorMessage,
-      };
+    changed = true;
+    switch (m.sender) {
+      case 'api_request':
+        return {
+          ...m,
+          toolStatus: patch.error ? ('denied' as const) : ('completed' as const),
+          cost: patch.cost ?? m.cost,
+          errorMessage: patch.error ?? m.errorMessage,
+        };
+      case 'assistant':
+        return {
+          ...m,
+          toolStatus: 'completed' as const,
+        };
     }
-    if (m.sender === 'assistant') {
-      changed = true;
-      return {
-        ...m,
-        toolStatus: 'completed' as const,
-      };
-    }
-    return m;
   });
   return changed ? next : messages;
 }

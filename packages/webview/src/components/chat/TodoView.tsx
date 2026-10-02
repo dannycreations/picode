@@ -100,7 +100,7 @@ export const TodoBody: FC<TodoBodyProps> = ({ timestamp, oldTodos, newTodos }) =
   const visibleTodos = getVisibleTodos(oldTodos, newTodos);
 
   return (
-    <div data-todo-changes className="overflow-hidden">
+    <div className="overflow-hidden">
       <MessageHeader icon={<ListChecks className="w-3.5 h-3.5 shrink-0" />} title="Updated to-dos" timestamp={timestamp} />
       {visibleTodos.length > 0 && (
         <ul className="list-none space-y-1 my-1 pr-1 pt-1 font-light leading-normal">

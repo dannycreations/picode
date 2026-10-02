@@ -1,7 +1,7 @@
 import { cleanupSessionResources, registerSessionResourceCleanup } from '@earendil-works/pi-ai';
 import { commands, languages, window, workspace } from 'vscode';
 
-import { mcpGateway } from '@pi-code/extension/structures/agent-runtime/mcp/manager';
+import { mcpGateway, setMcpClientVersion } from '@pi-code/extension/structures/agent-runtime/mcp/manager';
 import { invalidateAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { ChatViewProvider } from '@pi-code/extension/structures/agent-webview/provider';
 import { registerCommitMessageCommands } from '@pi-code/extension/structures/commit-message/command';
@@ -15,6 +15,8 @@ import { logger } from '@pi-code/shared/core/logger';
 import type { ExtensionContext } from 'vscode';
 
 export function activate(context: ExtensionContext): void {
+  setMcpClientVersion(context.extension.packageJSON.version);
+
   if (process.env['PI_CODE_DEBUG_HTTP']) {
     const workspaceUri = getWorkspaceUri();
     if (workspaceUri) {
