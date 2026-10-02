@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { coerceSetting, SETTING_KEYS } from '@pi-code/shared/core/settings';
 import { selectThinkingLevel, useChatStore } from '@pi-code/webview/stores/useChatStore';
 
-import type { ExtensionToWebviewMessage, ModelItem } from '@pi-code/shared/core/protocol';
+import type { ExtensionToWebviewMessage, ModelItem, ModelSelection } from '@pi-code/shared/core/protocol';
 import type { AppSettings } from '@pi-code/shared/core/settings';
 import type { StatsData } from '@pi-code/shared/core/types';
 
@@ -65,17 +65,19 @@ describe('useChatStore compaction', () => {
   });
 });
 
-const model = (id: string, thinkingLevels: ModelItem['thinkingLevels']): ModelItem => ({
+const model = (id: string, thinkingLevels: ModelItem['thinkingLevels'], provider = 'test'): ModelItem => ({
   id,
   name: id,
-  provider: 'test',
+  provider,
   thinkingLevels,
 });
+
+const select = (id: string, provider = 'test'): ModelSelection => ({ id, provider });
 
 describe('memoized chat chrome', () => {
   beforeEach(() => {
     apply([{ type: 'session_loaded', payload: { id: 'task-1', title: 'Task', messages: [], path: '/tmp/task.json', ...stats(0) } }]);
-    useChatStore.setState({ models: [model('deep', ['high'])], selectedModel: 'deep' });
+    useChatStore.setState({ models: [model('deep', ['high'])], selectedModel: select('deep') });
   });
 
   it('keeps every prop the composer and footer depend on identical across a streamed token', () => {
@@ -97,53 +99,100 @@ describe('memoized chat chrome', () => {
   });
 });
 
+describe('tool completion', () => {
+  beforeEach(() => {
+    apply([{ type: 'session_loaded', payload: { id: 'task-1', title: 'Task', messages: [], path: '/tmp/task.json', ...stats(0) } }]);
+  });
+
+  it('renders the diff and duration the tool reported instead of re-deriving them', () => {
+    apply([
+      {
+        type: 'tool_execution_start',
+        payload: { id: 't1', tool_name: 'spawn_subagent', arguments: { agent: 'explore', description: 'd', task: 't' } },
+      },
+    ]);
+    apply([
+      {
+        type: 'tool_execution_end',
+        payload: { id: 't1', result: 'truncated report', diff: 'full report', duration: 42, is_error: false },
+      },
+    ]);
+
+    const [row] = useChatStore.getState().activeTask?.messages ?? [];
+    // Both come from the tool, so the row survives a reload unchanged.
+    expect(row).toMatchObject({ diff: 'full report', duration: 42 });
+  });
+
+  it('falls back to the streamed result and wall clock when the tool reports neither', () => {
+    apply([{ type: 'tool_execution_start', payload: { id: 't1', tool_name: 'execute_command', arguments: { command: 'ls' } } }]);
+    apply([{ type: 'tool_execution_end', payload: { id: 't1', result: 'a.ts', is_error: false } }]);
+
+    const [row] = useChatStore.getState().activeTask?.messages ?? [];
+    expect(row).toMatchObject({ diff: 'a.ts' });
+    expect(typeof (row as { duration?: number }).duration).toBe('number');
+  });
+});
+
 describe('model catalog refresh', () => {
   // init_data requires a full settings snapshot; the defaults keep it irrelevant here.
   const settings = Object.fromEntries(SETTING_KEYS.map((key) => [key, coerceSetting(key, undefined)])) as AppSettings;
-  const initData = (models: ModelItem[], defaultModel?: string): ExtensionToWebviewMessage => ({
+  const initData = (models: ModelItem[], defaultModel?: ModelSelection): ExtensionToWebviewMessage => ({
     type: 'init_data',
     payload: { models, default_model: defaultModel, settings, commands: [] },
   });
 
   beforeEach(() => {
-    useChatStore.setState({ models: [], defaultModel: undefined, selectedModel: '', selectedThinkingLevel: null });
+    useChatStore.setState({ models: [], defaultModel: undefined, selectedModel: select(''), selectedThinkingLevel: null });
   });
 
   it('lands on the persisted default once the refreshed catalog carries it', () => {
-    // init_data kept the persisted id even though the local catalog had no zen
-    // models. models_data is the first list that can actually serve it.
-    apply([initData([model('claude-opus-4-8', ['high'])], 'stealth-alpha')]);
-    expect(useChatStore.getState().selectedModel).toBe('stealth-alpha');
+    // init_data kept the persisted selection even though the local catalog had
+    // no zen models. models_data is the first list that can actually serve it.
+    apply([initData([model('claude-opus-4-8', ['high'])], select('stealth-alpha', 'zen'))]);
+    expect(useChatStore.getState().selectedModel).toEqual(select('stealth-alpha', 'zen'));
 
-    apply([{ type: 'models_data', payload: { models: [model('claude-opus-4-8', ['high']), model('stealth-alpha', ['low', 'high'])] } }]);
-    expect(useChatStore.getState().selectedModel).toBe('stealth-alpha');
+    apply([{ type: 'models_data', payload: { models: [model('claude-opus-4-8', ['high']), model('stealth-alpha', ['low', 'high'], 'zen')] } }]);
+    expect(useChatStore.getState().selectedModel).toEqual(select('stealth-alpha', 'zen'));
   });
 
   it('keeps a selection that the refreshed catalog still offers', () => {
-    apply([initData([model('claude-opus-4-8', ['high'])], 'claude-opus-4-8')]);
+    apply([initData([model('claude-opus-4-8', ['high'])], select('claude-opus-4-8'))]);
     apply([{ type: 'models_data', payload: { models: [model('claude-opus-4-8', ['high']), model('stealth-alpha', ['low'])] } }]);
-    expect(useChatStore.getState().selectedModel).toBe('claude-opus-4-8');
+    expect(useChatStore.getState().selectedModel).toEqual(select('claude-opus-4-8'));
   });
 
   it('falls back to the refreshed default when the selection is gone and none was persisted', () => {
     apply([initData([], undefined)]);
     apply([{ type: 'models_data', payload: { models: [model('claude-opus-4-8', ['high'])] } }]);
-    expect(useChatStore.getState().selectedModel).toBe('claude-opus-4-8');
+    expect(useChatStore.getState().selectedModel).toEqual(select('claude-opus-4-8'));
   });
 
   it('clamps the thinking level to the re-resolved model', () => {
-    apply([initData([model('claude-opus-4-8', ['high'])], 'stealth-alpha')]);
+    apply([initData([model('claude-opus-4-8', ['high'])], select('stealth-alpha', 'zen'))]);
     useChatStore.setState({ selectedThinkingLevel: 'high' });
 
-    apply([{ type: 'models_data', payload: { models: [model('claude-opus-4-8', ['high']), model('stealth-alpha', ['off', 'low'])] } }]);
-    expect(useChatStore.getState().selectedModel).toBe('stealth-alpha');
+    apply([{ type: 'models_data', payload: { models: [model('claude-opus-4-8', ['high']), model('stealth-alpha', ['off', 'low'], 'zen')] } }]);
+    expect(useChatStore.getState().selectedModel).toEqual(select('stealth-alpha', 'zen'));
     expect(useChatStore.getState().selectedThinkingLevel).toBe('low');
+  });
+
+  it('keeps a same-id model on its own provider when the catalog carries two', () => {
+    // The id alone cannot name a model: both providers ship "gpt-5", so the
+    // thinking levels shown in the footer must come from the selected one.
+    apply([initData([model('gpt-5', ['low'], 'openai'), model('gpt-5', ['high'], 'zen')], select('gpt-5', 'zen'))]);
+
+    expect(useChatStore.getState().selectedModel).toEqual(select('gpt-5', 'zen'));
+    expect(selectThinkingLevel(useChatStore.getState())).toBe('high');
   });
 });
 
 describe('selectThinkingLevel', () => {
   beforeEach(() => {
-    useChatStore.setState({ models: [model('fast', ['off', 'low']), model('deep', ['high'])], selectedModel: 'deep', selectedThinkingLevel: 'low' });
+    useChatStore.setState({
+      models: [model('fast', ['off', 'low']), model('deep', ['high'])],
+      selectedModel: select('deep'),
+      selectedThinkingLevel: 'low',
+    });
   });
 
   it('clamps a stored level the selected model does not support', () => {

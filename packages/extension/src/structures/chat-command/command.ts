@@ -24,7 +24,6 @@ export function collectCommands(loader: ResourceLoader): CommandItem[] {
     name: `${SKILL_NAME_PREFIX}${skill.name}`,
     source: 'skill',
     description: skill.description,
-    detail: skill.filePath,
   }));
 
   return [...builtins, ...prompts, ...skills].sort((a, b) => a.name.localeCompare(b.name));

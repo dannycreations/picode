@@ -51,7 +51,6 @@ export interface CommandItem {
   readonly name: string;
   readonly source: 'builtin' | 'skill' | 'prompt';
   readonly description?: string;
-  readonly detail?: string;
 }
 
 export interface CommitItem {
@@ -99,7 +98,7 @@ export type ExtensionToWebviewMessage =
       type: 'init_data';
       payload: {
         models: ModelItem[];
-        default_model?: string;
+        default_model?: ModelSelection;
         default_thinking_level?: ModelThinkingLevel;
         settings: AppSettings;
         commands: CommandItem[];
@@ -128,6 +127,8 @@ export type ExtensionToWebviewMessage =
       payload: {
         id: string;
         result?: string;
+        diff?: string;
+        duration?: number;
         todos?: TodoItem[];
         is_error?: boolean;
         files?: ReadonlyArray<ReadFileSection>;

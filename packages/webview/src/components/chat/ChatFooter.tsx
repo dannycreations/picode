@@ -1,17 +1,18 @@
 import { ChevronDown, ImageIcon, Sparkles } from 'lucide-react';
 import { memo, useEffect, useRef, useState } from 'react';
 
+import { formatModelSelection } from '@pi-code/shared/core/protocol';
 import { DropdownMenu, DropdownMenuItem } from '@pi-code/webview/components/shared/DropdownMenu';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { useClickOutside } from '@pi-code/webview/hooks/useClickOutside';
 
 import type { FC } from 'react';
-import type { ModelItem } from '@pi-code/shared/core/protocol';
+import type { ModelItem, ModelSelection } from '@pi-code/shared/core/protocol';
 import type { ModelThinkingLevel } from '@pi-code/shared/core/types';
 
 interface ChatFooterProps {
-  readonly currentModel: string;
-  readonly onChangeModel: (model: string) => void;
+  readonly currentModel: ModelSelection;
+  readonly onChangeModel: (model: ModelItem) => void;
   readonly models: ModelItem[];
   readonly thinkingLevels: readonly ModelThinkingLevel[];
   readonly currentThinkingLevel: ModelThinkingLevel | null;
@@ -20,8 +21,12 @@ interface ChatFooterProps {
 
 interface ModelDropdownMenuProps {
   readonly models: ModelItem[];
-  readonly currentModel: string;
-  readonly onSelectModel: (modelId: string) => void;
+  readonly currentModel: ModelSelection;
+  readonly onSelectModel: (model: ModelItem) => void;
+}
+
+function isSelected(model: ModelItem, currentModel: ModelSelection): boolean {
+  return model.id === currentModel.id && model.provider === currentModel.provider;
 }
 
 const ModelDropdownMenu: FC<ModelDropdownMenuProps> = ({ models, currentModel, onSelectModel }) => {
@@ -60,14 +65,14 @@ const ModelDropdownMenu: FC<ModelDropdownMenuProps> = ({ models, currentModel, o
       <div ref={listRef} className="overflow-y-auto flex-1 min-h-0 flex flex-col py-1">
         {filteredModels.length > 0 ? (
           filteredModels.map((m) => {
-            const isSelected = currentModel === m.id;
+            const selected = isSelected(m, currentModel);
             return (
               <DropdownMenuItem
-                key={m.id}
+                key={formatModelSelection(m)}
                 label={m.name}
-                selected={isSelected}
-                onSelect={() => onSelectModel(m.id)}
-                buttonRef={isSelected ? selectedItemRef : undefined}
+                selected={selected}
+                onSelect={() => onSelectModel(m)}
+                buttonRef={selected ? selectedItemRef : undefined}
                 icon={m.supportsImages ? <ImageIcon size={12} className="text-muted" /> : undefined}
               />
             );
@@ -91,11 +96,11 @@ export const ChatFooter = memo(
     useClickOutside(thinkingRef, () => setShowThinkingMenu(false));
 
     const displayModels = [...models];
-    if (currentModel && !models.some((m) => m.id === currentModel)) {
-      displayModels.unshift({ id: currentModel, name: currentModel, provider: '' });
+    if (currentModel && !models.some((m) => isSelected(m, currentModel))) {
+      displayModels.unshift({ id: currentModel.id, name: currentModel.id, provider: currentModel.provider });
     }
 
-    const selectedModelObj = displayModels.find((m) => m.id === currentModel) || displayModels[0] || { id: '', name: 'No model selected' };
+    const selectedModelObj = displayModels.find((m) => isSelected(m, currentModel)) || displayModels[0] || { id: '', name: 'No model selected' };
 
     // Only surface the control once the model exposes more than its "off" baseline.
     const showThinking = thinkingLevels.length > 1 && currentThinkingLevel !== null;
@@ -103,7 +108,7 @@ export const ChatFooter = memo(
     return (
       <div className="flex flex-row w-auto items-center h-[30px] mx-3.5 mt-1 mb-2 gap-1 shrink-0 select-none">
         <div className="flex flex-row justify-start gap-1 relative" ref={dropdownRef}>
-          <Tooltip content={`Model: ${selectedModelObj.id}`}>
+          <Tooltip content={`Model: ${formatModelSelection(selectedModelObj)}`}>
             <button
               onClick={() => setShowModelMenu(!showModelMenu)}
               className="px-2 py-0.5 text-muted hover:text-vscode-foreground bg-transparent hover:bg-vscode-list-hoverBackground border border-vscode-panel-border/50 rounded flex items-center gap-1 cursor-pointer truncate max-w-[180px]"
@@ -118,8 +123,8 @@ export const ChatFooter = memo(
             <ModelDropdownMenu
               models={displayModels}
               currentModel={currentModel}
-              onSelectModel={(modelId) => {
-                onChangeModel(modelId);
+              onSelectModel={(model) => {
+                onChangeModel(model);
                 setShowModelMenu(false);
               }}
             />

@@ -173,15 +173,18 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
     case 'tool_execution_end': {
       const subagent = getSubagentSession(session.sessionId)?.name;
       const toolResult = event.result as { details?: ToolResultDetails } | undefined;
+      const details = toolResult?.details;
       return {
         message: {
           type: 'tool_execution_end',
           payload: {
             id: event.toolCallId,
             result: toolResultText(event.result),
-            todos: toolResult?.details?.todos,
-            files: toolResult?.details?.files,
-            subtitle: toolResult?.details?.subtitle,
+            diff: details?.diff,
+            duration: details?.duration,
+            todos: details?.todos,
+            files: details?.files,
+            subtitle: details?.subtitle,
             is_error: event.isError,
             subagent,
           },

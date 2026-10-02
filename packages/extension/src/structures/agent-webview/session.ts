@@ -15,7 +15,7 @@ import { resolveContextLimit } from '@pi-code/shared/utilities/common';
 
 import type { Api, Model, TextContent } from '@earendil-works/pi-ai';
 import type { AgentSessionServices, ModelRuntime } from '@earendil-works/pi-coding-agent';
-import type { ExtensionToWebviewMessage, HistoryItem, HistoryScope, ModelItem } from '@pi-code/shared/core/protocol';
+import type { ExtensionToWebviewMessage, HistoryItem, HistoryScope, ModelItem, ModelSelection } from '@pi-code/shared/core/protocol';
 import type { ChatMessage, StatsData } from '@pi-code/shared/core/types';
 
 type SessionInitData = Extract<ExtensionToWebviewMessage, { type: 'init_data' }>['payload'];
@@ -44,13 +44,17 @@ async function listSelectableModels(modelRuntime: ModelRuntime): Promise<ModelIt
   }));
 }
 
-function resolveDefaultModelId(models: ModelItem[], preferred: { id?: string; provider?: string }): string | undefined {
-  if (preferred.id) return preferred.id;
+function resolveDefaultModel(models: ModelItem[], preferred: { id?: string; provider?: string }): ModelSelection | undefined {
+  if (preferred.id) {
+    const match =
+      models.find((model) => model.id === preferred.id && model.provider === preferred.provider) ?? models.find((model) => model.id === preferred.id);
+    return match ?? models[0];
+  }
   if (preferred.provider) {
     const sameProvider = models.find((model) => model.provider === preferred.provider);
-    if (sameProvider) return sameProvider.id;
+    if (sameProvider) return sameProvider;
   }
-  return models[0]?.id;
+  return models[0];
 }
 
 function parseSessionLine(line: string): Record<string, unknown> | null {
@@ -148,7 +152,7 @@ export async function getInitData(cwd: string, services: AgentSessionServices): 
 
   return {
     models,
-    default_model: resolveDefaultModelId(models, defaultModel),
+    default_model: resolveDefaultModel(models, defaultModel),
     default_thinking_level: thinkingLevel,
     settings: readAppSettings(),
     commands: collectCommands(services.resourceLoader),

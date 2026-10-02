@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { resolveContextLimit } from '@pi-code/shared/utilities/common';
 import { selectThinkingLevel, useChatStore } from '@pi-code/webview/stores/useChatStore';
 
-import type { CommandItem, ModelItem } from '@pi-code/shared/core/protocol';
+import type { CommandItem, ModelItem, ModelSelection } from '@pi-code/shared/core/protocol';
 import type { AppSettings } from '@pi-code/shared/core/settings';
 import type { ModelThinkingLevel } from '@pi-code/shared/core/types';
 
@@ -11,8 +11,8 @@ interface UseChatConfigReturn {
   readonly models: ModelItem[];
   readonly settings: AppSettings | null;
   readonly commands: CommandItem[];
-  readonly selectedModel: string;
-  readonly setSelectedModel: (modelId: string) => void;
+  readonly selectedModel: ModelSelection;
+  readonly setSelectedModel: (model: ModelItem) => void;
   readonly thinkingLevels: readonly ModelThinkingLevel[];
   readonly selectedThinkingLevel: ModelThinkingLevel | null;
   readonly setSelectedThinkingLevel: (level: ModelThinkingLevel) => void;
@@ -29,7 +29,10 @@ export const useChatConfig = (): UseChatConfigReturn => {
   const setSelectedModel = useChatStore((state) => state.setSelectedModel);
   const setSelectedThinkingLevel = useChatStore((state) => state.setSelectedThinkingLevel);
 
-  const selectedModelItem = useMemo(() => models.find((model) => model.id === selectedModel), [models, selectedModel]);
+  const selectedModelItem = useMemo(
+    () => models.find((model) => model.id === selectedModel.id && model.provider === selectedModel.provider),
+    [models, selectedModel],
+  );
 
   const thinkingLevels = useMemo(() => selectedModelItem?.thinkingLevels ?? [], [selectedModelItem]);
   const supportsImages = selectedModelItem?.supportsImages ?? false;

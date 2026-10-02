@@ -27,6 +27,7 @@ import type {
   HistoryItem,
   HistoryScope,
   ModelItem,
+  ModelSelection,
   WebviewToExtensionMessage,
   WorkspaceFolderItem,
 } from '@pi-code/shared/core/protocol';
@@ -103,8 +104,8 @@ interface ChatState {
   readonly models: ModelItem[];
   readonly settings: AppSettings | null;
   readonly commands: CommandItem[];
-  readonly defaultModel: string | undefined;
-  readonly selectedModel: string;
+  readonly defaultModel: ModelSelection | undefined;
+  readonly selectedModel: ModelSelection;
   readonly selectedThinkingLevel: ModelThinkingLevel | null;
   readonly scope: HistoryScope;
   readonly historyByScope: Record<HistoryScope, HistoryItem[]>;
@@ -118,7 +119,7 @@ interface ChatState {
 
   readonly send: (message: WebviewToExtensionMessage) => void;
   readonly compact: () => void;
-  readonly setSelectedModel: (id: string) => void;
+  readonly setSelectedModel: (model: ModelItem) => void;
   readonly setSelectedThinkingLevel: (level: ModelThinkingLevel | null) => void;
   readonly getHistory: (scope: HistoryScope) => void;
   readonly deleteSessions: (paths: string[]) => void;
@@ -131,6 +132,17 @@ interface ChatState {
   readonly appendToInput: (text: string) => void;
   readonly setScope: (scope: HistoryScope) => void;
   readonly selectWorkspace: (path: string) => void;
+}
+
+const NO_MODEL: ModelSelection = { id: DEFAULT_APP_ID, provider: '' };
+
+function findModel(models: readonly ModelItem[], selection: ModelSelection | undefined): ModelItem | undefined {
+  if (!selection) return undefined;
+  return models.find((model) => model.id === selection.id && model.provider === selection.provider);
+}
+
+function toSelection(model: ModelItem | ModelSelection | undefined): ModelSelection {
+  return model ? { id: model.id, provider: model.provider } : NO_MODEL;
 }
 
 export const useChatStore = create<ChatState>((set, get) => {
@@ -297,12 +309,15 @@ export const useChatStore = create<ChatState>((set, get) => {
       );
     },
     tool_execution_end: (msg) => {
-      const { id, result, todos, files, is_error, subagent, subtitle } = msg.payload;
+      const { id, result, diff, duration, todos, files, is_error, subagent, subtitle } = msg.payload;
       set((state) =>
         patchActiveTask(state, (task) => {
           if (ignoreUnknownSubagent(task.messages, subagent, id)) return task;
           const existing = task.messages.find((m) => m.id === id);
-          const duration = existing ? elapsedSeconds(existing.timestamp) : undefined;
+          // A tool that measures its own work owns the numbers, and the
+          // transcript replay path trusts the same two fields. Only tools that
+          // report nothing fall back to what the row can work out itself.
+          const elapsed = existing ? elapsedSeconds(existing.timestamp) : undefined;
           return {
             ...task,
             messages: rebuildToolSections(
@@ -310,8 +325,8 @@ export const useChatStore = create<ChatState>((set, get) => {
                 todos,
                 files,
                 toolStatus: is_error ? 'denied' : 'completed',
-                diff: result,
-                duration,
+                diff: diff ?? result,
+                duration: duration ?? elapsed,
                 subtitle,
               }),
               id,
@@ -370,12 +385,13 @@ export const useChatStore = create<ChatState>((set, get) => {
     init_data: (msg) => {
       const { models, default_model, default_thinking_level, settings, commands, log_level } = msg.payload;
       logger.setLevel(log_level);
+      const selectedModel = default_model ?? models[0];
       set({
         models,
         settings: settings ?? null,
         commands: commands ?? [],
         defaultModel: default_model,
-        selectedModel: default_model || models[0]?.id || DEFAULT_APP_ID,
+        selectedModel: toSelection(selectedModel),
         selectedThinkingLevel: default_thinking_level ?? null,
         fetchedScopes: new Set<HistoryScope>(['current']),
         latestEpoch: scopedRecord(() => 0),
@@ -387,10 +403,12 @@ export const useChatStore = create<ChatState>((set, get) => {
     models_data: (msg) => {
       const models = msg.payload.models;
       const { defaultModel, selectedModel, selectedThinkingLevel } = get();
-      const next = models.find((model) => model.id === selectedModel) ?? models.find((model) => model.id === defaultModel) ?? models[0];
+      // The persisted selection wins only while the refreshed catalog still
+      // carries that exact provider and model.
+      const next = findModel(models, selectedModel) ?? findModel(models, defaultModel) ?? models[0];
       set({
         models,
-        selectedModel: next?.id ?? DEFAULT_APP_ID,
+        selectedModel: toSelection(next),
         selectedThinkingLevel: resolveThinkingLevel(next?.thinkingLevels ?? [], selectedThinkingLevel),
       });
     },
@@ -436,7 +454,7 @@ export const useChatStore = create<ChatState>((set, get) => {
     settings: null,
     commands: [],
     defaultModel: undefined,
-    selectedModel: DEFAULT_APP_ID,
+    selectedModel: NO_MODEL,
     selectedThinkingLevel: null,
     scope: 'current',
     historyByScope: scopedRecord<HistoryItem[]>(() => []),
@@ -461,21 +479,19 @@ export const useChatStore = create<ChatState>((set, get) => {
       });
     },
 
-    setSelectedModel: (id) => {
-      const { models, selectedThinkingLevel } = get();
-      const model = models.find((m) => m.id === id);
-      if (!model) return;
-      const levels = model.thinkingLevels ?? [];
-      const level = resolveThinkingLevel(levels, selectedThinkingLevel);
-      set({ selectedModel: id, selectedThinkingLevel: level });
-      get().send({ type: 'set_model', model: { id: model.id, provider: model.provider }, thinkingLevel: level ?? undefined });
+    setSelectedModel: (model) => {
+      const { selectedThinkingLevel } = get();
+      const level = resolveThinkingLevel(model.thinkingLevels ?? [], selectedThinkingLevel);
+      const selection: ModelSelection = { id: model.id, provider: model.provider };
+      set({ selectedModel: selection, selectedThinkingLevel: level });
+      get().send({ type: 'set_model', model: selection, thinkingLevel: level ?? undefined });
     },
 
     setSelectedThinkingLevel: (level) => {
       set({ selectedThinkingLevel: level });
-      const { selectedModel, models } = get();
-      const provider = models.find((m) => m.id === selectedModel)?.provider ?? '';
-      get().send({ type: 'set_model', model: { id: selectedModel, provider }, thinkingLevel: level ?? undefined });
+      // The selection already carries its provider, so the level change never
+      // has to guess which catalog entry the id belonged to.
+      get().send({ type: 'set_model', model: get().selectedModel, thinkingLevel: level ?? undefined });
     },
 
     getHistory: (scope) => {
@@ -562,7 +578,7 @@ export const selectPendingQuestion = (state: ChatState): ChatMessage | undefined
 // The stored value is the raw preference, so a catalog refresh never has to
 // write back to the store to keep the display valid.
 export const selectThinkingLevel = (state: ChatState): ModelThinkingLevel | null => {
-  const levels = state.models.find((model) => model.id === state.selectedModel)?.thinkingLevels ?? [];
+  const levels = findModel(state.models, state.selectedModel)?.thinkingLevels ?? [];
   return resolveThinkingLevel(levels, state.selectedThinkingLevel);
 };
 

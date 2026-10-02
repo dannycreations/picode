@@ -208,4 +208,24 @@ describe('mapEvent', () => {
       },
     });
   });
+
+  it('forwards the tool-reported diff and duration so a live row matches the reloaded one', () => {
+    // The transcript replay path already renders details.diff and
+    // details.duration, so dropping them here would make the same tool call
+    // look different once the task is reopened.
+    const event = {
+      type: 'tool_execution_end',
+      toolCallId: 'call-10',
+      isError: false,
+      result: {
+        content: [{ type: 'text', text: 'Updated src/a.ts\n\nTruncated: ...' }],
+        details: { diff: '--- a\n+++ b\n', duration: 42 },
+      },
+    } as any;
+
+    const message = mapEvent(event, makeSession(), null).message as Extract<ReturnType<typeof mapEvent>['message'], { type: 'tool_execution_end' }>;
+
+    expect(message.payload.diff).toBe('--- a\n+++ b\n');
+    expect(message.payload.duration).toBe(42);
+  });
 });
