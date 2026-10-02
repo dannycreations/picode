@@ -44,11 +44,10 @@ export class Runtime {
   }
 
   public async startTask(promptText: string, attachments?: readonly Attachment[], path?: string): Promise<void> {
-    const generation = ++this.taskGeneration;
-    this.replyQueue.clear();
-    logger.debug(`Starting task: ${promptText.length} chars, ${attachments?.length ?? 0} attachment(s), session target ${path ?? 'current'}.`);
+    await this.runTask('Task start', async (generation) => {
+      this.replyQueue.clear();
+      logger.debug(`Starting task: ${promptText.length} chars, ${attachments?.length ?? 0} attachment(s), session target ${path ?? 'current'}.`);
 
-    try {
       const { session, envDetails, services } = await this.prepareSession(path);
       if (this.discardIfStale(generation, session)) return;
 
@@ -65,21 +64,13 @@ export class Runtime {
 
       await this.runCompaction(session);
       await session.prompt(null).catch((err) => this.messenger.postError(err));
-    } catch (err) {
-      // A cancel landing mid-preparation makes the disposed session throw here;
-      // that is the deliberate stop already reported by cancelTask.
-      if (generation !== this.taskGeneration) {
-        logger.debug('Task start abandoned after cancel:', err);
-        return;
-      }
-      this.messenger.postError(err);
-    }
+    });
   }
 
   public async continueTask(path: string): Promise<void> {
-    const generation = ++this.taskGeneration;
-    logger.debug(`Continuing task from session ${path}.`);
-    try {
+    await this.runTask('Task continuation', async (generation) => {
+      logger.debug(`Continuing task from session ${path}.`);
+
       const { session, envDetails } = await this.prepareSession(path);
       if (this.discardIfStale(generation, session)) return;
 
@@ -88,9 +79,16 @@ export class Runtime {
       appendHiddenMessage(session, 'environment_details', envDetails);
 
       await session.prompt(null).catch((err) => this.messenger.postError(err));
+    });
+  }
+
+  private async runTask(what: string, body: (generation: number) => Promise<void>): Promise<void> {
+    const generation = ++this.taskGeneration;
+    try {
+      await body(generation);
     } catch (err) {
       if (generation !== this.taskGeneration) {
-        logger.debug('Task continuation abandoned after cancel:', err);
+        logger.debug(`${what} abandoned after cancel:`, err);
         return;
       }
       this.messenger.postError(err);

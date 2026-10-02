@@ -54,18 +54,16 @@ export async function expandMentions(text: string, cwd: string): Promise<Expande
 async function collectMentionBlocks(matches: RegExpMatchArray[], cwd: string, limits: OutputLimits): Promise<string[]> {
   if (matches.length === 0) return [];
 
-  const resolved = new Map<string, ResolvedMention | null>();
   const uniqueMentions = [...new Set(matches.map((match) => match[1]))];
   const resolvedMentions = await Promise.all(uniqueMentions.map((raw) => resolveMention(raw, cwd, limits)));
-  uniqueMentions.forEach((raw, index) => resolved.set(raw, resolvedMentions[index]));
 
-  return [...resolved.entries()]
-    .filter((entry): entry is [string, ResolvedMention] => entry[1] !== null)
-    .map(([path, mention]) =>
-      mention.kind === 'folder'
-        ? [`## Folder Content: ${path}`, '', mention.content].join('\n')
-        : [`## File Content: ${path}`, '', mention.content].join('\n'),
-    );
+  const blocks: string[] = [];
+  for (const [index, mention] of resolvedMentions.entries()) {
+    if (mention === null) continue;
+    const noun = mention.kind === 'folder' ? 'Folder' : 'File';
+    blocks.push([`## ${noun} Content: ${uniqueMentions[index]}`, '', mention.content].join('\n'));
+  }
+  return blocks;
 }
 
 async function collectCommitBlocks(tags: RegExpMatchArray[], cwd: string, limits: OutputLimits): Promise<string[]> {
