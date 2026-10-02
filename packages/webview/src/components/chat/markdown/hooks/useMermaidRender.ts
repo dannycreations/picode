@@ -14,13 +14,11 @@ interface UseMermaidRenderReturn {
 }
 
 export const useMermaidRender = (originalCode: string, enabled: boolean): UseMermaidRenderReturn => {
-  const [code, setCode] = useState(originalCode);
   const [svgContent, setSvgContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setCode(originalCode);
     setError(null);
   }, [originalCode]);
 
@@ -33,8 +31,8 @@ export const useMermaidRender = (originalCode: string, enabled: boolean): UseMer
       ensureMermaidInitialized();
       const id = `mermaid-${Math.random().toString(36).substring(2)}`;
       mermaid
-        .parse(code)
-        .then(() => mermaid.render(id, code))
+        .parse(originalCode)
+        .then(() => mermaid.render(id, originalCode))
         .then(({ svg }) => {
           if (cancelled) return;
           setError(null);
@@ -54,10 +52,10 @@ export const useMermaidRender = (originalCode: string, enabled: boolean): UseMer
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [code, enabled]);
+  }, [originalCode, enabled]);
 
   return {
-    code,
+    code: originalCode,
     svgContent,
     isLoading,
     error,

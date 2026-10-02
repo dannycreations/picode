@@ -1,30 +1,12 @@
-import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES } from '@earendil-works/pi-coding-agent';
 import { describe, expect, it } from 'vitest';
 
-import { shareOutputLimits, toOutputLimits, truncateOutput } from '@pi-code/extension/utilities/truncate';
-import { coerceSetting, SETTING_KEYS } from '@pi-code/shared/core/settings';
-
-import type { AppSettings } from '@pi-code/shared/core/settings';
-
-// Defaults materialized the same way readAppSettings builds them.
-const DEFAULT_SETTINGS = Object.fromEntries(SETTING_KEYS.map((key) => [key, coerceSetting(key, undefined)])) as AppSettings;
+import { shareOutputLimits, truncateOutput } from '@pi-code/extension/utilities/truncate';
 
 const limits = { maxLines: 5, maxBytes: 1024 };
 
 function buildLines(count: number, prefix = 'line'): string {
   return Array.from({ length: count }, (_, i) => `${prefix}${i + 1}`).join('\n');
 }
-
-describe('toOutputLimits', () => {
-  it('converts the kilobyte setting into a byte budget', () => {
-    const settings = { maxToolOutputLines: 1500, maxToolOutputSizeKb: 32 } as AppSettings;
-    expect(toOutputLimits(settings)).toEqual({ maxLines: 1500, maxBytes: 32 * 1024 });
-  });
-
-  it('matches the pi defaults out of the box', () => {
-    expect(toOutputLimits(DEFAULT_SETTINGS)).toEqual({ maxLines: DEFAULT_MAX_LINES, maxBytes: DEFAULT_MAX_BYTES });
-  });
-});
 
 describe('shareOutputLimits', () => {
   it('keeps the full budget for a single result', () => {

@@ -1,8 +1,43 @@
-import { describe, expect, it } from 'vitest';
+import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES } from '@earendil-works/pi-coding-agent';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { invalidateAppSettings, readOutputLimits } from '@pi-code/extension/core/settings';
 import { getSettingSpec, SETTING_KEYS } from '@pi-code/shared/core/settings';
 import manifest from '../../package.json' with { type: 'json' };
 import { buildManifestSettings } from '../../scripts/settings.ts';
+
+const { configValues } = vi.hoisted(() => ({ configValues: {} as Record<string, unknown> }));
+
+vi.mock('vscode', () => ({
+  ConfigurationTarget: { Global: 1, Workspace: 2, WorkspaceFolder: 3 },
+  workspace: { getConfiguration: () => ({ get: (key: string) => configValues[key] }) },
+}));
+
+describe('readOutputLimits', () => {
+  beforeEach(() => {
+    for (const key of Object.keys(configValues)) delete configValues[key];
+    invalidateAppSettings();
+  });
+
+  it('converts the kilobyte setting into a byte budget', () => {
+    Object.assign(configValues, { maxToolOutputLines: 1500, maxToolOutputSizeKb: 32 });
+    expect(readOutputLimits()).toEqual({ maxLines: 1500, maxBytes: 32 * 1024 });
+  });
+
+  it('matches the pi defaults out of the box', () => {
+    // An unset key falls back to the schema default declared in package.json.
+    expect(readOutputLimits()).toEqual({ maxLines: DEFAULT_MAX_LINES, maxBytes: DEFAULT_MAX_BYTES });
+  });
+
+  it('re-reads the budget after the settings cache is invalidated', () => {
+    Object.assign(configValues, { maxToolOutputSizeKb: 8 });
+    expect(readOutputLimits().maxBytes).toBe(8 * 1024);
+
+    Object.assign(configValues, { maxToolOutputSizeKb: 16 });
+    invalidateAppSettings();
+    expect(readOutputLimits().maxBytes).toBe(16 * 1024);
+  });
+});
 
 describe('contributed configuration', () => {
   it('matches the shared settings schema', () => {

@@ -70,6 +70,31 @@ const model = (id: string, thinkingLevels: ModelItem['thinkingLevels']): ModelIt
   thinkingLevels,
 });
 
+describe('memoized chat chrome', () => {
+  beforeEach(() => {
+    apply([{ type: 'session_loaded', payload: { id: 'task-1', title: 'Task', messages: [], path: '/tmp/task.json', ...stats(0) } }]);
+    useChatStore.setState({ models: [model('deep', ['high'])], selectedModel: 'deep' });
+  });
+
+  it('keeps every prop the composer and footer depend on identical across a streamed token', () => {
+    // `ChatInput` and `ChatFooter` are memoized, so a token that rebuilds
+    // `activeTask` must not disturb the store values they read. If any of these
+    // identities changed, the memo would silently never hit again.
+    const before = useChatStore.getState();
+
+    useChatStore.getState().applyMessage({ type: 'stream_delta', payload: { text: 'hello' } });
+
+    const after = useChatStore.getState();
+    expect(after.activeTask).not.toBe(before.activeTask);
+    expect(after.models).toBe(before.models);
+    expect(after.selectedModel).toBe(before.selectedModel);
+    expect(after.selectedThinkingLevel).toBe(before.selectedThinkingLevel);
+    expect(after.setSelectedModel).toBe(before.setSelectedModel);
+    expect(after.setSelectedThinkingLevel).toBe(before.setSelectedThinkingLevel);
+    expect(selectThinkingLevel(after)).toBe(selectThinkingLevel(before));
+  });
+});
+
 describe('selectThinkingLevel', () => {
   beforeEach(() => {
     useChatStore.setState({ models: [model('fast', ['off', 'low']), model('deep', ['high'])], selectedModel: 'deep', selectedThinkingLevel: 'low' });

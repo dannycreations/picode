@@ -25,6 +25,11 @@ export type ToolName =
 
 export type ToolStatus = 'approval' | 'completed' | 'denied' | 'running';
 
+export interface LineRange {
+  start: number;
+  end: number;
+}
+
 export type ToolArguments =
   // ask_question
   | { question: string; follow_up: Array<{ text: string }> }
@@ -35,7 +40,7 @@ export type ToolArguments =
   // execute_command
   | { command: string; cwd?: string | null; timeout?: number }
   // read_file
-  | { files: Array<{ path: string; ranges?: Array<{ start: number; end: number }> }> }
+  | { files: Array<{ path: string; ranges?: Array<LineRange> }> }
   // spawn_subagent
   | { agent: string; description: string; task: string }
   // update_todo

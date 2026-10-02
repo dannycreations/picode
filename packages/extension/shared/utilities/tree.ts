@@ -7,7 +7,7 @@ interface FileTreeNode {
 }
 
 export function buildFileTree(paths: readonly string[]): FileTreeNode {
-  const root = { name: '', isDir: true, children: new Map() } satisfies FileTreeNode;
+  const root: FileTreeNode = { name: '', isDir: true, children: new Map<string, FileTreeNode>() };
   for (const raw of paths) {
     const isDir = raw.endsWith('/');
     const segments = raw.replace(/\/+$/, '').split('/');
@@ -17,7 +17,7 @@ export function buildFileTree(paths: readonly string[]): FileTreeNode {
       const isLast = i === segments.length - 1;
       let child = node.children.get(segment);
       if (!child) {
-        child = { name: segment, isDir: !isLast, children: new Map() };
+        child = { name: segment, isDir: !isLast, children: new Map<string, FileTreeNode>() };
         node.children.set(segment, child);
       } else if (!isLast) {
         child.isDir = true;

@@ -36,7 +36,21 @@ function formatUsage(usage: SubagentUsage): string {
   return `${turns}, ${usage.tokensIn.toLocaleString()} in / ${usage.tokensOut.toLocaleString()} out, $${usage.cost.toFixed(4)}`;
 }
 
+function wrapReport(outcome: SubagentOutcome, state: 'completed' | 'error', body: readonly string[]): string {
+  return [`## Sub-agent ${outcome.agent} (${state})`, '', ...body, '', formatUsage(outcome.usage)].join('\n');
+}
+
 async function renderOutcome(outcome: SubagentOutcome, state: 'completed' | 'error'): Promise<{ text: string; tempFilePath?: string }> {
+  // The error body reports the failure and the steps taken, never the report
+  // itself, so truncating it and spilling it to a temp file would produce a
+  // path that nothing in the result points at.
+  if (state === 'error') {
+    // `join` rendered a missing error as a blank line; keep that instead of
+    // letting the word "undefined" reach the model.
+    const body = [...(outcome.steps ? ['### Steps Taken', '', outcome.steps, ''] : []), '### Error', '', outcome.error ?? ''];
+    return { text: wrapReport(outcome, state, body) };
+  }
+
   const limits = readOutputLimits();
   const baseHint = `Re-run the "${outcome.agent}" sub-agent with a narrower brief to get the rest.`;
   // Truncate once. Whether the report needs a file decides the hint wording, so
@@ -62,13 +76,7 @@ async function renderOutcome(outcome: SubagentOutcome, state: 'completed' | 'err
   }
 
   const text = renderTruncatedText(truncation, 'head', hint);
-
-  const body =
-    state === 'error'
-      ? [...(outcome.steps ? ['### Steps Taken', '', outcome.steps, ''] : []), '### Error', '', outcome.error]
-      : ['### Result', '', text];
-
-  return { text: [`## Sub-agent ${outcome.agent} (${state})`, '', ...body, '', formatUsage(outcome.usage)].join('\n'), tempFilePath };
+  return { text: wrapReport(outcome, state, ['### Result', '', text]), tempFilePath };
 }
 
 const SUBAGENT_NAMES = SUBAGENTS.map((agent) => agent.name);

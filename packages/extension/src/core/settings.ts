@@ -1,7 +1,6 @@
 import { getAgentDir, SettingsManager } from '@earendil-works/pi-coding-agent';
 import { ConfigurationTarget, workspace } from 'vscode';
 
-import { toOutputLimits } from '@pi-code/extension/utilities/truncate';
 import { isProjectTrusted } from '@pi-code/extension/utilities/vscode';
 import { DEFAULT_APP_ID } from '@pi-code/shared/core/constants';
 import { parseModelSelection } from '@pi-code/shared/core/protocol';
@@ -11,6 +10,8 @@ import type { WorkspaceConfiguration } from 'vscode';
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
 import type { ModelSelection } from '@pi-code/shared/core/protocol';
 import type { AppSettings } from '@pi-code/shared/core/settings';
+
+const BYTES_PER_KILOBYTE = 1024;
 
 // VS Code settings are read from the editor on demand and only change in
 // response to `onDidChangeConfiguration`, so the snapshot is memoized and invalidated
@@ -35,7 +36,8 @@ export function readAppSettings(): AppSettings {
 
 // Every tool result shares one truncation budget derived from the settings snapshot.
 export function readOutputLimits(): OutputLimits {
-  return toOutputLimits(readAppSettings());
+  const settings = readAppSettings();
+  return { maxLines: settings.maxToolOutputLines, maxBytes: settings.maxToolOutputSizeKb * BYTES_PER_KILOBYTE };
 }
 
 // Empty string means "not configured", which callers translate into the chat-selected model.

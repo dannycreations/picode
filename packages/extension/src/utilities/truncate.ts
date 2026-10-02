@@ -4,7 +4,7 @@ import { numberLines, readLines } from '@pi-code/extension/utilities/fs';
 
 import type { TruncationResult } from '@earendil-works/pi-coding-agent';
 import type { CustomToolResult } from '@pi-code/extension/types/extension';
-import type { AppSettings } from '@pi-code/shared/core/settings';
+import type { LineRange } from '@pi-code/shared/core/types';
 
 const BYTES_PER_KILOBYTE = 1024;
 
@@ -26,13 +26,6 @@ interface TruncateOutputOptions {
 interface TruncatedOutput {
   readonly text: string;
   readonly truncation: TruncationResult;
-}
-
-export function toOutputLimits(settings: AppSettings): OutputLimits {
-  return {
-    maxLines: settings.maxToolOutputLines,
-    maxBytes: settings.maxToolOutputSizeKb * BYTES_PER_KILOBYTE,
-  };
 }
 
 export function shareOutputLimits(limits: OutputLimits, count: number): OutputLimits {
@@ -84,10 +77,7 @@ export function truncateOutput(content: string, options: TruncateOutputOptions):
 }
 
 interface ReadNumberedTextOptions {
-  readonly ranges?: ReadonlyArray<{
-    start: number;
-    end: number;
-  }>;
+  readonly ranges?: ReadonlyArray<LineRange>;
   readonly hint?: TruncationHint;
 }
 

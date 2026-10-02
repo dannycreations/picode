@@ -21,13 +21,13 @@ const ARROW_BORDERS: Record<TooltipSide, string> = {
 
 interface TooltipAnchorProps {
   readonly ref?: Ref<HTMLElement | null>;
+  readonly 'aria-describedby'?: string;
   readonly onPointerEnter?: (event: PointerEvent<HTMLElement>) => void;
   readonly onPointerMove?: (event: PointerEvent<HTMLElement>) => void;
   readonly onPointerLeave?: (event: PointerEvent<HTMLElement>) => void;
   readonly onPointerDown?: (event: PointerEvent<HTMLElement>) => void;
   readonly onFocus?: (event: FocusEvent<HTMLElement>) => void;
   readonly onBlur?: (event: FocusEvent<HTMLElement>) => void;
-  readonly 'aria-describedby'?: string;
 }
 
 interface TooltipProps {
@@ -147,26 +147,10 @@ export const Tooltip: FC<TooltipProps> = ({ content, side = 'top', disabled = fa
     return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [isVisible, hide]);
 
-  const anchorProps = children.props;
-  const childRef = anchorProps.ref;
-
-  const setAnchor = useCallback(
-    (node: HTMLElement | null): void => {
-      anchorRef.current = node;
-      if (typeof childRef === 'function') {
-        childRef(node);
-      } else if (childRef) {
-        childRef.current = node;
-      }
-    },
-    [childRef],
-  );
-
   const trigger = cloneElement<TooltipAnchorProps>(children, {
-    ref: setAnchor,
-    'aria-describedby': isVisible ? tooltipId : anchorProps['aria-describedby'],
-    onPointerEnter: (event) => {
-      anchorProps.onPointerEnter?.(event);
+    ref: anchorRef,
+    'aria-describedby': isVisible ? tooltipId : undefined,
+    onPointerEnter: (event: PointerEvent<HTMLElement>) => {
       // Touch reports an enter right before the tap, which would leave a
       // tooltip hanging over the control the user just pressed.
       if (event.pointerType !== 'touch') {
@@ -174,28 +158,17 @@ export const Tooltip: FC<TooltipProps> = ({ content, side = 'top', disabled = fa
         show(false);
       }
     },
-    onPointerMove: (event) => {
-      anchorProps.onPointerMove?.(event);
+    onPointerMove: (event: PointerEvent<HTMLElement>) => {
       if (pointerRef.current) pointerRef.current = { x: event.clientX, y: event.clientY };
     },
-    onPointerLeave: (event) => {
-      anchorProps.onPointerLeave?.(event);
-      hide();
-    },
-    onPointerDown: (event) => {
-      anchorProps.onPointerDown?.(event);
-      hide();
-    },
-    onFocus: (event) => {
-      anchorProps.onFocus?.(event);
+    onPointerLeave: () => hide(),
+    onPointerDown: () => hide(),
+    onFocus: (event: FocusEvent<HTMLElement>) => {
       // Only keyboard focus should reveal the tooltip; a click already had its
       // chance through hover.
       if (event.currentTarget.matches(':focus-visible')) show(true);
     },
-    onBlur: (event) => {
-      anchorProps.onBlur?.(event);
-      hide();
-    },
+    onBlur: () => hide(),
   });
 
   return (

@@ -78,13 +78,17 @@ async function acquireSpawnSlot(signal?: AbortSignal): Promise<() => void> {
   // slot frees; it leaves the wait list and gets a no-op release instead.
   let granted = false;
   await new Promise<void>((resolve) => {
-    const waiter = () => {
-      granted = true;
-      resolve();
-    };
-    const onAbort = () => {
+    const onAbort = (): void => {
       const index = waiting.indexOf(waiter);
       if (index !== -1) waiting.splice(index, 1);
+      resolve();
+    };
+    const waiter = (): void => {
+      granted = true;
+      // The slot is ours, so the abort handler has nothing left to undo. Leaving
+      // it attached would pile one listener up on the caller's signal per queued
+      // sub-agent for the rest of the task.
+      signal?.removeEventListener('abort', onAbort);
       resolve();
     };
     waiting.push(waiter);

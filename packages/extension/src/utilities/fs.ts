@@ -8,6 +8,8 @@ import { formatPathRelativeToCwdOrAbsolute } from '@earendil-works/pi-coding-age
 import { logger } from '@pi-code/shared/core/logger';
 import { pathCollator } from '@pi-code/shared/utilities/common';
 
+import type { LineRange } from '@pi-code/shared/core/types';
+
 export interface FileChild {
   readonly name: string;
   readonly isDir: boolean;
@@ -203,15 +205,7 @@ export async function readLines(filePath: string, maxLines?: number): Promise<st
   return lines;
 }
 
-export function numberLines(
-  lines: readonly string[],
-  ranges:
-    | ReadonlyArray<{
-        start: number;
-        end: number;
-      }>
-    | undefined,
-): string {
+export function numberLines(lines: readonly string[], ranges: ReadonlyArray<LineRange> | undefined): string {
   if (!ranges || ranges.length === 0) {
     return lines.map((line, index) => `${index + 1}|${line}`).join('\n');
   }
@@ -220,7 +214,7 @@ export function numberLines(
 
   // Separate genuinely invalid ranges (their message is preserved) from ranges
   // we can number, so the merge below never folds one into the other.
-  const valid: Array<{ start: number; end: number }> = [];
+  const valid: LineRange[] = [];
   for (const range of ranges) {
     const start = Math.max(1, range.start);
     const end = Math.min(lines.length, range.end);
@@ -238,7 +232,7 @@ export function numberLines(
   // of repeating the shared lines and doing range-count times line-count work.
   valid.sort((a, b) => a.start - b.start);
 
-  const merged: Array<{ start: number; end: number }> = [];
+  const merged: LineRange[] = [];
   for (const { start, end } of valid) {
     const last = merged[merged.length - 1];
     if (last && start <= last.end + 1) {

@@ -1,6 +1,6 @@
 import { cn } from 'cn';
 import { Paperclip, Send } from 'lucide-react';
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, memo, useEffect, useMemo, useRef, useState } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
 
 import { logger } from '@pi-code/shared/core/logger';
@@ -53,7 +53,7 @@ const AttachmentsPreview: FC<{
   );
 };
 
-export const ChatInput: FC<ChatInputProps> = ({ onSend, sendingDisabled, placeholderText, textareaRef, supportsImages }) => {
+export const ChatInput = memo(({ onSend, sendingDisabled, placeholderText, textareaRef, supportsImages }: ChatInputProps) => {
   const [isFocused, setIsFocused] = useState(false);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const inputValue = useChatStore((state) => state.inputValue);
@@ -104,8 +104,10 @@ export const ChatInput: FC<ChatInputProps> = ({ onSend, sendingDisabled, placeho
 
   const addTextAttachment = (content: string): void => pushAttachment({ kind: 'text', content });
 
+  const canSend = inputValue.trim().length > 0 || selectedAttachments.length > 0;
+
   const handleSend = () => {
-    if ((inputValue.trim() || selectedAttachments.length > 0) && !sendingDisabled) {
+    if (canSend && !sendingDisabled) {
       onSend(inputValue, selectedAttachments);
       setInputValue('');
       setSelectedAttachments([]);
@@ -278,7 +280,7 @@ export const ChatInput: FC<ChatInputProps> = ({ onSend, sendingDisabled, placeho
     await Promise.all([...textFiles.map(attachTextFile), ...imageFiles.map(attachImage)]);
   };
 
-  const isSendButtonActive = (inputValue.trim().length > 0 || selectedAttachments.length > 0) && !sendingDisabled;
+  const isSendButtonActive = canSend && !sendingDisabled;
 
   return (
     <div className="relative flex flex-col px-3.5 pt-2 pb-1 outline-none w-full box-border bg-vscode-sideBar-background shrink-0">
@@ -374,4 +376,4 @@ export const ChatInput: FC<ChatInputProps> = ({ onSend, sendingDisabled, placeho
       </div>
     </div>
   );
-};
+});

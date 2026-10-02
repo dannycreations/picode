@@ -286,6 +286,14 @@ export const ChatView: FC = () => {
     useChatStore.getState().send({ type: 'archive_session', path: activeTask.path, id: activeTask.id, title: activeTask.title });
   }, [activeTask?.path, activeTask?.id, activeTask?.title]);
 
+  const handleSend = useCallback(
+    (text: string, attachments: Attachment[]) => {
+      scrollToBottom();
+      handleSendPrompt(text, attachments);
+    },
+    [scrollToBottom, handleSendPrompt],
+  );
+
   if (view === 'settings') {
     return (
       <div className="view-container">
@@ -460,10 +468,7 @@ export const ChatView: FC = () => {
       {!activeTask?.isArchived && (
         <ChatInput
           textareaRef={textareaRef}
-          onSend={(text, attachments) => {
-            scrollToBottom();
-            handleSendPrompt(text, attachments);
-          }}
+          onSend={handleSend}
           sendingDisabled={isInputDisabled}
           supportsImages={supportsImages}
           placeholderText={pendingQuestion ? 'Type your answer...' : activeTask ? 'Reply something...' : 'Ask a question or type a command...'}

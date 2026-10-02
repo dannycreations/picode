@@ -9,7 +9,7 @@ import { checkReadableFile } from '@pi-code/extension/utilities/fs';
 import { readNumberedText, shareOutputLimits } from '@pi-code/extension/utilities/truncate';
 
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
-import type { ToolName } from '@pi-code/shared/core/types';
+import type { LineRange, ToolName } from '@pi-code/shared/core/types';
 
 function nextLineAfter(text: string): number | undefined {
   const lastBreak = text.lastIndexOf('\n');
@@ -20,10 +20,7 @@ function nextLineAfter(text: string): number | undefined {
 
 interface FileRequest {
   readonly path: string;
-  readonly ranges?: ReadonlyArray<{
-    start: number;
-    end: number;
-  }>;
+  readonly ranges?: ReadonlyArray<LineRange>;
 }
 
 interface FileSection {

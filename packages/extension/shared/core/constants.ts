@@ -20,6 +20,6 @@ export const TAG_PATTERN = /(?<=^|\s)#(\S+)/g;
 
 // Shortest displayable hash is 7 chars; longest is a full SHA-1.
 export const SHORT_HASH_LENGTH = 7;
-export const COMMIT_HASH_PATTERN = /^[a-f0-9]{7,40}$/i;
+export const COMMIT_HASH_PATTERN = new RegExp(`^[a-f0-9]{${SHORT_HASH_LENGTH},40}$`, 'i');
 
 export const WORKING_CHANGES_TAG = 'changes';
