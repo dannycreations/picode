@@ -14,7 +14,7 @@ import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { useChatStore } from '@pi-code/webview/stores/useChatStore';
 import { readFileAsDataUrl } from '@pi-code/webview/utilities/common';
 
-import type { ChangeEvent, ClipboardEvent, DragEvent, FC, KeyboardEvent, RefObject } from 'react';
+import type { ChangeEvent, ClipboardEvent, FC, KeyboardEvent, RefObject } from 'react';
 import type { Attachment } from '@pi-code/shared/core/types';
 import type { UseSuggestionReturn } from '@pi-code/webview/components/chat/hooks/useSuggestion';
 
@@ -55,7 +55,6 @@ const AttachmentsPreview: FC<{
 
 export const ChatInput = memo(({ onSend, sendingDisabled, placeholderText, textareaRef, supportsImages }: ChatInputProps) => {
   const [isFocused, setIsFocused] = useState(false);
-  const [isDraggingOver, setIsDraggingOver] = useState(false);
   const inputValue = useChatStore((state) => state.inputValue);
   const setInputValue = useChatStore((state) => state.setInputValue);
   const commands = useChatStore((state) => state.commands);
@@ -205,81 +204,6 @@ export const ChatInput = memo(({ onSend, sendingDisabled, placeholderText, texta
     }
   };
 
-  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
-    // Shift-drag still inserts @mentions. Without Shift, allow drops for
-    // model-supported attachments: text files and, when the model supports
-    // them, images. Unsupported or mixed-type drops are ignored.
-    const hasFiles = e.dataTransfer.types.includes('Files');
-
-    if (hasFiles) {
-      e.preventDefault();
-
-      // Shift-drag without real files still targets @mention insertion;
-      // leave the drag-over state untouched.
-      if (e.shiftKey && e.dataTransfer.files.length === 0) return;
-
-      const mimeTypes = new Set(Array.from(e.dataTransfer.files, (file) => file.type));
-      const [soleType] = mimeTypes;
-      const isDroppableText = mimeTypes.size === 1 && soleType.startsWith('text/');
-      const isDroppableImage = mimeTypes.size === 1 && supportsImages && soleType.startsWith('image/');
-
-      if (isDroppableText || isDroppableImage) {
-        e.dataTransfer.dropEffect = 'copy';
-        setIsDraggingOver(true);
-      } else {
-        setIsDraggingOver(false);
-      }
-      return;
-    }
-
-    if (e.shiftKey) {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'copy';
-      setIsDraggingOver(true);
-    } else {
-      setIsDraggingOver(false);
-    }
-  };
-
-  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
-    // Moving between children fires dragleave too; only clear when the pointer
-    // actually leaves the input box, so the dotted outline does not flicker.
-    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
-    setIsDraggingOver(false);
-  };
-
-  const handleDrop = async (e: DragEvent<HTMLDivElement>) => {
-    setIsDraggingOver(false);
-
-    // Shift-drag inserts @mentions for paths/URIs; if no usable path text is
-    // present, it falls through to plain file-attachment handling below.
-    if (e.shiftKey) {
-      e.preventDefault();
-      const text = e.dataTransfer.getData('text') || e.dataTransfer.getData('application/vnd.code.uri-list');
-      const paths = text
-        .split(/\r?\n/)
-        .map((line) => line.trim())
-        .filter((line) => line.length > 0 && !line.startsWith('#'));
-
-      if (paths.length > 0) {
-        useChatStore.getState().send({ type: 'insert_mentions', paths });
-        return;
-      }
-    }
-
-    // Plain file drop: convert to model-supported attachments,
-    // ignoring unsupported file types.
-    const files = Array.from(e.dataTransfer.files);
-    if (files.length === 0) return;
-    e.preventDefault();
-
-    const classified = await Promise.all(files.map(async (file) => ({ file, kind: await classifyFileByContent(file) })));
-    const textFiles = classified.filter(({ kind }) => kind === 'text').map(({ file }) => file);
-    const imageFiles = supportsImages ? classified.filter(({ kind }) => kind === 'image').map(({ file }) => file) : [];
-
-    await Promise.all([...textFiles.map(attachTextFile), ...imageFiles.map(attachImage)]);
-  };
-
   const isSendButtonActive = canSend && !sendingDisabled;
 
   return (
@@ -289,11 +213,7 @@ export const ChatInput = memo(({ onSend, sendingDisabled, placeholderText, texta
       <div
         className={cn(
           'relative flex flex-col rounded border transition-all duration-150',
-          isDraggingOver
-            ? 'border-dashed border-vscode-focusBorder'
-            : isFocused
-              ? 'border-vscode-focusBorder ring-1 ring-vscode-focusBorder'
-              : 'border-vscode-input-border bg-vscode-input-background',
+          isFocused ? 'border-vscode-focusBorder ring-1 ring-vscode-focusBorder' : 'border-vscode-input-border bg-vscode-input-background',
         )}
       >
         {command.isOpen && (
@@ -305,7 +225,7 @@ export const ChatInput = memo(({ onSend, sendingDisabled, placeholderText, texta
         {commit.isOpen && (
           <CommitMenu items={commit.items} selectedIndex={commit.selectedIndex} onSelect={commit.select} onHover={commit.setSelectedIndex} />
         )}
-        <div className="relative flex" onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
+        <div className="relative flex">
           <div
             ref={matchRef}
             aria-hidden="true"

@@ -92,7 +92,6 @@ export type WebviewToExtensionMessage =
   | { type: 'add_to_reply_queue'; text: string; attachments?: Attachment[] }
   | { type: 'edit_reply_queue'; id: string; text: string }
   | { type: 'remove_from_reply_queue'; id: string }
-  | { type: 'insert_mentions'; paths: string[] }
   | { type: 'select_workspace'; path: string };
 
 export type ExtensionToWebviewMessage =

@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { resolveCommitTag } from '@pi-code/extension/structures/chat-command/helpers/git';
-import { expandMentions, toMentionText } from './mention';
+import { expandMentions } from './mention';
 
 // expandMentions reads its truncation budget from app settings, which depend on
 // the VS Code API. Stub just that one function so the logic can run in isolation.
@@ -123,18 +123,5 @@ describe('expandMentions', () => {
     const commitAt = result.mentionContent.indexOf('COMMIT BLOCK');
     expect(fileAt).toBeGreaterThanOrEqual(0);
     expect(commitAt).toBeGreaterThan(fileAt);
-  });
-});
-
-describe('toMentionText', () => {
-  it('turns a dropped workspace path into a relative @mention', () => {
-    expect(toMentionText(join(cwd, 'secret.txt'), cwd)).toBe('@secret.txt');
-  });
-
-  it('falls back to the absolute path for files outside the workspace', () => {
-    const outside = join(tmpdir(), 'outside.txt');
-    const mention = toMentionText(outside, cwd);
-    expect(mention.startsWith('@')).toBe(true);
-    expect(mention).toContain('outside.txt');
   });
 });

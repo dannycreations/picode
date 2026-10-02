@@ -17,7 +17,6 @@ import {
   streamHistory,
 } from '@pi-code/extension/structures/agent-webview/session';
 import { searchCommits } from '@pi-code/extension/structures/chat-command/helpers/git';
-import { toMentionText } from '@pi-code/extension/structures/chat-command/mention';
 import { searchWorkspaceFiles } from '@pi-code/extension/utilities/fs';
 import { getWorkspaceCwd, setSelectedWorkspace } from '@pi-code/extension/utilities/vscode';
 import { ACTIVE_TASK_ID } from '@pi-code/shared/core/constants';
@@ -155,15 +154,6 @@ const HANDLER_MAP: HandlerMap = {
   search_commits: async (msg, ctx) => {
     const commits = await searchCommits(msg.query, ctx.cwd);
     ctx.runtime.postMessage({ type: 'commit_results', payload: { query: msg.query, commits } });
-  },
-  insert_mentions: (msg, ctx) => {
-    const text = msg.paths
-      .map((path) => path.trim())
-      .filter((path) => path.length > 0)
-      .map((path) => toMentionText(path, ctx.cwd))
-      .join(' ');
-    if (text.length === 0) return;
-    ctx.runtime.postMessage({ type: 'set_chat_input', payload: { text: `${text} ` } });
   },
   add_to_reply_queue: (msg, ctx) => {
     ctx.runtime.replyQueue.add(msg.text, msg.attachments);
