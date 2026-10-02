@@ -36,11 +36,11 @@ export const TodoHeader: FC<TodoHeaderProps> = ({ todos }) => {
     itemRefs.current[scrollIndex]?.scrollIntoView({ block: 'center', behavior: 'smooth' });
   }, [todos, isCollapsed, scrollIndex]);
 
-  if (!Array.isArray(todos) || todos.length === 0) return null;
+  if (todos.length === 0) return null;
 
   const totalCount = todos.length;
   const completedCount = todos.filter((t) => t.status === 'closed').length;
-  const allCompleted = completedCount === totalCount && totalCount > 0;
+  const allCompleted = completedCount === totalCount;
 
   return (
     <div data-todo-list className="mt-1 -mx-3 border-t border-vscode-sideBar-background overflow-hidden">

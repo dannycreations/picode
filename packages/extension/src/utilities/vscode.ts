@@ -14,6 +14,8 @@ export function setSelectedWorkspace(uri: Uri | undefined): void {
 }
 
 export function getWorkspaceUri(): Uri | undefined {
+  // The optional chain on `workspace` is load-bearing: tests mock the vscode
+  // module without this export, so the namespace value can be undefined.
   return selectedWorkspaceUri ?? workspace?.workspaceFolders?.[0]?.uri;
 }
 

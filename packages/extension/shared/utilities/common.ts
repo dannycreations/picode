@@ -40,7 +40,7 @@ export function createActiveTask(id: string, title: string, messages: ChatMessag
   return { id, title, messages, ...EMPTY_STATS };
 }
 
-function hasVisibleOutput(message: AssistantChatMessage): boolean {
+export function hasVisibleOutput(message: AssistantChatMessage): boolean {
   return message.text.trim() !== '' || (message.reasoning?.trim() ?? '') !== '';
 }
 

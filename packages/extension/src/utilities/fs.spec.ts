@@ -92,6 +92,19 @@ describe('searchWorkspaceFiles', () => {
     // localeCompare would put q10 first.
     expect(results).toEqual(['q2aaa.txt', 'q10zz.txt']);
   });
+
+  it('prefers the shallower of two equally close matches over the shorter path', async () => {
+    await write('deep-dir/aa-target.ts');
+    await write('x/y/aa-target.ts');
+
+    const results = await searchWorkspaceFiles('target', cwd);
+
+    // Both basenames are "aa-target.ts", so the prefix and basename-position
+    // fields tie. Depth then puts the shallower path first even though it is
+    // the longer string, which is what separates this from the path-length
+    // tiebreaker below it. Both paths stay inside the search depth limit.
+    expect(results).toEqual(['deep-dir/aa-target.ts', 'x/y/aa-target.ts']);
+  });
 });
 
 describe('isBinaryFile', () => {

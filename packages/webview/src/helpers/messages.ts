@@ -1,11 +1,8 @@
+import { hasVisibleOutput } from '@pi-code/shared/utilities/common';
 import { buildToolSections, GROUP_TOOLS } from '@pi-code/shared/utilities/tool';
 
 import type { AssistantChatMessage, ChatMessage, ToolChatMessage, ToolSection } from '@pi-code/shared/core/types';
 import type { TodoItem } from '@pi-code/shared/utilities/todo';
-
-function hasContent(value: string | undefined): boolean {
-  return value !== undefined && value.trim() !== '';
-}
 
 function canGroupTool(message: ChatMessage): message is ToolChatMessage {
   if (message.sender !== 'tool' || message.toolName === undefined || !GROUP_TOOLS.has(message.toolName)) {
@@ -110,10 +107,8 @@ export function groupToolMessages(messages: ReadonlyArray<ChatMessage>): ChatMes
 }
 
 export function isRenderableMessage(message: ChatMessage): boolean {
-  // An assistant turn is created the moment the model starts responding, so it
-  // stays empty until the first text or reasoning delta arrives.
   if (message.sender === 'assistant') {
-    return hasContent(message.text) || hasContent(message.reasoning);
+    return hasVisibleOutput(message);
   }
 
   return true;
@@ -170,7 +165,7 @@ interface RequestSettlePatch {
 export function settlePendingTurns(messages: ChatMessage[], patch: RequestSettlePatch = {}): ChatMessage[] {
   let changed = false;
   const next = messages.map((m) => {
-    if (m.sender !== 'api_request' && m.sender !== 'assistant' && m.sender !== 'tool') return m;
+    if (m.sender !== 'api_request' && m.sender !== 'assistant') return m;
     if (m.toolStatus !== 'running') return m;
     if (m.sender === 'api_request') {
       changed = true;

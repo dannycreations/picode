@@ -38,7 +38,7 @@ export function createSearchHighlightPlugin(search: SearchContext | undefined): 
   return () => (tree: unknown) => {
     visit(tree as Parameters<typeof visit>[0], 'text', (node, key, parent) => {
       const text = (node as { value?: string }).value;
-      if (!text || key === null || key === undefined) return;
+      if (!text || key === undefined) return;
       const parentNode = parent as { children: Array<Record<string, unknown>> } | undefined;
       if (!parentNode) return;
 

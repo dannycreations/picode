@@ -5,7 +5,7 @@ import { Type } from 'typebox';
 import { readAppSettings, readOutputLimits } from '@pi-code/extension/core/settings';
 import { toolError, toolErrorFrom, toolResult } from '@pi-code/extension/structures/tool-call/helpers';
 import { mapConcurrent } from '@pi-code/extension/utilities/common';
-import { checkReadableFile } from '@pi-code/extension/utilities/fs';
+import { checkReadableFile, hasRanges } from '@pi-code/extension/utilities/fs';
 import { readNumberedText, shareOutputLimits } from '@pi-code/extension/utilities/truncate';
 
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
@@ -40,7 +40,7 @@ async function readFileSection(cwd: string, file: FileRequest, limits: OutputLim
     }
 
     const ranges = file.ranges;
-    const header = ranges !== undefined && ranges.length > 0 ? `File: ${file.path} (Ranges: ${JSON.stringify(ranges)})` : `File: ${file.path}`;
+    const header = hasRanges(ranges) ? `File: ${file.path} (Ranges: ${JSON.stringify(ranges)})` : `File: ${file.path}`;
 
     const numbered = await readNumberedText(resolvedPath, limits, {
       ranges,

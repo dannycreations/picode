@@ -135,8 +135,7 @@ export async function walkWorkspace(
       return [];
     }
 
-    const childCount = children.length;
-    if (childCount === 0) return [];
+    if (children.length === 0) return [];
 
     const entries: WalkEntry[] = children.map((child) => ({ child, uri: Uri.joinPath(uri, child.name) }));
 
@@ -149,13 +148,12 @@ export async function walkWorkspace(
       }
     }
 
-    const ignoredPaths =
-      repo && childCount > 0
-        ? await getIgnoredPaths(
-            repo,
-            entries.map((entry) => entry.uri.fsPath),
-          ).catch(() => null)
-        : null;
+    const ignoredPaths = repo
+      ? await getIgnoredPaths(
+          repo,
+          entries.map((entry) => entry.uri.fsPath),
+        ).catch(() => null)
+      : null;
 
     const nextNodes: UriNode[] = [];
     const relativePrefix = relative === '' ? '' : `${relative}/`;

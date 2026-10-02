@@ -1,5 +1,5 @@
 import { cn } from 'cn';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 
@@ -92,7 +92,7 @@ interface CommandMenuProps {
 
 export const CommandMenu = ({ commands, selectedIndex, onSelect, onHover }: CommandMenuProps) => {
   // Only worth labelling the origin once more than one kind of command exists.
-  const showSource = useMemo(() => new Set(commands.map((command) => command.source)).size > 1, [commands]);
+  const showSource = new Set(commands.map((command) => command.source)).size > 1;
 
   return (
     <SuggestionMenu<CommandItem>

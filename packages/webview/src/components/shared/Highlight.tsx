@@ -33,14 +33,11 @@ export function locateOccurrences(text: string, search: SearchContext | undefine
 
 interface HighlightProps {
   readonly text: string;
-  readonly query: string;
   readonly segments: ReadonlyArray<OccurrenceSegment>;
   readonly activeOccurrence: number;
 }
 
-const Highlight: FC<HighlightProps> = ({ text, query, segments, activeOccurrence }) => {
-  if (!query) return <>{text}</>;
-
+const Highlight: FC<HighlightProps> = ({ text, segments, activeOccurrence }) => {
   const first = segments[0];
   if (segments.length === 1 && first.matchIndex === null) return <>{text}</>;
 
@@ -68,22 +65,15 @@ interface SearchableTextProps {
 }
 
 export const SearchableText: FC<SearchableTextProps> = ({ text, search }) => {
-  const query = search?.query ?? '';
   // Most renders have no active search, and the split below is a full scan of
-  // the text, so return before doing any of it.
-  if (!query) return <>{text}</>;
+  // the text, so return before doing any of it. Testing the search itself also
+  // narrows it, so the rest of this component needs no absent-value fallbacks.
+  if (!search?.query) return <>{text}</>;
 
   // One scan feeds both the split and the count, so the text is not walked
   // twice for every render pass while a search is open.
-  const segments = splitOnOccurrences(text, query);
+  const segments = splitOnOccurrences(text, search.query);
   const count = segments.filter((segment) => segment.matchIndex !== null).length;
 
-  return (
-    <Highlight
-      text={text}
-      query={query}
-      segments={segments}
-      activeOccurrence={localActiveIndex(search?.globalOffset ?? 0, count, search?.activeIndex ?? -1)}
-    />
-  );
+  return <Highlight text={text} segments={segments} activeOccurrence={localActiveIndex(search.globalOffset, count, search.activeIndex)} />;
 };

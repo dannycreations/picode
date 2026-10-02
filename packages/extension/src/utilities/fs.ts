@@ -81,15 +81,15 @@ function rankPath(path: string, needle: string): PathRank {
 }
 
 function rankPaths(paths: readonly string[], needle: string): string[] {
-  return [...paths].sort((a, b) => {
-    const ra = rankPath(a, needle);
-    const rb = rankPath(b, needle);
-    if (ra.prefix !== rb.prefix) return ra.prefix - rb.prefix;
-    if (ra.baseIndex !== rb.baseIndex) return ra.baseIndex - rb.baseIndex;
-    if (ra.depth !== rb.depth) return ra.depth - rb.depth;
-    if (ra.pathLength !== rb.pathLength) return ra.pathLength - rb.pathLength;
-    return pathCollator.compare(a, b);
+  const ranked = paths.map((path) => ({ path, rank: rankPath(path, needle) }));
+  ranked.sort((a, b) => {
+    if (a.rank.prefix !== b.rank.prefix) return a.rank.prefix - b.rank.prefix;
+    if (a.rank.baseIndex !== b.rank.baseIndex) return a.rank.baseIndex - b.rank.baseIndex;
+    if (a.rank.depth !== b.rank.depth) return a.rank.depth - b.rank.depth;
+    if (a.rank.pathLength !== b.rank.pathLength) return a.rank.pathLength - b.rank.pathLength;
+    return pathCollator.compare(a.path, b.path);
   });
+  return ranked.map((entry) => entry.path);
 }
 
 const MAX_RESULTS = 50;
@@ -128,7 +128,7 @@ export async function searchWorkspaceFiles(query: string, cwd: string): Promise<
 const MEGABYTE = 1024 * 1024;
 const MAX_FILE_SIZE_BYTES = 10 * MEGABYTE;
 
-export type ReadableFileCheck = { ok: true } | { ok: false; body: string; missing: boolean };
+type ReadableFileCheck = { ok: true } | { ok: false; body: string; missing: boolean };
 
 export async function checkReadableFile(path: string): Promise<ReadableFileCheck> {
   try {
@@ -205,8 +205,12 @@ export async function readLines(filePath: string, maxLines?: number): Promise<st
   return lines;
 }
 
+export function hasRanges(ranges: ReadonlyArray<LineRange> | undefined): ranges is ReadonlyArray<LineRange> {
+  return ranges !== undefined && ranges.length > 0;
+}
+
 export function numberLines(lines: readonly string[], ranges: ReadonlyArray<LineRange> | undefined): string {
-  if (!ranges || ranges.length === 0) {
+  if (!hasRanges(ranges)) {
     return lines.map((line, index) => `${index + 1}|${line}`).join('\n');
   }
 

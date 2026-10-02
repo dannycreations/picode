@@ -1,6 +1,6 @@
 import { formatSize, generateDiffString, truncateHead, truncateTail } from '@earendil-works/pi-coding-agent';
 
-import { numberLines, readLines } from '@pi-code/extension/utilities/fs';
+import { hasRanges, numberLines, readLines } from '@pi-code/extension/utilities/fs';
 
 import type { TruncationResult } from '@earendil-works/pi-coding-agent';
 import type { CustomToolResult } from '@pi-code/extension/types/extension';
@@ -83,7 +83,7 @@ interface ReadNumberedTextOptions {
 
 export async function readNumberedText(filePath: string, limits: OutputLimits, options?: ReadNumberedTextOptions): Promise<string> {
   const ranges = options?.ranges;
-  const maxLines = ranges !== undefined && ranges.length > 0 ? Math.max(...ranges.map((range) => Math.max(1, range.end))) : limits.maxLines;
+  const maxLines = hasRanges(ranges) ? Math.max(...ranges.map((range) => Math.max(1, range.end))) : limits.maxLines;
 
   const lines = await readLines(filePath, maxLines);
   const { text } = truncateOutput(numberLines(lines, ranges), { limits, keep: 'head', hint: options?.hint });

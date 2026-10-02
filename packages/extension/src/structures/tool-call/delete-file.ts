@@ -17,10 +17,9 @@ export const deleteFileTool = defineTool({
     path: Type.String({ description: 'Workspace-relative path of the file or directory.' }),
   }),
   async execute(_toolCallId, params, signal, onUpdate, ctx) {
+    const workspaceRoot = resolve(ctx.cwd);
     const result = await runFileMutation(ctx.cwd, params.path, 'deleting file', signal, async (resolvedPath) => {
-      // True when the workspace root sits at or under the target, so deleting
-      // it would take the whole workspace with it.
-      if (getCwdRelativePath(resolve(ctx.cwd), resolvedPath) !== undefined) {
+      if (getCwdRelativePath(workspaceRoot, resolvedPath) !== undefined) {
         return toolError(`Error: refusing to delete "${params.path}" because it contains the workspace root.`);
       }
 

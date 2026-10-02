@@ -8,7 +8,7 @@ import { logger } from '@pi-code/shared/core/logger';
 // user's repo, so redact any header whose value is credential-shaped.
 const SENSITIVE_HEADERS = new Set(['authorization', 'cookie', 'set-cookie', 'x-api-key', 'x-auth-token', 'proxy-authorization']);
 
-let logPath: string | null = null;
+let logPath = '';
 let nativeFetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response> = globalThis.fetch.bind(globalThis);
 let writeChain: Promise<void> = Promise.resolve();
 
@@ -39,11 +39,9 @@ function formatEntry(direction: 'request' | 'response', payload: unknown): strin
 }
 
 function enqueue(text: string): void {
-  if (!logPath) return;
-  const target = logPath;
   writeChain = writeChain
-    .then(() => mkdir(dirname(target), { recursive: true }))
-    .then(() => appendFile(target, text))
+    .then(() => mkdir(dirname(logPath), { recursive: true }))
+    .then(() => appendFile(logPath, text))
     .catch((err) => logger.debug('Failed to write debug request log:', err));
 }
 
