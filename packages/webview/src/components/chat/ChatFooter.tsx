@@ -131,7 +131,7 @@ export const ChatFooter = memo(
 
         {showThinking && (
           <div className="flex flex-row relative shrink-0" ref={thinkingRef}>
-            <Tooltip content={`Thinking level: ${currentThinkingLevel}`}>
+            <Tooltip content={`Thinking: ${currentThinkingLevel}`}>
               <button
                 onClick={() => setShowThinkingMenu(!showThinkingMenu)}
                 className="px-2 py-0.5 text-muted hover:text-vscode-foreground bg-transparent hover:bg-vscode-list-hoverBackground border border-vscode-panel-border/50 rounded flex items-center gap-1 cursor-pointer capitalize"

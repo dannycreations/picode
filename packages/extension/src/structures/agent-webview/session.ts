@@ -31,9 +31,7 @@ const HISTORY_PREVIEW_CONCURRENCY = 6;
 
 const CATALOG_TIMEOUT_MS = 60_000;
 
-async function listSelectableModels(modelRuntime: ModelRuntime): Promise<ModelItem[]> {
-  const available = await modelRuntime.getAvailable();
-  const models = available.length > 0 ? available : modelRuntime.getModels();
+function toModelItems(models: readonly Model<Api>[]): ModelItem[] {
   return models.map((model) => ({
     id: model.id,
     name: model.name,
@@ -42,6 +40,16 @@ async function listSelectableModels(modelRuntime: ModelRuntime): Promise<ModelIt
     supportsImages: model.input.includes('image'),
     thinkingLevels: getSupportedThinkingLevels(model),
   }));
+}
+
+function listCachedModels(modelRuntime: ModelRuntime): ModelItem[] {
+  const cached = modelRuntime.getAvailableSnapshot();
+  return toModelItems(cached.length > 0 ? cached : modelRuntime.getModels());
+}
+
+async function listSelectableModels(modelRuntime: ModelRuntime): Promise<ModelItem[]> {
+  const available = await modelRuntime.getAvailable();
+  return toModelItems(available.length > 0 ? available : modelRuntime.getModels());
 }
 
 function resolveDefaultModel(models: ModelItem[], preferred: { id?: string; provider?: string }): ModelSelection | undefined {
@@ -146,7 +154,8 @@ export async function archiveSession(sourcePath: string): Promise<{ path: string
 }
 
 export async function getInitData(cwd: string, services: AgentSessionServices): Promise<SessionInitData> {
-  const [models, defaultModel] = await Promise.all([listSelectableModels(services.modelRuntime), getDefaultModelSelection(cwd)]);
+  const defaultModel = await getDefaultModelSelection(cwd);
+  const models = listCachedModels(services.modelRuntime);
 
   const thinkingLevel = getSettingsManager(cwd).getDefaultThinkingLevel() ?? undefined;
 

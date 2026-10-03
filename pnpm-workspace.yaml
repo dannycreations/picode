@@ -1,39 +1,9 @@
 nodeLinker: hoisted
+minimumReleaseAge: 0
+dangerouslyAllowAllBuilds: true
 
 packages:
   - packages/*
 
 patchedDependencies:
   '@earendil-works/pi-coding-agent': patches/@earendil-works__pi-coding-agent.patch
-
-allowBuilds:
-  '@google/genai': true
-  '@parcel/watcher': true
-  '@vscode/vsce-sign': true
-  esbuild: true
-  keytar: true
-  protobufjs: true
-
-minimumReleaseAgeExclude:
-  - '@types/vscode@1.140.0'
-  - prettier@3.9.7
-  - typebox@1.3.33
-  - lucide-react@1.47.0
-  - '@earendil-works/chord@1.0.0'
-  - '@earendil-works/pi-agent-core@1.0.0'
-  - '@earendil-works/pi-ai@1.0.0'
-  - '@earendil-works/pi-codemode@1.0.0'
-  - '@earendil-works/pi-coding-agent@1.0.0'
-  - '@earendil-works/pi-mcp@1.0.0'
-  - '@earendil-works/pi-telemetry@1.0.0'
-  - '@earendil-works/pi-tui@1.0.0'
-  - '@shikijs/core@4.5.0'
-  - '@shikijs/engine-javascript@4.5.0'
-  - '@shikijs/engine-oniguruma@4.5.0'
-  - '@shikijs/langs@4.5.0'
-  - '@shikijs/primitive@4.5.0'
-  - '@shikijs/themes@4.5.0'
-  - '@shikijs/types@4.5.0'
-  - katex@0.19.0
-  - shiki@4.5.0
-  - vite@8.3.2

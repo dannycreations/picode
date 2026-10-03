@@ -134,7 +134,7 @@ interface ChatState {
   readonly selectWorkspace: (path: string) => void;
 }
 
-const NO_MODEL: ModelSelection = { id: DEFAULT_APP_ID, provider: '' };
+const NO_MODEL: ModelSelection = { id: 'unknown', provider: DEFAULT_APP_ID };
 
 function toSelection(model: ModelItem | ModelSelection | undefined): ModelSelection {
   return model ? { id: model.id, provider: model.provider } : NO_MODEL;
