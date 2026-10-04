@@ -61,9 +61,19 @@ const useSuggestion = <T>(props: UseSuggestionProps<T>): UseSuggestionReturn<T> 
 
   const isOpen = !isDismissed && query !== null && items.length > 0;
 
+  // Only a new query invalidates the highlight. Mention and commit results are
+  // fetched asynchronously, so the candidate list is rebuilt on every response;
+  // resetting on that identity pulled the highlight back to the first row while
+  // the pointer still rested on the row below it.
   useEffect(() => {
     setSelectedIndex(0);
-  }, [items]);
+  }, [query]);
+
+  // A list that shrank leaves the highlight past its end, where Enter stops
+  // being a completion and sends the message instead.
+  useEffect(() => {
+    setSelectedIndex((previous) => Math.min(previous, Math.max(items.length - 1, 0)));
+  }, [items.length]);
 
   useLayoutEffect(() => {
     const target = pendingCaretRef.current;
