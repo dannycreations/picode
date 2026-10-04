@@ -62,7 +62,8 @@ export async function createSession(cwd: string, sessionPath?: string): Promise<
   if (!settings.enableAskQuestionTool) disabledTools.add('ask_question');
   if (!settings.enableSubagentTool) disabledTools.add('spawn_subagent');
 
-  const enabledTools: ToolDefinition[] = [...CUSTOM_TOOLS.filter((tool) => !disabledTools.has(tool.name as ToolName))];
+  // The annotation widens the element type so the MCP proxy can be pushed below.
+  const enabledTools: ToolDefinition[] = CUSTOM_TOOLS.filter((tool) => !disabledTools.has(tool.name as ToolName));
 
   // The MCP gateway is inert without configuration, so the config itself
   // decides whether the proxy tool exists at all.

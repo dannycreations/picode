@@ -1,6 +1,10 @@
+import { findFencedBlock } from '@pi-code/shared/utilities/markdown';
+
 import type { ActiveTaskState, AssistantChatMessage, ChatMessage, ModelThinkingLevel, StatsData, TextAttachment } from '@pi-code/shared/core/types';
 
 export const DEFAULT_CONTEXT_LIMIT = 200_000;
+
+export const BYTES_PER_KILOBYTE = 1024;
 
 // Sorts names with numeric segments in natural order (file2 before file10).
 export const pathCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
@@ -19,11 +23,10 @@ export function escapeRegExp(input: string): string {
 export function parseTextAttachment(content: unknown): TextAttachment | null {
   if (typeof content !== 'string') return null;
 
-  const match = /^``` ?(\S*)\n([\s\S]*?)\n```$/.exec(content.trim());
-  if (!match) return null;
+  const block = findFencedBlock(content.trim(), true);
+  if (!block?.terminated) return null;
 
-  const language = match[1];
-  return language ? { kind: 'text', content: match[2], language } : { kind: 'text', content: match[2] };
+  return block.language ? { kind: 'text', content: block.content, language: block.language } : { kind: 'text', content: block.content };
 }
 
 const EMPTY_STATS: StatsData = {

@@ -6,7 +6,6 @@ export interface Change {
 }
 
 interface RepositoryState {
-  readonly HEAD: { readonly name?: string } | undefined;
   readonly indexChanges: readonly Change[];
   readonly mergeChanges: readonly Change[];
   readonly workingTreeChanges: readonly Change[];
@@ -20,7 +19,6 @@ export interface Repository {
   checkIgnore(paths: string[]): Promise<Set<string>>;
   status(): Promise<void>;
   diff(cached?: boolean): Promise<string>;
-  log(options?: { maxEntries?: number }): Promise<readonly { readonly hash: string; readonly message: string }[]>;
 }
 
 export interface API {

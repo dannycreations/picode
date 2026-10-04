@@ -6,12 +6,11 @@ import { formatSize, generateDiffString, truncateHead, truncateTail } from '@ear
 
 import { hasRanges, numberLines, readLines } from '@pi-code/extension/utilities/fs';
 import { logger } from '@pi-code/shared/core/logger';
+import { BYTES_PER_KILOBYTE } from '@pi-code/shared/utilities/common';
 
 import type { TruncationResult } from '@earendil-works/pi-coding-agent';
 import type { CustomToolResult } from '@pi-code/extension/types/extension';
 import type { LineRange } from '@pi-code/shared/core/types';
-
-export const BYTES_PER_KILOBYTE = 1024;
 
 export function tempLogPath(kind: string): string {
   return join(tmpdir(), `pi-code-${kind}-${Date.now()}-${uuidv7().slice(0, 8)}.log`);
@@ -38,12 +37,10 @@ export interface OutputLimits {
 
 type TruncateKeep = 'head' | 'tail';
 
-type TruncationHint = string | ((truncation: TruncationResult) => string | undefined);
-
 interface TruncateOutputOptions {
   readonly limits: OutputLimits;
   readonly keep?: TruncateKeep;
-  readonly hint?: TruncationHint;
+  readonly hint?: string;
 }
 
 interface TruncatedOutput {
@@ -95,13 +92,12 @@ export function renderTruncatedText(truncation: TruncationResult, keep: Truncate
 export function truncateOutput(content: string, options: TruncateOutputOptions): TruncatedOutput {
   const keep = options.keep ?? 'head';
   const truncation = keep === 'tail' ? truncateTail(content, options.limits) : truncateHead(content, options.limits);
-  const hint = typeof options.hint === 'function' ? options.hint(truncation) : options.hint;
-  return { text: renderTruncatedText(truncation, keep, hint), truncation };
+  return { text: renderTruncatedText(truncation, keep, options.hint), truncation };
 }
 
 interface ReadNumberedTextOptions {
   readonly ranges?: ReadonlyArray<LineRange>;
-  readonly hint?: TruncationHint;
+  readonly hint?: (truncation: TruncationResult) => string | undefined;
 }
 
 export async function readNumberedText(filePath: string, limits: OutputLimits, options?: ReadNumberedTextOptions): Promise<string> {
@@ -109,8 +105,8 @@ export async function readNumberedText(filePath: string, limits: OutputLimits, o
   const maxLines = hasRanges(ranges) ? Math.max(...ranges.map((range) => Math.max(1, range.end))) : limits.maxLines;
 
   const lines = await readLines(filePath, maxLines);
-  const { text } = truncateOutput(numberLines(lines, ranges), { limits, keep: 'head', hint: options?.hint });
-  return text;
+  const truncation = truncateHead(numberLines(lines, ranges), limits);
+  return renderTruncatedText(truncation, 'head', options?.hint?.(truncation));
 }
 
 interface FileChangeResultOptions {

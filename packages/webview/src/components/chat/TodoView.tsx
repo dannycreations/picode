@@ -24,6 +24,9 @@ const TodoIcon: FC<{ status: TodoStatus }> = ({ status }) => {
   }
 };
 
+const todoStatusClasses = (todo: TodoItem): string =>
+  cn(todo.status === 'active' && 'text-vscode-charts-yellow', todo.status !== 'active' && todo.status !== 'closed' && 'opacity-60');
+
 export const TodoHeader: FC<TodoHeaderProps> = ({ todos }) => {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
@@ -74,11 +77,7 @@ export const TodoHeader: FC<TodoHeaderProps> = ({ todos }) => {
               ref={(el) => {
                 itemRefs.current[idx] = el;
               }}
-              className={cn(
-                'font-light flex flex-row gap-2 items-start min-h-[20px] leading-normal text-xs',
-                todo.status === 'active' && 'text-vscode-charts-yellow',
-                todo.status !== 'active' && todo.status !== 'closed' && 'opacity-60',
-              )}
+              className={cn('font-light flex flex-row gap-2 items-start min-h-[20px] leading-normal text-xs', todoStatusClasses(todo))}
             >
               <TodoIcon status={todo.status} />
               <span>{todo.content}</span>
@@ -105,14 +104,7 @@ export const TodoBody: FC<TodoBodyProps> = ({ timestamp, oldTodos, newTodos }) =
       {visibleTodos.length > 0 && (
         <ul className="list-none space-y-1 my-1 pr-1 pt-1 font-light leading-normal">
           {visibleTodos.map((todo) => (
-            <li
-              key={todo.content}
-              className={cn(
-                'flex flex-row gap-2 items-center',
-                todo.status === 'active' && 'text-vscode-charts-yellow',
-                todo.status !== 'active' && todo.status !== 'closed' && 'opacity-60',
-              )}
-            >
+            <li key={todo.content} className={cn('flex flex-row gap-2 items-center', todoStatusClasses(todo))}>
               <TodoIcon status={todo.status} />
               <span>{todo.content}</span>
             </li>

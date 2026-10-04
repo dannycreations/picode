@@ -47,7 +47,6 @@ export const ChatBody = memo<ChatBodyProps>(({ message, oldTodos, commands, sear
       case 'compaction':
         return <CompactionMessage message={message} search={search} />;
       case 'checkpoint':
-      case 'info':
         return <InfoMessage message={message} search={search} />;
     }
   })();

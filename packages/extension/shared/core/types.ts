@@ -118,10 +118,6 @@ export interface ErrorChatMessage extends ChatMessageBase {
   readonly errorMessage?: string;
 }
 
-export interface InfoChatMessage extends ChatMessageBase {
-  readonly sender: 'info';
-}
-
 export interface CompactionChatMessage extends ChatMessageBase {
   readonly sender: 'compaction';
   readonly cost?: number;
@@ -161,7 +157,6 @@ export type ChatMessage =
   | CheckpointChatMessage
   | CompactionChatMessage
   | ErrorChatMessage
-  | InfoChatMessage
   | QueueChatMessage
   | ToolChatMessage
   | UserChatMessage;

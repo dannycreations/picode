@@ -4,12 +4,37 @@ import {
   DEFAULT_CONTEXT_LIMIT,
   elapsedSeconds,
   findReplaceableFailedRequest,
+  parseTextAttachment,
   relativeToWorkspace,
   resolveContextLimit,
   splitOnOccurrences,
 } from './common';
+import { wrapCodeBlock } from './markdown';
 
 import type { ChatMessage } from '../core/types';
+
+describe('parseTextAttachment', () => {
+  // The writer and the reader must agree on the fence grammar, otherwise a
+  // reloaded session silently loses the attachment it stored.
+  it.each([
+    ['plain body', 'ts'],
+    ['multi\nline\nbody', 'markdown'],
+    ['```js\nconst a = 1;\n```', 'ts'],
+    ['trailing fence\n```', 'ts'],
+  ])('round-trips a body written by wrapCodeBlock', (body, language) => {
+    expect(parseTextAttachment(wrapCodeBlock(body, language))).toEqual({ kind: 'text', content: body, language });
+  });
+
+  it('omits the language when the writer was given none', () => {
+    expect(parseTextAttachment(wrapCodeBlock('plain body'))).toEqual({ kind: 'text', content: 'plain body' });
+  });
+
+  it('returns null for content that is not a fenced block', () => {
+    expect(parseTextAttachment('just text')).toBeNull();
+    expect(parseTextAttachment('```ts\nunterminated')).toBeNull();
+    expect(parseTextAttachment(undefined)).toBeNull();
+  });
+});
 
 describe('splitOnOccurrences', () => {
   it('returns one unmatched segment when nothing matches', () => {

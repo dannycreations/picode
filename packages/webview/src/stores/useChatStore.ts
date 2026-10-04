@@ -357,12 +357,11 @@ export const useChatStore = create<ChatState>((set, get) => {
       set((state) => {
         const item: HistoryItem = { id, path, task: title, timestamp: Date.now() };
         const next = { ...state.historyByScope };
-        if (archived) {
-          next.current = state.historyByScope.current.filter((e) => e.id !== id);
-          next.all = state.historyByScope.all.filter((e) => e.id !== id);
-        } else {
-          next.current = [item, ...state.historyByScope.current.filter((e) => e.id !== id)];
-          next.all = [item, ...state.historyByScope.all.filter((e) => e.id !== id)];
+        // Archiving and unarchiving move the row the same way in both scopes;
+        // only the archive list itself is invalidated below.
+        for (const scope of ['current', 'all'] as const) {
+          const remaining = state.historyByScope[scope].filter((entry) => entry.id !== id);
+          next[scope] = archived ? remaining : [item, ...remaining];
         }
         const activeTask = state.activeTask && state.activeTask.id === id ? { ...state.activeTask, path, isArchived: archived } : state.activeTask;
         const fetchedScopes = new Set(state.fetchedScopes);

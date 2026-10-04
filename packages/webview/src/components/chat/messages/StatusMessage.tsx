@@ -8,7 +8,7 @@ import { Spinner } from '@pi-code/webview/components/shared/Spinner';
 import { formatCost, formatTime } from '@pi-code/webview/utilities/common';
 
 import type { FC } from 'react';
-import type { ApiRequestChatMessage, CheckpointChatMessage, ErrorChatMessage, InfoChatMessage } from '@pi-code/shared/core/types';
+import type { ApiRequestChatMessage, CheckpointChatMessage, ErrorChatMessage } from '@pi-code/shared/core/types';
 import type { SearchContext } from '@pi-code/webview/components/shared/Highlight';
 
 export const ApiRequestMessage: FC<{ readonly message: ApiRequestChatMessage }> = ({ message }) => {
@@ -78,10 +78,7 @@ export const ErrorMessage: FC<{ readonly message: ErrorChatMessage; readonly sea
   );
 };
 
-export const InfoMessage: FC<{ readonly message: CheckpointChatMessage | InfoChatMessage; readonly search?: SearchContext }> = ({
-  message,
-  search,
-}) => {
+export const InfoMessage: FC<{ readonly message: CheckpointChatMessage; readonly search?: SearchContext }> = ({ message, search }) => {
   return (
     <div className="flex items-start justify-between gap-2 text-xs select-none">
       <div className="flex items-start gap-2 text-vscode-foreground min-w-0">

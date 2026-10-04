@@ -253,11 +253,12 @@ interface DiffStat {
 export function getFirstDiffLine(diff?: string): number | undefined {
   if (!diff) return undefined;
   for (const line of diff.split('\n')) {
-    if (!line.startsWith('+') && !line.startsWith('-')) continue;
+    // The pattern is anchored on the same character, so it already rejects
+    // context and hunk-header lines. Only a zero line number is rejected here.
     const match = /^[+-]\s*(\d+)/.exec(line);
     if (!match) continue;
     const lineNum = Number.parseInt(match[1], 10);
-    return Number.isFinite(lineNum) && lineNum > 0 ? lineNum : undefined;
+    return lineNum > 0 ? lineNum : undefined;
   }
   return undefined;
 }

@@ -1,3 +1,4 @@
+import { normalizeSeparators } from '@pi-code/shared/utilities/common';
 import { getToolFilePaths } from '@pi-code/shared/utilities/tool';
 
 import type { AppSettings, SettingKey } from '@pi-code/shared/core/settings';
@@ -60,7 +61,9 @@ interface ToolPatternConfig {
 }
 
 export function extractPathPatterns(filePath: string): readonly string[] {
-  const normalized = filePath.trim().replace(/\\/g, '/').replace(/\/+$/, '');
+  // The host matches these patterns against normalizeSeparators(filePath), so
+  // the separator must be normalized here too or a Windows path never matches.
+  const normalized = normalizeSeparators(filePath.trim()).replace(/\/+$/, '');
   if (!normalized) return [];
 
   const lastSlash = normalized.lastIndexOf('/');

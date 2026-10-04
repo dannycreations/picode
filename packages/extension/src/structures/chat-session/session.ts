@@ -192,6 +192,8 @@ function patchToolCall(result: ChatMessage[], msg: Extract<SessionMessage, { rol
   const index = result.findIndex((r) => r.sender === 'tool' && r.id === msg.toolCallId);
   if (index === -1) return;
 
+  // Unreachable at runtime: findIndex only matched tool rows. Kept because
+  // findIndex does not narrow, and this is what types `existing`.
   const existing = result[index];
   if (existing.sender !== 'tool') return;
 

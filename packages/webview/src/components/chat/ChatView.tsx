@@ -34,7 +34,6 @@ import type { Attachment, ChatMessage } from '@pi-code/shared/core/types';
 const ESTIMATED_ROW_HEIGHT: Record<ChatMessage['sender'], number> = {
   api_request: 44,
   checkpoint: 44,
-  info: 44,
   compaction: 96,
   error: 96,
   user: 96,

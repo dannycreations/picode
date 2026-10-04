@@ -211,7 +211,7 @@ export function hasRanges(ranges: ReadonlyArray<LineRange> | undefined): ranges 
 
 const NUMBERED_LINE = /^(\d+)\|/;
 
-export function numberedLine(lineNumber: number, line: string): string {
+function numberedLine(lineNumber: number, line: string): string {
   return `${lineNumber}|${line}`;
 }
 

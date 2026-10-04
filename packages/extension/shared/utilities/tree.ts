@@ -31,7 +31,7 @@ export function buildFileTree(paths: readonly string[]): FileTreeNode {
   return root;
 }
 
-function sortTreeNodes(nodes: FileTreeNode[]): FileTreeNode[] {
+function sortTreeNodes(nodes: Iterable<FileTreeNode>): FileTreeNode[] {
   return [...nodes].sort((a, b) => {
     if (a.isDir !== b.isDir) return a.isDir ? -1 : 1;
     return pathCollator.compare(a.name, b.name);
@@ -48,7 +48,7 @@ export function renderFileTree(root: FileTreeNode, rootLabel: string): string {
   const lines: string[] = [rootLabel];
 
   const stack: StackItem[] = [];
-  const rootChildren = sortTreeNodes([...root.children.values()]);
+  const rootChildren = sortTreeNodes(root.children.values());
   for (let i = rootChildren.length - 1; i >= 0; i--) {
     stack.push({
       node: rootChildren[i],
@@ -65,7 +65,7 @@ export function renderFileTree(root: FileTreeNode, rootLabel: string): string {
 
     if (node.isDir) {
       const childPrefix = prefix + (isLast ? '   ' : '│  ');
-      const children = sortTreeNodes([...node.children.values()]);
+      const children = sortTreeNodes(node.children.values());
       for (let i = children.length - 1; i >= 0; i--) {
         stack.push({
           node: children[i],

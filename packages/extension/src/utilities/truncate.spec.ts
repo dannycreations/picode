@@ -1,6 +1,9 @@
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import { shareOutputLimits, truncateOutput } from '@pi-code/extension/utilities/truncate';
+import { readNumberedText, shareOutputLimits, truncateOutput } from '@pi-code/extension/utilities/truncate';
 
 const limits = { maxLines: 5, maxBytes: 1024 };
 
@@ -65,14 +68,23 @@ describe('truncateOutput', () => {
     expect(text).toContain('Use `ranges` to continue.');
   });
 
-  it('derives the hint from the retained content', () => {
-    const numbered = Array.from({ length: 10 }, (_, i) => `${i + 1}|content`).join('\n');
-    const { text } = truncateOutput(numbered, {
-      limits,
-      hint: (truncation) => `Retained ${truncation.outputLines} lines.`,
-    });
+  it('derives the hint from the retained content', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'pi-code-truncate-'));
+    const filePath = join(dir, 'numbered.txt');
+    await writeFile(filePath, Array.from({ length: 10 }, (_, i) => `content${i + 1}`).join('\n'));
 
-    expect(text).toContain('Retained 5 lines.');
+    try {
+      // The range pulls in all ten lines so the 5-line output budget truncates.
+      const text = await readNumberedText(filePath, limits, {
+        ranges: [{ start: 1, end: 10 }],
+        hint: (truncation) => `Retained ${truncation.outputLines} lines.`,
+      });
+
+      expect(text).toContain('(5 line output limit).');
+      expect(text).toContain('Retained 5 lines.');
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 
   it('emits only the notice when the first line alone busts the byte budget', () => {

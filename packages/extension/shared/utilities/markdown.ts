@@ -1,11 +1,18 @@
 // CommonMark fenced code blocks: up to three leading spaces, then three or more
 // backticks or tildes. Backtick fences may not carry a backtick in the info string.
-const OPENING_FENCE = /^ {0,3}(?:(`{3,})(?![^`]*`)|(~{3,}))/;
+const OPENING_FENCE = /^ {0,3}(?:(`{3,})(?![^`]*`)|(~{3,}))[ \t]*(\S*)/;
 const SURROUNDING_QUOTES = /^["']+|["']+$/g;
 
 interface Fence {
   readonly char: string;
   readonly length: number;
+  readonly language: string;
+}
+
+export interface FencedBlock {
+  readonly content: string;
+  readonly language: string;
+  readonly terminated: boolean;
 }
 
 function readOpeningFence(line: string): Fence | null {
@@ -13,10 +20,10 @@ function readOpeningFence(line: string): Fence | null {
   if (!match) return null;
 
   const marker = match[1] ?? match[2];
-  return { char: marker[0], length: marker.length };
+  return { char: marker[0], length: marker.length, language: match[3] };
 }
 
-function readCodeBlock(raw: string, anchored: boolean): string | null {
+export function findFencedBlock(raw: string, anchored: boolean): FencedBlock | null {
   const lines = raw.split('\n');
 
   let start: number;
@@ -37,20 +44,20 @@ function readCodeBlock(raw: string, anchored: boolean): string | null {
   // Scan from the bottom so nested fences inside a markdown block stay intact.
   for (let end = lines.length - 1; end > start; end--) {
     if (closing.test(lines[end])) {
-      return lines.slice(start + 1, end).join('\n');
+      return { content: lines.slice(start + 1, end).join('\n'), language: fence.language, terminated: true };
     }
   }
 
   // Unterminated opener (streaming output): keep everything after it.
-  return lines.slice(start + 1).join('\n');
+  return { content: lines.slice(start + 1).join('\n'), language: fence.language, terminated: false };
 }
 
 export function stripCodeBlock(raw: string): string {
-  return readCodeBlock(raw, true) ?? raw;
+  return findFencedBlock(raw, true)?.content ?? raw;
 }
 
 export function extractCodeBlock(raw: string): string {
-  const body = readCodeBlock(raw, false) ?? raw;
+  const body = findFencedBlock(raw, false)?.content ?? raw;
   const trimmed = body.trim();
   const withoutQuotes = trimmed.replace(SURROUNDING_QUOTES, '').trim();
   return trimmed.length > withoutQuotes.length ? withoutQuotes : trimmed;

@@ -1,11 +1,11 @@
 import { getAgentDir, SettingsManager } from '@earendil-works/pi-coding-agent';
 import { ConfigurationTarget, workspace } from 'vscode';
 
-import { BYTES_PER_KILOBYTE } from '@pi-code/extension/utilities/truncate';
 import { isProjectTrusted } from '@pi-code/extension/utilities/vscode';
 import { DEFAULT_APP_ID } from '@pi-code/shared/core/constants';
 import { parseModelSelection } from '@pi-code/shared/core/protocol';
 import { coerceSetting, coerceSettings, SETTING_KEYS } from '@pi-code/shared/core/settings';
+import { BYTES_PER_KILOBYTE } from '@pi-code/shared/utilities/common';
 
 import type { WorkspaceConfiguration } from 'vscode';
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';

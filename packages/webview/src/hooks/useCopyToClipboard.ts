@@ -24,7 +24,7 @@ const COPY_FEEDBACK_MS = 2000;
 
 export const useCopyToClipboard = (): UseCopyToClipboardReturn => {
   const [showCopy, setShowCopy] = useState(false);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const copy = useCallback(async (text: string, e?: MouseEvent): Promise<void> => {
     e?.stopPropagation();

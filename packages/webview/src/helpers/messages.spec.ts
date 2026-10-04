@@ -15,7 +15,7 @@ import {
 import type { ChatMessage, ToolChatMessage, ToolName } from '@pi-code/shared/core/types';
 import type { TodoItem } from '@pi-code/shared/utilities/todo';
 
-const SENDERS = ['user', 'assistant', 'tool', 'error', 'checkpoint', 'info', 'api_request'] as const;
+const SENDERS = ['user', 'assistant', 'tool', 'error', 'checkpoint', 'api_request'] as const;
 
 const asTool = (message: ChatMessage): ToolChatMessage => message as ToolChatMessage;
 
