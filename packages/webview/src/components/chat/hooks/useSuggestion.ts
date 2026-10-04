@@ -152,11 +152,14 @@ const useSuggestion = <T>(props: UseSuggestionProps<T>): UseSuggestionReturn<T> 
   return { isOpen, items, query, selectedIndex, setSelectedIndex, select, close, handleKeyDown, handleChange, syncCaret };
 };
 
-interface UseCommandProps {
-  readonly commands: readonly CommandItem[];
+interface ComposerProps {
   readonly value: string;
   readonly setValue: (value: string) => void;
   readonly textareaRef: RefObject<HTMLTextAreaElement | null>;
+}
+
+interface UseCommandProps extends ComposerProps {
+  readonly commands: readonly CommandItem[];
 }
 
 // The token readers each report the whole token, but the hook only wants the
@@ -203,15 +206,9 @@ const useDebouncedSearch = (query: string | null, buildRequest: SearchRequestBui
   }, [query, buildRequest]);
 };
 
-interface UseMentionProps {
-  readonly value: string;
-  readonly setValue: (value: string) => void;
-  readonly textareaRef: RefObject<HTMLTextAreaElement | null>;
-}
-
 const readMentionQueryAt = (text: string, caret: number): string | null => queryOf(readMentionQuery(text, caret));
 
-export const useChatMention = ({ value, setValue, textareaRef }: UseMentionProps): UseSuggestionReturn<string> => {
+export const useChatMention = ({ value, setValue, textareaRef }: ComposerProps): UseSuggestionReturn<string> => {
   const searchResults = useChatStore((state) => state.searchResults);
 
   // Results arrive asynchronously through the store; reading them here keeps a
@@ -232,17 +229,11 @@ export const useChatMention = ({ value, setValue, textareaRef }: UseMentionProps
   return suggestion;
 };
 
-interface UseChatTagProps {
-  readonly value: string;
-  readonly setValue: (value: string) => void;
-  readonly textareaRef: RefObject<HTMLTextAreaElement | null>;
-}
-
 const readTagQueryAt = (text: string, caret: number): string | null => queryOf(readTagQuery(text, caret));
 const applyTagInsertion = (text: string, caret: number, item: CommitTagItem): { readonly text: string; readonly caret: number } =>
   applyTag(text, caret, item.value);
 
-export const useChatTag = ({ value, setValue, textareaRef }: UseChatTagProps): UseSuggestionReturn<CommitTagItem> => {
+export const useChatTag = ({ value, setValue, textareaRef }: ComposerProps): UseSuggestionReturn<CommitTagItem> => {
   const commitResults = useChatStore((state) => state.commitResults);
 
   // Null results mean a search is in flight: no items keep the menu closed

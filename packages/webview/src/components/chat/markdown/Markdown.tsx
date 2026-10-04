@@ -134,7 +134,7 @@ export const Markdown = memo(({ markdown, search }: MarkdownProps) => {
       {isHovering && (
         <div className="absolute -bottom-1 right-2 animate-fade-in rounded z-10">
           <Tooltip content="Copy as markdown" side="left">
-            <CopyButton text={markdown ?? ''} className="bg-vscode-editor-background transition-all duration-200" />
+            <CopyButton text={markdown} className="bg-vscode-editor-background transition-all duration-200" />
           </Tooltip>
         </div>
       )}
