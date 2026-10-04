@@ -190,12 +190,12 @@ export async function* streamLines(filePath: string): AsyncGenerator<string> {
   }
 }
 
-export async function readLines(filePath: string, maxLines?: number): Promise<string[]> {
+export async function readLines(filePath: string, maxLines: number): Promise<string[]> {
   const lines: string[] = [];
   try {
     for await (const line of streamLines(filePath)) {
       lines.push(line);
-      if (maxLines !== undefined && lines.length >= maxLines) {
+      if (lines.length >= maxLines) {
         break;
       }
     }

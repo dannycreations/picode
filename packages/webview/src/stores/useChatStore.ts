@@ -56,20 +56,6 @@ export function setComposerTextarea(ref: RefObject<HTMLTextAreaElement | null> |
   composerTextarea = ref;
 }
 
-// Suggestion requests tag each reply with the query it answered, so a stale
-// result (from a slower, earlier query) loses against the newest query. Nothing
-// renders from them, so they live outside the reactive store state.
-let latestSearchQuery = '';
-let latestCommitQuery = '';
-
-export function setLatestSearchQuery(query: string): void {
-  latestSearchQuery = query;
-}
-
-export function setLatestCommitQuery(query: string): void {
-  latestCommitQuery = query;
-}
-
 // Every scope gets the same fresh value, so the callback takes no argument.
 function scopedRecord<T>(fill: () => T): Record<HistoryScope, T> {
   const record = {} as Record<HistoryScope, T>;
@@ -104,7 +90,6 @@ interface ChatState {
   readonly models: ModelItem[];
   readonly settings: AppSettings | null;
   readonly commands: CommandItem[];
-  readonly defaultModel: ModelSelection | undefined;
   readonly selectedModel: ModelSelection;
   readonly selectedThinkingLevel: ModelThinkingLevel | null;
   readonly scope: HistoryScope;
@@ -141,6 +126,10 @@ function toSelection(model: ModelItem | ModelSelection | undefined): ModelSelect
 }
 
 export const useChatStore = create<ChatState>((set, get) => {
+  let latestSearchQuery = '';
+  let latestCommitQuery = '';
+  let defaultModel: ModelSelection | undefined;
+
   const messageHandlers: ExtensionMessageMap = {
     session_loaded: (msg) => {
       set({ activeTask: msg.payload, isRunning: false, isCompacting: false, view: 'chat' });
@@ -221,14 +210,10 @@ export const useChatStore = create<ChatState>((set, get) => {
       const { id, cost, error, stats } = msg.payload;
       set((state) =>
         patchActiveTask(state, (task) => {
-          const target = task.messages.find((m) => m.id === id && m.sender === 'api_request') as ApiRequestChatMessage | undefined;
-          const messages = target
-            ? patchMessage(task.messages, id, {
-                toolStatus: error ? 'denied' : 'completed',
-                cost: cost ?? target.cost,
-                errorMessage: error ?? target.errorMessage,
-              })
-            : settlePendingTurns(task.messages, { cost, error });
+          // A turn that never got its own row still has to close, so the id is
+          // only honoured when a matching request row is actually on screen.
+          const rowExists = task.messages.some((m) => m.id === id && m.sender === 'api_request');
+          const messages = settlePendingTurns(task.messages, { cost, error }, rowExists ? id : undefined);
           return { ...task, messages, ...stats };
         }),
       );
@@ -380,11 +365,11 @@ export const useChatStore = create<ChatState>((set, get) => {
       const { models, default_model, default_thinking_level, settings, commands, log_level } = msg.payload;
       logger.setLevel(log_level);
       const selectedModel = default_model ?? models[0];
+      defaultModel = default_model;
       set({
         models,
         settings: settings ?? null,
         commands: commands ?? [],
-        defaultModel: default_model,
         selectedModel: toSelection(selectedModel),
         selectedThinkingLevel: default_thinking_level ?? null,
         fetchedScopes: new Set<HistoryScope>(['current']),
@@ -396,7 +381,7 @@ export const useChatStore = create<ChatState>((set, get) => {
     },
     models_data: (msg) => {
       const models = msg.payload.models;
-      const { defaultModel, selectedModel, selectedThinkingLevel } = get();
+      const { selectedModel, selectedThinkingLevel } = get();
       // The persisted selection wins only while the refreshed catalog still
       // carries that exact provider and model.
       const next = findModel(models, selectedModel) ?? findModel(models, defaultModel) ?? models[0];
@@ -447,7 +432,6 @@ export const useChatStore = create<ChatState>((set, get) => {
     models: [],
     settings: null,
     commands: [],
-    defaultModel: undefined,
     selectedModel: NO_MODEL,
     selectedThinkingLevel: null,
     scope: 'current',
@@ -460,7 +444,11 @@ export const useChatStore = create<ChatState>((set, get) => {
     activeWorkspace: '',
     workspaceFolders: [],
 
-    send: (message) => vscode?.postMessage(message),
+    send: (message) => {
+      if (message.type === 'search_files') latestSearchQuery = message.query;
+      if (message.type === 'search_commits') latestCommitQuery = message.query;
+      vscode?.postMessage(message);
+    },
 
     compact: () => {
       const { activeTask } = get();

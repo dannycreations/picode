@@ -51,7 +51,7 @@ async function renderOutcome(outcome: SubagentOutcome, state: 'completed' | 'err
   const baseHint = `Re-run the "${outcome.agent}" sub-agent with a narrower brief to get the rest.`;
   // Truncate once. Whether the report needs a file decides the hint wording, so
   // the text is rendered from this one result rather than truncating again.
-  const { truncation } = truncateOutput(outcome.text, { limits, keep: 'head', hint: baseHint });
+  const truncation = truncateOutput(outcome.text, { limits, keep: 'head' });
 
   let hint = baseHint;
   let tempFilePath: string | undefined;

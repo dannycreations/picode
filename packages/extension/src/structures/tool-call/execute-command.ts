@@ -36,10 +36,6 @@ const STREAM_FLUSH_MS = 80;
 // pipes forever, which would otherwise hang the caller.
 const EXIT_STDIO_GRACE_MS = 100;
 
-function resolveTimeout(requested: number | undefined, maxMs: number): number {
-  return Math.min(requested ?? DEFAULT_TIMEOUT_MS, maxMs);
-}
-
 function resolveBashShell(): { shell: string; args: string[] } | null {
   try {
     return getShellConfig();
@@ -110,7 +106,7 @@ export const executeCommandTool = defineTool({
   async execute(_toolCallId, params, signal, onUpdate, ctx) {
     const limits = readOutputLimits();
     const retainedBytes = limits.maxBytes * 2;
-    const effectiveTimeout = resolveTimeout(params.timeout, readAppSettings().maxCommandTimeoutMs);
+    const effectiveTimeout = Math.min(params.timeout ?? DEFAULT_TIMEOUT_MS, readAppSettings().maxCommandTimeoutMs);
 
     const executeCommand = async (res: (result: ExecuteCommandReturn) => void): Promise<void> => {
       let resolvedCwd = ctx.cwd;
@@ -300,7 +296,7 @@ export const executeCommandTool = defineTool({
         // Truncate once. Whether the tail is truncated decides if the raw output
         // is worth dumping, and that decision decides the hint wording, so the
         // text is rendered from this result rather than truncating again.
-        const { truncation } = truncateOutput(cleanOutput, { limits, keep: 'tail' });
+        const truncation = truncateOutput(cleanOutput, { limits, keep: 'tail' });
 
         // If not already dumped to a file via streaming, dump the full raw output
         // to a temp file now whenever the model only sees part of it. No spill

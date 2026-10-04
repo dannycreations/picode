@@ -9,7 +9,7 @@ import {
   toCommitTagItem,
   WORKING_CHANGES_ITEM,
 } from '@pi-code/webview/components/chat/helpers/mention';
-import { setLatestCommitQuery, setLatestSearchQuery, useChatStore } from '@pi-code/webview/stores/useChatStore';
+import { useChatStore } from '@pi-code/webview/stores/useChatStore';
 
 import type { ChangeEvent, Dispatch, KeyboardEvent, RefObject, SetStateAction } from 'react';
 import type { CommandItem, WebviewToExtensionMessage } from '@pi-code/shared/core/protocol';
@@ -149,9 +149,13 @@ interface UseCommandProps {
   readonly textareaRef: RefObject<HTMLTextAreaElement | null>;
 }
 
+// The token readers each report the whole token, but the hook only wants the
+// text typed after it. Unwrapping once keeps the adapters below to their reader.
+const queryOf = (read: { readonly query: string } | null): string | null => read?.query ?? null;
+
 // These adapters close over nothing, so they are module constants: a new
 // identity per render would rebuild the query memo and the select callback.
-const readCommandQueryAt = (text: string, caret: number): string | null => readCommandQuery(text, caret)?.query ?? null;
+const readCommandQueryAt = (text: string, caret: number): string | null => queryOf(readCommandQuery(text, caret));
 const applyCommandInsertion = (text: string, _caret: number, command: CommandItem): { readonly text: string; readonly caret: number } =>
   applyCommand(text, command.name);
 
@@ -172,15 +176,7 @@ const SEARCH_DEBOUNCE_MS = 200;
 
 type SearchRequestBuilder = (query: string) => WebviewToExtensionMessage;
 
-// Each builder records the query it sends so the store can drop a response that
-// answers an older, slower query than the one currently in the box.
-const requestFileSearch: SearchRequestBuilder = (query) => {
-  setLatestSearchQuery(query);
-  return { type: 'search_files', query };
-};
-
 const requestCommitSearch: SearchRequestBuilder = (query) => {
-  setLatestCommitQuery(query);
   // Drop the previous list so the menu never shows results from an older query.
   useChatStore.setState({ commitResults: null });
   return { type: 'search_commits', query };
@@ -203,7 +199,7 @@ interface UseMentionProps {
   readonly textareaRef: RefObject<HTMLTextAreaElement | null>;
 }
 
-const readMentionQueryAt = (text: string, caret: number): string | null => readMentionQuery(text, caret)?.query ?? null;
+const readMentionQueryAt = (text: string, caret: number): string | null => queryOf(readMentionQuery(text, caret));
 
 export const useChatMention = ({ value, setValue, textareaRef }: UseMentionProps): UseSuggestionReturn<string> => {
   const searchResults = useChatStore((state) => state.searchResults);
@@ -221,7 +217,7 @@ export const useChatMention = ({ value, setValue, textareaRef }: UseMentionProps
     resolveItems: resolveResults,
   });
 
-  useDebouncedSearch(suggestion.query, requestFileSearch);
+  useDebouncedSearch(suggestion.query, (query) => ({ type: 'search_files', query }));
 
   return suggestion;
 };
@@ -232,7 +228,7 @@ interface UseChatTagProps {
   readonly textareaRef: RefObject<HTMLTextAreaElement | null>;
 }
 
-const readTagQueryAt = (text: string, caret: number): string | null => readTagQuery(text, caret)?.query ?? null;
+const readTagQueryAt = (text: string, caret: number): string | null => queryOf(readTagQuery(text, caret));
 const applyTagInsertion = (text: string, caret: number, item: CommitTagItem): { readonly text: string; readonly caret: number } =>
   applyTag(text, caret, item.value);
 

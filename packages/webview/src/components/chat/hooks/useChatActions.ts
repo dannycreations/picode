@@ -17,20 +17,21 @@ interface UseChatActionsReturn {
   readonly handleDeleteActiveTask: () => void;
 }
 
-// A message that carries only attachments still needs text for the transcript
-// and for the model, so describe what was attached instead of sending nothing.
-function displayText(text: string, attachments: readonly Attachment[]): string {
+function sendablePrompt(text: string, attachments: readonly Attachment[]): string | null {
   const trimmed = text.trim();
   if (trimmed) return trimmed;
   if (attachments.some((attachment) => attachment.kind === 'text')) return '(see attached text)';
   if (attachments.some((attachment) => attachment.kind === 'image')) return '(see attached image)';
-  return '';
+  return attachments.length > 0 ? '' : null;
 }
 
 export const useChatActions = (): UseChatActionsReturn => {
   const handleAnswerQuestion = useCallback((questionId: string, text: string, attachments: Attachment[] = []): void => {
-    const answer = displayText(text, attachments);
-    if (!answer && attachments.length === 0) return;
+    const answer = sendablePrompt(text, attachments);
+    if (answer === null) return;
+
+    // The host reads a missing list as none, so it is only sent when there is one.
+    const outgoing = attachments.length > 0 ? attachments : undefined;
 
     const store = useChatStore.getState();
     store.setActiveTask((prev) =>
@@ -40,21 +41,21 @@ export const useChatActions = (): UseChatActionsReturn => {
             messages: patchMessage(prev.messages, questionId, {
               toolStatus: 'completed',
               diff: answer,
-              ...(attachments.length > 0 && { attachments }),
+              ...(outgoing && { attachments: outgoing }),
             }),
           }
         : null,
     );
     store.setIsRunning(true);
-    store.send({ type: 'question_response', question_id: questionId, text: answer, attachments: attachments.length > 0 ? attachments : undefined });
+    store.send({ type: 'question_response', question_id: questionId, text: answer, attachments: outgoing });
   }, []);
 
   const handleSendPrompt = useCallback(
     (text: string, attachments: Attachment[]): void => {
-      const trimmed = text.trim();
-      const promptText = displayText(text, attachments);
-      if (!promptText && attachments.length === 0) return;
+      const promptText = sendablePrompt(text, attachments);
+      if (promptText === null) return;
 
+      const outgoing = attachments.length > 0 ? attachments : undefined;
       const store = useChatStore.getState();
       const { activeTask, isRunning } = store;
       const pendingQuestion = selectPendingQuestion(store);
@@ -67,10 +68,10 @@ export const useChatActions = (): UseChatActionsReturn => {
       }
 
       // Builtin commands are executed by the extension and must not create a
-      // chat bubble or start an agent run. This is parsed from the text itself
-      // rather than the fetched command list, so it stays correct before the
-      // `init_data` response arrives.
-      switch (parseBuiltinCommand(trimmed)) {
+      // chat bubble or start an agent run. This is parsed from the prompt text
+      // itself rather than the fetched command list, so it stays correct before
+      // the `init_data` response arrives.
+      switch (parseBuiltinCommand(promptText)) {
         case 'reload':
           store.send({ type: 'builtin_command', command: 'reload' });
           return;
@@ -88,7 +89,7 @@ export const useChatActions = (): UseChatActionsReturn => {
       // A running agent cannot take a new turn, so the reply is queued and
       // steered into the current one instead.
       if (activeTask && isRunning) {
-        store.send({ type: 'add_to_reply_queue', text: promptText, attachments: attachments.length > 0 ? attachments : undefined });
+        store.send({ type: 'add_to_reply_queue', text: promptText, attachments: outgoing });
         return;
       }
 
@@ -108,7 +109,7 @@ export const useChatActions = (): UseChatActionsReturn => {
         type: 'send_message',
         text: promptText,
         path: activeTask?.path,
-        attachments: attachments.length > 0 ? attachments : undefined,
+        attachments: outgoing,
       });
     },
     [handleAnswerQuestion],

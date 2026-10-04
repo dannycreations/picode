@@ -2,7 +2,7 @@ import { formatThrownValue } from '@earendil-works/pi-ai';
 import { Uri } from 'vscode';
 
 import { execGit, getGitRepository } from '@pi-code/extension/utilities/git';
-import { truncateOutput } from '@pi-code/extension/utilities/truncate';
+import { renderTruncatedText, truncateOutput } from '@pi-code/extension/utilities/truncate';
 import { COMMIT_HASH_PATTERN, SHORT_HASH_LENGTH, WORKING_CHANGES_TAG } from '@pi-code/shared/core/constants';
 
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
@@ -62,7 +62,7 @@ export async function searchCommits(query: string, cwd: string): Promise<CommitI
 
 async function commitBody(token: string, root: string, limits: OutputLimits): Promise<string> {
   const show = await execGit(root, ['show', '--no-color', '--stat', '--patch', token]);
-  return truncateOutput(show, { limits, keep: 'head' }).text.trim();
+  return renderTruncatedText(truncateOutput(show, { limits }), 'head').trim();
 }
 
 async function workingChangesBody(root: string, limits: OutputLimits): Promise<string> {
@@ -78,7 +78,7 @@ async function workingChangesBody(root: string, limits: OutputLimits): Promise<s
     '',
     'Diff vs HEAD:',
     '',
-    truncateOutput(diff, { limits, keep: 'head' }).text.trim() || '(no diff)',
+    renderTruncatedText(truncateOutput(diff, { limits }), 'head').trim() || '(no diff)',
   ].join('\n');
 }
 

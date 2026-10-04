@@ -44,9 +44,15 @@ export function groupToolMessages(messages: ReadonlyArray<ChatMessage>): ChatMes
 
   const flushGroup = (): void => {
     if (group.length === 0) return;
-    const sections = collectToolSections(group);
-    const last = group[group.length - 1];
-    result.push(group.length === 1 ? { ...group[0], toolSections: sections } : { ...last, id: group[0].id, toolSections: sections });
+    const first = group[0];
+    // A lone row that already carries its sections is pushed as is. Rebuilding
+    // it would hand every mounted tool row a fresh object on each streamed
+    // token, so the chat body's memo would never hit for any of them.
+    const row =
+      group.length === 1 && first.toolSections !== undefined
+        ? first
+        : { ...group[group.length - 1], id: first.id, toolSections: collectToolSections(group) };
+    result.push(row);
     group = [];
   };
 
@@ -162,11 +168,12 @@ interface RequestSettlePatch {
   readonly error?: string;
 }
 
-export function settlePendingTurns(messages: ChatMessage[], patch: RequestSettlePatch = {}): ChatMessage[] {
+export function settlePendingTurns(messages: ChatMessage[], patch: RequestSettlePatch = {}, onlyId?: string): ChatMessage[] {
   let changed = false;
   const next = messages.map((m) => {
     if (m.sender !== 'api_request' && m.sender !== 'assistant') return m;
     if (m.toolStatus !== 'running') return m;
+    if (onlyId !== undefined && m.id !== onlyId) return m;
     changed = true;
     switch (m.sender) {
       case 'api_request':
@@ -233,7 +240,8 @@ export function deliverQueuedReplies(messages: ChatMessage[], delivered: ChatMes
   // a duplicate. Messages without a queued twin are appended.
   const deliveredById = new Map(delivered.map((message) => [message.id, message]));
   const replaced = messages.map((message) => deliveredById.get(message.id) ?? message);
-  const appended = delivered.filter((deliveredMessage) => !messages.some((message) => message.id === deliveredMessage.id));
+  const existingIds = new Set(messages.map((message) => message.id));
+  const appended = delivered.filter((deliveredMessage) => !existingIds.has(deliveredMessage.id));
 
   return [...replaced, ...appended];
 }

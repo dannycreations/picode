@@ -1,9 +1,11 @@
 import { formatThrownValue } from '@earendil-works/pi-ai';
 import { getAgentDir, hasTrustRequiringProjectResources, ProjectTrustStore } from '@earendil-works/pi-coding-agent';
-import { Uri, window, workspace } from 'vscode';
+import { window, workspace } from 'vscode';
 
 import { logger } from '@pi-code/shared/core/logger';
 import { normalizeSeparators } from '@pi-code/shared/utilities/common';
+
+import type { Uri } from 'vscode';
 
 // Session-level choice of which workspace folder Pi targets; undefined means
 // "no explicit pick", so resolution falls back to the first folder.
@@ -23,17 +25,12 @@ export function getWorkspaceCwd(): string {
   return getWorkspaceUri()?.fsPath ?? process.cwd();
 }
 
-function toUri(target: Uri | string): Uri {
-  return typeof target === 'string' ? Uri.file(target) : target;
+export function toRelativePath(target: Uri): string {
+  return normalizeSeparators(workspace.asRelativePath(target, false));
 }
 
-export function toRelativePath(target: Uri | string): string {
-  return normalizeSeparators(workspace.asRelativePath(toUri(target), false));
-}
-
-export function toWorkspaceRelativePath(target: Uri | string): string | undefined {
-  const uri = toUri(target);
-  return workspace.getWorkspaceFolder(uri) ? toRelativePath(uri) : undefined;
+export function toWorkspaceRelativePath(target: Uri): string | undefined {
+  return workspace.getWorkspaceFolder(target) ? toRelativePath(target) : undefined;
 }
 
 let trustStore: ProjectTrustStore | undefined;

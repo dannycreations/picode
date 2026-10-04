@@ -93,8 +93,6 @@ describe('memoized chat chrome', () => {
     expect(after.models).toBe(before.models);
     expect(after.selectedModel).toBe(before.selectedModel);
     expect(after.selectedThinkingLevel).toBe(before.selectedThinkingLevel);
-    expect(after.setSelectedModel).toBe(before.setSelectedModel);
-    expect(after.setSelectedThinkingLevel).toBe(before.setSelectedThinkingLevel);
     expect(selectThinkingLevel(after)).toBe(selectThinkingLevel(before));
   });
 });
@@ -142,7 +140,7 @@ describe('model catalog refresh', () => {
   });
 
   beforeEach(() => {
-    useChatStore.setState({ models: [], defaultModel: undefined, selectedModel: select(''), selectedThinkingLevel: null });
+    useChatStore.setState({ models: [], selectedModel: select(''), selectedThinkingLevel: null });
   });
 
   it('lands on the persisted default once the refreshed catalog carries it', () => {
@@ -203,6 +201,28 @@ describe('selectThinkingLevel', () => {
   it('keeps a stored level the selected model supports', () => {
     useChatStore.setState({ selectedThinkingLevel: 'high' });
     expect(selectThinkingLevel(useChatStore.getState())).toBe('high');
+  });
+});
+
+describe('suggestion results', () => {
+  beforeEach(() => {
+    useChatStore.setState({ searchResults: [], commitResults: null });
+  });
+
+  it('drops a reply that answers an older query than the newest one sent', () => {
+    // File and commit results arrive out of order, so the menu must show the
+    // query that is still in the box rather than whatever landed last.
+    const store = useChatStore.getState();
+    store.send({ type: 'search_files', query: 'alpha' });
+    apply([{ type: 'search_results', payload: { query: 'alpha', paths: ['src/alpha.ts'] } }]);
+    expect(useChatStore.getState().searchResults).toEqual(['src/alpha.ts']);
+
+    store.send({ type: 'search_files', query: 'alpha-beta' });
+    apply([{ type: 'search_results', payload: { query: 'alpha', paths: ['stale.ts'] } }]);
+    expect(useChatStore.getState().searchResults).toEqual(['src/alpha.ts']);
+
+    apply([{ type: 'search_results', payload: { query: 'alpha-beta', paths: ['src/beta.ts'] } }]);
+    expect(useChatStore.getState().searchResults).toEqual(['src/beta.ts']);
   });
 });
 

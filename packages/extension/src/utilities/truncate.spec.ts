@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import { readNumberedText, shareOutputLimits, truncateOutput } from '@pi-code/extension/utilities/truncate';
+import { readNumberedText, renderTruncatedText, shareOutputLimits, truncateOutput } from '@pi-code/extension/utilities/truncate';
 
 const limits = { maxLines: 5, maxBytes: 1024 };
 
@@ -28,14 +28,15 @@ describe('shareOutputLimits', () => {
 describe('truncateOutput', () => {
   it('returns content untouched when it fits the budget', () => {
     const content = buildLines(3);
-    const { text, truncation } = truncateOutput(content, { limits });
+    const truncation = truncateOutput(content, { limits });
 
-    expect(text).toBe(content);
     expect(truncation.truncated).toBe(false);
+    expect(renderTruncatedText(truncation, 'head')).toBe(content);
   });
 
   it('keeps the first lines and appends a notice when truncating the head', () => {
-    const { text, truncation } = truncateOutput(buildLines(10), { limits, keep: 'head' });
+    const truncation = truncateOutput(buildLines(10), { limits });
+    const text = renderTruncatedText(truncation, 'head');
 
     expect(truncation.truncated).toBe(true);
     expect(truncation.truncatedBy).toBe('lines');
@@ -46,7 +47,8 @@ describe('truncateOutput', () => {
   });
 
   it('keeps the last lines and appends a notice when truncating the tail', () => {
-    const { text } = truncateOutput(buildLines(10), { limits, keep: 'tail' });
+    const truncation = truncateOutput(buildLines(10), { limits, keep: 'tail' });
+    const text = renderTruncatedText(truncation, 'tail');
 
     expect(text).toContain('line10');
     expect(text).not.toContain('line5\n');
@@ -55,14 +57,15 @@ describe('truncateOutput', () => {
 
   it('reports the byte limit when size is the binding constraint', () => {
     const content = buildLines(4, 'x'.repeat(200));
-    const { text, truncation } = truncateOutput(content, { limits: { maxLines: 100, maxBytes: 512 } });
+    const truncation = truncateOutput(content, { limits: { maxLines: 100, maxBytes: 512 } });
 
     expect(truncation.truncatedBy).toBe('bytes');
-    expect(text).toMatch(/Truncated: showing the first \d+ of 4 lines \(.+ output limit\)\./);
+    expect(renderTruncatedText(truncation, 'head')).toMatch(/Truncated: showing the first \d+ of 4 lines \(.+ output limit\)\./);
   });
 
   it('appends the actionable hint to the notice', () => {
-    const { text } = truncateOutput(buildLines(10), { limits, hint: 'Use `ranges` to continue.' });
+    const truncation = truncateOutput(buildLines(10), { limits });
+    const text = renderTruncatedText(truncation, 'head', 'Use `ranges` to continue.');
 
     expect(text).toContain('(5 line output limit).');
     expect(text).toContain('Use `ranges` to continue.');
@@ -88,9 +91,11 @@ describe('truncateOutput', () => {
   });
 
   it('emits only the notice when the first line alone busts the byte budget', () => {
-    const { text, truncation } = truncateOutput(`${'x'.repeat(500)}\nsecond`, { limits: { maxLines: 10, maxBytes: 100 } });
+    const truncation = truncateOutput(`${'x'.repeat(500)}\nsecond`, { limits: { maxLines: 10, maxBytes: 100 } });
 
     expect(truncation.firstLineExceedsLimit).toBe(true);
-    expect(text).toBe('Truncated: the first line on its own exceeds the 100B output limit, so no content could be shown.');
+    expect(renderTruncatedText(truncation, 'head')).toBe(
+      'Truncated: the first line on its own exceeds the 100B output limit, so no content could be shown.',
+    );
   });
 });

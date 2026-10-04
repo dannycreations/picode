@@ -367,19 +367,16 @@ describe('groupToolMessages', () => {
     expect(result).toHaveLength(2);
     expect(result.find((m) => m.id === 'a1')).toBeDefined();
   });
-});
 
-describe('buildToolSections subagent', () => {
-  it('should render the subtitle directly as ToolSection.subtitle', () => {
-    const msg = createToolMessage('t1', 'spawn_subagent', {
-      toolArgs: { agent: 'explore', description: 'find files', task: 'x' },
-      subtitle: '5 turns, 74050 in / 14399 out, $0.0000',
-    });
+  it('hands back a row whose sections are already built, so the chat body memo can hit', () => {
+    // Every streamed token rebuilds the transcript, so a fresh object here
+    // would re-render every mounted tool row instead of only the one streaming.
+    const settled = asTool(createToolMessage('t1', 'read_file', { toolStatus: 'completed', files: [{ path: 'a.ts', content: 'a' }] }));
+    const withSections = { ...settled, toolSections: buildToolSections(settled) };
 
-    const [section] = buildToolSections(msg);
+    const result = groupToolMessages([withSections, createMessage({ id: 'u1', sender: 'user' })]);
 
-    expect(section.title).toBe('explore: find files');
-    expect(section.subtitle).toBe('5 turns, 74050 in / 14399 out, $0.0000');
+    expect(result[0]).toBe(withSections);
   });
 });
 
@@ -394,5 +391,20 @@ describe('settlePendingTurns', () => {
 
     expect((result[0] as any).toolStatus).toBe('completed');
     expect((result[1] as any).toolStatus).toBe('completed');
+  });
+
+  it('settles only the named row when an id is given', () => {
+    // A turn reports its cost and error against one request row, so the other
+    // running turn belongs to a later request and must stay running.
+    const messages = [
+      createMessage({ id: 'm1', sender: 'api_request', toolStatus: 'running' }),
+      createMessage({ id: 'm2', sender: 'assistant', toolStatus: 'running' }),
+    ];
+
+    const result = settlePendingTurns(messages, { cost: 0.5 }, 'm1');
+
+    expect((result[0] as any).toolStatus).toBe('completed');
+    expect((result[0] as any).cost).toBe(0.5);
+    expect((result[1] as any).toolStatus).toBe('running');
   });
 });

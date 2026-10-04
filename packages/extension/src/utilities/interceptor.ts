@@ -11,6 +11,9 @@ const SENSITIVE_HEADERS = new Set(['authorization', 'cookie', 'set-cookie', 'x-a
 let logPath = '';
 let nativeFetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response> = globalThis.fetch.bind(globalThis);
 let writeChain: Promise<void> = Promise.resolve();
+// Body captures outlive the response that started them, so draining the log
+// has to wait for them too or the tail of the transcript is lost.
+const pendingCaptures = new Set<Promise<unknown>>();
 
 function todayStamp(): string {
   return new Date().toISOString().slice(0, 10);
@@ -45,6 +48,12 @@ function enqueue(text: string): void {
     .catch((err) => logger.debug('Failed to write debug request log:', err));
 }
 
+// Tracked so `flushDebugLog` can wait for a capture that has not enqueued yet.
+function trackCapture(capture: Promise<void>): void {
+  pendingCaptures.add(capture);
+  void capture.finally(() => pendingCaptures.delete(capture));
+}
+
 async function interceptedFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   let request: Request;
   try {
@@ -59,13 +68,14 @@ async function interceptedFetch(input: RequestInfo | URL, init?: RequestInit): P
       method: request.method,
       url: request.url,
       headers: redactHeaders(request.headers),
-      body: '',
     }),
   );
 
-  void captureBody(request).then((body) => {
-    if (body !== null) enqueue(formatEntry('request', { url: request.url, body }));
-  });
+  trackCapture(
+    captureBody(request).then((body) => {
+      if (body !== null) enqueue(formatEntry('request', { url: request.url, body }));
+    }),
+  );
 
   const response = await nativeFetch(request);
 
@@ -75,23 +85,26 @@ async function interceptedFetch(input: RequestInfo | URL, init?: RequestInit): P
       status: response.status,
       statusText: response.statusText,
       headers: redactHeaders(response.headers),
-      body: '',
     }),
   );
 
-  void captureBody(response).then((body) => {
-    if (body !== null) enqueue(formatEntry('response', { url: response.url, body }));
-  });
+  trackCapture(
+    captureBody(response).then((body) => {
+      if (body !== null) enqueue(formatEntry('response', { url: response.url, body }));
+    }),
+  );
 
   return response;
 }
 
 export function installFetchInterceptor(workspaceDir: string): void {
-  if (logPath) return;
   logPath = join(workspaceDir, 'debug', `requests_${todayStamp()}.txt`);
   globalThis.fetch = interceptedFetch as typeof globalThis.fetch;
 }
 
-export function flushDebugLog(): Promise<void> {
-  return writeChain;
+export async function flushDebugLog(): Promise<void> {
+  while (pendingCaptures.size > 0) {
+    await Promise.all(pendingCaptures);
+  }
+  await writeChain;
 }

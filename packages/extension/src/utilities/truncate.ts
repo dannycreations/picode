@@ -13,7 +13,7 @@ import type { CustomToolResult } from '@pi-code/extension/types/extension';
 import type { LineRange } from '@pi-code/shared/core/types';
 
 export function tempLogPath(kind: string): string {
-  return join(tmpdir(), `pi-code-${kind}-${Date.now()}-${uuidv7().slice(0, 8)}.log`);
+  return join(tmpdir(), `pi-code-${kind}-${uuidv7().slice(0, 8)}.log`);
 }
 
 // Output that outgrew the budget is spilled so the model can read the rest
@@ -40,12 +40,6 @@ type TruncateKeep = 'head' | 'tail';
 interface TruncateOutputOptions {
   readonly limits: OutputLimits;
   readonly keep?: TruncateKeep;
-  readonly hint?: string;
-}
-
-interface TruncatedOutput {
-  readonly text: string;
-  readonly truncation: TruncationResult;
 }
 
 export function shareOutputLimits(limits: OutputLimits, count: number): OutputLimits {
@@ -89,10 +83,9 @@ export function renderTruncatedText(truncation: TruncationResult, keep: Truncate
   return truncation.content ? `${truncation.content}\n\n${notice}` : notice;
 }
 
-export function truncateOutput(content: string, options: TruncateOutputOptions): TruncatedOutput {
+export function truncateOutput(content: string, options: TruncateOutputOptions): TruncationResult {
   const keep = options.keep ?? 'head';
-  const truncation = keep === 'tail' ? truncateTail(content, options.limits) : truncateHead(content, options.limits);
-  return { text: renderTruncatedText(truncation, keep, options.hint), truncation };
+  return keep === 'tail' ? truncateTail(content, options.limits) : truncateHead(content, options.limits);
 }
 
 interface ReadNumberedTextOptions {
@@ -119,14 +112,10 @@ interface FileChangeResultOptions {
 
 export function buildFileChangeResult(opts: FileChangeResultOptions): CustomToolResult<{ diff: string }> {
   const diffResult = generateDiffString(opts.oldContent, opts.newContent);
-  const { text } = truncateOutput(diffResult.diff || opts.successMessage, {
-    limits: opts.limits,
-    keep: 'head',
-    hint: opts.hint,
-  });
+  const truncation = truncateOutput(diffResult.diff || opts.successMessage, { limits: opts.limits });
 
   return {
-    content: [{ type: 'text' as const, text }],
+    content: [{ type: 'text' as const, text: renderTruncatedText(truncation, 'head', opts.hint) }],
     details: { diff: diffResult.diff },
   };
 }

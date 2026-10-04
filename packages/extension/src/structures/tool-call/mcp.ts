@@ -5,7 +5,7 @@ import { readOutputLimits } from '@pi-code/extension/core/settings';
 import { getActiveMcpConfig } from '@pi-code/extension/structures/agent-runtime/mcp/config';
 import { mcpGateway } from '@pi-code/extension/structures/agent-runtime/mcp/manager';
 import { toolError, toolErrorFrom, toolResult } from '@pi-code/extension/structures/tool-call/helpers';
-import { truncateOutput } from '@pi-code/extension/utilities/truncate';
+import { renderTruncatedText, truncateOutput } from '@pi-code/extension/utilities/truncate';
 
 import type { CustomToolResult } from '@pi-code/extension/types/extension';
 import type { ToolName } from '@pi-code/shared/core/types';
@@ -42,7 +42,7 @@ export const mcpTool = defineTool({
       }
 
       const outcome = await mcpGateway.dispatch(config, ctx.cwd, params, signal);
-      const { text } = truncateOutput(outcome.text, { limits: readOutputLimits() });
+      const text = renderTruncatedText(truncateOutput(outcome.text, { limits: readOutputLimits() }), 'head');
       const details: McpDetails = { subtitle: outcome.subtitle };
       const result = outcome.isError ? toolError(text, details) : toolResult(text, details);
       onUpdate?.(result);

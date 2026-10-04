@@ -20,8 +20,8 @@ const USER_INTENT_WINDOW_MS = 400;
 // A press that moves less than this (in px) is a tap, not a scroll gesture.
 const TAP_MOVE_THRESHOLD_PX = 4;
 
-export function isAtBottom(metrics: ScrollMetrics, threshold: number = AT_BOTTOM_THRESHOLD_PX): boolean {
-  return metrics.scrollHeight - metrics.scrollTop - metrics.clientHeight <= threshold;
+export function isAtBottom(metrics: ScrollMetrics): boolean {
+  return metrics.scrollHeight - metrics.scrollTop - metrics.clientHeight <= AT_BOTTOM_THRESHOLD_PX;
 }
 
 export function resolveFollowState(params: { atBottom: boolean; scrolledUp: boolean; isFollowing: boolean }): boolean {

@@ -4,26 +4,26 @@ import { buildToolSections, getDiffStat, getFirstDiffLine, getToolFilePaths, get
 
 import type { ToolChatMessage } from '@pi-code/shared/core/types';
 
-function mcpMessage(patch: Partial<ToolChatMessage>): ToolChatMessage {
+function toolMessage(patch: Partial<ToolChatMessage>): ToolChatMessage {
   return { id: 't1', sender: 'tool', text: 'mcp', timestamp: 1_700_000_000_000, ...patch };
 }
 
 describe('buildToolSections mcp', () => {
   it('titles a server catalog call', () => {
-    const [section] = buildToolSections(mcpMessage({ toolName: 'mcp', toolStatus: 'running' }));
+    const [section] = buildToolSections(toolMessage({ toolName: 'mcp', toolStatus: 'running' }));
     expect(section.title).toBe('List servers');
     expect(section.content).toBeUndefined();
   });
 
   it('titles a tool listing call', () => {
-    const [section] = buildToolSections(mcpMessage({ toolName: 'mcp', toolStatus: 'completed', toolArgs: { server: 'searxng' } }));
+    const [section] = buildToolSections(toolMessage({ toolName: 'mcp', toolStatus: 'completed', toolArgs: { server: 'searxng' } }));
     expect(section.title).toBe('searxng: list tools');
   });
 
   it('shows pending arguments while awaiting approval', () => {
     const args = { query: 'pi code' };
     const [section] = buildToolSections(
-      mcpMessage({
+      toolMessage({
         toolName: 'mcp',
         toolStatus: 'approval',
         toolArgs: { server: 'searxng', tool: 'search', arguments: args },
@@ -36,7 +36,7 @@ describe('buildToolSections mcp', () => {
 
   it('shows the result once completed and keeps the outcome subtitle', () => {
     const [section] = buildToolSections(
-      mcpMessage({
+      toolMessage({
         toolName: 'mcp',
         toolStatus: 'completed',
         toolArgs: { server: 'searxng', tool: 'search', arguments: { query: 'pi code' } },
@@ -51,6 +51,21 @@ describe('buildToolSections mcp', () => {
 
   it('groups consecutive calls like other section-rendered tools', () => {
     expect(GROUP_TOOLS.has('mcp')).toBe(true);
+  });
+});
+
+describe('buildToolSections subagent', () => {
+  it('titles the delegation and keeps the outcome subtitle', () => {
+    const [section] = buildToolSections(
+      toolMessage({
+        toolName: 'spawn_subagent',
+        toolStatus: 'completed',
+        toolArgs: { agent: 'explore', description: 'find files', task: 'x' },
+        subtitle: '5 turns, 74050 in / 14399 out, $0.0000',
+      }),
+    );
+    expect(section.title).toBe('explore: find files');
+    expect(section.subtitle).toBe('5 turns, 74050 in / 14399 out, $0.0000');
   });
 });
 
@@ -119,7 +134,7 @@ describe('getDiffStat', () => {
 
 describe('getToolFilePaths', () => {
   it('prefers the files the result reported over the requested path', () => {
-    const message = mcpMessage({
+    const message = toolMessage({
       toolName: 'read_file',
       toolStatus: 'completed',
       toolArgs: { path: 'requested.ts' },
@@ -129,11 +144,11 @@ describe('getToolFilePaths', () => {
   });
 
   it('falls back to the requested path, then to the first requested file', () => {
-    expect(getToolFilePaths(mcpMessage({ toolArgs: { path: 'a.ts', files: [{ path: 'b.ts' }] } }))).toEqual(['a.ts']);
-    expect(getToolFilePaths(mcpMessage({ toolArgs: { files: [{ path: 'b.ts' }] } }))).toEqual(['b.ts']);
+    expect(getToolFilePaths(toolMessage({ toolArgs: { path: 'a.ts', files: [{ path: 'b.ts' }] } }))).toEqual(['a.ts']);
+    expect(getToolFilePaths(toolMessage({ toolArgs: { files: [{ path: 'b.ts' }] } }))).toEqual(['b.ts']);
   });
 
   it('returns nothing when no path is available', () => {
-    expect(getToolFilePaths(mcpMessage({}))).toEqual([]);
+    expect(getToolFilePaths(toolMessage({}))).toEqual([]);
   });
 });
