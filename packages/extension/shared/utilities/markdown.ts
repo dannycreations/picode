@@ -13,6 +13,7 @@ interface FencedBlock {
   readonly content: string;
   readonly language: string;
   readonly terminated: boolean;
+  readonly coversRaw: boolean;
 }
 
 function readOpeningFence(line: string): Fence | null {
@@ -41,19 +42,23 @@ export function findFencedBlock(raw: string, anchored: boolean): FencedBlock | n
   // rather than recompiling it for every line scanned from the bottom.
   const closing = new RegExp(`^ {0,3}${fence.char}{${fence.length},}[ \\t\\r]*$`);
 
+  const outsideIsBlank = (end: number): boolean =>
+    lines.slice(0, start).every((line) => line.trim() === '') && lines.slice(end + 1).every((line) => line.trim() === '');
+
   // Scan from the bottom so nested fences inside a markdown block stay intact.
   for (let end = lines.length - 1; end > start; end--) {
     if (closing.test(lines[end])) {
-      return { content: lines.slice(start + 1, end).join('\n'), language: fence.language, terminated: true };
+      return { content: lines.slice(start + 1, end).join('\n'), language: fence.language, terminated: true, coversRaw: outsideIsBlank(end) };
     }
   }
 
   // Unterminated opener (streaming output): keep everything after it.
-  return { content: lines.slice(start + 1).join('\n'), language: fence.language, terminated: false };
+  return { content: lines.slice(start + 1).join('\n'), language: fence.language, terminated: false, coversRaw: true };
 }
 
 export function stripCodeBlock(raw: string): string {
-  return findFencedBlock(raw, true)?.content ?? raw;
+  const block = findFencedBlock(raw, true);
+  return block?.coversRaw ? block.content : raw;
 }
 
 export function extractCodeBlock(raw: string): string {

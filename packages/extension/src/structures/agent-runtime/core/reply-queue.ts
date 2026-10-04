@@ -10,7 +10,10 @@ export class ReplyQueue {
   public constructor(private readonly onChange: (messages: readonly ChatMessage[]) => void) {}
 
   public all(): readonly ChatMessage[] {
-    return this.messages;
+    // A snapshot, not the live array: callers hold this across awaits while
+    // edits and removals arrive from the webview, and a drain must not act on a
+    // row the user has already deleted.
+    return [...this.messages];
   }
 
   public add(text: string, attachments?: readonly Attachment[]): void {

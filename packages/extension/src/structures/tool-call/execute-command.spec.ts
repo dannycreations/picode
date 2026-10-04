@@ -45,10 +45,9 @@ describe('executeCommandTool', () => {
     configValues['maxToolOutputSizeKb'] = 1; // 1 KB = 1024 bytes
 
     const updates: string[] = [];
-    const onUpdate = (...args: any[]) => {
-      const params = args[1];
-      if (params?.details?.output) {
-        updates.push(params.details.output);
+    const onUpdate = (partial: any) => {
+      if (partial?.details?.output) {
+        updates.push(partial.details.output);
       }
     };
 
@@ -60,6 +59,9 @@ describe('executeCommandTool', () => {
     } as any)) as any;
 
     expect(result.details.timedOut).toBe(false);
+
+    // Without at least one delta the loop below would pass vacuously.
+    expect(updates.length).toBeGreaterThan(0);
 
     // Each streaming delta should be at most the configured byte limit.
     for (const delta of updates) {

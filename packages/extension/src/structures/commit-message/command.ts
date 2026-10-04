@@ -22,7 +22,9 @@ const lastUserMessages = new Map<string, string>();
 const lastGeneratedMessages = new Map<string, string>();
 
 function setGeneratingContext(generating: boolean): void {
-  void commands.executeCommand('setContext', COMMAND_IDS.commitMessageGenerating, generating);
+  void Promise.resolve(commands.executeCommand('setContext', COMMAND_IDS.commitMessageGenerating, generating)).catch((err) =>
+    logger.warn('Failed to update the commit message generating context:', err),
+  );
 }
 
 function resolveRootUri(scmRequest?: ScmRequest): Uri | undefined {

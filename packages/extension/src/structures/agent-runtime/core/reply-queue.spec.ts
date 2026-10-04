@@ -28,6 +28,18 @@ describe('ReplyQueue', () => {
     expect(onChange).toHaveBeenCalledTimes(5);
   });
 
+  it('hands out a snapshot that later edits and removals do not change', () => {
+    const { queue } = makeQueue();
+    queue.add('first');
+    queue.add('second');
+
+    const snapshot = queue.all();
+    queue.remove(snapshot[0].id);
+
+    expect(snapshot.map((m) => m.text)).toEqual(['first', 'second']);
+    expect(queue.all().map((m) => m.text)).toEqual(['second']);
+  });
+
   it('retain replaces the contents with only the undelivered entries', () => {
     const { queue, onChange } = makeQueue();
     queue.add('a');

@@ -34,6 +34,17 @@ describe('stripCodeBlock', () => {
     const content = 'const a = 1;\n```';
     expect(stripCodeBlock(content)).toBe(content);
   });
+
+  it('keeps a fence that only opens the payload', () => {
+    // A markdown file whose first block is a code sample: unwrapping would drop
+    // every line after it.
+    const content = '```ts\nconst a = 1;\n```\n\nAnd prose after the sample.\n';
+    expect(stripCodeBlock(content)).toBe(content);
+  });
+
+  it('unwraps a fence that only trailing blank lines follow', () => {
+    expect(stripCodeBlock('```ts\nconst a = 1;\n```\n\n\n')).toBe('const a = 1;');
+  });
 });
 
 describe('wrapCodeBlock', () => {

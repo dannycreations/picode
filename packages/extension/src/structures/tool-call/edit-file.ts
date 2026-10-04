@@ -68,22 +68,6 @@ function buildTokenRegex(oldLF: string): RegExp {
   return new RegExp(pattern, 'g');
 }
 
-function countRegexMatches(content: string, regex: RegExp): number {
-  regex.lastIndex = 0;
-  let count = 0;
-  while (true) {
-    const match = regex.exec(content);
-    if (!match) break;
-    count++;
-    if (regex.lastIndex === match.index) {
-      // Prevent infinite loop on 0-width matches
-      regex.lastIndex++;
-    }
-  }
-  regex.lastIndex = 0;
-  return count;
-}
-
 type MatchStrategy = 'exact' | 'whitespace' | 'token';
 
 type ReplacementOutcome =
@@ -100,13 +84,15 @@ function replaceExpected(originalLF: string, oldLF: string, newLF: string, expec
   }
 
   const wsRegex = buildWhitespaceTolerantRegex(oldLF);
-  const whitespace = countRegexMatches(originalLF, wsRegex);
+  // Both fallback patterns are built from non-empty escaped tokens, so every
+  // match spans at least one character and `match` counts them all.
+  const whitespace = originalLF.match(wsRegex)?.length ?? 0;
   if (whitespace === expected) {
     return { content: originalLF.replace(wsRegex, () => newLF), strategy: 'whitespace', matched: whitespace };
   }
 
   const tokenRegex = buildTokenRegex(oldLF);
-  const token = countRegexMatches(originalLF, tokenRegex);
+  const token = originalLF.match(tokenRegex)?.length ?? 0;
   if (token === expected) {
     return { content: originalLF.replace(tokenRegex, () => newLF), strategy: 'token', matched: token };
   }

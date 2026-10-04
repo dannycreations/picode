@@ -139,10 +139,12 @@ export class ChatViewProvider implements WebviewViewProvider {
 
     webviewView.onDidDispose(() => {
       subscriptions.dispose();
-      if (this.activeWebview === webview) {
-        this.activeWebview = null;
-      }
+      // A superseded view must not tear down the runtime now serving the active
+      // one: resolveWebviewView already disposed the runtime it replaced.
+      if (this.activeWebview !== webview) return;
+      this.activeWebview = null;
       this.runtime?.dispose();
+      this.runtime = null;
     });
   }
 }

@@ -51,6 +51,22 @@ describe('writeFileTool', () => {
     expect(result.isError).toBeFalsy();
   });
 
+  it('writes content verbatim when it opens with its own code fence', async () => {
+    // The agent must not lose the prose that follows the fence, nor the fence itself.
+    const content = '```ts\nconst a = 1;\n```\n\nProse after the sample.\n';
+    const result = await execute({ path: 'doc.md', content });
+
+    expect(writeFile).toHaveBeenCalledWith(expect.any(String), content, 'utf8');
+    expect(result.isError).toBeFalsy();
+  });
+
+  it('unwraps a fence the agent wrapped the whole body in', async () => {
+    const result = await execute({ path: 'wrapped.txt', content: '```ts\nconst a = 1;\n```' });
+
+    expect(writeFile).toHaveBeenCalledWith(expect.any(String), 'const a = 1;', 'utf8');
+    expect(String(result.content[0].text)).toContain('const a = 1;');
+  });
+
   it('writes through a temp file renamed over the target', async () => {
     const result = await execute({ path: 'out.txt', content: 'body' });
 
