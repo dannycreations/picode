@@ -10,25 +10,25 @@ export const SETTINGS_TABS: readonly SettingsTab[] = [
     id: 'ability',
     label: 'Ability',
     icon: Sparkles,
-    description: 'Choose which optional abilities the agent can use while working on your tasks.',
+    description: 'Choose what the agent is able to do for you.',
   },
   {
     id: 'approval',
     label: 'Approval',
     icon: ShieldCheck,
-    description: 'Configure auto-approval settings for agent actions to balance speed and safety.',
+    description: 'Choose which agent actions run without asking you first.',
   },
   {
     id: 'behaviour',
     label: 'Behaviour',
     icon: Cog,
-    description: 'Tune how the agent behaves while working on your tasks.',
+    description: 'Adjust how the agent works.',
   },
   {
     id: 'context',
     label: 'Context',
     icon: Database,
-    description: 'Control what information is included in the context window, affecting token usage and response quality.',
+    description: 'Choose how much the agent can see while it works.',
   },
 ];
 

@@ -20,7 +20,7 @@
     },
     "untrustedWorkspaces": {
       "supported": "limited",
-      "description": "Project-local agent resources and command execution stay disabled until the workspace is trusted.",
+      "description": "Pi Code needs a trusted workspace before it reads your project files or runs commands.",
       "restrictedConfigurations": [
         "pi-code.yolo",
         "pi-code.yoloRespectDenied",
@@ -43,67 +43,67 @@
         "pi-code.enableTodoTool": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "Let the agent break work into a checklist and keep it updated while it works (`update_todo`)."
+          "description": "Let the agent split the work into a checklist and keep it updated as it goes."
         },
         "pi-code.enableAskQuestionTool": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "Let the agent pause and ask you for details when a request is unclear (`ask_question`)."
+          "description": "Let the agent stop and ask you when a request is unclear."
         },
         "pi-code.enableSubagentTool": {
           "type": "boolean",
           "default": false,
-          "markdownDescription": "Let the agent delegate read-only research to a sub-agent that works in its own context window and reports back a summary (`spawn_subagent`)."
+          "description": "Let the agent hand research to a helper that reads on its own and reports back a short summary."
         },
         "pi-code.enableAgentRules": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "Let the agent auto load `AGENTS.md` and `CLAUDE.md` files for project-specific instructions."
+          "description": "Let the agent pick up your project instructions from AGENTS.md and CLAUDE.md files."
         },
         "pi-code.enableSkillDiscovery": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "Let the agent pick skills (`SKILL.md` files) on its own. When off, skills stay available and you load one explicitly with `/skill:<name>`."
+          "description": "Let the agent choose a skill on its own. When off, you pick the skill yourself."
         },
         "pi-code.enableMcpTool": {
           "type": "boolean",
           "default": false,
-          "markdownDescription": "Let the agent reach external tools on MCP servers configured in your `mcp.json` (`mcp`)."
+          "description": "Let the agent use extra tools from the MCP servers you set up."
         },
         "pi-code.yolo": {
           "type": "boolean",
           "default": false,
-          "description": "Automatically approve every agent tool call without asking. Overrides the per-action approval settings below."
+          "description": "Approve every agent action without asking you. Overrides the approval settings below."
         },
         "pi-code.yoloRespectDenied": {
           "type": "boolean",
           "default": true,
-          "description": "In yolo mode, still block tool calls that match your denied paths and commands."
+          "description": "Keep blocking the paths and commands you denied, even when everything else is approved."
         },
         "pi-code.autoApproveRead": {
           "type": "boolean",
           "default": false,
-          "markdownDescription": "Automatically allow the agent to read files and line ranges (`read_file`)."
+          "description": "Approve reading files without asking you."
         },
         "pi-code.autoApproveSkillReads": {
           "type": "boolean",
           "default": false,
-          "markdownDescription": "Automatically allow the agent to read skill files (`SKILL.md`) when it uses a skill. Requires read auto approval."
+          "description": "Approve reading skill files without asking you. Needs Read Files approval on."
         },
         "pi-code.autoApproveWrite": {
           "type": "boolean",
           "default": false,
-          "markdownDescription": "Automatically allow the agent to create and edit files (`write_file`, `edit_file`)."
+          "description": "Approve creating and editing files without asking you."
         },
         "pi-code.autoApproveDelete": {
           "type": "boolean",
           "default": false,
-          "markdownDescription": "Automatically allow the agent to delete files (`delete_file`). Use with caution."
+          "description": "Approve deleting files without asking you."
         },
         "pi-code.autoApproveExecute": {
           "type": "boolean",
           "default": false,
-          "markdownDescription": "Automatically allow the agent to run terminal commands (`execute_command`) inside your terminal shell environment."
+          "description": "Approve running terminal commands without asking you."
         },
         "pi-code.allowedReadPaths": {
           "type": "array",
@@ -111,7 +111,7 @@
             "type": "string"
           },
           "default": [],
-          "description": "Files matching these globs are auto-approved for reading. Add * to allow all paths."
+          "description": "Files that can be read without asking. Use * to allow every path."
         },
         "pi-code.deniedReadPaths": {
           "type": "array",
@@ -119,7 +119,7 @@
             "type": "string"
           },
           "default": [],
-          "description": "Files matching these globs are blocked from reading, overriding allowed paths."
+          "description": "Files that can never be read, even when allowed above."
         },
         "pi-code.allowedWritePaths": {
           "type": "array",
@@ -127,7 +127,7 @@
             "type": "string"
           },
           "default": [],
-          "description": "Files matching these globs are auto-approved for writing and editing. Add * to allow all paths."
+          "description": "Files that can be created and edited without asking. Use * to allow every path."
         },
         "pi-code.deniedWritePaths": {
           "type": "array",
@@ -135,7 +135,7 @@
             "type": "string"
           },
           "default": [],
-          "description": "Files matching these globs are blocked from writing and editing, overriding allowed paths."
+          "description": "Files that can never be created or edited, even when allowed above."
         },
         "pi-code.allowedDeletePaths": {
           "type": "array",
@@ -143,7 +143,7 @@
             "type": "string"
           },
           "default": [],
-          "description": "Files matching these globs are auto-approved for deleting. Add * to allow all paths."
+          "description": "Files that can be deleted without asking. Use * to allow every path."
         },
         "pi-code.deniedDeletePaths": {
           "type": "array",
@@ -151,7 +151,7 @@
             "type": "string"
           },
           "default": [],
-          "description": "Files matching these globs are blocked from deleting, overriding allowed paths."
+          "description": "Files that can never be deleted, even when allowed above."
         },
         "pi-code.allowedExecuteCommands": {
           "type": "array",
@@ -159,7 +159,7 @@
             "type": "string"
           },
           "default": [],
-          "description": "Commands starting with these prefixes are auto-approved. Add * to allow all commands."
+          "description": "Commands that can run without asking. Use * to allow every command."
         },
         "pi-code.deniedExecuteCommands": {
           "type": "array",
@@ -167,107 +167,107 @@
             "type": "string"
           },
           "default": [],
-          "description": "Commands starting with these prefixes are blocked, overriding allowed commands."
+          "description": "Commands that can never run, even when allowed above."
         },
         "pi-code.autoCompactContext": {
           "type": "boolean",
           "default": true,
-          "description": "Automatically compact conversation context when it reaches the threshold."
+          "description": "Shorten the conversation on your own once it grows past the limit."
         },
         "pi-code.autoCompactContextPercent": {
           "type": "number",
           "default": 80,
           "minimum": 10,
           "maximum": 100,
-          "description": "The percentage of the context window in use before auto compaction runs."
+          "description": "How full the conversation has to be before it is shortened."
         },
         "pi-code.maxOpenTabsContext": {
           "type": "number",
           "default": 20,
           "minimum": 0,
           "maximum": 500,
-          "description": "Maximum number of open editor tabs to include in context. Higher values provide more context but increase token usage."
+          "description": "How many open tabs the agent sees. More tabs mean more detail and a higher cost."
         },
         "pi-code.maxWorkspaceFiles": {
           "type": "number",
           "default": 100,
           "minimum": 0,
           "maximum": 500,
-          "description": "Maximum number of workspace files to include in context. Higher values provide more context but increase token usage."
+          "description": "How many workspace files the agent sees. More files mean more detail and a higher cost."
         },
         "pi-code.excludeIgnoredFiles": {
           "type": "boolean",
           "default": true,
-          "description": "Hide files and folders matched by .gitignore when listing workspace files. Reduces context noise from build output and dependencies."
+          "description": "Skip the files your project ignores, so build output and dependencies stay out of the conversation."
         },
         "pi-code.maxGitStatusFiles": {
           "type": "number",
           "default": 20,
           "minimum": 0,
           "maximum": 50,
-          "description": "Maximum number of changed files to include in git status context. Set to 0 to disable. Branch info is always shown when above 0."
+          "description": "How many changed files to show. Set to 0 to show none; the current branch always shows."
         },
         "pi-code.maxToolOutputLines": {
           "type": "number",
           "default": 2000,
           "minimum": 100,
           "maximum": 10000,
-          "description": "Maximum number of lines a single tool result may send to the model. Whichever limit is reached first, lines or size, triggers truncation."
+          "description": "How many lines of one result the agent gets before the rest is cut off."
         },
         "pi-code.maxToolOutputSizeKb": {
           "type": "number",
           "default": 50,
           "minimum": 5,
           "maximum": 500,
-          "description": "Maximum size a single tool result may send to the model. Truncated results keep a notice explaining how to retrieve the remaining output."
+          "description": "How large one result can be before the agent gets it cut off."
         },
         "pi-code.commitMessageModel": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Model used to generate commit messages, as `provider/model`. Leave empty to use the model currently selected in the chat."
+          "description": "Model that writes commit messages. Leave default to use the model picked in the chat."
         },
         "pi-code.commitMessageThinkingLevel": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Thinking level used to generate commit messages, as `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, or `max`. Leave empty to use the level selected in the chat."
+          "description": "How much the model thinks while writing a commit message. Leave default to follow the chat."
         },
         "pi-code.delegationTaskModel": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Model used to run delegated sub-agent tasks (`spawn_subagent`), as `provider/model`. Leave empty to use the model currently selected in the chat."
+          "description": "Model that runs the tasks the agent hands off. Leave default to use the model picked in the chat."
         },
         "pi-code.delegationTaskThinkingLevel": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Thinking level used to run delegated sub-agent tasks, as `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, or `max`. Leave empty to use the level selected in the chat."
+          "description": "How much the model thinks on the tasks it hands off. Leave default to follow the chat."
         },
         "pi-code.maxConcurrentFileReads": {
           "type": "number",
           "default": 10,
           "minimum": 1,
           "maximum": 100,
-          "markdownDescription": "Maximum number of files the `read_file` tool loads in parallel. Higher values may speed up reading many small files but increase memory usage."
+          "description": "How many files the agent reads at once. More can be faster but uses more memory."
         },
         "pi-code.maxCommandTimeoutMs": {
           "type": "number",
           "default": 1800000,
           "minimum": 60000,
           "maximum": 3600000,
-          "markdownDescription": "Maximum duration of a single command started by `execute_command`. Commands that run longer are killed once this limit is reached."
+          "description": "How long one command may run before the agent stops it."
         },
         "pi-code.retryOnError": {
           "type": "number",
           "default": 3,
           "minimum": 0,
           "maximum": 61,
-          "description": "Maximum times the agent retries a turn that fails with a transient error such as a rate limit, server overload, or provider error."
+          "description": "How many times the agent tries again when a request fails for a temporary reason."
         },
         "pi-code.minTextAttachment": {
           "type": "number",
           "default": 2000,
           "minimum": 100,
           "maximum": 100000,
-          "description": "Minimum number of characters before it is attached as a text file instead of inserted into the composer."
+          "description": "Text longer than this is sent as a file instead of pasted into the chat box."
         }
       }
     },
