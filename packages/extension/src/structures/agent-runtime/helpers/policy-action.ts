@@ -1,11 +1,12 @@
 import { join, resolve } from 'node:path';
 import { CONFIG_DIR_NAME, getAgentDir, getCwdRelativePath, resolvePath } from '@earendil-works/pi-coding-agent';
 import { minimatch } from 'minimatch';
-import { parse } from 'shell-quote';
 
+import { parseCommand } from '@pi-code/shared/utilities/command';
 import { normalizeSeparators } from '@pi-code/shared/utilities/common';
 
 import type { AppSettings } from '@pi-code/shared/core/settings';
+import type { CommandTokenizer } from '@pi-code/shared/utilities/command';
 
 export type ApprovalDecision = { action: 'approve' } | { action: 'deny'; reason: string } | { action: 'confirm' };
 
@@ -206,68 +207,6 @@ export function resolvePathAction(
   return decidePathAction(filePath, resolveFileLocation(cwd, filePath), allowedPatterns, deniedPatterns);
 }
 
-type Tokenizer = (command: string) => unknown[];
-
-const SEPARATOR_OPS = ['&&', '||', ';', '|', '&'];
-
-function tokenize(command: string, tokenizer: Tokenizer): unknown[] {
-  let tokens: unknown[];
-  try {
-    tokens = tokenizer(command);
-  } catch {
-    throw new Error('Command could not be parsed into tokens.');
-  }
-  if (!Array.isArray(tokens)) {
-    throw new Error('Command could not be parsed into tokens.');
-  }
-  return tokens;
-}
-
-function parseCommandLine(command: string, tokenizer: Tokenizer): string[] {
-  if (!command.trim()) return [];
-
-  const subCommands: string[] = [];
-  let current: string[] = [];
-  const flush = () => {
-    if (current.length > 0) {
-      subCommands.push(current.join(' '));
-      current = [];
-    }
-  };
-
-  for (const token of tokenize(command, tokenizer)) {
-    if (typeof token === 'string') {
-      current.push(token);
-      continue;
-    }
-    if (typeof token !== 'object' || token === null) {
-      continue;
-    }
-
-    const tok = token as { op?: string; pattern?: string; comment?: string };
-    if ('comment' in tok) continue;
-
-    const { op, pattern } = tok;
-    if (typeof op !== 'string') {
-      if (typeof pattern === 'string') current.push(pattern);
-      continue;
-    }
-    if (op === 'glob' && typeof pattern === 'string') {
-      current.push(pattern);
-    } else if (SEPARATOR_OPS.includes(op)) {
-      flush();
-    } else {
-      current.push(op);
-    }
-  }
-  flush();
-  return subCommands;
-}
-
-export function parseCommand(command: string, tokenizer: Tokenizer = parse): string[] {
-  return command.split(/\r?\n/).flatMap((line) => parseCommandLine(line, tokenizer));
-}
-
 function matchesCommandPattern(pattern: string, command: string): boolean {
   if (pattern === '*') return true;
   if (isRegexPattern(pattern)) {
@@ -316,7 +255,7 @@ export function resolveCommandAction(
   approveEnabled: boolean,
   allowedPatterns: readonly string[],
   deniedPatterns: readonly string[],
-  tokenizer: Tokenizer = parse,
+  tokenizer?: CommandTokenizer,
 ): ApprovalDecision['action'] {
   if (!approveEnabled) return 'confirm';
   if (containsDangerousSubstitution(command)) return 'confirm';

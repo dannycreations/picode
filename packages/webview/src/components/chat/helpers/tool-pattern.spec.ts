@@ -52,6 +52,16 @@ describe('getToolPatternConfig', () => {
     expect(config?.denyKey).toBe('deniedExecuteCommands');
   });
 
+  it('offers only patterns the host can match for background-chained commands', () => {
+    const config = getToolPatternConfig(makeMessage('execute_command', { command: 'echo hi & rm -rf /' }), null);
+    expect(config?.patterns).toEqual(['echo hi', 'echo', 'rm -rf /', 'rm']);
+  });
+
+  it('does not split on a separator inside quotes', () => {
+    const config = getToolPatternConfig(makeMessage('execute_command', { command: 'echo "a && b"' }), null);
+    expect(config?.patterns).toEqual(['echo a && b', 'echo']);
+  });
+
   it('derives path patterns for write_file and reflects current settings', () => {
     const config = getToolPatternConfig(makeMessage('write_file', { path: 'src/a.ts', content: '' }), {
       allowedWritePaths: ['src/a.ts'],

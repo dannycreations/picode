@@ -390,9 +390,9 @@
   },
   "homepage": "https://github.com/dannycreations/picode",
   "dependencies": {
-    "@earendil-works/pi-agent-core": "^1.0.0",
-    "@earendil-works/pi-ai": "^1.0.0",
-    "@earendil-works/pi-coding-agent": "^1.0.0",
+    "@earendil-works/pi-agent-core": "^1.0.2",
+    "@earendil-works/pi-ai": "^1.0.2",
+    "@earendil-works/pi-coding-agent": "^1.0.2",
     "@modelcontextprotocol/sdk": "^1.32.0",
     "ignore": "^7.0.12",
     "minimatch": "^10.2.6",

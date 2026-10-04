@@ -1,3 +1,4 @@
+import { parseCommand } from '@pi-code/shared/utilities/command';
 import { normalizeSeparators } from '@pi-code/shared/utilities/common';
 import { getToolFilePaths } from '@pi-code/shared/utilities/tool';
 
@@ -11,45 +12,34 @@ const PATH_TOOL_KEYS: Readonly<Record<string, { readonly allow: SettingKey; read
   delete_file: { allow: 'allowedDeletePaths', deny: 'deniedDeletePaths' },
 };
 
-const CHAIN_SEPARATORS = /(?:\r?\n|&&|\|\||[|;])/;
-
 function extractCommandPatterns(command: string): readonly string[] {
   if (!command || !command.trim()) return [];
 
-  const seen = new Set<string>();
-  const patterns: string[] = [];
-
-  for (const raw of command.split(CHAIN_SEPARATORS)) {
-    const sub = raw.trim();
-    if (!sub) continue;
-
-    if (!seen.has(sub)) {
-      seen.add(sub);
-      patterns.push(sub);
-    }
-
-    const base = sub.split(/\s+/)[0];
-    if (base && !seen.has(base)) {
-      seen.add(base);
-      patterns.push(base);
-    }
+  let subCommands: string[];
+  try {
+    subCommands = parseCommand(command);
+  } catch {
+    // The host asks the user rather than matching patterns when tokenization
+    // fails, so offer the raw command as the single candidate.
+    subCommands = [command.trim()];
   }
 
-  return patterns;
+  // Each sub-command and its base command, so the user can allow this one call
+  // or every call to the same tool.
+  return collectUnique(subCommands.map((sub) => [sub, sub.split(/\s+/)[0]]));
 }
 
-function mergeCommandPatterns(commands: readonly string[]): string[] {
+function collectUnique(groups: ReadonlyArray<readonly string[]>): string[] {
   const seen = new Set<string>();
-  const patterns: string[] = [];
-  for (const command of commands) {
-    for (const pattern of extractCommandPatterns(command)) {
-      if (!seen.has(pattern)) {
-        seen.add(pattern);
-        patterns.push(pattern);
-      }
+  const unique: string[] = [];
+  for (const group of groups) {
+    for (const item of group) {
+      if (!item || seen.has(item)) continue;
+      seen.add(item);
+      unique.push(item);
     }
   }
-  return patterns;
+  return unique;
 }
 
 interface ToolPatternConfig {
@@ -82,7 +72,7 @@ export function getToolPatternConfig(message: ToolChatMessage, settings: AppSett
     for (const section of message.toolSections ?? []) {
       if (section.title) commands.push(section.title);
     }
-    const patterns = mergeCommandPatterns(commands);
+    const patterns = collectUnique(commands.map((command) => extractCommandPatterns(command)));
     if (patterns.length === 0) return null;
 
     return {
@@ -102,16 +92,7 @@ export function getToolPatternConfig(message: ToolChatMessage, settings: AppSett
     if (section.openPath) paths.push(section.openPath);
   }
 
-  const seen = new Set<string>();
-  const patterns: string[] = [];
-  for (const path of paths) {
-    for (const candidate of extractPathPatterns(path)) {
-      if (!seen.has(candidate)) {
-        seen.add(candidate);
-        patterns.push(candidate);
-      }
-    }
-  }
+  const patterns = collectUnique(paths.map((path) => extractPathPatterns(path)));
   if (patterns.length === 0) return null;
 
   return {

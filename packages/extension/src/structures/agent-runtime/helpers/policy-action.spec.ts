@@ -6,7 +6,6 @@ import {
   containsDangerousSubstitution,
   hasCaretQuoteEscape,
   matchesGlob,
-  parseCommand,
   resolveCommandAction,
   resolvePathAction,
   resolveReadPath,
@@ -370,40 +369,6 @@ describe('containsDangerousSubstitution', () => {
   it('should return false for safe command strings', () => {
     expect(containsDangerousSubstitution('npm test --coverage')).toBe(false);
     expect(containsDangerousSubstitution('git checkout -b feature/test')).toBe(false);
-  });
-});
-
-describe('parseCommand', () => {
-  it('should correctly parse command chains', () => {
-    const subCmds = parseCommand('git status && git pull || echo failed');
-    expect(subCmds).toEqual(['git status', 'git pull', 'echo failed']);
-  });
-
-  it('should preserve glob tokens correctly without substituting "glob"', () => {
-    const subCmds = parseCommand('ls *.ts');
-    expect(subCmds).toEqual(['ls *.ts']);
-  });
-
-  it('should ignore shell comments', () => {
-    const subCmds = parseCommand('npm test # run test suite');
-    expect(subCmds).toEqual(['npm test']);
-  });
-
-  it('should split newline-separated input into independent sub-commands', () => {
-    expect(parseCommand('git status\ngit pull')).toEqual(['git status', 'git pull']);
-    expect(parseCommand('git status\r\ngit pull')).toEqual(['git status', 'git pull']);
-  });
-
-  it('should handle empty or whitespace-only inputs', () => {
-    expect(parseCommand('')).toEqual([]);
-    expect(parseCommand('   ')).toEqual([]);
-  });
-
-  it('should throw when tokenization fails', () => {
-    const brokenTokenizer = () => {
-      throw new Error('boom');
-    };
-    expect(() => parseCommand('echo hi', brokenTokenizer)).toThrow('Command could not be parsed into tokens.');
   });
 });
 
