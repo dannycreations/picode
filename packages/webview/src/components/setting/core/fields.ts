@@ -61,6 +61,9 @@ export const SETTING_FIELDS: SettingFieldRegistry = {
   deniedExecuteCommands: { tab: 'approval', label: 'Denied Commands', parent: 'autoApproveExecute', placeholder: 'e.g. rm -rf' },
 
   commitMessageModel: { tab: 'behaviour', label: 'Commit message model' },
+  commitMessageThinkingLevel: { tab: 'behaviour', label: 'Commit message thinking level', parent: 'commitMessageModel' },
+  delegationTaskModel: { tab: 'behaviour', label: 'Delegation task model' },
+  delegationTaskThinkingLevel: { tab: 'behaviour', label: 'Delegation task thinking level', parent: 'delegationTaskModel' },
   maxConcurrentFileReads: { tab: 'behaviour', label: 'Concurrent file reads limit' },
   maxCommandTimeoutMs: { tab: 'behaviour', label: 'Command timeout limit' },
   retryOnError: { tab: 'behaviour', label: 'Retry on error' },

@@ -1,7 +1,14 @@
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES } from '@earendil-works/pi-coding-agent';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { invalidateAppSettings, readOutputLimits } from '@pi-code/extension/core/settings';
+import {
+  invalidateAppSettings,
+  readCommitMessageModelSelection,
+  readCommitMessageThinkingLevel,
+  readDelegationTaskModelSelection,
+  readDelegationTaskThinkingLevel,
+  readOutputLimits,
+} from '@pi-code/extension/core/settings';
 import { getSettingSpec, SETTING_KEYS } from '@pi-code/shared/core/settings';
 import manifest from '../../package.json' with { type: 'json' };
 import { buildManifestSettings } from '../../scripts/settings.ts';
@@ -36,6 +43,35 @@ describe('readOutputLimits', () => {
     Object.assign(configValues, { maxToolOutputSizeKb: 16 });
     invalidateAppSettings();
     expect(readOutputLimits().maxBytes).toBe(16 * 1024);
+  });
+});
+
+describe('model and thinking level settings', () => {
+  beforeEach(() => {
+    for (const key of Object.keys(configValues)) delete configValues[key];
+    invalidateAppSettings();
+  });
+
+  it('splits a configured model into provider and id', () => {
+    Object.assign(configValues, { delegationTaskModel: 'openrouter/anthropic/claude-sonnet-4' });
+
+    expect(readDelegationTaskModelSelection()).toEqual({ provider: 'openrouter', id: 'anthropic/claude-sonnet-4' });
+  });
+
+  it('reports nothing for an unset or unusable value', () => {
+    Object.assign(configValues, { delegationTaskModel: 'anthropic', commitMessageThinkingLevel: 'maximum' });
+
+    expect(readDelegationTaskModelSelection()).toBeUndefined();
+    expect(readCommitMessageThinkingLevel()).toBeUndefined();
+    expect(readCommitMessageModelSelection()).toBeUndefined();
+    expect(readDelegationTaskThinkingLevel()).toBeUndefined();
+  });
+
+  it('keeps a stored thinking level the agent understands', () => {
+    Object.assign(configValues, { commitMessageThinkingLevel: 'high', delegationTaskThinkingLevel: 'off' });
+
+    expect(readCommitMessageThinkingLevel()).toBe('high');
+    expect(readDelegationTaskThinkingLevel()).toBe('off');
   });
 });
 

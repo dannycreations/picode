@@ -217,6 +217,24 @@ const SETTINGS_SCHEMA = {
     default: '',
     description: 'Model used to generate commit messages, as `provider/model`. Leave empty to use the model currently selected in the chat.',
   },
+  commitMessageThinkingLevel: {
+    type: 'string',
+    default: '',
+    description:
+      'Thinking level used to generate commit messages, as `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, or `max`. Leave empty to use the level selected in the chat.',
+  },
+  delegationTaskModel: {
+    type: 'string',
+    default: '',
+    description:
+      'Model used to run delegated sub-agent tasks (`spawn_subagent`), as `provider/model`. Leave empty to use the model currently selected in the chat.',
+  },
+  delegationTaskThinkingLevel: {
+    type: 'string',
+    default: '',
+    description:
+      'Thinking level used to run delegated sub-agent tasks, as `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, or `max`. Leave empty to use the level selected in the chat.',
+  },
   maxConcurrentFileReads: {
     type: 'number',
     default: 10,

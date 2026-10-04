@@ -57,6 +57,12 @@ export function parseModelSelection(value: string): ModelSelection | undefined {
   return { provider: value.slice(0, separator), id: value.slice(separator + 1) };
 }
 
+const THINKING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'] as const satisfies readonly ModelThinkingLevel[];
+
+export function isThinkingLevel(value: string): value is ModelThinkingLevel {
+  return THINKING_LEVELS.includes(value as ModelThinkingLevel);
+}
+
 export interface CommandItem {
   readonly name: string;
   readonly source: 'builtin' | 'skill' | 'prompt';

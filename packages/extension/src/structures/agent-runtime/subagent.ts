@@ -1,6 +1,7 @@
 import { contentText } from '@earendil-works/pi-ai';
 import { createAgentSessionFromServices, SessionManager } from '@earendil-works/pi-coding-agent';
 
+import { readDelegationTaskModelSelection, readDelegationTaskThinkingLevel } from '@pi-code/extension/core/settings';
 import { registerSubagentSession, unregisterSubagentSession } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
 import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { executeCommandTool } from '@pi-code/extension/structures/tool-call/execute-command';
@@ -9,7 +10,7 @@ import { logger } from '@pi-code/shared/core/logger';
 import { elapsedSeconds } from '@pi-code/shared/utilities/common';
 
 import type { Api, Model } from '@earendil-works/pi-ai';
-import type { AgentSession, AgentSessionEvent, ToolDefinition } from '@earendil-works/pi-coding-agent';
+import type { AgentSession, AgentSessionEvent, ModelRuntime, ToolDefinition } from '@earendil-works/pi-coding-agent';
 import type { SubagentDefinition } from '@pi-code/extension/core/prompt';
 import type { ToolName } from '@pi-code/shared/core/types';
 
@@ -157,7 +158,35 @@ function collectUsage(session: AgentSession): SubagentUsage {
   return { turns, tokensIn, tokensOut, cost };
 }
 
-async function createChildSession(cwd: string, agent: SubagentDefinition, toolCallId?: string): Promise<AgentSession> {
+async function applyDelegationSettings(session: AgentSession, runtime: ModelRuntime, inherited: Model<Api> | undefined): Promise<void> {
+  const configured = readDelegationTaskModelSelection();
+  // Delegated runs can be pointed at their own model, which keeps a cheap model
+  // off the main chat's budget. Without one the child inherits the caller's
+  // model. A failure here is not fatal because the child falls back to the
+  // default model.
+  const model = (configured ? runtime.getModel(configured.provider, configured.id) : undefined) ?? inherited;
+  if (model) {
+    await session.setModel(model).catch((err) => logger.warn('Could not apply the delegated model to the sub-agent:', err));
+  }
+
+  // setModel resolves the persisted chat level, so a configured delegation level
+  // is applied on top of it, once the model it belongs to is settled.
+  const level = readDelegationTaskThinkingLevel();
+  if (level && level !== 'off') {
+    try {
+      session.setThinkingLevel(level);
+    } catch (err) {
+      logger.warn(`Could not apply the delegated thinking level ${level}:`, err);
+    }
+  }
+}
+
+async function createChildSession(
+  cwd: string,
+  agent: SubagentDefinition,
+  inheritedModel: Model<Api> | undefined,
+  toolCallId?: string,
+): Promise<AgentSession> {
   // Services are cached per workspace, so a child session reuses the parent's
   // model runtime, credentials, and tool policy extension instead of rebuilding
   // them. Only the transcript is separate, which is the point of delegation.
@@ -175,6 +204,8 @@ async function createChildSession(cwd: string, agent: SubagentDefinition, toolCa
   // Tag this child session so the shared tool policy can label any
   // confirmation prompts it raises with the sub-agent name.
   registerSubagentSession(session.sessionId, agent.name, toolCallId);
+
+  await applyDelegationSettings(session, services.modelRuntime, inheritedModel);
 
   return session;
 }
@@ -199,7 +230,7 @@ export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutco
       };
     }
 
-    const session = await createChildSession(input.cwd, input.agent, input.toolCallId);
+    const session = await createChildSession(input.cwd, input.agent, input.model, input.toolCallId);
     const onAbort = (): void => {
       void session.abort().catch((err) => logger.error('Failed to abort sub-agent session:', err));
     };
@@ -213,12 +244,6 @@ export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutco
     });
 
     try {
-      if (input.model) {
-        // Inheriting the caller's model keeps delegation predictable; a failure
-        // here is not fatal because the child falls back to the default model.
-        await session.setModel(input.model).catch((err) => logger.warn('Could not apply the parent model to the sub-agent:', err));
-      }
-
       input.signal?.addEventListener('abort', onAbort, { once: true });
       // The brief is model authored, so prompt template expansion stays off to
       // keep a stray leading slash from loading an unrelated template.

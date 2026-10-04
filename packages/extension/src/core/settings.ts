@@ -3,7 +3,7 @@ import { ConfigurationTarget, workspace } from 'vscode';
 
 import { isProjectTrusted } from '@pi-code/extension/utilities/vscode';
 import { DEFAULT_APP_ID } from '@pi-code/shared/core/constants';
-import { parseModelSelection } from '@pi-code/shared/core/protocol';
+import { isThinkingLevel, parseModelSelection } from '@pi-code/shared/core/protocol';
 import { coerceSetting, coerceSettings, SETTING_KEYS } from '@pi-code/shared/core/settings';
 import { BYTES_PER_KILOBYTE } from '@pi-code/shared/utilities/common';
 
@@ -11,6 +11,7 @@ import type { WorkspaceConfiguration } from 'vscode';
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
 import type { ModelSelection } from '@pi-code/shared/core/protocol';
 import type { AppSettings } from '@pi-code/shared/core/settings';
+import type { ModelThinkingLevel } from '@pi-code/shared/core/types';
 
 // VS Code settings are read from the editor on demand and only change in
 // response to `onDidChangeConfiguration`, so the snapshot is memoized and invalidated
@@ -39,9 +40,26 @@ export function readOutputLimits(): OutputLimits {
   return { maxLines: settings.maxToolOutputLines, maxBytes: settings.maxToolOutputSizeKb * BYTES_PER_KILOBYTE };
 }
 
-// Empty string means "not configured", which callers translate into the chat-selected model.
+// An empty string means "not configured", which callers translate into the
+// selection the chat is currently running.
 export function readCommitMessageModelSelection(): ModelSelection | undefined {
   return parseModelSelection(readAppSettings().commitMessageModel);
+}
+
+export function readDelegationTaskModelSelection(): ModelSelection | undefined {
+  return parseModelSelection(readAppSettings().delegationTaskModel);
+}
+
+function readThinkingLevel(value: string): ModelThinkingLevel | undefined {
+  return isThinkingLevel(value) ? value : undefined;
+}
+
+export function readCommitMessageThinkingLevel(): ModelThinkingLevel | undefined {
+  return readThinkingLevel(readAppSettings().commitMessageThinkingLevel);
+}
+
+export function readDelegationTaskThinkingLevel(): ModelThinkingLevel | undefined {
+  return readThinkingLevel(readAppSettings().delegationTaskThinkingLevel);
 }
 
 function resolveConfigurationTarget(config: WorkspaceConfiguration, key: string): ConfigurationTarget {

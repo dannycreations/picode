@@ -226,6 +226,21 @@
           "default": "",
           "markdownDescription": "Model used to generate commit messages, as `provider/model`. Leave empty to use the model currently selected in the chat."
         },
+        "pi-code.commitMessageThinkingLevel": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Thinking level used to generate commit messages, as `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, or `max`. Leave empty to use the level selected in the chat."
+        },
+        "pi-code.delegationTaskModel": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Model used to run delegated sub-agent tasks (`spawn_subagent`), as `provider/model`. Leave empty to use the model currently selected in the chat."
+        },
+        "pi-code.delegationTaskThinkingLevel": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Thinking level used to run delegated sub-agent tasks, as `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, or `max`. Leave empty to use the level selected in the chat."
+        },
         "pi-code.maxConcurrentFileReads": {
           "type": "number",
           "default": 10,

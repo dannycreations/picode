@@ -21,9 +21,21 @@ describe('setting fields', () => {
     for (const key of SETTING_KEYS) {
       const { parent, tab } = SETTING_FIELDS[key];
       if (!parent) continue;
-      expect(['boolean', 'number'].includes(getSettingSpec(parent).type), key).toBe(true);
       expect(SETTING_FIELDS[parent].parent, key).toBeUndefined();
       expect(SETTING_FIELDS[parent].tab, key).toBe(tab);
+    }
+  });
+
+  it('gives a model setting one thinking level to render beside it', () => {
+    for (const key of SETTING_KEYS) {
+      const parent = SETTING_FIELDS[key].parent;
+      if (!parent) continue;
+
+      if (getSettingSpec(parent).type === 'string') {
+        expect(getChildFieldKeys(parent), key).toEqual([key]);
+      } else {
+        expect(['boolean', 'number'], parent).toContain(getSettingSpec(parent).type);
+      }
     }
   });
 
