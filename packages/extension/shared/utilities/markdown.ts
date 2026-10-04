@@ -9,7 +9,7 @@ interface Fence {
   readonly language: string;
 }
 
-export interface FencedBlock {
+interface FencedBlock {
   readonly content: string;
   readonly language: string;
   readonly terminated: boolean;

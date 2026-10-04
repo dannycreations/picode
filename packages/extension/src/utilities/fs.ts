@@ -3,7 +3,7 @@ import { createReadStream } from 'node:fs';
 import { mkdir, open, readdir, rename, stat, unlink, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
-import { formatPathRelativeToCwdOrAbsolute } from '@earendil-works/pi-coding-agent';
+import { formatPathRelativeToCwdOrAbsolute, getCwdRelativePath } from '@earendil-works/pi-coding-agent';
 
 import { logger } from '@pi-code/shared/core/logger';
 import { pathCollator } from '@pi-code/shared/utilities/common';
@@ -102,6 +102,10 @@ export async function searchWorkspaceFiles(query: string, cwd: string): Promise<
   const dirPart = segments.slice(0, -1).join('/');
   const needle = namePart.toLowerCase();
   const start = dirPart ? resolve(cwd, dirPart) : cwd;
+
+  // The picker only searches the active workspace, and results outside it would
+  // be rendered as absolute paths from an unrelated tree.
+  if (getCwdRelativePath(start, cwd) === undefined) return [];
 
   if (needle === '') {
     const entries: string[] = [];

@@ -42,6 +42,16 @@ describe('searchWorkspaceFiles', () => {
     expect(results).toEqual([]);
   });
 
+  it('refuses a query whose anchor climbs out of the workspace', async () => {
+    await write('src/index.ts');
+
+    const results = await searchWorkspaceFiles('../../etc', cwd);
+
+    // Anchoring outside the root would otherwise render absolute paths from an
+    // unrelated tree as if they were workspace candidates.
+    expect(results).toEqual([]);
+  });
+
   it('lists the anchor directory contents for a trailing-slash query', async () => {
     await write('src/index.ts');
     await write('src/util.ts');

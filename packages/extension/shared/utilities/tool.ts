@@ -164,6 +164,14 @@ function subagentSection(message: ToolChatMessage): ToolSection[] {
   return [{ title, subtitle: message.subtitle, content: message.diff, language: 'text' }];
 }
 
+function stringifyArguments(callArguments: unknown): string {
+  try {
+    return JSON.stringify(callArguments, null, 2);
+  } catch {
+    return String(callArguments);
+  }
+}
+
 function mcpSection(message: ToolChatMessage): ToolSection[] {
   const args = message.toolArgs;
   const server = args && 'server' in args && typeof args.server === 'string' ? args.server : undefined;
@@ -175,16 +183,8 @@ function mcpSection(message: ToolChatMessage): ToolSection[] {
     title = tool === undefined ? `${server}: list tools` : `${server}: ${tool}`;
   }
 
-  let pendingPayload: string | undefined;
-  if (callArguments !== undefined) {
-    try {
-      pendingPayload = JSON.stringify(callArguments, null, 2);
-    } catch {
-      pendingPayload = String(callArguments);
-    }
-  }
-
-  const content = message.diff ?? pendingPayload;
+  // The arguments only stand in for a result that has not arrived yet.
+  const content = message.diff ?? (callArguments === undefined ? undefined : stringifyArguments(callArguments));
   return [{ title, subtitle: message.subtitle, content, language: message.diff === undefined ? 'json' : 'text' }];
 }
 

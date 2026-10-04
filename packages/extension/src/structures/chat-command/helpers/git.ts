@@ -4,6 +4,7 @@ import { Uri } from 'vscode';
 import { execGit, getGitRepository } from '@pi-code/extension/utilities/git';
 import { renderTruncatedText, truncateOutput } from '@pi-code/extension/utilities/truncate';
 import { COMMIT_HASH_PATTERN, SHORT_HASH_LENGTH, WORKING_CHANGES_TAG } from '@pi-code/shared/core/constants';
+import { logger } from '@pi-code/shared/core/logger';
 
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
 import type { CommitItem } from '@pi-code/shared/core/protocol';
@@ -55,7 +56,10 @@ export async function searchCommits(query: string, cwd: string): Promise<CommitI
 
     const output = await execGit(root, ['log', `--max-count=${COMMIT_SEARCH_WINDOW}`, ...LOG_ARGUMENTS]);
     return matchCommits(parseGitLog(output), query);
-  } catch {
+  } catch (err) {
+    // An empty list is what the picker renders either way, so the reason has to
+    // come from the log or "no commits" and "git failed" look identical.
+    logger.warn('Commit search failed:', err);
     return [];
   }
 }

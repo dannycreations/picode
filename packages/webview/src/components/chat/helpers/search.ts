@@ -25,6 +25,10 @@ export function getMessageSearchText(message: ChatMessage): string {
     }
     case 'error':
       return message.errorMessage || message.text || '';
+    // An API request row draws fixed labels rather than its message text, so
+    // counting it would send navigation to a row with nothing to highlight.
+    case 'api_request':
+      return '';
     default:
       return message.text || '';
   }

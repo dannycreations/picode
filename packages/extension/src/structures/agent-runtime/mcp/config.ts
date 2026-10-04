@@ -64,6 +64,12 @@ export function parseMcpServer(raw: unknown): ParsedServer {
     return { ok: false, error: 'specify either `command` or `url`, not both' };
   }
 
+  const commonExtras = {
+    ...(timeoutMs && { timeoutMs }),
+    ...(autorun && { autorun }),
+    ...(description && { description }),
+  };
+
   if (url !== undefined) {
     const headers = optionalStringMap(record, 'headers');
     if (record['headers'] !== undefined && headers === undefined) {
@@ -75,9 +81,7 @@ export function parseMcpServer(raw: unknown): ParsedServer {
         kind: 'remote',
         url,
         ...(headers && { headers }),
-        ...(timeoutMs && { timeoutMs }),
-        ...(autorun && { autorun }),
-        ...(description && { description }),
+        ...commonExtras,
       },
     };
   }
@@ -104,9 +108,7 @@ export function parseMcpServer(raw: unknown): ParsedServer {
         ...(args && { args }),
         ...(env && { env }),
         ...(cwd !== undefined && { cwd }),
-        ...(timeoutMs && { timeoutMs }),
-        ...(autorun && { autorun }),
-        ...(description && { description }),
+        ...commonExtras,
       },
     };
   }

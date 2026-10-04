@@ -9,15 +9,16 @@ import type { AgentSessionServices, ModelRuntime } from '@earendil-works/pi-codi
 import type { LoaderConfig } from '@pi-code/extension/structures/agent-runtime/context';
 
 interface CachedResources {
+  readonly cwd: string;
   readonly key: string;
   readonly services: Promise<AgentSessionServices>;
 }
 
-const resourceCache = new Map<string, CachedResources>();
+let resourceCache: CachedResources | null = null;
 let sharedModelRuntime: ModelRuntime | undefined;
 
 export function invalidateAgentResources(): void {
-  resourceCache.clear();
+  resourceCache = null;
   // The model runtime is captured once and reused across workspaces; drop it
   // so a trust change or settings rotation rebuilds a current one.
   sharedModelRuntime = undefined;
@@ -55,15 +56,14 @@ export async function createAgentResources(
   };
 
   const key = [config.agentRules, config.skillInvocation, config.projectTrusted].join('|');
-  let cached = resourceCache.get(cwd);
-  if (!cached || cached.key !== key) {
-    cached = { key, services: createServices(cwd, config, createSessionServices) };
-    resourceCache.set(cwd, cached);
+  if (resourceCache?.cwd !== cwd || resourceCache.key !== key) {
+    const created: CachedResources = { cwd, key, services: createServices(cwd, config, createSessionServices) };
+    resourceCache = created;
     // A rejected creation must not poison the cache for later attempts.
-    cached.services.catch(() => {
-      if (resourceCache.get(cwd) === cached) resourceCache.delete(cwd);
+    created.services.catch(() => {
+      if (resourceCache === created) resourceCache = null;
     });
   }
 
-  return await cached.services;
+  return await resourceCache.services;
 }

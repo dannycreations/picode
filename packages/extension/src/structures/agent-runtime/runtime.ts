@@ -63,7 +63,7 @@ export class Runtime {
       if (this.discardIfStale(generation, session)) return;
 
       await this.runCompaction(session);
-      await session.prompt(null).catch((err) => this.messenger.postError(err));
+      await session.prompt(null);
     });
   }
 
@@ -78,7 +78,7 @@ export class Runtime {
 
       appendHiddenMessage(session, 'environment_details', envDetails);
 
-      await session.prompt(null).catch((err) => this.messenger.postError(err));
+      await session.prompt(null);
     });
   }
 
@@ -379,7 +379,7 @@ export class Runtime {
     }
   }
 
-  private cleanupSession(session?: AgentSession): void {
+  private cleanupSession(session: AgentSession | null = this.session): void {
     const unsubscribe = this.unsubscribeSessionEvents;
     this.unsubscribeSessionEvents = null;
 

@@ -103,7 +103,6 @@ describe('initSessionHooks', () => {
     await expect(session.agent.finishTurn!(normalTurn, undefined)).resolves.toEqual({ action: 'end' });
 
     expect(requestCompaction).toHaveBeenCalledTimes(1);
-    expect(requestCompaction).toHaveBeenCalledWith(session);
   });
 
   it('never requests compaction for an errored or aborted turn', async () => {

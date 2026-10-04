@@ -44,19 +44,20 @@ function isEnabled(key: LogLevelName): boolean {
   return LEVEL_WEIGHT[key] >= LEVEL_WEIGHT[setting];
 }
 
-function forward(level: LogLevelName, args: unknown[]): void {
-  if (!isEnabled(level)) return;
+function forward(key: LogLevelName, args: unknown[]): void {
+  if (!isEnabled(key)) return;
 
   const [head, ...rest] = args;
-  const message = head instanceof Error || typeof head === 'string' ? head : String(head);
   // The logger sits on the error path; a failing or partial sink must not
   // escalate into the operation that called it.
   try {
-    if (level === 'error') {
-      sink.error(message, ...rest);
+    // Only the error sink renders an Error, so that is the only path that hands
+    // one over instead of its formatted text.
+    if (key === 'error' && head instanceof Error) {
+      sink.error(head, ...rest);
       return;
     }
-    sink[level](typeof message === 'string' ? message : String(message), ...rest);
+    sink[key](String(head), ...rest);
   } catch {
     // Swallow sink failures; logging must never throw.
   }

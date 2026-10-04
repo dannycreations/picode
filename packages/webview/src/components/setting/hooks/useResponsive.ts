@@ -26,8 +26,11 @@ export const useResponsive = (threshold: number): UseResponsiveReturn => {
     observer.observe(container);
     // Arm the collapse animation after the first paint so
     // opening is instant and later resizes animate.
-    requestAnimationFrame(() => setShouldAnimate(true));
-    return () => observer.disconnect();
+    const frame = requestAnimationFrame(() => setShouldAnimate(true));
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
   }, [threshold]);
 
   return { containerRef, isCollapsed, shouldAnimate };

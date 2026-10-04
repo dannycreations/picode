@@ -192,8 +192,8 @@ const requestCommitSearch: SearchRequestBuilder = (query) => {
   return { type: 'search_commits', query };
 };
 
-// Fires one debounced search per query change; editing the query cancels the
-// pending send.
+const requestFileSearch: SearchRequestBuilder = (query) => ({ type: 'search_files', query });
+
 const useDebouncedSearch = (query: string | null, buildRequest: SearchRequestBuilder): void => {
   useEffect(() => {
     if (query === null) return;
@@ -227,7 +227,7 @@ export const useChatMention = ({ value, setValue, textareaRef }: UseMentionProps
     resolveItems: resolveResults,
   });
 
-  useDebouncedSearch(suggestion.query, (query) => ({ type: 'search_files', query }));
+  useDebouncedSearch(suggestion.query, requestFileSearch);
 
   return suggestion;
 };

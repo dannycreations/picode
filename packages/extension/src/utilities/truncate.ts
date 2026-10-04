@@ -95,7 +95,9 @@ interface ReadNumberedTextOptions {
 
 export async function readNumberedText(filePath: string, limits: OutputLimits, options?: ReadNumberedTextOptions): Promise<string> {
   const ranges = options?.ranges;
-  const maxLines = hasRanges(ranges) ? Math.max(...ranges.map((range) => Math.max(1, range.end))) : limits.maxLines;
+  // The ranges come straight from the model and are unbounded, so they fold in
+  // one at a time instead of spreading onto the argument stack.
+  const maxLines = hasRanges(ranges) ? ranges.reduce((max, range) => Math.max(max, 1, range.end), 0) : limits.maxLines;
 
   const lines = await readLines(filePath, maxLines);
   const truncation = truncateHead(numberLines(lines, ranges), limits);

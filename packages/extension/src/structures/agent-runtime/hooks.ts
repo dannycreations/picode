@@ -10,7 +10,7 @@ interface SessionHookServices {
   readonly isDisposed: () => boolean;
   readonly prepareTurn: (session: AgentSession) => Promise<void>;
   readonly isContextAboveThreshold: (session: AgentSession) => boolean;
-  readonly requestCompaction: (session: AgentSession) => Promise<void>;
+  readonly requestCompaction: () => Promise<void>;
   readonly contextPrepared: (session: AgentSession) => Promise<void>;
 }
 
@@ -34,7 +34,7 @@ export function initSessionHooks(session: AgentSession, services: SessionHookSer
       return { action: 'end' };
     }
     if (!isHardExit && services.isContextAboveThreshold(session)) {
-      void services.requestCompaction(session);
+      void services.requestCompaction();
       return { action: 'end' };
     }
     return (await baseFinishTurn?.(turn, signal)) ?? undefined;
