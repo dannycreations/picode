@@ -131,6 +131,47 @@ describe('tool completion', () => {
   });
 });
 
+describe('api request failure', () => {
+  beforeEach(() => {
+    apply([{ type: 'session_loaded', payload: { id: 'task-1', title: 'Task', messages: [], path: '/tmp/task.json', ...stats(0) } }]);
+  });
+
+  it('marks the request row failed so the error renders without a reload', () => {
+    apply([
+      { type: 'api_request_start', payload: { id: 'req-1', timestamp: 1 } },
+      // The assistant message carrying the failure closes the request row
+      // before the turn reports its final error against it.
+      { type: 'message_start', payload: { timestamp: 2 } },
+      { type: 'message_end', payload: { cost: 0.1 } },
+      { type: 'api_request_end', payload: { id: 'req-1', cost: 0.1, error: 'API request failed' } },
+    ]);
+
+    const [row] = useChatStore.getState().activeTask?.messages ?? [];
+    expect(row).toMatchObject({
+      id: 'req-1',
+      sender: 'api_request',
+      toolStatus: 'denied',
+      errorMessage: 'API request failed',
+      cost: 0.1,
+    });
+  });
+
+  it('replaces the failed request row inline instead of stacking retry headers', () => {
+    apply([
+      { type: 'api_request_start', payload: { id: 'req-1', timestamp: 1 } },
+      { type: 'message_start', payload: { timestamp: 2 } },
+      { type: 'api_request_end', payload: { id: 'req-1', error: 'first failure' } },
+      { type: 'api_request_start', payload: { id: 'req-2', timestamp: 3 } },
+      { type: 'message_start', payload: { timestamp: 4 } },
+      { type: 'api_request_end', payload: { id: 'req-2', error: 'second failure' } },
+    ]);
+
+    const requests = (useChatStore.getState().activeTask?.messages ?? []).filter((m) => m.sender === 'api_request');
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toMatchObject({ id: 'req-2', toolStatus: 'denied', errorMessage: 'second failure' });
+  });
+});
+
 describe('model catalog refresh', () => {
   // init_data requires a full settings snapshot; the defaults keep it irrelevant here.
   const settings = Object.fromEntries(SETTING_KEYS.map((key) => [key, coerceSetting(key, undefined)])) as AppSettings;

@@ -172,8 +172,15 @@ export function settlePendingTurns(messages: ChatMessage[], patch: RequestSettle
   let changed = false;
   const next = messages.map((m) => {
     if (m.sender !== 'api_request' && m.sender !== 'assistant') return m;
-    if (m.toolStatus !== 'running') return m;
-    if (onlyId !== undefined && m.id !== onlyId) return m;
+    if (onlyId !== undefined) {
+      // A named row is settling from its own terminal event, which owns
+      // the final cost and error even when a mid-turn event closed the
+      // row early. Blanket settles keep the running guard so they never
+      // overwrite a row an earlier event already settled.
+      if (m.id !== onlyId) return m;
+    } else if (m.toolStatus !== 'running') {
+      return m;
+    }
     changed = true;
     switch (m.sender) {
       case 'api_request':

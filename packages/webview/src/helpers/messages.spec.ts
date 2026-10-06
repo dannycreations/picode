@@ -407,4 +407,19 @@ describe('settlePendingTurns', () => {
     expect((result[0] as any).cost).toBe(0.5);
     expect((result[1] as any).toolStatus).toBe('running');
   });
+
+  it('applies the terminal patch to a row a mid-turn event already closed', () => {
+    // message_start settles the in-flight request row before api_request_end
+    // arrives, but the terminal event still owns the row's final state.
+    const messages = [
+      createMessage({ id: 'm1', sender: 'api_request', toolStatus: 'completed' }),
+      createMessage({ id: 'm2', sender: 'assistant', toolStatus: 'running' }),
+    ];
+
+    const result = settlePendingTurns(messages, { error: 'overloaded' }, 'm1');
+
+    expect((result[0] as any).toolStatus).toBe('denied');
+    expect((result[0] as any).errorMessage).toBe('overloaded');
+    expect((result[1] as any).toolStatus).toBe('running');
+  });
 });
