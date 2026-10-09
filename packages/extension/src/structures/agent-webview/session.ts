@@ -53,16 +53,23 @@ async function listSelectableModels(modelRuntime: ModelRuntime): Promise<ModelIt
 }
 
 function resolveDefaultModel(models: ModelItem[], preferred: { id?: string; provider?: string }): ModelSelection | undefined {
-  if (preferred.id) {
-    const match =
-      models.find((model) => model.id === preferred.id && model.provider === preferred.provider) ?? models.find((model) => model.id === preferred.id);
-    return match ?? models[0];
+  if (models.length === 0) return undefined;
+  const { id, provider } = preferred;
+  if (!id && !provider) return models[0];
+
+  if (id) {
+    const sameId = models.filter((model) => model.id === id);
+    const exact = provider ? sameId.find((model) => model.provider === provider) : sameId[0];
+    if (exact) return exact;
   }
-  if (preferred.provider) {
-    const sameProvider = models.find((model) => model.provider === preferred.provider);
-    if (sameProvider) return sameProvider;
+
+  const sameProvider = provider ? models.find((model) => model.provider === provider) : undefined;
+  const fallback = sameProvider ?? models[0];
+  if (id || !sameProvider) {
+    const wanted = [provider, id].filter(Boolean).join('/');
+    logger.warn(`Default model "${wanted}" is not in the catalog; using "${fallback.provider}/${fallback.id}" instead.`);
   }
-  return models[0];
+  return fallback;
 }
 
 function parseSessionLine(line: string): Record<string, unknown> | null {
@@ -171,11 +178,14 @@ export async function getInitData(cwd: string, services: AgentSessionServices): 
 
 export async function refreshModelCatalog(modelRuntime: ModelRuntime, force = false): Promise<ModelItem[] | null> {
   try {
-    await modelRuntime.refresh({
+    const { errors } = await modelRuntime.refresh({
       force,
       allowNetwork: true,
       signal: AbortSignal.timeout(CATALOG_TIMEOUT_MS),
     });
+    for (const [providerId, error] of errors) {
+      logger.warn(`Model catalog refresh failed for provider "${providerId}": ${error.message}`);
+    }
     return await listSelectableModels(modelRuntime);
   } catch (error) {
     logger.warn('Dynamic model refresh failed; the model list stays on the local catalog.', error);

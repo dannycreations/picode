@@ -165,13 +165,25 @@ export class Runtime {
 
         const { entries, transcript } = this.snapshot(session);
 
-        // loadSessionTranscript derives contextTokens from the last assistant usage,
-        // which is the pre-compaction size once the context is rebuilt. Use the
-        // session's post-compaction estimate so the header reflects the shrink.
-        const stats: StatsData =
-          typeof compaction?.estimatedTokensAfter === 'number'
-            ? { ...transcript.stats, contextTokens: compaction.estimatedTokensAfter }
-            : transcript.stats;
+        let stats: StatsData;
+        try {
+          const sessionStats = session.getSessionStats();
+          stats = {
+            tokensIn: sessionStats.tokens.input,
+            tokensOut: sessionStats.tokens.output,
+            cacheReads: sessionStats.tokens.cacheRead,
+            cacheWrites: sessionStats.tokens.cacheWrite,
+            totalCost: sessionStats.cost,
+            contextTokens: sessionStats.contextUsage?.tokens ?? 0,
+            contextLimit: resolveContextLimit(sessionStats.contextUsage?.contextWindow ?? session.model?.contextWindow),
+          };
+        } catch {
+          stats = transcript.stats;
+        }
+
+        if (typeof compaction?.estimatedTokensAfter === 'number') {
+          stats = { ...stats, contextTokens: compaction.estimatedTokensAfter };
+        }
 
         // getBranch() runs oldest to newest, so the entry just written is the last one.
         const compactionEntry = entries.findLast((entry) => entry.type === 'compaction') ?? null;
@@ -184,7 +196,8 @@ export class Runtime {
       // A user cancel aborts the in-flight compaction, which the session rethrows
       // as an AbortError. Don't surface that as a spurious error bubble.
       const isAbort = err instanceof Error && (err.name === 'AbortError' || err.message === 'Compaction cancelled');
-      if (!isAbort) {
+      const isTooSmall = err instanceof Error && err.message === 'Nothing to compact (session too small)';
+      if (!isAbort && !isTooSmall) {
         this.messenger.postError(err);
       }
       this.messenger.post({ type: 'compaction_end' });

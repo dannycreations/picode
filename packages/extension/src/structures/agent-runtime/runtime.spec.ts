@@ -261,7 +261,7 @@ describe('Runtime reply queue on settle', () => {
     runtime['session'] = makeFakeSession(vi.fn());
 
     runtime['handleSessionEvent']({ type: 'agent_end', messages: [], willRetry: false }, fakeEvent(runtime['session']));
-    runtime['handleSessionEvent']({ type: 'agent_settled' }, fakeEvent(runtime['session']));
+    runtime['handleSessionEvent']({ type: 'agent_settled', aborted: false } as never, fakeEvent(runtime['session']));
 
     expect(runtime.replyQueue.all()).toEqual([]);
   });
@@ -275,7 +275,7 @@ describe('Runtime reply queue on settle', () => {
 
     const continueTask = vi.spyOn(runtime, 'continueTask').mockResolvedValue(undefined);
 
-    runtime['handleSessionEvent']({ type: 'agent_settled' }, fakeEvent(session));
+    runtime['handleSessionEvent']({ type: 'agent_settled', aborted: false } as never, fakeEvent(session));
 
     expect(continueTask).toHaveBeenCalledWith('/tmp/task.json');
     expect(runtime.replyQueue.all().map((m) => m.text)).toEqual(['Keep going']);
@@ -485,7 +485,18 @@ describe('Runtime compaction', () => {
 
     const result = await runtime.compact(undefined);
 
-    expect(result).toEqual({ messages: [{ id: 'm1', sender: 'user', text: 'hi', timestamp: 1 }], stats: { contextTokens: 123 } });
+    expect(result).toEqual({
+      messages: [{ id: 'm1', sender: 'user', text: 'hi', timestamp: 1 }],
+      stats: {
+        tokensIn: 10,
+        tokensOut: 20,
+        cacheWrites: 0,
+        cacheReads: 0,
+        totalCost: 0.5,
+        contextTokens: 123,
+        contextLimit: 1000,
+      },
+    });
     expect(session.compact).toHaveBeenCalledTimes(1);
     const types = posted(webview).map((message) => message.type);
     expect(types.filter((type) => type === 'compaction_start')).toHaveLength(1);
@@ -566,6 +577,23 @@ describe('Runtime compaction', () => {
     expect(firstOverride.compaction.keepRecentTokens).toBeGreaterThanOrEqual(Math.floor(262144 * 0.4));
     expect(settingsManager.applyOverrides).toHaveBeenLastCalledWith({ compaction: originalSettings });
   });
+
+  it('swallows the library "Nothing to compact (session too small)" error without surfacing it', async () => {
+    const webview = makeFakeWebview();
+    const session = makeCompactSession(async () => {
+      throw new Error('Nothing to compact (session too small)');
+    });
+    session.getContextUsage = () => ({ tokens: 900, contextWindow: 1000, percent: 90 });
+    mocks.createSession.mockResolvedValue({ session, services: SERVICES });
+    const runtime = new Runtime(webview);
+
+    const result = await runtime.compact(undefined);
+
+    expect(result).toBeNull();
+    expect(session.compact).toHaveBeenCalledTimes(1);
+    expect(posted(webview).some((message) => message.type === 'agent_error')).toBe(false);
+    expect(posted(webview).filter((message) => message.type === 'compaction_end')).toHaveLength(1);
+  });
 });
 
 describe('Runtime compaction before turns', () => {
@@ -629,6 +657,24 @@ describe('Runtime compaction before turns', () => {
     expect(session.compact).toHaveBeenCalledTimes(1);
     expect(mocks.getEnvironmentDetails).toHaveBeenCalledTimes(1);
     expect(session.sessionManager.appendCustomMessageEntry).toHaveBeenCalledWith('environment_details', '', false, undefined);
+  });
+
+  it('adds environment details before compaction during continueTask', async () => {
+    const webview = makeFakeWebview();
+    const session = makeThresholdSession(950);
+    mocks.createSession.mockResolvedValue({ session, services: SERVICES });
+    const runtime = new Runtime(webview);
+    runtime['session'] = session;
+
+    await runtime.continueTask(session.sessionFile ?? '/tmp/task.json');
+    await flush();
+
+    const appendCalls = (session.sessionManager.appendCustomMessageEntry as ReturnType<typeof vi.fn>).mock.calls;
+    const compactCall = (session.compact as ReturnType<typeof vi.fn>).mock.calls;
+
+    expect(appendCalls.length).toBe(1);
+    expect(compactCall.length).toBe(1);
+    expect(appendCalls[0]).toEqual(['environment_details', '', false, undefined]);
   });
 
   it('forwards errored agent_end events without reactive compaction', async () => {

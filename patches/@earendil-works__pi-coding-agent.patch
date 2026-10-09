@@ -1,8 +1,8 @@
 diff --git a/dist/core/agent-session.d.ts b/dist/core/agent-session.d.ts
-index 0ff6862..c3191b9 100644
+index f8b11c9..55cd096 100644
 --- a/dist/core/agent-session.d.ts
 +++ b/dist/core/agent-session.d.ts
-@@ -502,7 +502,7 @@ export declare class AgentSession {
+@@ -531,7 +531,7 @@ export declare class AgentSession {
       * @throws Error if streaming and no streamingBehavior specified
       * @throws Error if no model selected or no API key available (when not streaming)
       */
@@ -12,10 +12,10 @@ index 0ff6862..c3191b9 100644
       * Try to execute an extension command. Returns true if command was found and executed.
       */
 diff --git a/dist/core/agent-session.js b/dist/core/agent-session.js
-index 1da213f..9715add 100644
+index c5ad719..d7dfe34 100644
 --- a/dist/core/agent-session.js
 +++ b/dist/core/agent-session.js
-@@ -1483,6 +1483,8 @@ export class AgentSession {
+@@ -1519,6 +1519,8 @@ export class AgentSession {
              this._deferredSettledActions.push(async () => await this.prompt(text, options));
              return;
          }
@@ -24,7 +24,7 @@ index 1da213f..9715add 100644
          const expandPromptTemplates = options?.expandPromptTemplates ?? true;
          const preflightResult = options?.preflightResult;
          // Handle extension commands first (execute immediately, even during streaming)
-@@ -1592,7 +1594,7 @@ export class AgentSession {
+@@ -1628,7 +1630,7 @@ export class AgentSession {
          if (updateMessage)
              messages.unshift(updateMessage);
          preflightResult?.("started");
@@ -34,7 +34,7 @@ index 1da213f..9715add 100644
      /**
       * Try to execute an extension command. Returns true if command was found and executed.
 diff --git a/dist/index.d.ts b/dist/index.d.ts
-index eda1c08..cf0e23d 100644
+index 9f9bd73..ac004c3 100644
 --- a/dist/index.d.ts
 +++ b/dist/index.d.ts
 @@ -41,4 +41,10 @@ export { convertToPng } from "./utils/image-convert.ts";
