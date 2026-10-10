@@ -147,6 +147,7 @@ export type ExtensionToWebviewMessage =
         duration?: number;
         todos?: TodoItem[];
         is_error?: boolean;
+        exit_code?: number | null;
         files?: ReadonlyArray<ReadFileSection>;
         subagent?: string;
         subtitle?: string;

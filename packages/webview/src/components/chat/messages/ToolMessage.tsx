@@ -167,13 +167,19 @@ function appendElapsed(subtitle: string | undefined, duration: number): string {
   return subtitle ? `${subtitle} · ${elapsed}` : elapsed;
 }
 
+function withExitCode(section: ToolSection): ToolSection {
+  if (section.status !== 'denied' || section.exitCode === undefined || section.subtitle !== undefined) return section;
+  const code = section.exitCode === null ? 'Ended without an exit code' : `Exit code: ${section.exitCode}`;
+  return { ...section, subtitle: code };
+}
+
 interface ToolMessageProps {
   readonly message: ToolChatMessage;
   readonly onRespondTool: (msgId: string, approved: boolean) => void;
 }
 
 export const ToolMessage: FC<ToolMessageProps> = ({ message, onRespondTool }) => {
-  const { title, icon } = getToolHeaderMeta(message.toolName, message.toolStatus);
+  const { title, icon } = getToolHeaderMeta(message.toolName, message.toolStatus, message.exitCode);
   const sections: ReadonlyArray<ToolSection> = message.toolSections ?? buildToolSections(message);
   const activeWorkspace = useChatStore((s) => s.activeWorkspace);
   const settings = useChatStore((s) => s.settings);
@@ -245,8 +251,8 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onRespondTool }) =>
             const showTimer = message.toolName === 'execute_command' || (isSubagent && titledSection.content !== undefined);
             const isDeleted = message.toolName === 'delete_file';
             const displaySection = subagentDone
-              ? { ...titledSection, subtitle: appendElapsed(titledSection.subtitle, titledSection.duration) }
-              : titledSection;
+              ? { ...withExitCode(titledSection), subtitle: appendElapsed(titledSection.subtitle, titledSection.duration) }
+              : withExitCode(titledSection);
             const renderedSection = isDeleted ? { ...displaySection, openPath: undefined } : displaySection;
 
             const item = (

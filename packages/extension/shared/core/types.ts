@@ -61,6 +61,7 @@ export interface ToolResultDetails {
   readonly files?: ReadonlyArray<ReadFileSection>;
   readonly duration?: number;
   readonly subtitle?: string;
+  readonly exitCode?: number | null;
 }
 
 export interface ImageAttachment {
@@ -85,6 +86,7 @@ export interface ToolSection {
   readonly openPath?: string;
   readonly timestamp?: number;
   readonly duration?: number;
+  readonly exitCode?: number | null;
   readonly status?: string;
   readonly approvalMessage?: ChatMessage;
 }
@@ -139,6 +141,7 @@ export interface ToolChatMessage extends ChatMessageBase {
   readonly subagent?: string;
   readonly subtitle?: string;
   readonly toolCallId?: string;
+  readonly exitCode?: number | null;
   readonly duration?: number;
   readonly pausedAt?: number;
   readonly attachments?: readonly Attachment[];

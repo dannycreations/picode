@@ -289,7 +289,7 @@ export const useChatStore = create<ChatState>((set, get) => {
       );
     },
     tool_execution_end: (msg) => {
-      const { id, result, diff, duration, todos, files, is_error, subagent, subtitle } = msg.payload;
+      const { id, result, diff, duration, todos, files, is_error, exit_code, subagent, subtitle } = msg.payload;
       set((state) =>
         patchActiveTask(state, (task) => {
           if (ignoreUnknownSubagent(task.messages, subagent, id)) return task;
@@ -305,6 +305,7 @@ export const useChatStore = create<ChatState>((set, get) => {
                 todos,
                 files,
                 toolStatus: is_error ? 'denied' : 'completed',
+                exitCode: exit_code,
                 diff: diff ?? result,
                 duration: duration ?? elapsed,
                 subtitle,

@@ -78,6 +78,45 @@ describe('getToolHeaderMeta mcp', () => {
   });
 });
 
+describe('getToolHeaderMeta denied versus failed', () => {
+  it('reports a call that ran and exited non-zero as failed', () => {
+    expect(getToolHeaderMeta('execute_command', 'denied', 1).title).toBe('Command failed');
+    expect(getToolHeaderMeta('execute_command', 'denied', 127).title).toBe('Command failed');
+    expect(getToolHeaderMeta('read_file', 'denied', 3).title).toBe('Read failed');
+  });
+
+  it('reports a killed process as failed because it did reach one', () => {
+    expect(getToolHeaderMeta('execute_command', 'denied', null).title).toBe('Command failed');
+  });
+
+  it('keeps the denial wording when the call never reached a process', () => {
+    // A missing exit code is a blocked call or a transcript saved before the
+    // code was recorded, and neither can be called a failure.
+    expect(getToolHeaderMeta('execute_command', 'denied').title).toBe('Command denied');
+    expect(getToolHeaderMeta('read_file', 'denied').title).toBe('Read denied');
+  });
+
+  it('leaves other statuses alone', () => {
+    expect(getToolHeaderMeta('execute_command', 'completed', 0).title).toBe('Ran command');
+    expect(getToolHeaderMeta('execute_command', 'approval').title).toBe('Wants to run command');
+    expect(getToolHeaderMeta('execute_command', 'running').title).toBe('Running command');
+  });
+});
+
+describe('buildToolSections exit code', () => {
+  it('carries the exit code onto the section so a failed run can name it', () => {
+    const [section] = buildToolSections(
+      toolMessage({ toolName: 'execute_command', toolStatus: 'denied', exitCode: 1, toolArgs: { command: 'pnpm test' } }),
+    );
+    expect(section.exitCode).toBe(1);
+  });
+
+  it('leaves the exit code off when the tool reported none', () => {
+    const [section] = buildToolSections(toolMessage({ toolName: 'execute_command', toolStatus: 'denied', toolArgs: { command: 'pnpm test' } }));
+    expect('exitCode' in section).toBe(false);
+  });
+});
+
 describe('getFirstDiffLine', () => {
   it('returns the line number of the first added line', () => {
     const diff = [' 360 pub fn old() {}', '+367 // inserted comment', '+368 fn new_fn() {}', ' 385 pub fn flatten() {}'].join('\n');

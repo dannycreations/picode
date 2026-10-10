@@ -7,6 +7,7 @@ interface ToolMeta {
     readonly running: string;
     readonly approval: string;
     readonly denied: string;
+    readonly failed: string;
     readonly done: string;
   };
 }
@@ -15,10 +16,11 @@ const DEFAULT_TOOL_META: ToolMeta = {
   fileIcon: 'file',
   language: 'text',
   fileTitle: {
-    running: 'Tool call',
-    approval: 'Tool call',
-    denied: 'Tool call',
-    done: 'Tool call',
+    running: 'Running tool call',
+    approval: 'Wants to call tool',
+    denied: 'Tool call denied',
+    failed: 'Tool call failed',
+    done: 'Tool call success',
   },
 };
 
@@ -44,6 +46,7 @@ const TOOL_META: Readonly<Record<GroupToolName, ToolMeta>> = {
       running: 'Running command',
       approval: 'Wants to run command',
       denied: 'Command denied',
+      failed: 'Command failed',
       done: 'Ran command',
     },
   },
@@ -53,6 +56,7 @@ const TOOL_META: Readonly<Record<GroupToolName, ToolMeta>> = {
       running: 'Reading file',
       approval: 'Wants to read file',
       denied: 'Read denied',
+      failed: 'Read failed',
       done: 'Read file',
     },
   },
@@ -64,6 +68,7 @@ const TOOL_META: Readonly<Record<GroupToolName, ToolMeta>> = {
       running: 'Writing file',
       approval: 'Wants to write file',
       denied: 'Write denied',
+      failed: 'Write failed',
       done: 'Wrote file',
     },
   },
@@ -75,6 +80,7 @@ const TOOL_META: Readonly<Record<GroupToolName, ToolMeta>> = {
       running: 'Editing file',
       approval: 'Wants to edit file',
       denied: 'Edit denied',
+      failed: 'Edit failed',
       done: 'Edited file',
     },
   },
@@ -85,6 +91,7 @@ const TOOL_META: Readonly<Record<GroupToolName, ToolMeta>> = {
       running: 'Deleting file',
       approval: 'Wants to delete file',
       denied: 'Delete denied',
+      failed: 'Delete failed',
       done: 'Deleted file',
     },
   },
@@ -95,6 +102,7 @@ const TOOL_META: Readonly<Record<GroupToolName, ToolMeta>> = {
       running: 'Spawning sub-agent',
       approval: 'Wants to spawn sub-agent',
       denied: 'Sub-agent denied',
+      failed: 'Sub-agent failed',
       done: 'Ran sub-agent',
     },
   },
@@ -105,6 +113,7 @@ const TOOL_META: Readonly<Record<GroupToolName, ToolMeta>> = {
       running: 'Calling MCP',
       approval: 'Wants to call MCP',
       denied: 'MCP call denied',
+      failed: 'MCP call failed',
       done: 'Called MCP',
     },
   },
@@ -221,6 +230,7 @@ export function buildToolSections(message: ChatMessage): ToolSection[] {
     timestamp: message.timestamp,
     duration: message.duration,
     status: message.toolStatus,
+    ...(message.exitCode !== undefined ? { exitCode: message.exitCode } : {}),
   }));
 
   if (message.toolStatus !== 'approval') return withMeta;
@@ -239,9 +249,14 @@ export function buildToolSections(message: ChatMessage): ToolSection[] {
   ];
 }
 
-export function getToolHeaderMeta(toolName: string | undefined, status?: ToolStatus): { title: string; icon: string } {
+export function getToolHeaderMeta(toolName: string | undefined, status?: ToolStatus, exitCode?: number | null): { title: string; icon: string } {
   const meta = toolMeta(toolName);
-  const state = status === undefined || status === 'completed' ? 'done' : status;
+  // 'denied' carries two meanings: a call the user rejected, and one that ran
+  // and failed. Only a call that reached a process records an exit code, so its
+  // presence is what separates the two. A transcript saved before the code was
+  // recorded leaves it missing and keeps the older wording.
+  const ranThenFailed = status === 'denied' && exitCode !== undefined;
+  const state = ranThenFailed ? 'failed' : status === undefined || status === 'completed' ? 'done' : status;
   return { title: meta.fileTitle[state], icon: meta.fileIcon };
 }
 
