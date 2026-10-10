@@ -3,7 +3,7 @@ import { cancelAllApprovals } from '@pi-code/extension/structures/agent-runtime/
 import { cancelAllQuestions } from '@pi-code/extension/structures/agent-runtime/brokers/question';
 import { Messenger } from '@pi-code/extension/structures/agent-runtime/core/messenger';
 import { ReplyQueue } from '@pi-code/extension/structures/agent-runtime/core/reply-queue';
-import { mapEvent } from '@pi-code/extension/structures/agent-runtime/event';
+import { createStats, mapEvent } from '@pi-code/extension/structures/agent-runtime/event';
 import { appendHiddenMessage, appendUserTurn } from '@pi-code/extension/structures/agent-runtime/helpers/agent-message';
 import { applyPersistedModelAndThinking } from '@pi-code/extension/structures/agent-runtime/helpers/model-selection';
 import { initSessionHooks } from '@pi-code/extension/structures/agent-runtime/hooks';
@@ -165,22 +165,7 @@ export class Runtime {
 
         const { entries, transcript } = this.snapshot(session);
 
-        let stats: StatsData;
-        try {
-          const sessionStats = session.getSessionStats();
-          stats = {
-            tokensIn: sessionStats.tokens.input,
-            tokensOut: sessionStats.tokens.output,
-            cacheReads: sessionStats.tokens.cacheRead,
-            cacheWrites: sessionStats.tokens.cacheWrite,
-            totalCost: sessionStats.cost,
-            contextTokens: sessionStats.contextUsage?.tokens ?? 0,
-            contextLimit: resolveContextLimit(sessionStats.contextUsage?.contextWindow ?? session.model?.contextWindow),
-          };
-        } catch {
-          stats = transcript.stats;
-        }
-
+        let stats = createStats(session) ?? transcript.stats;
         if (typeof compaction?.estimatedTokensAfter === 'number') {
           stats = { ...stats, contextTokens: compaction.estimatedTokensAfter };
         }

@@ -1,5 +1,5 @@
 import type { ImageContent } from '@earendil-works/pi-ai';
-import type { Attachment, ImageAttachment } from '@pi-code/shared/core/types';
+import type { Attachment } from '@pi-code/shared/core/types';
 
 const BASE64_DATA_URL_PATTERN = /^data:([^;,]+)((?:;[^;,]+)*);base64,(.+)$/;
 
@@ -8,7 +8,6 @@ const DEFAULT_EXTENSION = 'png';
 
 const MIME_EXTENSION_OVERRIDES: Readonly<Record<string, string>> = {
   'image/jpeg': 'jpg',
-  'image/svg+xml': 'svg',
   'image/vnd.microsoft.icon': 'ico',
   'image/x-icon': 'ico',
 };
@@ -42,14 +41,10 @@ export function extensionForMimeType(mimeType: string): string {
   return /^[a-z0-9]+$/.test(cleaned) ? cleaned : DEFAULT_EXTENSION;
 }
 
-export function parseAttachments(attachments?: readonly Attachment[]): ImageContent[] {
-  if (!attachments || attachments.length === 0) return [];
-
-  return attachments
-    .filter((attachment): attachment is ImageAttachment => attachment.kind === 'image')
-    .map((attachment) => {
-      const parts = parseBase64DataUrl(attachment.dataUrl);
-      return parts ? { type: 'image' as const, mimeType: parts.mimeType, data: parts.data } : null;
-    })
-    .filter((item): item is ImageContent => item !== null);
+export function parseAttachments(attachments: readonly Attachment[] = []): ImageContent[] {
+  return attachments.flatMap((attachment): ImageContent[] => {
+    if (attachment.kind !== 'image') return [];
+    const parts = parseBase64DataUrl(attachment.dataUrl);
+    return parts ? [{ type: 'image', mimeType: parts.mimeType, data: parts.data }] : [];
+  });
 }

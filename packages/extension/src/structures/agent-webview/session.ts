@@ -42,14 +42,8 @@ function toModelItems(models: readonly Model<Api>[]): ModelItem[] {
   }));
 }
 
-function listCachedModels(modelRuntime: ModelRuntime): ModelItem[] {
-  const cached = modelRuntime.getAvailableSnapshot();
-  return toModelItems(cached.length > 0 ? cached : modelRuntime.getModels());
-}
-
-async function listSelectableModels(modelRuntime: ModelRuntime): Promise<ModelItem[]> {
-  const available = await modelRuntime.getAvailable();
-  return toModelItems(available.length > 0 ? available : modelRuntime.getModels());
+function toCatalogItems(modelRuntime: ModelRuntime, models: readonly Model<Api>[]): ModelItem[] {
+  return toModelItems(models.length > 0 ? models : modelRuntime.getModels());
 }
 
 function resolveDefaultModel(models: ModelItem[], preferred: { id?: string; provider?: string }): ModelSelection | undefined {
@@ -162,7 +156,7 @@ export async function archiveSession(sourcePath: string): Promise<{ path: string
 
 export async function getInitData(cwd: string, services: AgentSessionServices): Promise<SessionInitData> {
   const defaultModel = await getDefaultModelSelection(cwd);
-  const models = listCachedModels(services.modelRuntime);
+  const models = toCatalogItems(services.modelRuntime, services.modelRuntime.getAvailableSnapshot());
 
   const thinkingLevel = getSettingsManager(cwd).getDefaultThinkingLevel() ?? undefined;
 
@@ -186,7 +180,7 @@ export async function refreshModelCatalog(modelRuntime: ModelRuntime, force = fa
     for (const [providerId, error] of errors) {
       logger.warn(`Model catalog refresh failed for provider "${providerId}": ${error.message}`);
     }
-    return await listSelectableModels(modelRuntime);
+    return toCatalogItems(modelRuntime, await modelRuntime.getAvailable());
   } catch (error) {
     logger.warn('Dynamic model refresh failed; the model list stays on the local catalog.', error);
     return null;

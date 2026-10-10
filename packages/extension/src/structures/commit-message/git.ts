@@ -3,12 +3,12 @@ import { generateUnifiedPatch } from '@earendil-works/pi-coding-agent';
 import { Uri, workspace } from 'vscode';
 
 import { isBinaryFile } from '@pi-code/extension/utilities/fs';
-import { GIT_STATUS } from '@pi-code/extension/utilities/git';
+import { GIT_STATUS_UNTRACKED } from '@pi-code/extension/utilities/git';
 import { toRelativePath } from '@pi-code/extension/utilities/vscode';
 
 import type { Change, Repository } from '@pi-code/extension/types/git';
 
-interface ResolvedGitChange {
+export interface ResolvedGitChange {
   readonly relativePath: string;
   readonly absolutePath: string;
   readonly isUntracked: boolean;
@@ -18,7 +18,7 @@ function mapChange(change: Change): ResolvedGitChange {
   return {
     relativePath: toRelativePath(change.uri),
     absolutePath: change.uri.fsPath,
-    isUntracked: change.status === GIT_STATUS.UNTRACKED,
+    isUntracked: change.status === GIT_STATUS_UNTRACKED,
   };
 }
 

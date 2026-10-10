@@ -58,9 +58,8 @@ export async function* walkDirectory(start: string, maxDepth: number, root: stri
 }
 
 interface PathRank {
-  // Basename starts with the query: 0. Match elsewhere in the basename: 1.
-  readonly prefix: number;
-  // Index of the query within the basename. Lower is a closer match.
+  // Index of the query within the basename. Lower is a closer match, and a
+  // match at the start (0) naturally outranks one further in.
   readonly baseIndex: number;
   // Path depth, counted as directory separators. Shallower is closer.
   readonly depth: number;
@@ -73,7 +72,6 @@ function rankPath(path: string, needle: string): PathRank {
   const base = segments.pop() ?? path;
   const baseIndex = base.toLowerCase().indexOf(needle);
   return {
-    prefix: baseIndex === 0 ? 0 : 1,
     baseIndex: baseIndex < 0 ? Number.MAX_SAFE_INTEGER : baseIndex,
     depth: segments.length,
     pathLength: path.length,
@@ -83,7 +81,6 @@ function rankPath(path: string, needle: string): PathRank {
 function rankPaths(paths: readonly string[], needle: string): string[] {
   const ranked = paths.map((path) => ({ path, rank: rankPath(path, needle) }));
   ranked.sort((a, b) => {
-    if (a.rank.prefix !== b.rank.prefix) return a.rank.prefix - b.rank.prefix;
     if (a.rank.baseIndex !== b.rank.baseIndex) return a.rank.baseIndex - b.rank.baseIndex;
     if (a.rank.depth !== b.rank.depth) return a.rank.depth - b.rank.depth;
     if (a.rank.pathLength !== b.rank.pathLength) return a.rank.pathLength - b.rank.pathLength;

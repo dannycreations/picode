@@ -11,6 +11,7 @@ import { logger } from '@pi-code/shared/core/logger';
 import { wrapCodeBlock } from '@pi-code/shared/utilities/markdown';
 
 import type { Uri } from 'vscode';
+import type { ResolvedGitChange } from '@pi-code/extension/structures/commit-message/git';
 import type { Repository } from '@pi-code/extension/types/git';
 
 interface ScmRequest {
@@ -80,11 +81,9 @@ function resolveRegeneration(cwd: string, userMessage: string): { userContext: s
   };
 }
 
-type ResolvedGitChanges = Awaited<ReturnType<typeof getGitChanges>>['changes'];
-
 async function generateAndApply(
   repo: Repository,
-  changes: ResolvedGitChanges,
+  changes: ResolvedGitChange[],
   useStaged: boolean,
   userContext: string,
   rejectedMessage: string,

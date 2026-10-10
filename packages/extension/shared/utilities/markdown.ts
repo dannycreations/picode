@@ -63,9 +63,7 @@ export function stripCodeBlock(raw: string): string {
 
 export function extractCodeBlock(raw: string): string {
   const body = findFencedBlock(raw, false)?.content ?? raw;
-  const trimmed = body.trim();
-  const withoutQuotes = trimmed.replace(SURROUNDING_QUOTES, '').trim();
-  return trimmed.length > withoutQuotes.length ? withoutQuotes : trimmed;
+  return body.trim().replace(SURROUNDING_QUOTES, '').trim();
 }
 
 export function wrapCodeBlock(content: string, language?: string): string {

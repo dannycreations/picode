@@ -4,7 +4,7 @@ import { ConfigurationTarget, workspace } from 'vscode';
 import { isProjectTrusted } from '@pi-code/extension/utilities/vscode';
 import { DEFAULT_APP_ID } from '@pi-code/shared/core/constants';
 import { isThinkingLevel, parseModelSelection } from '@pi-code/shared/core/protocol';
-import { coerceSetting, coerceSettings, SETTING_KEYS } from '@pi-code/shared/core/settings';
+import { coerceSettings, SETTING_KEYS } from '@pi-code/shared/core/settings';
 import { BYTES_PER_KILOBYTE } from '@pi-code/shared/utilities/common';
 
 import type { WorkspaceConfiguration } from 'vscode';
@@ -26,11 +26,11 @@ export function readAppSettings(): AppSettings {
   if (cachedSettings) return cachedSettings;
 
   const config = workspace.getConfiguration(DEFAULT_APP_ID);
-  const settings: Record<string, unknown> = {};
+  const raw: Record<string, unknown> = {};
   for (const key of SETTING_KEYS) {
-    settings[key] = coerceSetting(key, config.get(key));
+    raw[key] = config.get(key);
   }
-  cachedSettings = settings as unknown as AppSettings;
+  cachedSettings = coerceSettings(raw) as AppSettings;
   return cachedSettings;
 }
 

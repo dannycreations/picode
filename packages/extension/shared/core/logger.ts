@@ -34,7 +34,7 @@ let level: LevelSetting | null = null;
 
 export function readEnvLevel(): LevelSetting | undefined {
   if (typeof process === 'undefined') return undefined;
-  const value = process?.env?.['PI_CODE_LOG_LEVEL'];
+  const value = process.env['PI_CODE_LOG_LEVEL'];
   const level = value?.trim().toLowerCase();
   return LEVEL_SETTINGS.find((setting) => setting === level);
 }

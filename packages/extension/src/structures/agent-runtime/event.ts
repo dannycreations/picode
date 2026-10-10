@@ -230,7 +230,7 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
   }
 }
 
-function createStats(session: AgentSession): StatsData | undefined {
+export function createStats(session: AgentSession): StatsData | undefined {
   try {
     const stats = session.getSessionStats();
     return {

@@ -160,11 +160,8 @@ function appendAssistantTurn(result: ChatMessage[], id: string, msg: Extract<Ses
     cost,
   };
   const retryIndex = findReplaceableFailedRequest(result);
-  if (retryIndex === undefined) result.push(requestRow);
-  else {
-    result.splice(retryIndex);
-    result.push(requestRow);
-  }
+  if (retryIndex !== undefined) result.splice(retryIndex);
+  result.push(requestRow);
 
   result.push({
     id,

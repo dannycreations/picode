@@ -6,9 +6,8 @@ import { logger } from '@pi-code/shared/core/logger';
 import type { Uri } from 'vscode';
 import type { API, GitExtension, Repository } from '@pi-code/extension/types/git';
 
-export const GIT_STATUS = {
-  UNTRACKED: 7,
-} as const;
+// The VS Code git extension reports untracked files with status 7.
+export const GIT_STATUS_UNTRACKED = 7;
 
 // The whole `git show` output must survive the exec buffer; trimming to a
 // display budget happens afterwards on the complete text.
