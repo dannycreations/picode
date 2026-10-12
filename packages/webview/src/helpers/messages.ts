@@ -204,6 +204,16 @@ export function patchMessage(messages: ChatMessage[], id: string, patch: Partial
   return messages.map((message) => (message.id === id ? { ...message, ...patch } : message));
 }
 
+export function patchRetryDeadline(messages: ChatMessage[], retryAt: number | undefined): ChatMessage[] {
+  for (let index = messages.length - 1; index >= 0; index--) {
+    const message = messages[index];
+    if (message.sender !== 'api_request') continue;
+    if (message.retryAt === retryAt) return messages;
+    return patchMessage(messages, message.id, { retryAt });
+  }
+  return messages;
+}
+
 export function resolveApproval(messages: ChatMessage[], msgId: string, approved: boolean): ChatMessage[] {
   if (!approved) {
     return patchMessage(messages, msgId, { toolStatus: 'denied', pausedAt: undefined });

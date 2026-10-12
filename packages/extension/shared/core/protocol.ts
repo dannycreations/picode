@@ -132,6 +132,8 @@ export type ExtensionToWebviewMessage =
   | { type: 'message_end'; payload: { cost?: number; stats?: StatsData } }
   | { type: 'api_request_start'; payload: { id: string; timestamp: number } }
   | { type: 'api_request_end'; payload: { id: string; cost?: number; error?: string; stats?: StatsData } }
+  | { type: 'api_retry_start'; payload: { delayMs: number } }
+  | { type: 'api_retry_end' }
   | {
       type: 'tool_approval_request';
       payload: { id: string; tool_name: ToolName; arguments: ToolArguments; subagent?: string; toolCallId?: string };

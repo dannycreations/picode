@@ -100,6 +100,12 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
       };
     }
 
+    case 'auto_retry_start':
+      return { message: { type: 'api_retry_start', payload: { delayMs: event.delayMs } }, apiRequestId };
+
+    case 'auto_retry_end':
+      return { message: { type: 'api_retry_end' }, apiRequestId };
+
     case 'message_start':
       if (event.message.role !== 'assistant') {
         return { message: null, apiRequestId };

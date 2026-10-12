@@ -184,6 +184,18 @@ describe('mapEvent', () => {
     expect(result).toEqual({ message: null, apiRequestId: 'api-req-4' });
   });
 
+  it('tells the webview how long the next retry is away and when the wait is over', () => {
+    const start = mapEvent(
+      { type: 'auto_retry_start', attempt: 2, maxAttempts: 3, delayMs: 4000, errorMessage: 'overloaded' } as any,
+      makeSession(),
+      null,
+    );
+    expect(start.message).toEqual({ type: 'api_retry_start', payload: { delayMs: 4000 } });
+
+    const end = mapEvent({ type: 'auto_retry_end', success: true, attempt: 2 } as any, makeSession(), null);
+    expect(end.message).toEqual({ type: 'api_retry_end' });
+  });
+
   it('exposes structured tool results, todos, files, and the error flag on end', () => {
     const event = {
       type: 'tool_execution_end',

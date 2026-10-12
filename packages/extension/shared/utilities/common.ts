@@ -115,6 +115,10 @@ export function elapsedSeconds(start: number, end: number = Date.now()): number 
   return Math.max(0, Math.round((end - start) / 1000));
 }
 
+export function remainingSeconds(deadline: number, now: number = Date.now()): number {
+  return Math.max(0, Math.ceil((deadline - now) / 1000));
+}
+
 export function relativeToWorkspace(path: string, root: string): string {
   if (!root) return path;
 

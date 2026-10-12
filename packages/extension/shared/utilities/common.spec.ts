@@ -6,6 +6,7 @@ import {
   findReplaceableFailedRequest,
   parseTextAttachment,
   relativeToWorkspace,
+  remainingSeconds,
   resolveContextLimit,
   splitOnOccurrences,
 } from './common';
@@ -82,6 +83,17 @@ describe('elapsedSeconds', () => {
 
   it('clamps a negative span to zero', () => {
     expect(elapsedSeconds(1000, 0)).toBe(0);
+  });
+});
+
+describe('remainingSeconds', () => {
+  it('rounds a millisecond wait up to whole seconds', () => {
+    expect(remainingSeconds(2500, 0)).toBe(3);
+    expect(remainingSeconds(2000, 0)).toBe(2);
+  });
+
+  it('clamps a passed deadline to zero', () => {
+    expect(remainingSeconds(0, 1000)).toBe(0);
   });
 });
 

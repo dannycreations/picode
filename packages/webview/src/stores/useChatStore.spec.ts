@@ -170,6 +170,60 @@ describe('api request failure', () => {
     expect(requests).toHaveLength(1);
     expect(requests[0]).toMatchObject({ id: 'req-2', toolStatus: 'denied', errorMessage: 'second failure' });
   });
+
+  it('counts down the pending retry on the failed row and clears it when the chain ends', () => {
+    const before = Date.now();
+    apply([
+      { type: 'api_request_start', payload: { id: 'req-1', timestamp: 1 } },
+      { type: 'api_request_end', payload: { id: 'req-1', error: 'overloaded' } },
+    ]);
+
+    apply([{ type: 'api_retry_start', payload: { delayMs: 4000 } }]);
+    const waiting = useChatStore.getState().activeTask?.messages ?? [];
+    expect(waiting).toHaveLength(1);
+    expect(waiting[0]).toMatchObject({ id: 'req-1', retryAt: expect.any(Number) });
+    const retryAt = (waiting[0] as { retryAt?: number }).retryAt ?? 0;
+    expect(retryAt).toBeGreaterThanOrEqual(before + 4000);
+
+    // The retry fires and its turn takes the row over, which drops the deadline.
+    apply([{ type: 'api_retry_end' }, { type: 'api_request_start', payload: { id: 'req-2', timestamp: 2 } }]);
+    const requests = (useChatStore.getState().activeTask?.messages ?? []).filter((m) => m.sender === 'api_request');
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).not.toHaveProperty('retryAt');
+  });
+
+  it('drops a pending countdown once the retried request is in flight', () => {
+    apply([
+      { type: 'api_request_start', payload: { id: 'req-1', timestamp: 1 } },
+      { type: 'message_start', payload: { timestamp: 2 } },
+      { type: 'stream_delta', payload: { text: 'partial answer' } },
+      { type: 'message_end', payload: {} },
+      { type: 'api_request_end', payload: { id: 'req-1', error: 'stream terminated' } },
+      { type: 'api_retry_start', payload: { delayMs: 4000 } },
+    ]);
+    // Streamed text keeps the failed row on screen, so this retry appends a
+    // request row instead of replacing the one holding the deadline.
+    expect(useChatStore.getState().activeTask?.messages).toHaveLength(2);
+
+    apply([{ type: 'api_request_start', payload: { id: 'req-2', timestamp: 3 } }]);
+
+    const messages = useChatStore.getState().activeTask?.messages ?? [];
+    expect(messages.filter((m) => m.sender === 'api_request')).toHaveLength(2);
+    expect(messages.every((m) => (m as { retryAt?: number }).retryAt === undefined)).toBe(true);
+  });
+
+  it('clears a countdown left on the row when the retries run out', () => {
+    apply([
+      { type: 'api_request_start', payload: { id: 'req-1', timestamp: 1 } },
+      { type: 'api_request_end', payload: { id: 'req-1', error: 'overloaded' } },
+      { type: 'api_retry_start', payload: { delayMs: 4000 } },
+      { type: 'api_retry_end' },
+    ]);
+
+    const [row] = useChatStore.getState().activeTask?.messages ?? [];
+    expect(row).toMatchObject({ id: 'req-1', toolStatus: 'denied', errorMessage: 'overloaded' });
+    expect((row as { retryAt?: number }).retryAt).toBeUndefined();
+  });
 });
 
 describe('model catalog refresh', () => {

@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Accordion } from '@pi-code/webview/components/shared/Accordion';
 import { SearchableText } from '@pi-code/webview/components/shared/Highlight';
 import { Spinner } from '@pi-code/webview/components/shared/Spinner';
+import { useCountdown } from '@pi-code/webview/hooks/useCountdown';
 import { formatCost, formatTime } from '@pi-code/webview/utilities/common';
 
 import type { FC } from 'react';
@@ -16,13 +17,17 @@ export const ApiRequestMessage: FC<{ readonly message: ApiRequestChatMessage }> 
 
   const isRunning = message.toolStatus === 'running';
   const error = message.toolStatus === 'denied' ? message.errorMessage : undefined;
+  // A failed request whose retry is already scheduled counts down to the moment
+  // the agent tries again, so the row counts as live until that wait ends.
+  const retryIn = useCountdown(message.retryAt);
+  const isRetrying = retryIn !== undefined && retryIn > 0;
 
   return (
     <div>
       <div
         className={cn(
           'flex items-center justify-between gap-2 text-xs select-none transition-opacity duration-200',
-          isRunning ? 'opacity-100' : 'opacity-40 hover:opacity-100',
+          isRunning || isRetrying ? 'opacity-100' : 'opacity-40 hover:opacity-100',
         )}
       >
         <div
@@ -47,6 +52,9 @@ export const ApiRequestMessage: FC<{ readonly message: ApiRequestChatMessage }> 
           )}
         </div>
         <div className="flex items-center gap-2 ml-auto">
+          {isRetrying && (
+            <span className="text-xs font-mono text-vscode-editorWarning-foreground tabular-nums whitespace-nowrap">Retrying in {retryIn}s</span>
+          )}
           {message.cost !== undefined && message.cost > 0 && (
             <span className="text-xs text-vscode-dropdown-foreground border border-vscode-dropdown-border/50 px-1.5 py-0.5 rounded bg-vscode-dropdown-background font-mono">
               {formatCost(message.cost)}

@@ -11,6 +11,7 @@ import {
   patchLastAssistant,
   patchMessage,
   patchReplyQueue,
+  patchRetryDeadline,
   rebuildToolSections,
   settlePendingTurns,
   upsertToolMessage,
@@ -197,7 +198,11 @@ export const useChatStore = create<ChatState>((set, get) => {
       set((state) =>
         patchActiveTask(state, (task) => {
           if (task.messages.some((m) => m.id === id)) return task;
-          const settled = settlePendingTurns(task.messages);
+          // A request in flight ends any retry wait still on screen. The retried
+          // turn usually replaces the failed row and drops the deadline with it,
+          // but a turn that streamed text first keeps that row, so the deadline
+          // has to go explicitly.
+          const settled = patchRetryDeadline(settlePendingTurns(task.messages), undefined);
           const row: ApiRequestChatMessage = { id, sender: 'api_request', text: 'API Request', timestamp, toolStatus: 'running' };
           // A retry reuses the previous failed request's slot, so one attempt
           // chain renders as a single row until a turn succeeds.
@@ -217,6 +222,13 @@ export const useChatStore = create<ChatState>((set, get) => {
           return { ...task, messages, ...stats };
         }),
       );
+    },
+    api_retry_start: (msg) => {
+      const { delayMs } = msg.payload;
+      set((state) => patchActiveTask(state, (task) => ({ ...task, messages: patchRetryDeadline(task.messages, Date.now() + delayMs) })));
+    },
+    api_retry_end: () => {
+      set((state) => patchActiveTask(state, (task) => ({ ...task, messages: patchRetryDeadline(task.messages, undefined) })));
     },
     message_end: (msg) => {
       const { cost, stats } = msg.payload;

@@ -102,6 +102,7 @@ export interface ApiRequestChatMessage extends ChatMessageBase {
   readonly toolStatus?: ToolStatus;
   readonly errorMessage?: string;
   readonly cost?: number;
+  readonly retryAt?: number;
 }
 
 export interface AssistantChatMessage extends ChatMessageBase {
