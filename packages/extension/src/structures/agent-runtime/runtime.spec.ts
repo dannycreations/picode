@@ -423,6 +423,8 @@ describe('Runtime cancel during init', () => {
     await flush();
 
     expect(session.prompt).toHaveBeenCalledTimes(1);
+    // null starts the turn from the messages appended above instead of adding a user message.
+    expect(session.prompt).toHaveBeenCalledWith(null);
     const messages = (webview.postMessage as ReturnType<typeof vi.fn>).mock.calls.map((call) => call[0]);
     expect(messages.some((msg) => msg.type === 'agent_settled')).toBe(false);
   });

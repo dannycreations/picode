@@ -1,8 +1,8 @@
 diff --git a/dist/core/agent-session.d.ts b/dist/core/agent-session.d.ts
-index f8b11c9..55cd096 100644
+index 2a947fa..6f9cbab 100644
 --- a/dist/core/agent-session.d.ts
 +++ b/dist/core/agent-session.d.ts
-@@ -531,7 +531,7 @@ export declare class AgentSession {
+@@ -544,7 +544,7 @@ export declare class AgentSession {
       * @throws Error if streaming and no streamingBehavior specified
       * @throws Error if no model selected or no API key available (when not streaming)
       */
@@ -12,29 +12,45 @@ index f8b11c9..55cd096 100644
       * Try to execute an extension command. Returns true if command was found and executed.
       */
 diff --git a/dist/core/agent-session.js b/dist/core/agent-session.js
-index c5ad719..d7dfe34 100644
+index c16f5da..b1edb80 100644
 --- a/dist/core/agent-session.js
 +++ b/dist/core/agent-session.js
-@@ -1519,6 +1519,8 @@ export class AgentSession {
+@@ -1462,10 +1462,11 @@ export class AgentSession {
+         if (!handlerEditedTools)
+             result.systemPromptOptions.selectedTools = this.getActiveToolNames();
+         const messages = [];
++        // A "trigger" run adds no message: it starts a turn from the current transcript.
+         if (trigger.messageType === "custom") {
+             messages.push(trigger.message);
+         }
+-        else {
++        else if (trigger.messageType === "user") {
+             // Normalize images after before_agent_start so extension-driven model selection
+             // determines the resize profile used for the request and history.
+             const normalized = await this._normalizePromptImages(trigger.images);
+@@ -1603,6 +1604,8 @@ export class AgentSession {
              this._deferredSettledActions.push(async () => await this.prompt(text, options));
              return;
          }
 +        const isTriggerTurn = text === null;
-+        if (isTriggerTurn) text = '';
++        if (isTriggerTurn) text = "";
          const expandPromptTemplates = options?.expandPromptTemplates ?? true;
          const preflightResult = options?.preflightResult;
          // Handle extension commands first (execute immediately, even during streaming)
-@@ -1628,7 +1630,7 @@ export class AgentSession {
-         if (updateMessage)
-             messages.unshift(updateMessage);
-         preflightResult?.("started");
--        await this._runAgentPrompt(messages);
-+        await this._runAgentPrompt(isTriggerTurn ? [] : messages);
+@@ -1660,7 +1663,10 @@ export class AgentSession {
+             }
+             throw new Error(formatNoApiKeyFoundMessage(this.model.provider));
+         }
+-        await this._startRun({ messageType: "user", prompt: expandedText, images: currentImages }, () => preflightResult?.("started"));
++        const runTrigger = isTriggerTurn
++            ? { messageType: "trigger" }
++            : { messageType: "user", prompt: expandedText, images: currentImages };
++        await this._startRun(runTrigger, () => preflightResult?.("started"));
      }
      /**
       * Try to execute an extension command. Returns true if command was found and executed.
 diff --git a/dist/index.d.ts b/dist/index.d.ts
-index 9f9bd73..ac004c3 100644
+index 4a4e958..0c13b7d 100644
 --- a/dist/index.d.ts
 +++ b/dist/index.d.ts
 @@ -41,4 +41,10 @@ export { convertToPng } from "./utils/image-convert.ts";
