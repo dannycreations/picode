@@ -172,16 +172,24 @@ function appendAssistantTurn(result: ChatMessage[], id: string, msg: Extract<Ses
     timestamp,
   });
 
-  for (const toolCall of parts.filter((part) => part.type === 'toolCall')) {
-    result.push({
-      id: toolCall.id || uuidv7(),
-      sender: 'tool',
-      text: toolCall.name,
-      toolName: toolCall.name as ToolName,
-      toolArgs: toolCall.arguments as ToolArguments,
-      toolStatus: 'completed',
-      timestamp,
-    });
+  // The agent loop drops an errored or aborted turn as a hard exit before
+  // dispatching that turn's tool calls, and the live path posts no tool card
+  // for one. Rebuilding a completed row here would show a call that never ran,
+  // often with arguments the aborted stream left empty. The api_request row
+  // above already carries the failure notice.
+  const dispatchedTools = msg.stopReason !== 'error' && msg.stopReason !== 'aborted';
+  if (dispatchedTools) {
+    for (const toolCall of parts.filter((part) => part.type === 'toolCall')) {
+      result.push({
+        id: toolCall.id || uuidv7(),
+        sender: 'tool',
+        text: toolCall.name,
+        toolName: toolCall.name as ToolName,
+        toolArgs: toolCall.arguments as ToolArguments,
+        toolStatus: 'completed',
+        timestamp,
+      });
+    }
   }
 }
 

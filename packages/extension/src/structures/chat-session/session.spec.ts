@@ -11,7 +11,7 @@ function messageEntry(id: string, message: UserMessage | AssistantMessage | Tool
   return { id, type: 'message', parentId: null, timestamp: new Date().toISOString(), message };
 }
 
-function assistantMessage(content: AssistantMessage['content']): AssistantMessage {
+function assistantMessage(content: AssistantMessage['content'], overrides: Partial<AssistantMessage> = {}): AssistantMessage {
   return {
     role: 'assistant',
     content,
@@ -21,6 +21,7 @@ function assistantMessage(content: AssistantMessage['content']): AssistantMessag
     usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
     stopReason: 'stop',
     timestamp: Date.now(),
+    ...overrides,
   };
 }
 
@@ -51,6 +52,44 @@ describe('convertSessionEntries todo parsing', () => {
     const todoMsg = messages.find((m) => m.sender === 'tool' && m.toolName === 'update_todo');
 
     expect((todoMsg as ToolChatMessage | undefined)?.todos).toEqual(todos);
+  });
+});
+
+describe('convertSessionEntries tool rows across an errored turn', () => {
+  it('drops the tool row when the turn ended in error', () => {
+    // Mirrors an upstream idle timeout: the stream dies mid-call, the tool
+    // call's arguments parse to {}, and the turn ends in error. No tool ran,
+    // so the replay must not render a completed tool card for it.
+    const entries = [
+      messageEntry(
+        'm1',
+        assistantMessage(
+          [
+            { type: 'text', text: 'Now the port itself:' },
+            { type: 'toolCall', id: 'tc1', name: 'write_file', arguments: {} },
+          ],
+          { stopReason: 'error', errorMessage: 'Upstream idle timeout exceeded' },
+        ),
+      ),
+    ];
+
+    const messages = convertSessionEntries(entries);
+
+    expect(messages.some((m) => m.sender === 'tool')).toBe(false);
+    const request = messages.find((m) => m.sender === 'api_request');
+    expect(request?.toolStatus).toBe('denied');
+    expect(request?.errorMessage).toBe('Upstream idle timeout exceeded');
+  });
+
+  it('keeps the tool row when the turn dispatched its tool call', () => {
+    const entries = [
+      messageEntry('m1', assistantMessage([{ type: 'toolCall', id: 'tc1', name: 'write_file', arguments: { path: 'a.ts', content: 'x' } }])),
+    ];
+
+    const messages = convertSessionEntries(entries);
+
+    const toolMsg = messages.find((m) => m.sender === 'tool');
+    expect(toolMsg?.id).toBe('tc1');
   });
 });
 
