@@ -78,6 +78,13 @@ export class Runtime {
 
       appendHiddenMessage(session, 'environment_details', envDetails);
 
+      // The agent loop only runs the contextPrepared hook from a run's second
+      // turn on, so a drain left to that hook would miss this run's first
+      // request. Deliver the queued replies here, before the run starts, or the
+      // first turn responds without them (an ask_question call, say) while the
+      // queue stays full and re-triggers this continuation on every settle.
+      await this.drainQueuedReplies(session);
+
       await session.prompt(null);
     });
   }
@@ -314,20 +321,14 @@ export class Runtime {
     if (pending.length === 0) return;
 
     const cwd = getWorkspaceCwd();
-    const undelivered: ChatMessage[] = [];
     const delivered: ChatMessage[] = [];
 
     for (const msg of pending) {
-      if (msg.sender !== 'queue') {
-        undelivered.push(msg);
-        continue;
-      }
+      if (msg.sender !== 'queue') continue;
 
       const deliveredEntry = await this.processQueuedReply(msg, cwd, session);
       if (deliveredEntry) {
         delivered.push(deliveredEntry);
-      } else {
-        undelivered.push(msg);
       }
     }
 
@@ -335,7 +336,11 @@ export class Runtime {
       this.messenger.post({ type: 'reply_queue_delivered', payload: { messages: delivered } });
     }
 
-    this.replyQueue.retain(undelivered);
+    // The pass spans awaits, so the live queue can have moved on: drop only the
+    // replies this pass delivered. A snapshot-based retain would discard replies
+    // queued meanwhile and would resurrect entries a cancel already cleared.
+    const deliveredIds = new Set(delivered.map((m) => m.id));
+    this.replyQueue.retain(this.replyQueue.all().filter((m) => !deliveredIds.has(m.id)));
   }
 
   private handleSessionEvent(event: AgentSessionEvent, session: AgentSession): void {

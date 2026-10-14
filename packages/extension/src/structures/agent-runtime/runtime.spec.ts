@@ -216,6 +216,23 @@ describe('Runtime reply queue steering', () => {
     expect(session.sessionManager.appendCustomMessageEntry).toHaveBeenCalledWith('mention_content', 'EXPANDED_FILE_CONTENT', false, undefined);
   });
 
+  it('keeps a reply queued while the drain is still running', async () => {
+    const gate = deferred<{ text: string; mentionContent: undefined }>();
+    const appendMessage = vi.fn(() => 'persisted-id');
+    const session = makeFakeSession(vi.fn(), appendMessage);
+    const runtime = new Runtime(makeFakeWebview());
+
+    mocks.expandMentions.mockImplementationOnce(() => gate.promise);
+    runtime.replyQueue.add('first');
+
+    const draining = runtime['drainQueuedReplies'](session);
+    runtime.replyQueue.add('queued mid-drain');
+    gate.resolve({ text: 'first', mentionContent: undefined });
+    await draining;
+
+    expect(runtime.replyQueue.all().map((m) => m.text)).toEqual(['queued mid-drain']);
+  });
+
   it('collects hidden mentions from drained queued replies', async () => {
     const appendMessage = vi.fn(() => 'persisted-id');
     const session = makeFakeSession(vi.fn(), appendMessage);
@@ -279,6 +296,28 @@ describe('Runtime reply queue on settle', () => {
 
     expect(continueTask).toHaveBeenCalledWith('/tmp/task.json');
     expect(runtime.replyQueue.all().map((m) => m.text)).toEqual(['Keep going']);
+  });
+
+  it('drains queued replies into the session before the continuation run prompts', async () => {
+    const webview = makeFakeWebview();
+    const session = makeStartableSession();
+    mocks.createSession.mockResolvedValue({ session, services: SERVICES });
+    const runtime = new Runtime(webview);
+    const appendMessage = session.sessionManager.appendMessage as ReturnType<typeof vi.fn>;
+
+    runtime.replyQueue.add('follow up');
+
+    await runtime.continueTask('/tmp/task.json');
+    await flush();
+
+    // The agent loop only fires the contextPrepared hook from a run's second
+    // turn on, so the first request of this run must already carry the queued
+    // reply: it has to land in the session before prompt() starts the run.
+    const prompt = session.prompt as ReturnType<typeof vi.fn>;
+    expect(appendMessage).toHaveBeenCalledTimes(1);
+    expect((appendMessage.mock.calls[0] as any[])[0].content[0].text).toBe('follow up');
+    expect(appendMessage.mock.invocationCallOrder[0]).toBeLessThan(prompt.mock.invocationCallOrder[0]);
+    expect(runtime.replyQueue.all()).toEqual([]);
   });
 
   it('keeps queued replies queued while turns keep ending before the settle', () => {
