@@ -42,13 +42,20 @@ export function getActiveMcpConfig(): McpConfig {
 
 type ParsedServer = { ok: true; server?: McpServerConfig } | { ok: false; error: string };
 
+type DeclaredKind = { readonly kind: 'local' | 'remote' } | { readonly error: string };
+
 export function parseMcpServer(raw: unknown): ParsedServer {
-  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+  if (!isRecord(raw)) {
     return { ok: false, error: 'entry must be an object' };
   }
 
-  const record = raw as Record<string, unknown>;
+  const record = raw;
   if (record['disabled'] === true) return { ok: true };
+
+  const declared = declaredKind(record);
+  if (declared !== undefined && 'error' in declared) {
+    return { ok: false, error: declared.error };
+  }
 
   const autorun = record['autorun'];
   if (autorun !== undefined && typeof autorun !== 'boolean') {
@@ -62,6 +69,14 @@ export function parseMcpServer(raw: unknown): ParsedServer {
 
   if (url !== undefined && command !== undefined) {
     return { ok: false, error: 'specify either `command` or `url`, not both' };
+  }
+
+  // A declared `type` fixes the shape, so the entry has to agree with it.
+  if (declared?.kind === 'local' && url !== undefined) {
+    return { ok: false, error: 'a local server starts from `command`, so drop `url`' };
+  }
+  if (declared?.kind === 'remote' && command !== undefined) {
+    return { ok: false, error: 'a remote server is reached over `url`, so drop `command`' };
   }
 
   const commonExtras = {
@@ -124,12 +139,14 @@ export function mergeMcpConfigs(globalRaw: unknown, projectRaw: unknown): { conf
 
   const apply = (label: string, raw: unknown): void => {
     if (raw === undefined || raw === null) return;
-    if (typeof raw !== 'object' || Array.isArray(raw)) {
-      warnings.push(`Ignoring MCP servers from ${label}: expected an object at the top level.`);
+
+    const servers = unwrapMcpServers(raw);
+    if ('error' in servers) {
+      warnings.push(`Ignoring MCP servers from ${label}: ${servers.error}.`);
       return;
     }
 
-    for (const [name, entry] of Object.entries(raw as Record<string, unknown>)) {
+    for (const [name, entry] of Object.entries(servers.servers)) {
       const parsed = parseMcpServer(entry);
       if (!parsed.ok) {
         warnings.push(`Ignoring MCP server "${name}" from ${label}: ${parsed.error}.`);
@@ -184,6 +201,42 @@ async function readRawConfig(path: string, label: string): Promise<{ raw?: unkno
   }
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function unwrapMcpServers(raw: unknown): { readonly servers: Readonly<Record<string, unknown>> } | { readonly error: string } {
+  if (!isRecord(raw)) return { error: 'expected an object at the top level' };
+
+  const wrapped = raw['mcpServers'];
+  if (wrapped === undefined) return { servers: raw };
+  if (!isRecord(wrapped)) return { error: '`mcpServers` must be an object' };
+  return { servers: wrapped };
+}
+
+function declaredKind(record: Record<string, unknown>): DeclaredKind | undefined {
+  const value = record['type'];
+  if (value === undefined) return undefined;
+  if (typeof value !== 'string') return { error: '`type` must be a string' };
+
+  const kind = kindFromType(value);
+  if (kind === undefined) return { error: `\`type\` "${value}" is unsupported, use \`stdio\` or \`http\`` };
+  return { kind };
+}
+
+function kindFromType(value: string): 'local' | 'remote' | undefined {
+  switch (value.toLowerCase()) {
+    case 'stdio':
+      return 'local';
+    case 'http':
+    case 'streamable-http':
+    case 'streamablehttp':
+      return 'remote';
+    default:
+      return undefined;
+  }
+}
+
 function optionalTimeout(record: Record<string, unknown>): number | undefined {
   const value = record['timeoutMs'];
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : undefined;
@@ -208,7 +261,7 @@ function optionalStrings(record: Record<string, unknown>, key: string): readonly
 
 function optionalStringMap(record: Record<string, unknown>, key: string): Readonly<Record<string, string>> | undefined {
   const value = record[key];
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined;
+  if (!isRecord(value)) return undefined;
   if (!Object.values(value).every((item) => typeof item === 'string')) return undefined;
   return { ...(value as Record<string, string>) };
 }

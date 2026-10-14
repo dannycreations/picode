@@ -30,6 +30,21 @@ describe('parseMcpServer', () => {
   it('rejects remote urls without an http scheme', () => {
     expect(parseMcpServer({ url: 'ftp://a.example' })).toMatchObject({ ok: false });
   });
+
+  it('reads the official `type` as the server kind', () => {
+    expect(parseMcpServer({ type: 'stdio', command: 'npx' })).toEqual({ ok: true, server: { kind: 'local', command: 'npx' } });
+    expect(parseMcpServer({ type: 'http', url: 'https://mcp.example/mcp' })).toEqual({
+      ok: true,
+      server: { kind: 'remote', url: 'https://mcp.example/mcp' },
+    });
+  });
+
+  it('rejects an unsupported `type` and one that conflicts with the entry', () => {
+    expect(parseMcpServer({ type: 'sse', url: 'https://mcp.example/mcp' })).toMatchObject({ ok: false });
+    expect(parseMcpServer({ type: 'stdio', url: 'https://mcp.example/mcp' })).toMatchObject({ ok: false });
+    expect(parseMcpServer({ type: 'http', command: 'npx' })).toMatchObject({ ok: false });
+    expect(parseMcpServer({ type: 'stdio' })).toMatchObject({ ok: false });
+  });
 });
 
 describe('mergeMcpConfigs', () => {
@@ -154,6 +169,39 @@ describe('mergeMcpConfigs', () => {
     expect(config).toEqual({});
     expect(warnings).toEqual(['Ignoring MCP servers from the global mcp.json: expected an object at the top level.']);
   });
+
+  it('reads servers nested under the official `mcpServers` key', () => {
+    const { config, warnings } = mergeMcpConfigs(
+      {
+        mcpServers: {
+          files: { type: 'stdio', command: 'npx', args: ['-y', 'server-filesystem', '.'], env: { DEBUG: '1' }, cwd: '/srv' },
+          docs: { type: 'http', url: 'https://mcp.example/mcp', headers: { Authorization: 'Bearer t' }, timeoutMs: 60_000 },
+        },
+      },
+      undefined,
+    );
+
+    expect(warnings).toEqual([]);
+    expect(config['files']).toEqual({ kind: 'local', command: 'npx', args: ['-y', 'server-filesystem', '.'], env: { DEBUG: '1' }, cwd: '/srv' });
+    expect(config['docs']).toEqual({ kind: 'remote', url: 'https://mcp.example/mcp', headers: { Authorization: 'Bearer t' }, timeoutMs: 60_000 });
+  });
+
+  it('warns when `mcpServers` is not an object', () => {
+    const { config, warnings } = mergeMcpConfigs({ mcpServers: 'nope' }, undefined);
+
+    expect(config).toEqual({});
+    expect(warnings).toEqual(['Ignoring MCP servers from the global mcp.json: `mcpServers` must be an object.']);
+  });
+
+  it('lets an official project entry switch off a global server', () => {
+    const { config, warnings } = mergeMcpConfigs(
+      { mcpServers: { keep: { command: 'kept' }, off: { command: 'global' } } },
+      { mcpServers: { off: { disabled: true } } },
+    );
+
+    expect(warnings).toEqual([]);
+    expect(Object.keys(config)).toEqual(['keep']);
+  });
 });
 
 describe('loadMcpConfig', () => {
@@ -202,5 +250,15 @@ describe('loadMcpConfig', () => {
     const config = await loadMcpConfig(workspace, { trusted: true, agentDir });
 
     expect(config).toEqual({});
+  });
+
+  it('reads official files from disk', async () => {
+    await writeFile(join(agentDir, MCP_CONFIG_FILE), JSON.stringify({ mcpServers: { docs: { url: 'https://old.example/mcp' } } }));
+    await writeProjectConfig(JSON.stringify({ mcpServers: { docs: { url: 'https://mcp.example/mcp' } } }));
+
+    const config = await loadMcpConfig(workspace, { trusted: true, agentDir });
+
+    expect(Object.keys(config)).toEqual(['docs']);
+    expect(config['docs']).toEqual({ kind: 'remote', url: 'https://mcp.example/mcp' });
   });
 });

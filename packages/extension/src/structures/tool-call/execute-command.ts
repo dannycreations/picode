@@ -290,9 +290,6 @@ export const executeCommandTool = defineTool({
         const rawTailOutput = output.join('');
         const cleanOutput = cleanCommandOutput(rawTailOutput);
 
-        const dropped = totalLength > retainedLength;
-        const droppedNote = dropped ? `The command produced ${formatSize(totalLength)} in total.` : '';
-
         // Truncate once. Whether the tail is truncated decides if the raw output
         // is worth dumping, and that decision decides the hint wording, so the
         // text is rendered from this result rather than truncating again.
@@ -308,12 +305,12 @@ export const executeCommandTool = defineTool({
 
         // Instruct the agent to inspect the temp file instead of re-running the command.
         const resolution = tempFilePath
-          ? `Full raw output saved to: "${tempFilePath}".\nRead this file with a search or pager (findstr, grep, head, tail) to inspect the rest.\n${droppedNote}`
-          : `Re-run with a search or pager (findstr, grep, head, tail) to inspect the rest.\n${droppedNote}`;
+          ? `Full raw output saved to: "${tempFilePath}".\nRead this file with a search or pager (findstr, grep, head, tail) to inspect the rest.`
+          : `Re-run with a search or pager (findstr, grep, head, tail) to inspect the rest.`;
 
         let modelText = renderTruncatedText(truncation, 'tail', resolution);
-        if (dropped && !truncation.truncated) {
-          modelText = `${modelText}\n\nTruncated to the last ${formatSize(limits.maxBytes)} of output.\n${resolution}`;
+        if (totalLength > retainedLength && !truncation.truncated) {
+          modelText = `${modelText}\n\nTruncated to the last ${formatSize(limits.maxBytes)} of output. The command produced ${formatSize(totalLength)} in total.\n${resolution}`;
         }
 
         if (timedOut) {
