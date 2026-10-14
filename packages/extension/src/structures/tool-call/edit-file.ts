@@ -11,54 +11,54 @@ import { escapeRegExp, findOccurrences } from '@pi-code/shared/utilities/common'
 import type { CustomToolResult } from '@pi-code/extension/types/extension';
 import type { ToolName } from '@pi-code/shared/core/types';
 
-function buildWhitespaceTolerantRegex(oldLF: string): RegExp {
-  if (oldLF === '') {
+function buildWhitespaceTolerantRegex(oldText: string): RegExp {
+  if (oldText === '') {
     return /(?!)/g;
   }
   let pattern = '';
   let i = 0;
-  const len = oldLF.length;
+  const len = oldText.length;
 
   while (i < len) {
-    if (/\s/.test(oldLF[i])) {
+    if (/\s/.test(oldText[i])) {
       let hasNewline = false;
-      while (i < len && /\s/.test(oldLF[i])) {
-        hasNewline = hasNewline || oldLF[i] === '\n';
+      while (i < len && /\s/.test(oldText[i])) {
+        hasNewline = hasNewline || oldText[i] === '\n';
         i++;
       }
       pattern += hasNewline ? '\\s+' : '[\\t ]+';
     } else {
       const start = i;
-      while (i < len && !/\s/.test(oldLF[i])) {
+      while (i < len && !/\s/.test(oldText[i])) {
         i++;
       }
-      pattern += escapeRegExp(oldLF.slice(start, i));
+      pattern += escapeRegExp(oldText.slice(start, i));
     }
   }
   return new RegExp(pattern, 'g');
 }
 
-function buildTokenRegex(oldLF: string): RegExp {
+function buildTokenRegex(oldText: string): RegExp {
   let pattern = '';
   let i = 0;
-  const len = oldLF.length;
+  const len = oldText.length;
   let hasToken = false;
 
   while (i < len) {
-    while (i < len && /\s/.test(oldLF[i])) {
+    while (i < len && /\s/.test(oldText[i])) {
       i++;
     }
     if (i >= len) break;
 
     const start = i;
-    while (i < len && !/\s/.test(oldLF[i])) {
+    while (i < len && !/\s/.test(oldText[i])) {
       i++;
     }
 
     if (hasToken) {
       pattern += '\\s+';
     }
-    pattern += escapeRegExp(oldLF.slice(start, i));
+    pattern += escapeRegExp(oldText.slice(start, i));
     hasToken = true;
   }
 
@@ -74,27 +74,27 @@ type ReplacementOutcome =
   | { readonly content: string; readonly strategy: MatchStrategy; readonly matched: number; readonly error?: undefined }
   | { readonly content?: undefined; readonly strategy?: undefined; readonly matched?: undefined; readonly error: string };
 
-function replaceExpected(originalLF: string, oldLF: string, newLF: string, expected: number, filePath: string): ReplacementOutcome {
-  const exact = findOccurrences(originalLF, oldLF, true).length;
+function replaceExpected(original: string, oldText: string, newText: string, expected: number, filePath: string): ReplacementOutcome {
+  const exact = findOccurrences(original, oldText, true).length;
   if (exact === expected) {
-    // The function replacer keeps `$&` and friends in `newLF` literal; a
+    // The function replacer keeps `$&` and friends in `newText` literal; a
     // string replacement would expand them. `expected` is at least 1 and
     // `search` is non-empty by this point, so the needle is present and usable.
-    return { content: originalLF.replaceAll(oldLF, () => newLF), strategy: 'exact', matched: exact };
+    return { content: original.replaceAll(oldText, () => newText), strategy: 'exact', matched: exact };
   }
 
-  const wsRegex = buildWhitespaceTolerantRegex(oldLF);
+  const wsRegex = buildWhitespaceTolerantRegex(oldText);
   // Both fallback patterns are built from non-empty escaped tokens, so every
   // match spans at least one character and `match` counts them all.
-  const whitespace = originalLF.match(wsRegex)?.length ?? 0;
+  const whitespace = original.match(wsRegex)?.length ?? 0;
   if (whitespace === expected) {
-    return { content: originalLF.replace(wsRegex, () => newLF), strategy: 'whitespace', matched: whitespace };
+    return { content: original.replace(wsRegex, () => newText), strategy: 'whitespace', matched: whitespace };
   }
 
-  const tokenRegex = buildTokenRegex(oldLF);
-  const token = originalLF.match(tokenRegex)?.length ?? 0;
+  const tokenRegex = buildTokenRegex(oldText);
+  const token = original.match(tokenRegex)?.length ?? 0;
   if (token === expected) {
-    return { content: originalLF.replace(tokenRegex, () => newLF), strategy: 'token', matched: token };
+    return { content: original.replace(tokenRegex, () => newText), strategy: 'token', matched: token };
   }
 
   return {
@@ -157,27 +157,27 @@ export const editFileTool = defineTool({
       }
 
       const originalEol = detectLineEnding(originalContent);
-      const originalLF = normalizeToLF(originalContent);
-      const oldLF = normalizeToLF(search);
-      const newLF = normalizeToLF(replace);
+      const searchLF = normalizeToLF(search);
 
-      if (oldLF === newLF) {
+      if (searchLF === normalizeToLF(replace)) {
         return toolError('Error: `search` and `replace` are identical; nothing to change.');
       }
 
+      const matchTarget = restoreLineEndings(normalizeToLF(originalContent), originalEol);
+      const oldText = restoreLineEndings(searchLF, originalEol);
+
       const expected = params.expected ?? 1;
-      const outcome = replaceExpected(originalLF, oldLF, newLF, expected, path);
+      const outcome = replaceExpected(matchTarget, oldText, replace, expected, path);
       if (outcome.error !== undefined) {
         return toolError(outcome.error);
       }
 
-      const newContent = restoreLineEndings(outcome.content, originalEol);
-      await writeFileAtomic(resolvedPath, newContent);
+      await writeFileAtomic(resolvedPath, outcome.content);
 
       const result = buildFileChangeResult({
         limits: readOutputLimits(),
         oldContent: originalContent,
-        newContent,
+        newContent: outcome.content,
         successMessage: `Updated ${path}`,
         hint: `Edit applied; read "${path}" to verify the remaining changes.`,
       });

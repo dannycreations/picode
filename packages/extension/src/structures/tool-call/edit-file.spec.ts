@@ -111,4 +111,37 @@ describe('editFileTool', () => {
     expect(result.content[0].text).toContain('whitespace-tolerant matching');
     expect(result.content[0].text).toContain('differed from `search`');
   });
+
+  it('matches LF search text against a CRLF file', async () => {
+    stat.mockResolvedValue(READABLE);
+    readFile.mockResolvedValue('one\r\ntwo\r\n');
+
+    const result = await execute({ path: 'eol.txt', search: 'one\ntwo', replace: 'uno\ndos' });
+
+    expect(result.isError).toBeFalsy();
+    expect(result.content[0].text).not.toContain('whitespace-tolerant matching');
+    expect(String(writeFile.mock.calls[0][1])).toBe('uno\ndos\r\n');
+  });
+
+  it('writes replace verbatim so its line endings survive', async () => {
+    stat.mockResolvedValue(READABLE);
+    readFile.mockResolvedValue('one\ntwo\n');
+
+    const result = await execute({ path: 'verbatim.txt', search: 'one', replace: 'uno\r\ndos' });
+
+    expect(result.isError).toBeFalsy();
+    expect(String(writeFile.mock.calls[0][1])).toBe('uno\r\ndos\ntwo\n');
+  });
+
+  it('does not double carriage returns when both the file and replace use CRLF', async () => {
+    stat.mockResolvedValue(READABLE);
+    readFile.mockResolvedValue('one\r\ntwo\r\n');
+
+    const result = await execute({ path: 'both.txt', search: 'one', replace: 'uno\r\ndos' });
+
+    expect(result.isError).toBeFalsy();
+    const written = String(writeFile.mock.calls[0][1]);
+    expect(written).toBe('uno\r\ndos\r\ntwo\r\n');
+    expect(written).not.toContain('\r\r');
+  });
 });
