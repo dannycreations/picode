@@ -61,7 +61,12 @@ async function connectMcpServer(server: McpServerConfig, cwd: string): Promise<M
     },
 
     callTool: (tool, args, signal) => {
-      return client.callTool({ name: tool, arguments: args }, undefined, { timeout: timeoutMs, signal });
+      return client.callTool({ name: tool, arguments: args }, undefined, {
+        signal,
+        timeout: timeoutMs,
+        resetTimeoutOnProgress: true,
+        onprogress: () => {},
+      });
     },
 
     close: () => client.close(),
