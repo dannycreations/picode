@@ -43,7 +43,7 @@ Anchor every observation to a precise file-and-line citation; avoid loosely summ
 export interface SubagentDefinition {
   readonly name: string;
   readonly summary: string;
-  readonly tools: Array<'read_file' | 'execute_command'>;
+  readonly tools: Array<'read_file' | 'write_file' | 'edit_file' | 'delete_file' | 'execute_command'>;
   readonly prompt: string;
 }
 
@@ -60,6 +60,12 @@ export const SUBAGENTS: readonly SubagentDefinition[] = [
     tools: ['read_file', 'execute_command'],
     prompt: `${SUBAGENT_SHARED_RULES}\n\nYour purpose here is to be evaluative: scrutinize the code identified in your instructions and surface genuine, correctable weaknesses rather than superficial impressions. Before forming any judgment, look beyond the isolated lines under review to the surrounding context in which they operate, so that your conclusions reflect how the code actually behaves in practice rather than speculating about how it might appear when read in isolation.`,
   },
+  {
+    name: 'implement',
+    summary: 'Use this to make a focused code change, such as editing, creating, or deleting files and running the commands needed to validate it.',
+    tools: ['read_file', 'write_file', 'edit_file', 'delete_file', 'execute_command'],
+    prompt: `${SUBAGENT_SHARED_RULES}\n\nYour purpose here is to be constructive: make the requested change in the isolated workspace you are given, keep the change as small as possible while still satisfying the request without deviation, and then verify it. Work only within the paths named in your brief, and report exactly which files changed and how you verified the result.`,
+  },
 ];
 
 export const SUBAGENT_MESSAGE_PROMPT = `## Sub-Agent Delegation
@@ -70,11 +76,9 @@ ${SUBAGENTS.map((agent) => `- ${agent.name}: ${agent.summary}`).join('\n')}
 
 ### Rules for Delegation
 
-There is no benefit in routing a task through a sub-agent when you already have the specific file to consult or the exact command to run; proceed directly yourself. Likewise, do not delegate tasks that involve altering files, as sub-agents are strictly read-only and cannot write, edit, or execute changes.
-
 When delegation is appropriate and multiple independent sub-agents need to work simultaneously, initiate them together by issuing multiple \`spawn_subagent\` calls in a single message. A sub-agent has no awareness of anything discussed earlier in the conversation, so every relevant file path, constraint, and clear statement of the intended goal must be explicitly included in the \`task\` field. Be equally explicit about what the sub-agent must return, as its final message is the only information that reaches you.
 
-Because a sub-agent cannot ask for clarification, make edits, or spawn further sub-agents, every delegation must be a complete, self-contained instruction that requires nothing beyond what you have already provided. You are responsible for gathering and summarizing the relevant findings or actions once the work is complete.`;
+Because a sub-agent cannot ask for clarification or spawn further sub-agents, every delegation must be a complete, self-contained instruction that requires nothing beyond what you have already provided. You are responsible for gathering and summarizing the relevant findings or actions once the work is complete.`;
 
 export const FILL_CODE_PROMPT =
   'Replace the following code with a complete, working implementation that preserves and satisfies the specified contract and requirements. Preserve the original indentation of the replaced lines. Return only the replacement code, with no explanations.';

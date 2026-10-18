@@ -74,7 +74,7 @@ const SUBAGENT_NAMES = SUBAGENTS.map((agent) => agent.name);
 export const spawnSubagentTool = defineTool({
   name: SPAWN_SUBAGENT_TOOL_NAME,
   label: 'Spawn Sub-agent',
-  description: 'Delegate a self-contained, read-only task to a sub-agent that works independently and returns a final report.',
+  description: 'Delegate a self-contained task to a sub-agent that works independently and returns a final report.',
   parameters: Type.Object({
     agent: StringEnum(SUBAGENT_NAMES, { description: 'Name of the sub-agent to delegate to.' }),
     description: Type.String({ description: 'A 3-5 word description of the delegated task, shown to the user.' }),

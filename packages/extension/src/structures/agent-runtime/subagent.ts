@@ -1,11 +1,16 @@
+import { relative, resolve } from 'node:path';
 import { contentText } from '@earendil-works/pi-ai';
 import { createAgentSessionFromServices, SessionManager } from '@earendil-works/pi-coding-agent';
 
 import { readDelegationTaskModelSelection, readDelegationTaskThinkingLevel } from '@pi-code/extension/core/settings';
 import { registerSubagentSession, unregisterSubagentSession } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
 import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
+import { deleteFileTool } from '@pi-code/extension/structures/tool-call/delete-file';
+import { editFileTool } from '@pi-code/extension/structures/tool-call/edit-file';
 import { executeCommandTool } from '@pi-code/extension/structures/tool-call/execute-command';
 import { readFileTool } from '@pi-code/extension/structures/tool-call/read-file';
+import { writeFileTool } from '@pi-code/extension/structures/tool-call/write-file';
+import { createIsolatedWorktree, discardIsolatedWorktree, integrateIsolatedWorktree, withWorktreeLock } from '@pi-code/extension/utilities/worktree';
 import { logger } from '@pi-code/shared/core/logger';
 import { elapsedSeconds } from '@pi-code/shared/utilities/common';
 
@@ -18,6 +23,9 @@ type SubagentToolName = SubagentDefinition['tools'][number];
 
 const SUBAGENT_TOOLS = {
   read_file: readFileTool,
+  write_file: writeFileTool,
+  edit_file: editFileTool,
+  delete_file: deleteFileTool,
   execute_command: executeCommandTool,
 } satisfies Record<SubagentToolName, ToolDefinition>;
 
@@ -105,7 +113,7 @@ function preview(value: string): string {
 }
 
 export function formatSubagentStep(toolName: SubagentToolName, args: unknown): string {
-  const values = (args ?? {}) as { files?: unknown; command?: string };
+  const values = (args ?? {}) as { files?: unknown; command?: string; path?: string };
 
   if (toolName === 'read_file') {
     const files = Array.isArray(values.files) ? values.files : [];
@@ -114,6 +122,11 @@ export function formatSubagentStep(toolName: SubagentToolName, args: unknown): s
       .filter((path): path is string => typeof path === 'string' && path.length > 0);
     return `read ${preview(paths.join(', ')) || '(no path)'}`;
   }
+
+  if (toolName === 'write_file' || toolName === 'edit_file' || toolName === 'delete_file') {
+    return `${toolName.replace('_file', '')} ${preview(values.path ?? '') || '(no path)'}`;
+  }
+
   return `execute ${preview(values.command ?? '')}`;
 }
 
@@ -210,6 +223,10 @@ async function createChildSession(
   return session;
 }
 
+function isMutatingAgent(agent: SubagentDefinition): boolean {
+  return agent.tools.some((tool) => tool === 'write_file' || tool === 'edit_file' || tool === 'delete_file');
+}
+
 export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutcome> {
   const release = await acquireSpawnSlot(input.signal);
   const startTime = Date.now();
@@ -217,9 +234,30 @@ export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutco
 
   const steps = (): string => collected.slice(-MAX_SUBAGENT_STEP_HISTORY).join('\n');
 
+  // Mutating agents work in an isolated copy of the workspace so parallel runs
+  // cannot overwrite each other. Read-only agents keep using the shared cwd.
+  const mutating = isMutatingAgent(input.agent);
+  let worktree: Awaited<ReturnType<typeof createIsolatedWorktree>> = null;
+  let effectiveCwd = input.cwd;
+  let integrated = false;
+  let integrationFailed = false;
+  let session: AgentSession | undefined;
+  let unsubscribe: (() => void) | undefined;
+
   try {
+    if (mutating) {
+      worktree = await withWorktreeLock(() => createIsolatedWorktree(input.cwd));
+      if (worktree) {
+        const relativeCwd = relative(worktree.baseRoot, input.cwd);
+        effectiveCwd = relativeCwd && relativeCwd !== '.' && !relativeCwd.startsWith('..') ? resolve(worktree.path, relativeCwd) : worktree.path;
+      } else {
+        logger.warn('Running the mutating sub-agent without isolation because no git worktree could be created.');
+      }
+    }
+
     input.onProgress?.('');
     if (input.signal?.aborted) {
+      if (worktree) await withWorktreeLock(() => discardIsolatedWorktree(worktree!));
       return {
         agent: input.agent.name,
         text: '',
@@ -230,18 +268,43 @@ export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutco
       };
     }
 
-    const session = await createChildSession(input.cwd, input.agent, input.model, input.toolCallId);
+    session = await createChildSession(effectiveCwd, input.agent, input.model, input.toolCallId);
+
+    // createChildSession does not observe the signal, so check it again before
+    // starting any model work.
+    if (input.signal?.aborted) {
+      unregisterSubagentSession(session.sessionId);
+      session.dispose();
+      session = undefined;
+      if (worktree) await withWorktreeLock(() => discardIsolatedWorktree(worktree!));
+      return {
+        agent: input.agent.name,
+        text: '',
+        steps: '',
+        usage: emptyUsage(),
+        error: 'Sub-agent was cancelled.',
+        duration: elapsedSeconds(startTime),
+      };
+    }
+
     const onAbort = (): void => {
-      void session.abort().catch((err) => logger.error('Failed to abort sub-agent session:', err));
+      void session?.abort().catch((err) => logger.error('Failed to abort sub-agent session:', err));
     };
 
-    const unsubscribe = session.subscribe((event: AgentSessionEvent) => {
-      if (event.type === 'tool_execution_start') {
-        collected.push(formatSubagentStep(event.toolName as SubagentToolName, event.args));
-        input.onProgress?.(steps());
-      }
-      input.onEvent?.(event, session);
-    });
+    try {
+      unsubscribe = session.subscribe((event: AgentSessionEvent) => {
+        if (event.type === 'tool_execution_start') {
+          collected.push(formatSubagentStep(event.toolName as SubagentToolName, event.args));
+          input.onProgress?.(steps());
+        }
+        input.onEvent?.(event, session!);
+      });
+    } catch (err) {
+      unregisterSubagentSession(session.sessionId);
+      session.dispose();
+      session = undefined;
+      throw err;
+    }
 
     try {
       input.signal?.addEventListener('abort', onAbort, { once: true });
@@ -255,21 +318,43 @@ export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutco
       const { text, error } = lastAssistantText(session);
       const aborted = input.signal?.aborted === true;
 
+      let finalText = text;
+      let finalError = aborted ? 'Sub-agent was cancelled.' : error;
+
+      if (worktree && !aborted) {
+        const integration = await withWorktreeLock(() => integrateIsolatedWorktree(worktree!));
+        integrated = integration.ok;
+        if (!integration.ok) {
+          integrationFailed = true;
+          finalError = finalError ?? integration.reason;
+          finalText = finalText ? `${finalText}\n\n${integration.reason}` : integration.reason;
+        }
+      }
+
+      if (worktree && aborted) {
+        await withWorktreeLock(() => discardIsolatedWorktree(worktree!));
+      }
+
       return {
         agent: input.agent.name,
-        text,
+        text: finalText,
         steps: steps(),
         usage: collectUsage(session),
-        error: aborted ? 'Sub-agent was cancelled.' : error,
+        error: finalError,
         duration: elapsedSeconds(startTime),
       };
     } finally {
       input.signal?.removeEventListener('abort', onAbort);
-      unsubscribe();
-      unregisterSubagentSession(session.sessionId);
-      session.dispose();
+      unsubscribe?.();
+      if (session) {
+        unregisterSubagentSession(session.sessionId);
+        session.dispose();
+      }
     }
   } finally {
+    if (worktree && !integrated && !integrationFailed) {
+      await withWorktreeLock(() => discardIsolatedWorktree(worktree!));
+    }
     release();
   }
 }
