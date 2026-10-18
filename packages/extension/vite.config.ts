@@ -54,6 +54,7 @@ export default defineConfig(({ command }) => {
           exports: 'named',
           codeSplitting: false,
           banner: `
+globalThis.PI_BUNDLED_NODE = true;
 const __importMetaUrl =
   require('node:url')
     .pathToFileURL(__filename)
