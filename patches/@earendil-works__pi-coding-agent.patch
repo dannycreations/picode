@@ -61,7 +61,7 @@ index 4a4e958..0c13b7d 100644
 +export { stripAnsi } from "./utils/ansi.ts";
 +export { detectLineEnding, normalizeToLF, restoreLineEndings } from "./core/tools/edit-diff.ts";
 +export { resolvePath, getCwdRelativePath, formatPathRelativeToCwdOrAbsolute } from "./utils/paths.ts";
-+export { killProcessTree, trackDetachedChildPid, untrackDetachedChildPid } from "./utils/shell.ts";
++export { killProcessTree, trackDetachedChildPid, untrackDetachedChildPid, killTrackedDetachedChildren } from "./utils/shell.ts";
 +export { parseCommandArgs, substituteArgs } from "./core/prompt-templates.ts";
  //# sourceMappingURL=index.d.ts.map
 \ No newline at end of file
@@ -76,7 +76,7 @@ index c48934f..8d8aa77 100644
 +export { stripAnsi } from "./utils/ansi.js";
 +export { detectLineEnding, normalizeToLF, restoreLineEndings } from "./core/tools/edit-diff.js";
 +export { resolvePath, getCwdRelativePath, formatPathRelativeToCwdOrAbsolute } from "./utils/paths.js";
-+export { killProcessTree, trackDetachedChildPid, untrackDetachedChildPid } from "./utils/shell.js";
++export { killProcessTree, trackDetachedChildPid, untrackDetachedChildPid, killTrackedDetachedChildren } from "./utils/shell.js";
 +export { parseCommandArgs, substituteArgs } from "./core/prompt-templates.js";
  //# sourceMappingURL=index.js.map
 \ No newline at end of file

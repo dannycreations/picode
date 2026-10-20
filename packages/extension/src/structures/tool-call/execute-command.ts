@@ -1,13 +1,13 @@
 import { spawn } from 'node:child_process';
 import { createWriteStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
+import { join } from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
 import { formatThrownValue } from '@earendil-works/pi-ai';
 import {
   defineTool,
   formatSize,
   getShellConfig,
-  killProcessTree,
   resolvePath,
   stripAnsi,
   trackDetachedChildPid,
@@ -228,6 +228,7 @@ export const executeCommandTool = defineTool({
       let onAbort: (() => void) | null = null;
       let timeoutTimer: ReturnType<typeof setTimeout> | null = null;
       let exitGraceTimer: ReturnType<typeof setTimeout> | null = null;
+      let killing = false;
 
       const detachSignal = () => {
         if (signal && onAbort) {
@@ -325,14 +326,67 @@ export const executeCommandTool = defineTool({
         });
       };
 
-      const killCommand = () => {
-        if (cp.pid) {
-          killProcessTree(cp.pid);
+      const killProcessTreeAsync = (pid: number): Promise<void> => {
+        return new Promise<void>((resolve) => {
+          if (process.platform === 'win32') {
+            const taskkill = join('C:\\Windows', 'System32', 'taskkill.exe');
+            let child;
+            try {
+              child = spawn(taskkill, ['/F', '/T', '/PID', String(pid)], {
+                stdio: 'ignore',
+                detached: true,
+                windowsHide: true,
+              });
+            } catch (err) {
+              logger.warn('Failed to spawn taskkill:', err);
+              resolve();
+              return;
+            }
+            let resolved = false;
+            const finish = () => {
+              if (resolved) return;
+              resolved = true;
+              clearTimeout(fallback);
+              resolve();
+            };
+            const fallback = setTimeout(finish, 5000);
+            child.once('error', (err) => {
+              logger.warn('taskkill failed:', err);
+              finish();
+            });
+            child.once('exit', finish);
+            child.once('close', finish);
+            return;
+          }
+          try {
+            process.kill(-pid, 'SIGKILL');
+          } catch {
+            try {
+              process.kill(pid, 'SIGKILL');
+            } catch {
+              // Process already dead.
+            }
+          }
+          resolve();
+        });
+      };
+
+      const killCommand = async (): Promise<void> => {
+        if (killing) return;
+        if (!cp.pid) {
+          await new Promise<void>((resolve) => {
+            cp.once('spawn', () => {
+              if (cp.pid) {
+                void killProcessTreeAsync(cp.pid).then(resolve);
+              } else {
+                resolve();
+              }
+            });
+          });
           return;
         }
-        cp.once('spawn', () => {
-          if (cp.pid) killProcessTree(cp.pid);
-        });
+        killing = true;
+        await killProcessTreeAsync(cp.pid);
       };
 
       const armExitGrace = () => {
@@ -372,17 +426,19 @@ export const executeCommandTool = defineTool({
         void finish(code, sig);
       });
 
-      timeoutTimer = setTimeout(() => {
+      timeoutTimer = setTimeout(async () => {
         timedOut = true;
-        killCommand();
+        await killCommand();
       }, effectiveTimeout);
 
       if (signal) {
         if (signal.aborted) {
-          killCommand();
+          await killCommand();
           void finish(null, 'SIGABRT');
         } else {
-          onAbort = () => killCommand();
+          onAbort = () => {
+            void killCommand();
+          };
           signal.addEventListener('abort', onAbort, { once: true });
         }
       }

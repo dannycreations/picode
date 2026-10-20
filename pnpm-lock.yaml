@@ -163,7 +163,7 @@ settings:
   excludeLinksFromLockfile: false
 
 patchedDependencies:
-  '@earendil-works/pi-coding-agent': cbc880d62a4ed5db00cb3a49a66d5e378070074e1d202641a04195b30f2874c2
+  '@earendil-works/pi-coding-agent': 57e2bdafff4485f06a5d9db0fcfcf6fb95884726687449736c5ed4bc6ea614b0
 
 importers:
 
@@ -204,7 +204,7 @@ importers:
         version: 1.3.0(@aws-sdk/credential-provider-node@3.972.82)(@modelcontextprotocol/sdk@1.32.1(supports-color@7.2.0)(zod@4.5.4))(@smithy/signature-v4@5.7.3)(supports-color@7.2.0)(undici@8.10.2)(ws@8.21.3)(zod@4.5.4)
       '@earendil-works/pi-coding-agent':
         specifier: ^1.3.0
-        version: 1.3.0(patch_hash=cbc880d62a4ed5db00cb3a49a66d5e378070074e1d202641a04195b30f2874c2)(@aws-sdk/credential-provider-node@3.972.82)(@modelcontextprotocol/sdk@1.32.1(supports-color@7.2.0)(zod@4.5.4))(@smithy/signature-v4@5.7.3)(supports-color@7.2.0)(ws@8.21.3)(zod@4.5.4)
+        version: 1.3.0(patch_hash=57e2bdafff4485f06a5d9db0fcfcf6fb95884726687449736c5ed4bc6ea614b0)(@aws-sdk/credential-provider-node@3.972.82)(@modelcontextprotocol/sdk@1.32.1(supports-color@7.2.0)(zod@4.5.4))(@smithy/signature-v4@5.7.3)(supports-color@7.2.0)(ws@8.21.3)(zod@4.5.4)
       '@modelcontextprotocol/sdk':
         specifier: ^1.32.1
         version: 1.32.1(supports-color@7.2.0)(zod@4.5.4)
@@ -3609,7 +3609,7 @@ snapshots:
     dependencies:
       quickjs-wasi: 3.6.2
 
-  '@earendil-works/pi-coding-agent@1.3.0(patch_hash=cbc880d62a4ed5db00cb3a49a66d5e378070074e1d202641a04195b30f2874c2)(@aws-sdk/credential-provider-node@3.972.82)(@modelcontextprotocol/sdk@1.32.1(supports-color@7.2.0)(zod@4.5.4))(@smithy/signature-v4@5.7.3)(supports-color@7.2.0)(ws@8.21.3)(zod@4.5.4)':
+  '@earendil-works/pi-coding-agent@1.3.0(patch_hash=57e2bdafff4485f06a5d9db0fcfcf6fb95884726687449736c5ed4bc6ea614b0)(@aws-sdk/credential-provider-node@3.972.82)(@modelcontextprotocol/sdk@1.32.1(supports-color@7.2.0)(zod@4.5.4))(@smithy/signature-v4@5.7.3)(supports-color@7.2.0)(ws@8.21.3)(zod@4.5.4)':
     dependencies:
       '@earendil-works/pi-agent-core': 1.3.0(@aws-sdk/credential-provider-node@3.972.82)(@modelcontextprotocol/sdk@1.32.1(supports-color@7.2.0)(zod@4.5.4))(@smithy/signature-v4@5.7.3)(supports-color@7.2.0)(undici@8.10.2)(ws@8.21.3)(zod@4.5.4)
       '@earendil-works/pi-ai': 1.3.0(@aws-sdk/credential-provider-node@3.972.82)(@modelcontextprotocol/sdk@1.32.1(supports-color@7.2.0)(zod@4.5.4))(@smithy/signature-v4@5.7.3)(supports-color@7.2.0)(undici@8.10.2)(ws@8.21.3)(zod@4.5.4)

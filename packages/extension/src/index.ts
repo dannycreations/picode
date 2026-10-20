@@ -1,4 +1,5 @@
 import { cleanupSessionResources, registerSessionResourceCleanup } from '@earendil-works/pi-ai';
+import { killTrackedDetachedChildren } from '@earendil-works/pi-coding-agent';
 import { commands, languages, window, workspace } from 'vscode';
 
 import { mcpGateway, setMcpClientVersion } from '@pi-code/extension/structures/agent-runtime/mcp/manager';
@@ -65,6 +66,13 @@ export async function deactivate(): Promise<void> {
   cleanupSessionResources();
   // Local MCP servers run as child processes; close them so none outlive the host.
   await mcpGateway.closeAll().catch((err) => logger.error('Failed to close MCP connections:', err));
+  // Reap any detached child process trees (e.g. shells spawned by execute_command)
+  // that outlived their command so they do not linger after the host exits.
+  try {
+    killTrackedDetachedChildren();
+  } catch (err) {
+    logger.error('Failed to kill tracked detached children:', err);
+  }
   // The debug interceptor queues writes on a promise chain; drain it before the host exits.
   await flushDebugLog();
 }
