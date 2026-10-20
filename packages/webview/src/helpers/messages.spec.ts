@@ -2,14 +2,17 @@ import { describe, expect, it } from 'vitest';
 
 import { buildToolSections } from '@pi-code/shared/utilities/tool';
 import {
+  buildChatRenderModel,
   deliverQueuedReplies,
   groupToolMessages,
   isRenderableMessage,
   patchReplyQueue,
+  patchToolRow,
   previousTodosById,
   resolveApproval,
   settlePendingTurns,
   upsertToolMessage,
+  upsertToolRow,
 } from '@pi-code/webview/helpers/messages';
 
 import type { ChatMessage, ToolChatMessage, ToolName } from '@pi-code/shared/core/types';
@@ -421,5 +424,103 @@ describe('settlePendingTurns', () => {
     expect((result[0] as any).toolStatus).toBe('denied');
     expect((result[0] as any).errorMessage).toBe('overloaded');
     expect((result[1] as any).toolStatus).toBe('running');
+  });
+});
+
+describe('upsertToolRow', () => {
+  it('creates the row with its sections so the renderer never rebuilds them', () => {
+    const rows = upsertToolRow([], 't1', {
+      text: 'read_file',
+      toolName: 'read_file',
+      toolStatus: 'running',
+      files: [{ path: 'a.ts', content: 'a' }],
+    });
+
+    expect(rows).toHaveLength(1);
+    expect(asTool(rows[0]).toolSections).toHaveLength(1);
+  });
+
+  it('places a new row ahead of a queued reply and settles the open turns', () => {
+    const messages: ChatMessage[] = [
+      createMessage({ id: 'a1', sender: 'assistant', text: '', toolStatus: 'running' }),
+      createMessage({ id: 'q1', sender: 'queue', text: 'stand by' }),
+    ];
+
+    const rows = upsertToolRow(messages, 't1', { text: 'read_file', toolName: 'read_file', toolStatus: 'running' });
+
+    expect(rows.map((m) => m.id)).toEqual(['a1', 't1', 'q1']);
+    expect((rows[0] as { toolStatus?: string }).toolStatus).toBe('completed');
+  });
+
+  it('refreshes an existing row in place', () => {
+    const messages = [createToolMessage('t1', 'read_file', { toolStatus: 'running', files: [{ path: 'a.ts', content: 'a' }] })];
+
+    const rows = upsertToolRow(messages, 't1', { toolStatus: 'completed' });
+
+    expect(rows.map((m) => m.id)).toEqual(['t1']);
+    expect(asTool(rows[0]).toolStatus).toBe('completed');
+    expect(asTool(rows[0]).toolSections).toHaveLength(1);
+  });
+});
+
+describe('patchToolRow', () => {
+  it('patches the row and rebuilds its sections from the patched row', () => {
+    const rows = upsertToolRow([], 't1', {
+      text: 'read_file',
+      toolName: 'read_file',
+      toolStatus: 'running',
+      files: [{ path: 'a.ts', content: 'a' }],
+    });
+
+    const patched = patchToolRow(rows, 't1', undefined, () => ({ diff: '+changed' }));
+
+    expect(asTool(patched[0]).diff).toBe('+changed');
+    expect(asTool(patched[0]).toolSections).toHaveLength(1);
+  });
+
+  it('leaves the transcript alone for a sub-agent event with no row of its own', () => {
+    const rows = upsertToolRow([], 't1', { text: 'read_file', toolName: 'read_file', toolStatus: 'running' });
+
+    const patched = patchToolRow(rows, 'other', 'explore', () => ({ diff: 'x' }));
+
+    expect(patched).toBe(rows);
+  });
+
+  it('leaves the transcript alone when the row does not exist at all', () => {
+    const rows = upsertToolRow([], 't1', { text: 'read_file', toolName: 'read_file', toolStatus: 'running' });
+
+    const patched = patchToolRow(rows, 'other', undefined, () => ({ diff: 'x' }));
+
+    expect(patched).toBe(rows);
+  });
+});
+
+describe('buildChatRenderModel', () => {
+  it('hides an assistant turn that has no content yet', () => {
+    const model = buildChatRenderModel([
+      createMessage({ id: 'a1', sender: 'assistant', text: '' }),
+      createMessage({ id: 'u1', sender: 'user', text: 'hi' }),
+    ]);
+
+    expect(model.renderItems.map((m) => m.id)).toEqual(['u1']);
+  });
+
+  it('reports a pending approval and the newest checklist', () => {
+    const todos: TodoItem[] = [{ content: 'one', status: 'open' }];
+    const model = buildChatRenderModel([createToolMessage('t1', 'read_file', { toolStatus: 'approval' }), updateTodo('u1', todos)]);
+
+    expect(model.hasApproval).toBe(true);
+    expect(model.latestTodos).toEqual(todos);
+    expect(model.oldTodosById.has('u1')).toBe(false);
+  });
+
+  it('groups the tool rows the way the chat body renders them', () => {
+    const model = buildChatRenderModel([
+      createToolMessage('r1', 'read_file', { files: [{ path: 'a.ts', content: 'a' }] }),
+      createToolMessage('r2', 'read_file', { files: [{ path: 'b.ts', content: 'b' }] }),
+    ]);
+
+    expect(model.renderItems).toHaveLength(1);
+    expect(model.renderItems[0].id).toBe('r1');
   });
 });

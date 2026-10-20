@@ -128,8 +128,11 @@ export const executeCommandTool = defineTool({
       const stdoutDecoder = new StringDecoder('utf8');
       const stderrDecoder = new StringDecoder('utf8');
 
-      let streamBuffer = '';
-      let streamSent = 0;
+      // Output that has not reached the UI yet. It is kept as chunks so a
+      // growing command never rebuilds one big string, and so the part that
+      // already went out is never carried along.
+      const pendingChunks: string[] = [];
+      let pendingLength = 0;
       let streamDirty = false;
       let streamTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -140,10 +143,21 @@ export const executeCommandTool = defineTool({
         }
         if (!streamDirty || !onUpdate) return;
         streamDirty = false;
-        if (streamBuffer.length <= streamSent) return;
-        const available = streamBuffer.slice(streamSent);
+        if (pendingLength === 0) return;
+
+        const available = pendingChunks.length === 1 ? pendingChunks[0] : pendingChunks.join('');
         const delta = available.length > limits.maxBytes ? available.slice(0, limits.maxBytes) : available;
-        streamSent += delta.length;
+
+        // Whatever did not fit in this delta waits for the next one.
+        if (delta.length >= available.length) {
+          pendingChunks.length = 0;
+          pendingLength = 0;
+        } else {
+          pendingChunks.length = 0;
+          pendingChunks.push(available.slice(delta.length));
+          pendingLength = available.length - delta.length;
+        }
+
         onUpdate({
           content: [{ type: 'text', text: delta }],
           details: { exitCode: null, signalCode: null, output: delta, timedOut: false },
@@ -157,12 +171,29 @@ export const executeCommandTool = defineTool({
 
       const streamUpdate = (text: string) => {
         if (!text) return;
-        streamBuffer += stripAnsiAndNormalize(text);
-        if (streamBuffer.length > retainedBytes) {
-          const dropped = streamBuffer.length - retainedBytes;
-          streamBuffer = streamBuffer.slice(dropped);
-          streamSent = Math.max(0, streamSent - dropped);
+
+        const cleaned = stripAnsiAndNormalize(text);
+        pendingChunks.push(cleaned);
+        pendingLength += cleaned.length;
+
+        if (pendingLength > retainedBytes) {
+          // The tail is what the user still needs; the older output is already
+          // in the model's copy of the command output.
+          let excess = pendingLength - retainedBytes;
+          while (excess > 0 && pendingChunks.length > 0) {
+            const head = pendingChunks[0];
+            if (head.length <= excess) {
+              pendingChunks.shift();
+              pendingLength -= head.length;
+              excess -= head.length;
+            } else {
+              pendingChunks[0] = head.slice(excess);
+              pendingLength -= excess;
+              excess = 0;
+            }
+          }
         }
+
         streamDirty = true;
         scheduleStream();
       };

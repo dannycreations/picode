@@ -38,24 +38,37 @@ export function toolResultText(result: unknown): string {
   if (typeof result === 'string') return result;
 
   const content = (result as { content?: readonly ToolResultPart[] } | undefined)?.content;
-  const parts = Array.isArray(content) ? content.filter((part) => part.type === 'text' && typeof part.text === 'string') : [];
-  if (parts.length === 0) {
-    try {
-      return JSON.stringify(result) ?? '';
-    } catch {
-      return String(result);
+  if (Array.isArray(content)) {
+    let text = '';
+    let hasText = false;
+    for (const part of content) {
+      if (part.type !== 'text' || typeof part.text !== 'string') continue;
+      text = hasText ? `${text}\n${part.text}` : part.text;
+      hasText = true;
     }
+    if (hasText) return text;
   }
 
-  return parts.map((part) => part.text).join('\n');
+  try {
+    return JSON.stringify(result) ?? '';
+  } catch {
+    return String(result);
+  }
 }
 
 function latestStep(steps: string | undefined): string | undefined {
-  const lines = (steps ?? '')
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean);
-  return lines.length > 0 ? lines[lines.length - 1] : undefined;
+  if (!steps) return undefined;
+
+  let end = steps.length;
+  while (end > 0) {
+    const breakIndex = steps.lastIndexOf('\n', end - 1);
+    const start = breakIndex === -1 ? 0 : breakIndex + 1;
+    const line = steps.slice(start, end).trim();
+    if (line !== '') return line;
+    if (breakIndex === -1) return undefined;
+    end = breakIndex;
+  }
+  return undefined;
 }
 
 interface MappedEvent {

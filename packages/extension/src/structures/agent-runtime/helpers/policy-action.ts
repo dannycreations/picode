@@ -1,6 +1,6 @@
 import { join, resolve } from 'node:path';
 import { CONFIG_DIR_NAME, getAgentDir, getCwdRelativePath, resolvePath } from '@earendil-works/pi-coding-agent';
-import { minimatch } from 'minimatch';
+import { Minimatch } from 'minimatch';
 
 import { parseCommand } from '@pi-code/shared/utilities/command';
 import { normalizeSeparators } from '@pi-code/shared/utilities/common';
@@ -95,20 +95,53 @@ function isSafeRegexPattern(source: string): boolean {
   return !UNSAFE_REGEX_PATTERNS.some((pattern) => pattern.test(source));
 }
 
+const PATTERN_CACHE_LIMIT = 256;
+const regexCache = new Map<string, RegExp | null>();
+
+function compiledRegex(source: string): RegExp | null {
+  const cached = regexCache.get(source);
+  if (cached !== undefined) return cached;
+
+  let compiled: RegExp | null = null;
+  if (isSafeRegexPattern(source)) {
+    try {
+      compiled = new RegExp(source, 'i');
+    } catch {
+      compiled = null;
+    }
+  }
+
+  if (regexCache.size >= PATTERN_CACHE_LIMIT) regexCache.clear();
+  regexCache.set(source, compiled);
+  return compiled;
+}
+
 function matchesRegexPattern(source: string, candidate: string): boolean {
-  if (!isSafeRegexPattern(source) || candidate.length > MAX_REGEX_INPUT_LENGTH) {
+  if (candidate.length > MAX_REGEX_INPUT_LENGTH) {
     return false;
   }
-  try {
-    return new RegExp(source, 'i').test(candidate);
-  } catch {
+  const pattern = compiledRegex(source);
+  if (!pattern) {
     return false;
   }
+  return pattern.test(candidate);
+}
+
+const globCache = new Map<string, Minimatch>();
+
+function globMatcher(pattern: string): Minimatch {
+  let matcher = globCache.get(pattern);
+  if (!matcher) {
+    matcher = new Minimatch(pattern, { nocase: true, dot: true });
+    if (globCache.size >= PATTERN_CACHE_LIMIT) globCache.clear();
+    globCache.set(pattern, matcher);
+  }
+  return matcher;
 }
 
 export function matchesGlob(pattern: string, filePath: string): boolean {
   if (!pattern || !filePath) return false;
-  return minimatch(normalizeSeparators(filePath), pattern, { nocase: true, dot: true });
+  return globMatcher(pattern).match(normalizeSeparators(filePath));
 }
 
 function looksAbsolute(path: string): boolean {
@@ -120,9 +153,22 @@ function comparableForm(path: string): string {
   return normalizeSeparators(path).replace(/^[a-z]:/i, '');
 }
 
-function normalizePatternForPathMatch(pattern: string): { comparable: string; isAbsolute: boolean } {
+interface NormalizedPattern {
+  readonly comparable: string;
+  readonly isAbsolute: boolean;
+}
+
+const normalizedPatternCache = new Map<string, NormalizedPattern>();
+
+function normalizePatternForPathMatch(pattern: string): NormalizedPattern {
+  const cached = normalizedPatternCache.get(pattern);
+  if (cached) return cached;
+
   const expanded = pattern.startsWith('~') ? resolvePath(pattern) : pattern;
-  return { comparable: comparableForm(expanded), isAbsolute: looksAbsolute(expanded) };
+  const normalized: NormalizedPattern = { comparable: comparableForm(expanded), isAbsolute: looksAbsolute(expanded) };
+  if (normalizedPatternCache.size >= PATTERN_CACHE_LIMIT) normalizedPatternCache.clear();
+  normalizedPatternCache.set(pattern, normalized);
+  return normalized;
 }
 
 function matchesPathRegex(source: string, filePath: string, absoluteFile: string | undefined, insideRelative: string | undefined): boolean {
@@ -207,20 +253,31 @@ export function resolvePathAction(
   return decidePathAction(filePath, resolveFileLocation(cwd, filePath), allowedPatterns, deniedPatterns);
 }
 
-function matchesCommandPattern(pattern: string, command: string): boolean {
+const loweredPatternCache = new Map<string, string>();
+
+function loweredPattern(pattern: string): string {
+  let lowered = loweredPatternCache.get(pattern);
+  if (lowered === undefined) {
+    lowered = pattern.toLowerCase();
+    if (loweredPatternCache.size >= PATTERN_CACHE_LIMIT) loweredPatternCache.clear();
+    loweredPatternCache.set(pattern, lowered);
+  }
+  return lowered;
+}
+
+function matchesCommandPattern(pattern: string, command: string, commandLower: string): boolean {
   if (pattern === '*') return true;
   if (isRegexPattern(pattern)) {
     return matchesRegexPattern(regexSource(pattern), command);
   }
 
-  const pLower = pattern.toLowerCase();
-  const cLower = command.toLowerCase();
-  if (pLower === cLower) return true;
+  const pLower = loweredPattern(pattern);
+  if (pLower === commandLower) return true;
   if (pLower.includes('*') || pLower.includes('?')) {
-    return matchesGlob(pLower, cLower);
+    return matchesGlob(pLower, commandLower);
   }
-  if (cLower.startsWith(pLower)) {
-    const nextChar = cLower.charAt(pLower.length);
+  if (commandLower.startsWith(pLower)) {
+    const nextChar = commandLower.charAt(pLower.length);
     return nextChar === '' || nextChar === ' ' || nextChar === '\t';
   }
   return false;
@@ -233,8 +290,10 @@ function getSingleCommandDecision(
 ): ApprovalDecision['action'] {
   const trimmedCmd = command.trim();
   if (!trimmedCmd) return 'approve';
-  if (deniedPatterns.some((pattern) => matchesCommandPattern(pattern, trimmedCmd))) return 'deny';
-  if (allowedPatterns.some((pattern) => matchesCommandPattern(pattern, trimmedCmd))) return 'approve';
+
+  const commandLower = trimmedCmd.toLowerCase();
+  if (deniedPatterns.some((pattern) => matchesCommandPattern(pattern, trimmedCmd, commandLower))) return 'deny';
+  if (allowedPatterns.some((pattern) => matchesCommandPattern(pattern, trimmedCmd, commandLower))) return 'approve';
   return 'confirm';
 }
 

@@ -1,6 +1,6 @@
 import { cn } from 'cn';
 import { X } from 'lucide-react';
-import React, { useEffect, useId } from 'react';
+import React, { memo, useEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
 
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
@@ -61,72 +61,74 @@ const Button: FC<ButtonProps> = ({ variant = 'secondary', children, className = 
   );
 };
 
-export const ConfirmDialog: FC<ConfirmDialogProps> = ({
-  isOpen,
-  title,
-  description,
-  warningText = 'This action cannot be undone. Please confirm you want to continue.',
-  confirmLabel = 'Delete',
-  cancelLabel = 'Cancel',
-  onConfirm,
-  onCancel,
-}) => {
-  const titleId = useId();
-  const descriptionId = useId();
+export const ConfirmDialog: FC<ConfirmDialogProps> = memo(
+  ({
+    isOpen,
+    title,
+    description,
+    warningText = 'This action cannot be undone. Please confirm you want to continue.',
+    confirmLabel = 'Delete',
+    cancelLabel = 'Cancel',
+    onConfirm,
+    onCancel,
+  }) => {
+    const titleId = useId();
+    const descriptionId = useId();
 
-  useModalKeyboard({ isOpen, onEscape: onCancel, onEnter: onConfirm });
+    useModalKeyboard({ isOpen, onEscape: onCancel, onEnter: onConfirm });
 
-  return createPortal(
-    <div
-      className={cn('modal-overlay transition-opacity duration-150', isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none')}
-      inert={!isOpen}
-      aria-hidden={!isOpen}
-    >
+    return createPortal(
       <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={description ? descriptionId : undefined}
-        className={cn(
-          'bg-vscode-editor-background border border-vscode-panel-border rounded-md w-full max-w-md overflow-hidden flex flex-col shadow-xl transition-all duration-150',
-          isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0',
-        )}
+        className={cn('modal-overlay transition-opacity duration-150', isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none')}
+        inert={!isOpen}
+        aria-hidden={!isOpen}
       >
-        <div className="px-4 py-3 bg-vscode-sideBarSectionHeader-background border-b border-vscode-panel-border/50 flex justify-between items-center">
-          <h3 id={titleId} className="font-semibold text-xs uppercase tracking-wider text-vscode-foreground m-0">
-            {title}
-          </h3>
-          <Tooltip content="Close dialog" side="left">
-            <button onClick={onCancel} className="icon-button">
-              <X size={14} />
-            </button>
-          </Tooltip>
-        </div>
-
-        <div className="p-4 flex flex-col gap-3 text-xs leading-relaxed text-vscode-foreground">
-          {description && (
-            <p id={descriptionId} className="m-0 text-vscode-foreground">
-              {description}
-            </p>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+          aria-describedby={description ? descriptionId : undefined}
+          className={cn(
+            'bg-vscode-editor-background border border-vscode-panel-border rounded-md w-full max-w-md overflow-hidden flex flex-col shadow-xl transition-all duration-150',
+            isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0',
           )}
+        >
+          <div className="px-4 py-3 bg-vscode-sideBarSectionHeader-background border-b border-vscode-panel-border/50 flex justify-between items-center">
+            <h3 id={titleId} className="font-semibold text-xs uppercase tracking-wider text-vscode-foreground m-0">
+              {title}
+            </h3>
+            <Tooltip content="Close dialog" side="left">
+              <button onClick={onCancel} className="icon-button">
+                <X size={14} />
+              </button>
+            </Tooltip>
+          </div>
 
-          {warningText && (
-            <div className="text-vscode-errorForeground bg-vscode-input-background p-3 rounded border border-vscode-panel-border/50 text-xs">
-              {warningText}
-            </div>
-          )}
-        </div>
+          <div className="p-4 flex flex-col gap-3 text-xs leading-relaxed text-vscode-foreground">
+            {description && (
+              <p id={descriptionId} className="m-0 text-vscode-foreground">
+                {description}
+              </p>
+            )}
 
-        <div className="px-4 py-3 bg-vscode-sideBarSectionHeader-background/50 border-t border-vscode-panel-border/50 flex justify-end gap-2">
-          <Button variant="secondary" onClick={onCancel}>
-            {cancelLabel}
-          </Button>
-          <Button variant="danger" onClick={onConfirm}>
-            {confirmLabel}
-          </Button>
+            {warningText && (
+              <div className="text-vscode-errorForeground bg-vscode-input-background p-3 rounded border border-vscode-panel-border/50 text-xs">
+                {warningText}
+              </div>
+            )}
+          </div>
+
+          <div className="px-4 py-3 bg-vscode-sideBarSectionHeader-background/50 border-t border-vscode-panel-border/50 flex justify-end gap-2">
+            <Button variant="secondary" onClick={onCancel}>
+              {cancelLabel}
+            </Button>
+            <Button variant="danger" onClick={onConfirm}>
+              {confirmLabel}
+            </Button>
+          </div>
         </div>
-      </div>
-    </div>,
-    document.body,
-  );
-};
+      </div>,
+      document.body,
+    );
+  },
+);

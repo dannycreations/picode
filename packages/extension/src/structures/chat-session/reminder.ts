@@ -1,5 +1,7 @@
 import { contentText } from '@earendil-works/pi-ai';
 
+import { startsWithIgnoringLeadingWhitespace } from '@pi-code/shared/utilities/common';
+
 import type { AgentMessage } from '@earendil-works/pi-agent-core';
 import type { TodoItem } from '@pi-code/shared/utilities/todo';
 
@@ -34,7 +36,7 @@ export function formatTodoReminder(todoList?: TodoItem[]): string {
 }
 
 export function hasReminders(msg: AgentMessage): boolean {
-  return msg.role === 'user' && contentText(msg.content).trimStart().startsWith(TODO_REMINDER_SECTION);
+  return msg.role === 'user' && startsWithIgnoringLeadingWhitespace(contentText(msg.content), TODO_REMINDER_SECTION);
 }
 
 export function withTodoProgress(messages: readonly AgentMessage[], todoList?: TodoItem[]): AgentMessage[] {
@@ -43,8 +45,12 @@ export function withTodoProgress(messages: readonly AgentMessage[], todoList?: T
     content: [{ type: 'text', text: formatTodoReminder(todoList) }],
     timestamp: Date.now(),
   };
-  const filtered = messages.filter((msg) => !hasReminders(msg));
-  return [...filtered, injected];
+  const result: AgentMessage[] = [];
+  for (const msg of messages) {
+    if (!hasReminders(msg)) result.push(msg);
+  }
+  result.push(injected);
+  return result;
 }
 
 export function getLatestTodoList(messages: readonly AgentMessage[]): TodoItem[] | undefined {

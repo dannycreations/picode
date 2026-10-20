@@ -35,7 +35,7 @@ export class Runtime {
   public constructor(webview: Webview) {
     this.messenger = new Messenger(webview);
     this.replyQueue = new ReplyQueue((messages) => {
-      this.messenger.post({ type: 'reply_queue_data', payload: { queue: [...messages] } });
+      this.messenger.post({ type: 'reply_queue_data', payload: { queue: messages } });
     });
   }
 
@@ -339,12 +339,11 @@ export class Runtime {
     // The pass spans awaits, so the live queue can have moved on: drop only the
     // replies this pass delivered. A snapshot-based retain would discard replies
     // queued meanwhile and would resurrect entries a cancel already cleared.
-    const deliveredIds = new Set(delivered.map((m) => m.id));
-    this.replyQueue.retain(this.replyQueue.all().filter((m) => !deliveredIds.has(m.id)));
+    this.replyQueue.retainExcept(new Set(delivered.map((m) => m.id)));
   }
 
   private handleSessionEvent(event: AgentSessionEvent, session: AgentSession): void {
-    if (event.type === 'agent_settled' && this.session?.sessionFile && this.replyQueue.all().length > 0) {
+    if (event.type === 'agent_settled' && this.session?.sessionFile && this.replyQueue.size > 0) {
       // The agent stopped but the user queued replies while it ran. Drain
       // them into a fresh turn instead of discarding them.
       void this.continueTask(this.session.sessionFile);

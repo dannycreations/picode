@@ -12,7 +12,7 @@ import {
   Search,
   X,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 
 import { TodoHeader } from '@pi-code/webview/components/chat/TodoView';
 import { Accordion } from '@pi-code/webview/components/shared/Accordion';
@@ -111,193 +111,195 @@ export const ChatSearchBar: FC<{
   );
 };
 
-export const ChatHeader: FC<ChatHeaderProps> = ({
-  title,
-  tokensIn,
-  tokensOut,
-  cacheWrites = 0,
-  cacheReads = 0,
-  totalCost,
-  contextTokens,
-  contextLimit,
-  todos,
-  onClose,
-  onCompact,
-  onExport,
-  onDelete,
-  onViewRaw,
-  onArchive,
-  isArchived,
-  archiveDisabled,
-  deleteDisabled,
-  onSearchOpen,
-}) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+export const ChatHeader: FC<ChatHeaderProps> = memo(
+  ({
+    title,
+    tokensIn,
+    tokensOut,
+    cacheWrites = 0,
+    cacheReads = 0,
+    totalCost,
+    contextTokens,
+    contextLimit,
+    todos,
+    onClose,
+    onCompact,
+    onExport,
+    onDelete,
+    onViewRaw,
+    onArchive,
+    isArchived,
+    archiveDisabled,
+    deleteDisabled,
+    onSearchOpen,
+  }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
 
-  const contextPercentage = Math.min(100, Math.round((contextTokens / contextLimit) * 100));
+    const contextPercentage = Math.min(100, Math.round((contextTokens / contextLimit) * 100));
 
-  const handleContainerClick = (e: MouseEvent) => {
-    if (e.target instanceof Element && e.target.closest('[data-todo-list]')) return;
-    setIsExpanded(!isExpanded);
-  };
+    const handleContainerClick = (e: MouseEvent) => {
+      if (e.target instanceof Element && e.target.closest('[data-todo-list]')) return;
+      setIsExpanded(!isExpanded);
+    };
 
-  return (
-    <div className="py-2 px-3.5 border-b border-vscode-editorGroup-border/30 bg-vscode-sideBar-background shrink-0 select-none">
-      <div
-        onClick={handleContainerClick}
-        className="px-3 pt-2.5 pb-2 flex flex-col relative z-1 cursor-pointer bg-vscode-input-background hover:bg-vscode-input-background/90 text-vscode-foreground/80 hover:text-vscode-foreground shadow-lg shadow-vscode-sideBar-background/50 rounded-xl border border-vscode-panel-border/50 transition-all duration-200"
-      >
-        {/* Title Bar */}
-        <div className="flex justify-between items-center gap-2">
-          <div className="flex items-center grow min-w-0">
-            <div className="flex items-center shrink-0 text-vscode-descriptionForeground">
-              {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-            </div>
-            <div className="flex items-center gap-1.5 ml-1.5 grow min-w-0">
-              <span className="font-bold text-xs uppercase tracking-wider text-vscode-descriptionForeground shrink-0">Task:</span>
-              <Tooltip content={title.trim()} side="bottom">
-                <span className="whitespace-nowrap overflow-hidden text-ellipsis text-sm font-medium text-vscode-foreground grow min-w-0">
-                  {title.trim()}
-                </span>
-              </Tooltip>
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-            <Tooltip content="Close task" side="bottom">
-              <button onClick={onClose} className="icon-button">
-                <X size={14} />
-              </button>
-            </Tooltip>
-          </div>
-        </div>
-
-        {/* Collapsed State Summary */}
-        <Accordion open={!isExpanded}>
-          <div className="w-full flex items-center justify-between gap-3 mt-1.5" onClick={(e) => e.stopPropagation()}>
-            <Tooltip content={`${contextTokens.toLocaleString()} / ${contextLimit.toLocaleString()}`} side="bottom">
-              <div className="flex-1 flex items-center gap-2">
-                <span className="text-muted whitespace-nowrap">Context: {contextPercentage}%</span>
-                <ContextProgressBar percentage={contextPercentage} />
+    return (
+      <div className="py-2 px-3.5 border-b border-vscode-editorGroup-border/30 bg-vscode-sideBar-background shrink-0 select-none">
+        <div
+          onClick={handleContainerClick}
+          className="px-3 pt-2.5 pb-2 flex flex-col relative z-1 cursor-pointer bg-vscode-input-background hover:bg-vscode-input-background/90 text-vscode-foreground/80 hover:text-vscode-foreground shadow-lg shadow-vscode-sideBar-background/50 rounded-xl border border-vscode-panel-border/50 transition-all duration-200"
+        >
+          {/* Title Bar */}
+          <div className="flex justify-between items-center gap-2">
+            <div className="flex items-center grow min-w-0">
+              <div className="flex items-center shrink-0 text-vscode-descriptionForeground">
+                {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
               </div>
-            </Tooltip>
-            <div className="flex items-center gap-2">
-              {totalCost > 0 && <span className="text-xs font-mono text-vscode-foreground/80">{formatCost(totalCost)}</span>}
-              <Tooltip content="Search chat" side="bottom">
-                <button onClick={onSearchOpen} className="icon-button">
-                  <Search size={14} />
+              <div className="flex items-center gap-1.5 ml-1.5 grow min-w-0">
+                <span className="font-bold text-xs uppercase tracking-wider text-vscode-descriptionForeground shrink-0">Task:</span>
+                <Tooltip content={title.trim()} side="bottom">
+                  <span className="whitespace-nowrap overflow-hidden text-ellipsis text-sm font-medium text-vscode-foreground grow min-w-0">
+                    {title.trim()}
+                  </span>
+                </Tooltip>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+              <Tooltip content="Close task" side="bottom">
+                <button onClick={onClose} className="icon-button">
+                  <X size={14} />
                 </button>
               </Tooltip>
             </div>
           </div>
-        </Accordion>
 
-        {/* Expanded Details Table */}
-        <Accordion open={isExpanded}>
-          <div className="flex flex-col gap-2 mt-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-            <table className="w-full text-muted">
-              <tbody>
-                {/* Context Row */}
-                <tr>
-                  <th className="font-semibold text-left align-middle w-1 whitespace-nowrap pr-3 pb-2.5">Context</th>
-                  <td className="align-middle pb-2.5">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono text-vscode-foreground whitespace-nowrap">
-                        {contextTokens.toLocaleString()} / {contextLimit.toLocaleString()} ({contextPercentage}%)
-                      </span>
-                      <ContextProgressBar percentage={contextPercentage} />
-                      {!isArchived && (
-                        <Tooltip content="Compact context">
-                          <button onClick={onCompact} className="icon-button">
-                            <FoldVertical size={14} />
-                          </button>
-                        </Tooltip>
-                      )}
-                    </div>
-                  </td>
-                </tr>
+          {/* Collapsed State Summary */}
+          <Accordion open={!isExpanded}>
+            <div className="w-full flex items-center justify-between gap-3 mt-1.5" onClick={(e) => e.stopPropagation()}>
+              <Tooltip content={`${contextTokens.toLocaleString()} / ${contextLimit.toLocaleString()}`} side="bottom">
+                <div className="flex-1 flex items-center gap-2">
+                  <span className="text-muted whitespace-nowrap">Context: {contextPercentage}%</span>
+                  <ContextProgressBar percentage={contextPercentage} />
+                </div>
+              </Tooltip>
+              <div className="flex items-center gap-2">
+                {totalCost > 0 && <span className="text-xs font-mono text-vscode-foreground/80">{formatCost(totalCost)}</span>}
+                <Tooltip content="Search chat" side="bottom">
+                  <button onClick={onSearchOpen} className="icon-button">
+                    <Search size={14} />
+                  </button>
+                </Tooltip>
+              </div>
+            </div>
+          </Accordion>
 
-                {/* Tokens Row */}
-                <tr>
-                  <th className="font-semibold text-left align-middle w-1 whitespace-nowrap pr-3 pb-2.5">Tokens</th>
-                  <td className="align-middle pb-2.5 font-mono text-vscode-foreground">
-                    <div className="flex items-center gap-3">
-                      <span className="flex items-center gap-1">
-                        <CloudUpload size={12} className="text-vscode-descriptionForeground" />
-                        In: {tokensIn.toLocaleString()}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <CloudDownload size={12} className="text-vscode-descriptionForeground" />
-                        Out: {tokensOut.toLocaleString()}
-                      </span>
-                    </div>
-                  </td>
-                </tr>
-
-                {/* Cache Row */}
-                {(cacheReads > 0 || cacheWrites > 0) && (
+          {/* Expanded Details Table */}
+          <Accordion open={isExpanded}>
+            <div className="flex flex-col gap-2 mt-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+              <table className="w-full text-muted">
+                <tbody>
+                  {/* Context Row */}
                   <tr>
-                    <th className="font-semibold text-left align-middle w-1 whitespace-nowrap pr-3 pb-2.5">Cache</th>
-                    <td className="align-middle pb-2.5 font-mono text-vscode-foreground">
-                      <div className="flex items-center gap-3">
-                        {cacheReads > 0 && (
-                          <span className="flex items-center gap-1">
-                            <CloudDownload size={12} className="text-vscode-descriptionForeground opacity-60" />
-                            Reads: {cacheReads.toLocaleString()}
-                          </span>
-                        )}
-                        {cacheWrites > 0 && (
-                          <span className="flex items-center gap-1">
-                            <CloudUpload size={12} className="text-vscode-descriptionForeground opacity-60" />
-                            Writes: {cacheWrites.toLocaleString()}
-                          </span>
+                    <th className="font-semibold text-left align-middle w-1 whitespace-nowrap pr-3 pb-2.5">Context</th>
+                    <td className="align-middle pb-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono text-vscode-foreground whitespace-nowrap">
+                          {contextTokens.toLocaleString()} / {contextLimit.toLocaleString()} ({contextPercentage}%)
+                        </span>
+                        <ContextProgressBar percentage={contextPercentage} />
+                        {!isArchived && (
+                          <Tooltip content="Compact context">
+                            <button onClick={onCompact} className="icon-button">
+                              <FoldVertical size={14} />
+                            </button>
+                          </Tooltip>
                         )}
                       </div>
                     </td>
                   </tr>
-                )}
 
-                {/* Cost & Actions Row */}
-                <tr>
-                  <th className="font-semibold text-left align-middle w-1 whitespace-nowrap pr-3">API Cost</th>
-                  <td className="align-middle font-mono text-vscode-foreground">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-1.5">
-                        <Coins size={12} className="text-vscode-descriptionForeground" />
-                        <span className="text-vscode-editorWarning-foreground font-bold">{formatCost(totalCost)}</span>
-                        <span className="text-muted/60 font-normal">USD</span>
+                  {/* Tokens Row */}
+                  <tr>
+                    <th className="font-semibold text-left align-middle w-1 whitespace-nowrap pr-3 pb-2.5">Tokens</th>
+                    <td className="align-middle pb-2.5 font-mono text-vscode-foreground">
+                      <div className="flex items-center gap-3">
+                        <span className="flex items-center gap-1">
+                          <CloudUpload size={12} className="text-vscode-descriptionForeground" />
+                          In: {tokensIn.toLocaleString()}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <CloudDownload size={12} className="text-vscode-descriptionForeground" />
+                          Out: {tokensOut.toLocaleString()}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        {onArchive && (
-                          <Tooltip content={isArchived ? 'Unarchive task' : 'Archive task'} side="bottom">
-                            <button
-                              onClick={onArchive}
-                              disabled={archiveDisabled}
-                              className="icon-button opacity-80 hover:opacity-100 active:bg-vscode-list-hoverBackground/40 transition-opacity disabled:opacity-40 disabled:cursor-default"
-                            >
-                              {isArchived ? <ArchiveRestore size={14} /> : <Archive size={14} />}
-                            </button>
-                          </Tooltip>
-                        )}
-                        <TaskActions
-                          iconSize={14}
-                          buttonClassName="icon-button opacity-80 hover:opacity-100 active:bg-vscode-list-hoverBackground/40 transition-opacity"
-                          wrapperClassName="select-none -my-1"
-                          copyText={title}
-                          onExport={onExport}
-                          onDelete={onDelete}
-                          onViewRaw={onViewRaw}
-                          deleteDisabled={deleteDisabled}
-                        />
+                    </td>
+                  </tr>
+
+                  {/* Cache Row */}
+                  {(cacheReads > 0 || cacheWrites > 0) && (
+                    <tr>
+                      <th className="font-semibold text-left align-middle w-1 whitespace-nowrap pr-3 pb-2.5">Cache</th>
+                      <td className="align-middle pb-2.5 font-mono text-vscode-foreground">
+                        <div className="flex items-center gap-3">
+                          {cacheReads > 0 && (
+                            <span className="flex items-center gap-1">
+                              <CloudDownload size={12} className="text-vscode-descriptionForeground opacity-60" />
+                              Reads: {cacheReads.toLocaleString()}
+                            </span>
+                          )}
+                          {cacheWrites > 0 && (
+                            <span className="flex items-center gap-1">
+                              <CloudUpload size={12} className="text-vscode-descriptionForeground opacity-60" />
+                              Writes: {cacheWrites.toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+
+                  {/* Cost & Actions Row */}
+                  <tr>
+                    <th className="font-semibold text-left align-middle w-1 whitespace-nowrap pr-3">API Cost</th>
+                    <td className="align-middle font-mono text-vscode-foreground">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-1.5">
+                          <Coins size={12} className="text-vscode-descriptionForeground" />
+                          <span className="text-vscode-editorWarning-foreground font-bold">{formatCost(totalCost)}</span>
+                          <span className="text-muted/60 font-normal">USD</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {onArchive && (
+                            <Tooltip content={isArchived ? 'Unarchive task' : 'Archive task'} side="bottom">
+                              <button
+                                onClick={onArchive}
+                                disabled={archiveDisabled}
+                                className="icon-button opacity-80 hover:opacity-100 active:bg-vscode-list-hoverBackground/40 transition-opacity disabled:opacity-40 disabled:cursor-default"
+                              >
+                                {isArchived ? <ArchiveRestore size={14} /> : <Archive size={14} />}
+                              </button>
+                            </Tooltip>
+                          )}
+                          <TaskActions
+                            iconSize={14}
+                            buttonClassName="icon-button opacity-80 hover:opacity-100 active:bg-vscode-list-hoverBackground/40 transition-opacity"
+                            wrapperClassName="select-none -my-1"
+                            copyText={title}
+                            onExport={onExport}
+                            onDelete={onDelete}
+                            onViewRaw={onViewRaw}
+                            deleteDisabled={deleteDisabled}
+                          />
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </Accordion>
-        {todos && todos.length > 0 && <TodoHeader todos={todos} />}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </Accordion>
+          {todos && todos.length > 0 && <TodoHeader todos={todos} />}
+        </div>
       </div>
-    </div>
-  );
-};
+    );
+  },
+);

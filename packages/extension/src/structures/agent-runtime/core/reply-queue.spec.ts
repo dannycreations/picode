@@ -50,4 +50,25 @@ describe('ReplyQueue', () => {
     expect(queue.all().map((m) => m.text)).toEqual(['b']);
     expect(onChange).toHaveBeenCalledTimes(1);
   });
+
+  it('reports its size without handing out a snapshot', () => {
+    const { queue } = makeQueue();
+    expect(queue.size).toBe(0);
+    queue.add('a');
+    queue.add('b');
+    expect(queue.size).toBe(2);
+    queue.remove(queue.all()[0].id);
+    expect(queue.size).toBe(1);
+  });
+
+  it('hands the notified list over without letting later changes touch it', () => {
+    const { queue, onChange } = makeQueue();
+    queue.add('a');
+    const notified = onChange.mock.calls[0][0] as readonly { id: string; text: string }[];
+
+    queue.add('b');
+    queue.remove(notified[0].id);
+
+    expect(notified.map((m) => m.text)).toEqual(['a']);
+  });
 });

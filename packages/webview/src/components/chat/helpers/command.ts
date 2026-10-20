@@ -1,7 +1,6 @@
 import type { CommandItem } from '@pi-code/shared/core/protocol';
 
 const TOKEN_PATTERN = /^\/(\S*)/;
-const WORD_BOUNDARY_PATTERN = /[:\-_./]/;
 
 interface CommandToken {
   readonly name: string;
@@ -43,16 +42,17 @@ function isSubsequence(haystack: string, needle: string): boolean {
   return false;
 }
 
-function scoreCommand(name: string, query: string): number | null {
-  if (!query) return 0;
+function isWordBoundary(char: string): boolean {
+  return char === ':' || char === '-' || char === '_' || char === '.' || char === '/';
+}
 
-  const haystack = name.toLowerCase();
-  const needle = query.toLowerCase();
+function scoreCommand(haystack: string, needle: string): number | null {
+  if (!needle) return 0;
 
   if (haystack.startsWith(needle)) return 0;
 
   for (let index = 1; index < haystack.length; index++) {
-    if (WORD_BOUNDARY_PATTERN.test(haystack[index - 1]) && haystack.startsWith(needle, index)) {
+    if (isWordBoundary(haystack[index - 1]) && haystack.startsWith(needle, index)) {
       return 1;
     }
   }
@@ -62,12 +62,23 @@ function scoreCommand(name: string, query: string): number | null {
   return isSubsequence(haystack, needle) ? 3 : null;
 }
 
+interface ScoredCommand {
+  readonly command: CommandItem;
+  readonly score: number;
+}
+
 export function matchCommands(commands: readonly CommandItem[], query: string): CommandItem[] {
-  return commands
-    .map((command) => ({ command, score: scoreCommand(command.name, query) }))
-    .filter((entry): entry is { command: CommandItem; score: number } => entry.score !== null)
-    .sort((a, b) => a.score - b.score || a.command.name.localeCompare(b.command.name))
-    .map((entry) => entry.command);
+  const needle = query.toLowerCase();
+  const scored: ScoredCommand[] = [];
+  for (const command of commands) {
+    const score = scoreCommand(command.name.toLowerCase(), needle);
+    if (score !== null) scored.push({ command, score });
+  }
+  scored.sort((a, b) => a.score - b.score || a.command.name.localeCompare(b.command.name));
+
+  const matched: CommandItem[] = [];
+  for (const entry of scored) matched.push(entry.command);
+  return matched;
 }
 
 interface CommandInsertion {

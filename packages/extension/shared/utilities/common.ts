@@ -43,8 +43,33 @@ export function createActiveTask(id: string, title: string, messages: ChatMessag
   return { id, title, messages, ...EMPTY_STATS };
 }
 
+function isTrimmed(code: number): boolean {
+  if (code === 0x20) return true;
+  if (code < 0x09) return false;
+  if (code <= 0x0d) return true;
+  if (code === 0xa0 || code === 0x1680) return true;
+  if (code >= 0x2000 && code <= 0x200a) return true;
+  if (code === 0x2028 || code === 0x2029 || code === 0x202f || code === 0x205f) return true;
+  if (code === 0x3000 || code === 0xfeff) return true;
+  return false;
+}
+
+function hasVisibleText(text: string | undefined): boolean {
+  if (!text) return false;
+  for (let index = 0; index < text.length; index++) {
+    if (!isTrimmed(text.charCodeAt(index))) return true;
+  }
+  return false;
+}
+
 export function hasVisibleOutput(message: AssistantChatMessage): boolean {
-  return message.text.trim() !== '' || (message.reasoning?.trim() ?? '') !== '';
+  return hasVisibleText(message.text) || hasVisibleText(message.reasoning);
+}
+
+export function startsWithIgnoringLeadingWhitespace(text: string, prefix: string): boolean {
+  let index = 0;
+  while (index < text.length && isTrimmed(text.charCodeAt(index))) index++;
+  return text.startsWith(prefix, index);
 }
 
 export function findReplaceableFailedRequest(messages: readonly ChatMessage[]): number | undefined {
@@ -73,14 +98,64 @@ export function resolveContextLimit(contextWindow: number | undefined): number {
   return contextWindow ?? EMPTY_STATS.contextLimit;
 }
 
+const LITERAL_PATTERN_CACHE_LIMIT = 256;
+const literalPatterns = new Map<string, RegExp>();
+
+function literalPattern(needle: string, caseSensitive: boolean): RegExp {
+  const key = `${caseSensitive ? 's' : 'i'}:${needle}`;
+  const cached = literalPatterns.get(key);
+  if (cached) return cached;
+
+  const pattern = new RegExp(escapeRegExp(needle), caseSensitive ? 'g' : 'gi');
+  if (literalPatterns.size >= LITERAL_PATTERN_CACHE_LIMIT) literalPatterns.clear();
+  literalPatterns.set(key, pattern);
+  return pattern;
+}
+
 export function findOccurrences(haystack: string, needle: string, caseSensitive = false): number[] {
   if (needle === '') return [];
 
+  const pattern = literalPattern(needle, caseSensitive);
+  // The shared pattern carries its own scan position, so it is rewound before
+  // every scan. The needle is never empty, so every match advances.
+  pattern.lastIndex = 0;
+
   const positions: number[] = [];
-  for (const match of haystack.matchAll(new RegExp(escapeRegExp(needle), caseSensitive ? 'g' : 'gi'))) {
+  let match = pattern.exec(haystack);
+  while (match !== null) {
     positions.push(match.index);
+    match = pattern.exec(haystack);
   }
   return positions;
+}
+
+export function countOccurrences(haystack: string, needle: string, caseSensitive = false): number {
+  if (needle === '') return 0;
+
+  const pattern = literalPattern(needle, caseSensitive);
+  pattern.lastIndex = 0;
+
+  let count = 0;
+  let match = pattern.exec(haystack);
+  while (match !== null) {
+    count++;
+    match = pattern.exec(haystack);
+  }
+  return count;
+}
+
+const literalTests = new Map<string, RegExp>();
+
+export function containsIgnoreCase(haystack: string, needle: string): boolean {
+  if (needle === '') return true;
+
+  let pattern = literalTests.get(needle);
+  if (!pattern) {
+    pattern = new RegExp(escapeRegExp(needle), 'i');
+    if (literalTests.size >= LITERAL_PATTERN_CACHE_LIMIT) literalTests.clear();
+    literalTests.set(needle, pattern);
+  }
+  return pattern.test(haystack);
 }
 
 export interface OccurrenceSegment {
@@ -98,13 +173,14 @@ export function splitOnOccurrences(text: string, needle: string, caseSensitive =
 
   const segments: OccurrenceSegment[] = [];
   let cursor = 0;
-  positions.forEach((position, matchIndex) => {
+  for (let index = 0; index < positions.length; index++) {
+    const position = positions[index];
     if (position > cursor) {
       segments.push({ text: text.slice(cursor, position), matchIndex: null });
     }
-    segments.push({ text: text.slice(position, position + needle.length), matchIndex });
+    segments.push({ text: text.slice(position, position + needle.length), matchIndex: index });
     cursor = position + needle.length;
-  });
+  }
   if (cursor < text.length) {
     segments.push({ text: text.slice(cursor), matchIndex: null });
   }

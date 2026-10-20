@@ -21,22 +21,30 @@ function toContentParts(content: string | readonly MessageContentPart[]): readon
 }
 
 function joinThinking(parts: readonly MessageContentPart[]): string {
-  return parts
-    .filter((part) => part.type === 'thinking')
-    .map((part) => part.thinking)
-    .join('\n');
+  let text = '';
+  let hasText = false;
+  for (const part of parts) {
+    if (part.type !== 'thinking') continue;
+    text = hasText ? `${text}\n${part.thinking}` : part.thinking;
+    hasText = true;
+  }
+  return text;
 }
 
 function collectImageAttachments(parts: readonly MessageContentPart[]): Attachment[] {
-  return parts
-    .filter((part) => part.type === 'image')
-    .map((part) => ({ kind: 'image' as const, dataUrl: toBase64DataUrl(part.data, part.mimeType) }));
+  const attachments: Attachment[] = [];
+  for (const part of parts) {
+    if (part.type !== 'image') continue;
+    attachments.push({ kind: 'image' as const, dataUrl: toBase64DataUrl(part.data, part.mimeType) });
+  }
+  return attachments;
 }
 
 export function convertSessionEntries(entries: readonly SessionEntry[]): ChatMessage[] {
   const result: ChatMessage[] = [];
 
-  const byId = new Map(entries.map((entry) => [entry.id, entry]));
+  const byId = new Map<string, SessionEntry>();
+  for (const entry of entries) byId.set(entry.id, entry);
   const textAttachmentsByUser = collectTextAttachments(entries, byId);
 
   for (const entry of entries) {
@@ -85,11 +93,11 @@ function collectTextAttachments(entries: readonly SessionEntry[], byId: Map<stri
 }
 
 function findUserMessageAncestorId(entry: SessionEntryBase, byId: Map<string, SessionEntry>): string | null {
-  const visited = new Set<string>();
+  // A chain can never be longer than the entry list, so a corrupt parent link
+  // ends the walk instead of looping forever.
+  const limit = byId.size + 1;
   let current: SessionEntryBase | undefined = entry;
-  while (current) {
-    if (visited.has(current.id)) return null;
-    visited.add(current.id);
+  for (let step = 0; current !== undefined && step < limit; step++) {
     if (current.type === 'message' && (current as SessionMessageEntry).message.role === 'user') {
       return current.id;
     }
@@ -179,7 +187,9 @@ function appendAssistantTurn(result: ChatMessage[], id: string, msg: Extract<Ses
   // above already carries the failure notice.
   const dispatchedTools = msg.stopReason !== 'error' && msg.stopReason !== 'aborted';
   if (dispatchedTools) {
-    for (const toolCall of parts.filter((part) => part.type === 'toolCall')) {
+    for (const part of parts) {
+      if (part.type !== 'toolCall') continue;
+      const toolCall = part;
       result.push({
         id: toolCall.id || uuidv7(),
         sender: 'tool',
@@ -265,9 +275,15 @@ function calculateSessionStats(entries: readonly SessionEntry[], contextLimit: n
 }
 
 export function loadSessionTranscript(entries: readonly SessionEntry[], contextLimit: number): { messages: ChatMessage[]; stats: StatsData } {
-  const messages = convertSessionEntries(entries).map((message) =>
-    message.sender === 'tool' ? { ...message, toolSections: buildToolSections(message) } : message,
-  );
+  const messages = convertSessionEntries(entries);
+  // The tool rows carry their sections, so the webview does not rebuild them
+  // on every render. Filling them in place keeps the transcript one array
+  // instead of a converted copy plus a sectioned copy.
+  for (let index = 0; index < messages.length; index++) {
+    const message = messages[index];
+    if (message.sender !== 'tool') continue;
+    messages[index] = { ...message, toolSections: buildToolSections(message) };
+  }
   const stats = calculateSessionStats(entries, contextLimit);
   return { messages, stats };
 }

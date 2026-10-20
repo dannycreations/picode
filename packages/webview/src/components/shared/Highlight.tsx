@@ -1,4 +1,4 @@
-import { findOccurrences, splitOnOccurrences } from '@pi-code/shared/utilities/common';
+import { countOccurrences, splitOnOccurrences } from '@pi-code/shared/utilities/common';
 
 import type { FC } from 'react';
 import type { OccurrenceSegment } from '@pi-code/shared/utilities/common';
@@ -27,7 +27,7 @@ function localActiveIndex(base: number, count: number, activeIndex: number): num
 // Counts matches in one message's text and translates the global active index
 // into a local one, so renderers know which occurrence to emphasize.
 export function locateOccurrences(text: string, search: SearchContext | undefined): OccurrenceStats {
-  const count = findOccurrences(text, search?.query ?? '').length;
+  const count = countOccurrences(text, search?.query ?? '');
   return { count, active: search ? localActiveIndex(search.globalOffset, count, search.activeIndex) : -1 };
 }
 

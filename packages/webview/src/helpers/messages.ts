@@ -21,37 +21,67 @@ function canGroupTool(message: ChatMessage): message is ToolChatMessage {
 function collectToolSections(messages: ReadonlyArray<ChatMessage>): ToolSection[] {
   const sections: ToolSection[] = [];
   for (const message of messages) {
-    if (message.sender === 'tool') {
-      sections.push(...(message.toolSections ?? buildToolSections(message)));
-    }
+    if (message.sender !== 'tool') continue;
+    const messageSections = message.toolSections ?? buildToolSections(message);
+    for (const section of messageSections) sections.push(section);
   }
   return sections;
 }
 
 export function rebuildToolSections(messages: ChatMessage[], id: string): ChatMessage[] {
-  let changed = false;
-  const next = messages.map((message) => {
-    if (message.id !== id || message.sender !== 'tool') return message;
-    changed = true;
-    return { ...message, toolSections: buildToolSections(message) };
-  });
-  return changed ? next : messages;
+  let next: ChatMessage[] | null = null;
+  for (let index = 0; index < messages.length; index++) {
+    const message = messages[index];
+    if (message.id !== id || message.sender !== 'tool') continue;
+    if (next === null) next = messages.slice();
+    next[index] = { ...message, toolSections: buildToolSections(message) };
+  }
+  return next ?? messages;
+}
+
+interface GroupedRow {
+  readonly members: readonly ChatMessage[];
+  readonly row: ChatMessage;
+}
+
+const GROUPED_ROW_CACHE_LIMIT = 512;
+const groupedRowCache = new Map<string, GroupedRow>();
+
+function sameMembers(cached: readonly ChatMessage[], group: readonly ToolChatMessage[]): boolean {
+  if (cached.length !== group.length) return false;
+  for (let index = 0; index < group.length; index++) {
+    if (cached[index] !== group[index]) return false;
+  }
+  return true;
 }
 
 export function groupToolMessages(messages: ReadonlyArray<ChatMessage>): ChatMessage[] {
   const result: ChatMessage[] = [];
   let group: ToolChatMessage[] = [];
+  // Only a row that names the tool call it belongs to has to be nested under
+  // that row, so the lookup table for the nesting is built only when one
+  // exists.
+  let hasParentLink = false;
 
   const flushGroup = (): void => {
     if (group.length === 0) return;
     const first = group[0];
-    // A lone row that already carries its sections is pushed as is. Rebuilding
-    // it would hand every mounted tool row a fresh object on each streamed
-    // token, so the chat body's memo would never hit for any of them.
-    const row =
-      group.length === 1 && first.toolSections !== undefined
-        ? first
-        : { ...group[group.length - 1], id: first.id, toolSections: collectToolSections(group) };
+    let row: ChatMessage;
+    if (group.length === 1 && first.toolSections !== undefined) {
+      // A lone row that already carries its sections is pushed as is. Rebuilding
+      // it would hand every mounted tool row a fresh object on each streamed
+      // token, so the chat body's memo would never hit for any of them.
+      row = first;
+    } else {
+      const cached = groupedRowCache.get(first.id);
+      if (cached && sameMembers(cached.members, group)) {
+        row = cached.row;
+      } else {
+        row = { ...group[group.length - 1], id: first.id, toolSections: collectToolSections(group) };
+        if (groupedRowCache.size >= GROUPED_ROW_CACHE_LIMIT) groupedRowCache.clear();
+        groupedRowCache.set(first.id, { members: group.slice(), row });
+      }
+    }
     result.push(row);
     group = [];
   };
@@ -68,9 +98,12 @@ export function groupToolMessages(messages: ReadonlyArray<ChatMessage>): ChatMes
       flushGroup();
       result.push(message);
     }
+    if (message.sender === 'tool' && message.toolCallId !== undefined) hasParentLink = true;
   }
 
   flushGroup();
+
+  if (!hasParentLink) return result;
 
   const parentIndexByToolCallId = new Map<string, number>();
   for (let index = 0; index < result.length; index++) {
@@ -112,19 +145,23 @@ export function groupToolMessages(messages: ReadonlyArray<ChatMessage>): ChatMes
   return result;
 }
 
-export function isRenderableMessage(message: ChatMessage): boolean {
-  if (message.sender === 'assistant') {
-    return hasVisibleOutput(message);
-  }
+const renderableCache = new WeakMap<ChatMessage, boolean>();
 
-  return true;
+export function isRenderableMessage(message: ChatMessage): boolean {
+  if (message.sender !== 'assistant') return true;
+  const cached = renderableCache.get(message);
+  if (cached !== undefined) return cached;
+  const renderable = hasVisibleOutput(message);
+  renderableCache.set(message, renderable);
+  return renderable;
 }
 
 export function hasPendingApproval(messages: ReadonlyArray<ChatMessage>): boolean {
-  return messages.some(
-    (message) =>
-      (message.sender === 'tool' || message.sender === 'assistant' || message.sender === 'api_request') && message.toolStatus === 'approval',
-  );
+  for (const message of messages) {
+    if (message.sender !== 'tool' && message.sender !== 'assistant' && message.sender !== 'api_request') continue;
+    if (message.toolStatus === 'approval') return true;
+  }
+  return false;
 }
 
 function todoListOf(message: ChatMessage): TodoItem[] | undefined {
@@ -169,39 +206,42 @@ interface RequestSettlePatch {
 }
 
 export function settlePendingTurns(messages: ChatMessage[], patch: RequestSettlePatch = {}, onlyId?: string): ChatMessage[] {
-  let changed = false;
-  const next = messages.map((m) => {
-    if (m.sender !== 'api_request' && m.sender !== 'assistant') return m;
+  let next: ChatMessage[] | null = null;
+  for (let index = 0; index < messages.length; index++) {
+    const message = messages[index];
+    if (message.sender !== 'api_request' && message.sender !== 'assistant') continue;
     if (onlyId !== undefined) {
       // A named row is settling from its own terminal event, which owns
       // the final cost and error even when a mid-turn event closed the
       // row early. Blanket settles keep the running guard so they never
       // overwrite a row an earlier event already settled.
-      if (m.id !== onlyId) return m;
-    } else if (m.toolStatus !== 'running') {
-      return m;
+      if (message.id !== onlyId) continue;
+    } else if (message.toolStatus !== 'running') {
+      continue;
     }
-    changed = true;
-    switch (m.sender) {
-      case 'api_request':
-        return {
-          ...m,
-          toolStatus: patch.error ? ('denied' as const) : ('completed' as const),
-          cost: patch.cost ?? m.cost,
-          errorMessage: patch.error ?? m.errorMessage,
-        };
-      case 'assistant':
-        return {
-          ...m,
-          toolStatus: 'completed' as const,
-        };
-    }
-  });
-  return changed ? next : messages;
+    if (next === null) next = messages.slice();
+    next[index] =
+      message.sender === 'api_request'
+        ? {
+            ...message,
+            toolStatus: patch.error ? ('denied' as const) : ('completed' as const),
+            cost: patch.cost ?? message.cost,
+            errorMessage: patch.error ?? message.errorMessage,
+          }
+        : { ...message, toolStatus: 'completed' as const };
+  }
+  return next ?? messages;
 }
 
 export function patchMessage(messages: ChatMessage[], id: string, patch: Partial<ChatMessage>): ChatMessage[] {
-  return messages.map((message) => (message.id === id ? { ...message, ...patch } : message));
+  let next: ChatMessage[] | null = null;
+  for (let index = 0; index < messages.length; index++) {
+    const message = messages[index];
+    if (message.id !== id) continue;
+    if (next === null) next = messages.slice();
+    next[index] = { ...message, ...patch };
+  }
+  return next ?? messages;
 }
 
 export function patchRetryDeadline(messages: ChatMessage[], retryAt: number | undefined): ChatMessage[] {
@@ -229,7 +269,7 @@ export function patchLastAssistant(messages: ChatMessage[], patch: (message: Ass
     const message = messages[i];
     if (message.sender !== 'assistant') continue;
 
-    const next = [...messages];
+    const next = messages.slice();
     next[i] = { ...message, ...patch(message) };
     return next;
   }
@@ -237,16 +277,86 @@ export function patchLastAssistant(messages: ChatMessage[], patch: (message: Ass
 }
 
 export function upsertToolMessage(messages: ChatMessage[], id: string, patch: Partial<ToolChatMessage>): ChatMessage[] {
-  if (messages.some((m) => m.id === id)) {
-    return patchMessage(messages, id, patch);
+  let existingIndex = -1;
+  let queueIndex = -1;
+  for (let index = 0; index < messages.length; index++) {
+    const message = messages[index];
+    if (existingIndex === -1 && message.id === id) existingIndex = index;
+    if (queueIndex === -1 && message.sender === 'queue') queueIndex = index;
+  }
+
+  if (existingIndex !== -1) {
+    const next = messages.slice();
+    next[existingIndex] = { ...messages[existingIndex], ...patch };
+    return next;
   }
 
   const toolMessage: ChatMessage = { id, sender: 'tool', text: '', timestamp: Date.now(), ...patch };
+  const next = messages.slice();
+  next.splice(queueIndex === -1 ? messages.length : queueIndex, 0, toolMessage);
+  return next;
+}
 
-  const queueIndex = messages.findIndex((message) => message.sender === 'queue');
-  if (queueIndex === -1) return [...messages, toolMessage];
+export function upsertToolRow(messages: ChatMessage[], id: string, patch: Partial<ToolChatMessage>): ChatMessage[] {
+  let existingIndex = -1;
+  let queueIndex = -1;
+  for (let index = 0; index < messages.length; index++) {
+    const message = messages[index];
+    if (existingIndex === -1 && message.id === id) existingIndex = index;
+    if (queueIndex === -1 && message.sender === 'queue') queueIndex = index;
+  }
 
-  return [...messages.slice(0, queueIndex), toolMessage, ...messages.slice(queueIndex)];
+  const createRow = (): ChatMessage => {
+    const row: ToolChatMessage = { id, sender: 'tool', text: '', timestamp: Date.now(), ...patch };
+    return { ...row, toolSections: buildToolSections(row) };
+  };
+
+  const result: ChatMessage[] = [];
+  for (let index = 0; index < messages.length; index++) {
+    const message = messages[index];
+
+    // A new tool row lands ahead of the queued replies, so the reply the user
+    // typed while the tool ran still shows below it.
+    if (existingIndex === -1 && index === queueIndex) result.push(createRow());
+
+    let updated = message;
+    if (message.sender === 'api_request' || message.sender === 'assistant') {
+      if (message.toolStatus === 'running') updated = { ...message, toolStatus: 'completed' as const };
+    }
+    if (index === existingIndex) {
+      const patched = { ...updated, ...patch } as ToolChatMessage;
+      updated = { ...patched, toolSections: buildToolSections(patched) };
+    }
+    result.push(updated);
+  }
+  if (existingIndex === -1 && queueIndex === -1) result.push(createRow());
+
+  return result;
+}
+
+export function patchToolRow(
+  messages: ChatMessage[],
+  id: string,
+  subagent: string | undefined,
+  patch: (target: ToolChatMessage) => Partial<ToolChatMessage>,
+): ChatMessage[] {
+  let next: ChatMessage[] | null = null;
+  let found = false;
+
+  for (let index = 0; index < messages.length; index++) {
+    const message = messages[index];
+    if (message.id !== id) continue;
+    found = true;
+    if (message.sender !== 'tool') continue;
+    const patched = { ...message, ...patch(message) };
+    if (next === null) next = messages.slice();
+    next[index] = { ...patched, toolSections: buildToolSections(patched) };
+  }
+
+  // A sub-agent event for a row the webview never showed has nothing to
+  // update, and creating one would leave an orphan row behind.
+  if (!found && subagent !== undefined) return messages;
+  return next ?? messages;
 }
 
 export function deliverQueuedReplies(messages: ChatMessage[], delivered: ChatMessage[]): ChatMessage[] {
@@ -303,4 +413,39 @@ export function appendOnce(messages: ChatMessage[], message: ChatMessage): ChatM
   }
 
   return [...messages, message];
+}
+
+export interface ChatRenderModel {
+  readonly renderItems: ChatMessage[];
+  readonly oldTodosById: ReadonlyMap<string, TodoItem[]>;
+  readonly hasApproval: boolean;
+  readonly latestTodos: TodoItem[] | undefined;
+}
+
+export function buildChatRenderModel(messages: ReadonlyArray<ChatMessage>): ChatRenderModel {
+  const visible: ChatMessage[] = [];
+  const oldTodosById = new Map<string, TodoItem[]>();
+  let previousTodos: TodoItem[] | undefined;
+  let latestTodos: TodoItem[] | undefined;
+  let hasApproval = false;
+
+  for (const message of messages) {
+    // The approval state and the checklist belong to the whole transcript, not
+    // to the rows that happen to be on screen.
+    if (message.sender === 'tool' || message.sender === 'assistant' || message.sender === 'api_request') {
+      if (message.toolStatus === 'approval') hasApproval = true;
+    }
+
+    const todos = todoListOf(message);
+    if (todos) {
+      if (previousTodos) oldTodosById.set(message.id, previousTodos);
+      previousTodos = todos;
+      latestTodos = todos;
+    }
+
+    if (!isRenderableMessage(message)) continue;
+    visible.push(message);
+  }
+
+  return { renderItems: groupToolMessages(visible), oldTodosById, hasApproval, latestTodos };
 }

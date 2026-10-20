@@ -2,12 +2,14 @@ import { uuidv7 } from '@earendil-works/pi-ai';
 
 import type { Attachment, ChatMessage } from '@pi-code/shared/core/types';
 
-// Holds replies typed while a task runs, delivering them into the next turn as
-// steering messages instead of starting a new task.
 export class ReplyQueue {
-  private messages: ChatMessage[] = [];
+  private messages: readonly ChatMessage[] = [];
 
   public constructor(private readonly onChange: (messages: readonly ChatMessage[]) => void) {}
+
+  public get size(): number {
+    return this.messages.length;
+  }
 
   public all(): readonly ChatMessage[] {
     // A snapshot, not the live array: callers hold this across awaits while
@@ -24,28 +26,31 @@ export class ReplyQueue {
       attachments,
       timestamp: Date.now(),
     };
-    this.messages.push(msg);
-    this.onChange(this.messages);
+    this.replace([...this.messages, msg]);
   }
 
   public edit(id: string, text: string): void {
-    this.messages = this.messages.map((m) => (m.id === id ? { ...m, text } : m));
-    this.onChange(this.messages);
+    this.replace(this.messages.map((m) => (m.id === id ? { ...m, text } : m)));
   }
 
   public remove(id: string): void {
-    this.messages = this.messages.filter((m) => m.id !== id);
-    this.onChange(this.messages);
+    this.replace(this.messages.filter((m) => m.id !== id));
   }
 
   public clear(): void {
-    this.retain([]);
+    this.replace([]);
   }
 
-  // Keeps only undelivered entries after a steering pass; delivered ones are
-  // replaced by their user-rendered twins in the transcript itself.
   public retain(messages: readonly ChatMessage[]): void {
-    this.messages = [...messages];
-    this.onChange(this.messages);
+    this.replace(messages);
+  }
+
+  public retainExcept(ids: ReadonlySet<string>): void {
+    this.replace(this.messages.filter((m) => !ids.has(m.id)));
+  }
+
+  private replace(messages: readonly ChatMessage[]): void {
+    this.messages = messages;
+    this.onChange(messages);
   }
 }

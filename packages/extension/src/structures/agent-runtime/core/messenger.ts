@@ -14,17 +14,23 @@ export function postToWebview(webview: Webview | null, message: ExtensionToWebvi
   }
 }
 
+function joinChunks(chunks: readonly string[]): string {
+  if (chunks.length === 0) return '';
+  if (chunks.length === 1) return chunks[0];
+  return chunks.join('');
+}
+
 interface CoalescedToolUpdate {
   toolName?: string;
-  result: string;
+  chunks: string[];
   subagent?: string;
   subtitle?: string;
 }
 
 export class Messenger {
   private isDisposed = false;
-  private textBuffer = '';
-  private thinkingBuffer = '';
+  private textChunks: string[] = [];
+  private thinkingChunks: string[] = [];
   private toolUpdates = new Map<string, CoalescedToolUpdate>();
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
   private webview: Webview | null;
@@ -39,8 +45,8 @@ export class Messenger {
     }
 
     if (message.type === 'stream_delta') {
-      if (message.payload.text) this.textBuffer += message.payload.text;
-      if (message.payload.thinking) this.thinkingBuffer += message.payload.thinking;
+      if (message.payload.text) this.textChunks.push(message.payload.text);
+      if (message.payload.thinking) this.thinkingChunks.push(message.payload.thinking);
       this.scheduleFlush();
       return;
     }
@@ -48,7 +54,7 @@ export class Messenger {
     // Sub-agent events arrive through this same messenger; their start/update/
     // end events mirror the main-agent tool lifecycle below.
     if (message.type === 'tool_execution_start') {
-      const entry = this.toolUpdates.get(message.payload.id) ?? { result: '', subagent: undefined, subtitle: undefined };
+      const entry = this.toolUpdates.get(message.payload.id) ?? { chunks: [], subagent: undefined, subtitle: undefined };
       entry.toolName = message.payload.tool_name;
       this.toolUpdates.set(message.payload.id, entry);
       this.send(message);
@@ -57,9 +63,15 @@ export class Messenger {
 
     if (message.type === 'tool_execution_update') {
       const { id, result, subagent, subtitle } = message.payload;
-      const entry = this.toolUpdates.get(id) ?? { toolName: undefined, result: '', subagent: undefined, subtitle: undefined };
-      const isAppend = entry.toolName === 'execute_command';
-      entry.result = isAppend && entry.result ? entry.result + result : result;
+      const entry = this.toolUpdates.get(id) ?? { toolName: undefined, chunks: [], subagent: undefined, subtitle: undefined };
+      // A command reports its output in pieces that belong together, so they
+      // pile up; every other tool reports one result that replaces the last.
+      if (entry.toolName === 'execute_command') {
+        entry.chunks.push(result);
+      } else {
+        entry.chunks.length = 0;
+        entry.chunks.push(result);
+      }
       entry.subagent = subagent ?? entry.subagent;
       entry.subtitle = subtitle ?? entry.subtitle;
       this.toolUpdates.set(id, entry);
@@ -103,35 +115,36 @@ export class Messenger {
     }
 
     if (this.isDisposed) {
-      this.textBuffer = '';
-      this.thinkingBuffer = '';
+      this.textChunks.length = 0;
+      this.thinkingChunks.length = 0;
       this.toolUpdates.clear();
       return;
     }
 
-    if (this.textBuffer || this.thinkingBuffer) {
+    if (this.textChunks.length > 0 || this.thinkingChunks.length > 0) {
       postToWebview(this.webview, {
         type: 'stream_delta',
         payload: {
-          text: this.textBuffer || undefined,
-          thinking: this.thinkingBuffer || undefined,
+          text: joinChunks(this.textChunks) || undefined,
+          thinking: joinChunks(this.thinkingChunks) || undefined,
         },
       });
-      this.textBuffer = '';
-      this.thinkingBuffer = '';
+      this.textChunks.length = 0;
+      this.thinkingChunks.length = 0;
     }
 
     if (this.toolUpdates.size > 0) {
       for (const [id, update] of this.toolUpdates) {
-        if (update.result || update.subtitle !== undefined) {
+        const result = joinChunks(update.chunks);
+        if (result || update.subtitle !== undefined) {
           postToWebview(this.webview, {
             type: 'tool_execution_update',
-            payload: { id, result: update.result, subagent: update.subagent, subtitle: update.subtitle },
+            payload: { id, result, subagent: update.subagent, subtitle: update.subtitle },
           });
         }
         // Keep the tool name so later updates in the same tool call stay
         // append- or replace-correct; only the buffered payload is cleared.
-        update.result = '';
+        update.chunks.length = 0;
         update.subtitle = undefined;
       }
     }

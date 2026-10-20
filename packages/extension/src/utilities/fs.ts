@@ -6,7 +6,7 @@ import { createInterface } from 'node:readline';
 import { formatPathRelativeToCwdOrAbsolute, getCwdRelativePath } from '@earendil-works/pi-coding-agent';
 
 import { logger } from '@pi-code/shared/core/logger';
-import { pathCollator } from '@pi-code/shared/utilities/common';
+import { containsIgnoreCase, pathCollator } from '@pi-code/shared/utilities/common';
 
 import type { LineRange } from '@pi-code/shared/core/types';
 
@@ -68,12 +68,18 @@ interface PathRank {
 }
 
 function rankPath(path: string, needle: string): PathRank {
-  const segments = path.split('/');
-  const base = segments.pop() ?? path;
+  const separator = path.lastIndexOf('/');
+  const base = separator === -1 ? path : path.slice(separator + 1);
   const baseIndex = base.toLowerCase().indexOf(needle);
+
+  let depth = 0;
+  for (let index = 0; index < path.length; index++) {
+    if (path.charCodeAt(index) === 47) depth++;
+  }
+
   return {
     baseIndex: baseIndex < 0 ? Number.MAX_SAFE_INTEGER : baseIndex,
-    depth: segments.length,
+    depth,
     pathLength: path.length,
   };
 }
@@ -92,6 +98,38 @@ function rankPaths(paths: readonly string[], needle: string): string[] {
 const MAX_RESULTS = 50;
 const MAX_SCANNED = 8000;
 const SEARCH_MAX_DEPTH = 2;
+
+const LISTING_TTL_MS = 1000;
+const LISTING_CACHE_LIMIT = 8;
+
+interface DirectoryListing {
+  readonly rel: string;
+  readonly isFile: boolean;
+  readonly isDir: boolean;
+}
+
+interface CachedListing {
+  readonly at: number;
+  readonly entries: DirectoryListing[];
+}
+
+const listingCache = new Map<string, CachedListing>();
+
+async function listSearchableDirectory(start: string, cwd: string): Promise<DirectoryListing[]> {
+  const key = `${cwd}\u0000${start}`;
+  const cached = listingCache.get(key);
+  if (cached && Date.now() - cached.at < LISTING_TTL_MS) return cached.entries;
+
+  const entries: DirectoryListing[] = [];
+  for await (const { rel, entry } of walkDirectory(start, SEARCH_MAX_DEPTH, cwd)) {
+    entries.push({ rel, isFile: entry.isFile, isDir: entry.isDir });
+    if (entries.length >= MAX_SCANNED) break;
+  }
+
+  if (listingCache.size >= LISTING_CACHE_LIMIT) listingCache.clear();
+  listingCache.set(key, { at: Date.now(), entries });
+  return entries;
+}
 
 export async function searchWorkspaceFiles(query: string, cwd: string): Promise<string[]> {
   const segments = query.split('/');
@@ -113,14 +151,12 @@ export async function searchWorkspaceFiles(query: string, cwd: string): Promise<
   }
 
   const matches: string[] = [];
-  let scanned = 0;
-
-  for await (const { rel, entry } of walkDirectory(start, SEARCH_MAX_DEPTH, cwd)) {
-    scanned++;
-    if (scanned > MAX_SCANNED) break;
+  const listing = await listSearchableDirectory(start, cwd);
+  for (let index = 0; index < listing.length; index++) {
+    const entry = listing[index];
     if (!entry.isFile && !entry.isDir) continue;
-    if (!rel.toLowerCase().includes(needle)) continue;
-    matches.push(rel);
+    if (!containsIgnoreCase(entry.rel, needle)) continue;
+    matches.push(entry.rel);
   }
 
   return rankPaths(matches, needle).slice(0, MAX_RESULTS);

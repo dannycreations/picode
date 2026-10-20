@@ -3,7 +3,7 @@ import { cn } from 'cn';
 import { Pi } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { findOccurrences } from '@pi-code/shared/utilities/common';
+import { countOccurrences } from '@pi-code/shared/utilities/common';
 import { ChatAction } from '@pi-code/webview/components/chat/ChatAction';
 import { ChatBody } from '@pi-code/webview/components/chat/ChatBody';
 import { ChatFooter } from '@pi-code/webview/components/chat/ChatFooter';
@@ -21,7 +21,7 @@ import { ConfirmDialog } from '@pi-code/webview/components/shared/ConfirmDialog'
 import { SEARCH_HIT_ACTIVE_CLASS } from '@pi-code/webview/components/shared/Highlight';
 import { Spinner } from '@pi-code/webview/components/shared/Spinner';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
-import { groupToolMessages, hasPendingApproval, isRenderableMessage, latestTodos, previousTodosById } from '@pi-code/webview/helpers/messages';
+import { buildChatRenderModel } from '@pi-code/webview/helpers/messages';
 import { useAutoScroll } from '@pi-code/webview/hooks/useAutoScroll';
 import { selectPendingQuestion, setComposerTextarea, useChatStore } from '@pi-code/webview/stores/useChatStore';
 
@@ -149,21 +149,10 @@ export const ChatView: FC = () => {
     }
   }, [setView]);
 
-  const messages = activeTask?.messages;
-  const visibleMessages = useMemo(() => (messages ?? []).filter(isRenderableMessage), [messages]);
-  const renderItems = useMemo(() => groupToolMessages(visibleMessages), [visibleMessages]);
-
-  // Map each update_todo row to the todos from the prior update so the chat body
-  // can show only what changed in that step. Built once per render list.
-  const oldTodosById = useMemo(() => previousTodosById(renderItems), [renderItems]);
-
-  // Both of these walk the whole transcript, and the render body below runs on
-  // more than a message change (scrolling, search navigation), so derive them
-  // once per message list instead.
-  const { hasApproval, activeTaskTodos } = useMemo(
-    () => ({ hasApproval: hasPendingApproval(messages ?? []), activeTaskTodos: latestTodos(messages ?? []) }),
-    [messages],
-  );
+  const { renderItems, oldTodosById, hasApproval, activeTaskTodos } = useMemo(() => {
+    const model = buildChatRenderModel(activeTask?.messages ?? []);
+    return { ...model, activeTaskTodos: model.latestTodos };
+  }, [activeTask?.messages]);
 
   // In-chat text search: count matches per message so we can show a total, jump
   // between them, and tell each renderer which occurrence to emphasize.
@@ -172,7 +161,7 @@ export const ChatView: FC = () => {
   const [activeMatch, setActiveMatch] = useState(-1);
 
   const matchCounts = useMemo(
-    () => (searchQuery ? renderItems.map((message) => findOccurrences(getMessageSearchText(message), searchQuery).length) : []),
+    () => (searchQuery ? renderItems.map((message) => countOccurrences(getMessageSearchText(message), searchQuery)) : []),
     [renderItems, searchQuery],
   );
   const totalMatches = matchCounts.reduce((sum, count) => sum + count, 0);
@@ -285,6 +274,37 @@ export const ChatView: FC = () => {
     useChatStore.getState().send({ type: 'archive_session', path: activeTask.path, id: activeTask.id, title: activeTask.title });
   }, [activeTask?.path, activeTask?.id, activeTask?.title]);
 
+  const handleCompact = useCallback((): void => {
+    useChatStore.getState().compact();
+  }, []);
+
+  const handleExportActive = useCallback((): void => {
+    if (!activeTask?.path) return;
+    exportSession({ id: activeTask.id, path: activeTask.path });
+  }, [activeTask?.id, activeTask?.path, exportSession]);
+
+  const handleDeleteActive = useCallback((): void => {
+    setShowDeleteActiveConfirm(true);
+  }, []);
+
+  const handleViewRawActive = useCallback((): void => {
+    viewRaw(activeTask?.path);
+  }, [activeTask?.path, viewRaw]);
+
+  const handleSearchOpen = useCallback((): void => {
+    setSearchOpen(true);
+  }, []);
+
+  const handleCancelDelete = useCallback((): void => {
+    setShowDeleteActiveConfirm(false);
+  }, []);
+
+  const handleConfirmDelete = useCallback((): void => {
+    handleDeleteActiveTask();
+    returnToHistoryIfNeeded();
+    setShowDeleteActiveConfirm(false);
+  }, [handleDeleteActiveTask, returnToHistoryIfNeeded]);
+
   const handleSend = useCallback(
     (text: string, attachments: Attachment[]) => {
       scrollToBottom();
@@ -292,6 +312,13 @@ export const ChatView: FC = () => {
     },
     [scrollToBottom, handleSendPrompt],
   );
+
+  const handleContinueTask = useCallback((): void => {
+    const task = useChatStore.getState().activeTask;
+    if (!task) return;
+    scrollToBottom();
+    useChatStore.getState().send({ type: 'continue_task', path: task.path });
+  }, [scrollToBottom]);
 
   if (view === 'settings') {
     return (
@@ -358,15 +385,15 @@ export const ChatView: FC = () => {
             todos={activeTaskTodos}
             contextLimit={config.selectedModelContextWindow}
             onClose={handleCloseTaskReturn}
-            onCompact={() => useChatStore.getState().compact()}
-            onExport={activeTask.path ? () => exportSession(activeTask) : undefined}
-            onDelete={activeTask.path ? () => setShowDeleteActiveConfirm(true) : undefined}
-            onViewRaw={() => viewRaw(activeTask.path)}
+            onCompact={handleCompact}
+            onExport={activeTask.path ? handleExportActive : undefined}
+            onDelete={activeTask.path ? handleDeleteActive : undefined}
+            onViewRaw={handleViewRawActive}
             onArchive={handleArchive}
             isArchived={activeTask.isArchived}
             archiveDisabled={isRunning || !activeTask.path}
             deleteDisabled={isRunning}
-            onSearchOpen={() => setSearchOpen(true)}
+            onSearchOpen={handleSearchOpen}
           />
         )
       ) : (
@@ -448,18 +475,15 @@ export const ChatView: FC = () => {
 
       {/* Action Buttons */}
       <ChatAction
-        activeTask={activeTask}
+        hasTask={activeTask !== null}
+        isArchived={activeTask?.isArchived === true}
         showScrollToBottom={showScrollToBottom}
         isRunning={isRunning}
         isCompacting={isCompacting}
         onScrollToBottom={scrollToBottom}
         onCancelTask={handleCancelTask}
         onCloseTask={handleCloseTaskReturn}
-        onContinueTask={() => {
-          if (!activeTask) return;
-          scrollToBottom();
-          useChatStore.getState().send({ type: 'continue_task', path: activeTask.path });
-        }}
+        onContinueTask={handleContinueTask}
         isAwaitingApproval={hasApproval}
       />
 
@@ -491,12 +515,8 @@ export const ChatView: FC = () => {
         isOpen={showDeleteActiveConfirm}
         title="Delete Task"
         description="Are you sure you want to delete this task?"
-        onConfirm={() => {
-          handleDeleteActiveTask();
-          returnToHistoryIfNeeded();
-          setShowDeleteActiveConfirm(false);
-        }}
-        onCancel={() => setShowDeleteActiveConfirm(false)}
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
       />
     </div>
   );

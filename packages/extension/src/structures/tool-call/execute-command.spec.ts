@@ -68,6 +68,28 @@ describe('executeCommandTool', () => {
       expect(delta.length).toBeLessThanOrEqual(1024);
     }
   });
+
+  it('streams the output once, in order and without gaps', async () => {
+    configValues['maxToolOutputLines'] = 2000;
+    configValues['maxToolOutputSizeKb'] = 5; // 5 KB budget
+
+    const updates: string[] = [];
+    const onUpdate = (partial: any) => {
+      if (partial?.details?.output) updates.push(partial.details.output);
+    };
+
+    const lines = 100;
+    const command = `node -e "for (let i = 1; i <= ${lines}; i++) console.log('line ' + i)"`;
+
+    await executeCommandTool.execute('streaming-once-test', { command, timeout: 20_000 }, undefined, onUpdate, {
+      cwd: process.cwd(),
+    } as any);
+
+    // The deltas are the pieces the UI receives, so together they have to be
+    // the command's output exactly once.
+    const expected = Array.from({ length: lines }, (_, index) => `line ${index + 1}\n`).join('');
+    expect(updates.join('')).toBe(expected);
+  });
 });
 
 describe('executeCommandTool output dumps', () => {

@@ -45,13 +45,19 @@ function splitTokens(text: string): readonly TokenSegment[] {
 function splitOnPattern(text: string, pattern: RegExp, accepts: (token: string) => boolean): TokenSegment[] {
   const segments: TokenSegment[] = [];
   let cursor = 0;
-  for (const match of text.matchAll(pattern)) {
+  // The shared pattern carries its own scan position, so it is rewound before
+  // every scan instead of being cloned for each call.
+  pattern.lastIndex = 0;
+  let match = pattern.exec(text);
+  while (match !== null) {
     const start = match.index;
     const end = start + match[0].length;
-    if (!accepts(match[1])) continue;
-    if (start > cursor) segments.push({ text: text.slice(cursor, start), highlighted: false });
-    segments.push({ text: text.slice(start, end), highlighted: true });
-    cursor = end;
+    if (accepts(match[1])) {
+      if (start > cursor) segments.push({ text: text.slice(cursor, start), highlighted: false });
+      segments.push({ text: text.slice(start, end), highlighted: true });
+      cursor = end;
+    }
+    match = pattern.exec(text);
   }
   if (cursor < text.length) segments.push({ text: text.slice(cursor), highlighted: false });
   return segments;

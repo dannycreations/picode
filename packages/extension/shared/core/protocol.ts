@@ -172,7 +172,7 @@ export type ExtensionToWebviewMessage =
   | { type: 'set_chat_input'; payload: { text: string } }
   | { type: 'search_results'; payload: { query: string; paths: string[] } }
   | { type: 'commit_results'; payload: { query: string; commits: CommitItem[] } }
-  | { type: 'reply_queue_data'; payload: { queue: ChatMessage[] } }
+  | { type: 'reply_queue_data'; payload: { queue: readonly ChatMessage[] } }
   | { type: 'reply_queue_delivered'; payload: { messages: ChatMessage[] } }
   | { type: 'stream_delta'; payload: { text?: string; thinking?: string } }
   | { type: 'workspace_data'; payload: { folders: WorkspaceFolderItem[]; active: string } };

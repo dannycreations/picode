@@ -11,11 +11,14 @@ import { extractCodeFromChildren, parseFileUri } from '@pi-code/webview/componen
 import { MermaidBlock } from '@pi-code/webview/components/chat/markdown/MermaidBlock';
 import { CopyButton } from '@pi-code/webview/components/shared/CopyButton';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
+import { useThrottledValue } from '@pi-code/webview/hooks/useThrottledValue';
 import { useChatStore } from '@pi-code/webview/stores/useChatStore';
 
 import type { FC, MouseEvent, ReactNode } from 'react';
 import type { Components } from 'react-markdown';
 import type { SearchContext } from '@pi-code/webview/components/shared/Highlight';
+
+const MARKDOWN_REFRESH_MS = 100;
 
 interface MarkdownCodeNode {
   readonly type: 'code';
@@ -122,7 +125,8 @@ interface MarkdownProps {
 export const Markdown = memo(({ markdown, search }: MarkdownProps) => {
   const [isHovering, setIsHovering] = useState(false);
 
-  const deferredMarkdown = useDeferredValue(markdown ?? '');
+  const throttledMarkdown = useThrottledValue(markdown ?? '', MARKDOWN_REFRESH_MS);
+  const deferredMarkdown = useDeferredValue(throttledMarkdown);
 
   if (!markdown) return null;
 

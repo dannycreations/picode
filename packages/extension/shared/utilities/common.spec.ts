@@ -1,14 +1,19 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  containsIgnoreCase,
+  countOccurrences,
   DEFAULT_CONTEXT_LIMIT,
   elapsedSeconds,
+  findOccurrences,
   findReplaceableFailedRequest,
+  hasVisibleOutput,
   parseTextAttachment,
   relativeToWorkspace,
   remainingSeconds,
   resolveContextLimit,
   splitOnOccurrences,
+  startsWithIgnoringLeadingWhitespace,
 } from './common';
 import { wrapCodeBlock } from './markdown';
 
@@ -188,5 +193,75 @@ describe('relativeToWorkspace', () => {
 
   it('leaves paths outside the workspace untouched', () => {
     expect(relativeToWorkspace('c:/abc/other/file.ts', 'c:/abc/def')).toBe('c:/abc/other/file.ts');
+  });
+});
+
+describe('findOccurrences', () => {
+  it('finds every occurrence of a literal needle', () => {
+    expect(findOccurrences('a cat and a cat', 'cat')).toEqual([2, 12]);
+  });
+
+  it('treats the needle as a literal, not a pattern', () => {
+    expect(findOccurrences('a.b and axb', '.')).toEqual([1]);
+  });
+
+  it('ignores case unless the caller asks otherwise', () => {
+    expect(findOccurrences('Foo bar FOO', 'foo')).toEqual([0, 8]);
+    expect(findOccurrences('Foo bar FOO', 'foo', true)).toEqual([]);
+  });
+
+  it('reuses the compiled pattern across calls', () => {
+    // The pattern is cached, so a second scan must not pick up the position
+    // the first one stopped at.
+    expect(findOccurrences('cat cat', 'cat')).toEqual([0, 4]);
+    expect(findOccurrences('cat cat', 'cat')).toEqual([0, 4]);
+  });
+
+  it('counts the occurrences without building the list', () => {
+    expect(countOccurrences('a cat and a cat', 'cat')).toBe(2);
+    expect(countOccurrences('a cat and a cat', 'dog')).toBe(0);
+  });
+});
+
+describe('containsIgnoreCase', () => {
+  it('finds a needle regardless of case', () => {
+    expect(containsIgnoreCase('src/Alpha.ts', 'alpha')).toBe(true);
+    expect(containsIgnoreCase('src/Alpha.ts', 'beta')).toBe(false);
+  });
+
+  it('treats the needle as a literal', () => {
+    expect(containsIgnoreCase('a.b', '.')).toBe(true);
+    expect(containsIgnoreCase('axb', '.')).toBe(false);
+  });
+
+  it('matches everything for an empty needle', () => {
+    expect(containsIgnoreCase('anything', '')).toBe(true);
+  });
+});
+
+describe('hasVisibleOutput', () => {
+  it('accepts text with content', () => {
+    expect(hasVisibleOutput({ id: 'a', sender: 'assistant', text: 'H', timestamp: 1 })).toBe(true);
+  });
+
+  it('rejects text that is only whitespace', () => {
+    expect(hasVisibleOutput({ id: 'a', sender: 'assistant', text: '  \n\t ', timestamp: 1 })).toBe(false);
+    expect(hasVisibleOutput({ id: 'a', sender: 'assistant', text: '', timestamp: 1, reasoning: '   ' })).toBe(false);
+  });
+
+  it('accepts reasoning on its own', () => {
+    expect(hasVisibleOutput({ id: 'a', sender: 'assistant', text: '', timestamp: 1, reasoning: 'thinking' })).toBe(true);
+  });
+});
+
+describe('startsWithIgnoringLeadingWhitespace', () => {
+  it('skips the leading whitespace', () => {
+    expect(startsWithIgnoringLeadingWhitespace('  \n## Heading', '## Heading')).toBe(true);
+    expect(startsWithIgnoringLeadingWhitespace('## Heading', '## Heading')).toBe(true);
+  });
+
+  it('rejects a different prefix', () => {
+    expect(startsWithIgnoringLeadingWhitespace('  # Heading', '## Heading')).toBe(false);
+    expect(startsWithIgnoringLeadingWhitespace('', '## Heading')).toBe(false);
   });
 });

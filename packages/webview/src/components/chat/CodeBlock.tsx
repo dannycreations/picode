@@ -7,10 +7,12 @@ import { logger } from '@pi-code/shared/core/logger';
 import { getHighlighter, normalizeLanguage } from '@pi-code/webview/components/chat/helpers/highlighter';
 import { CopyButton } from '@pi-code/webview/components/shared/CopyButton';
 import { useInViewport } from '@pi-code/webview/hooks/useInViewport';
+import { useThrottledValue } from '@pi-code/webview/hooks/useThrottledValue';
 
 import type { FC, ReactNode } from 'react';
 import type { ShikiTransformer } from 'shiki';
 
+const CODE_REFRESH_MS = 100;
 const CODE_BLOCK_BG_COLOR = 'var(--vscode-editor-background, var(--vscode-sideBar-background, rgb(30, 30, 30)))';
 
 interface CodeBlockProps {
@@ -77,10 +79,12 @@ export const CodeBlock = memo(({ source, language }: CodeBlockProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const { ref: codeBlockRef, hasBeenVisible } = useInViewport<HTMLDivElement>();
 
-  const currentLanguage = normalizeLanguage(language);
-  const highlightedCode = useShikiHighlighter(source, currentLanguage, hasBeenVisible);
+  const throttledSource = useThrottledValue(source, CODE_REFRESH_MS);
 
-  if (source.length === 0) return null;
+  const currentLanguage = normalizeLanguage(language);
+  const highlightedCode = useShikiHighlighter(throttledSource, currentLanguage, hasBeenVisible);
+
+  if (throttledSource.length === 0) return null;
 
   return (
     <div
@@ -102,12 +106,12 @@ export const CodeBlock = memo(({ source, language }: CodeBlockProps) => {
           fontFamily: 'var(--vscode-editor-font-family, monospace)',
         }}
       >
-        {highlightedCode ?? <PlainCode source={source} language={currentLanguage} />}
+        {highlightedCode ?? <PlainCode source={throttledSource} language={currentLanguage} />}
       </div>
 
       {isHovered && (
         <div className="absolute top-2 right-2 flex items-center bg-vscode-editor-background/85 backdrop-blur-sm border border-vscode-editorGroup-border rounded p-0.5 z-10 gap-0.5 select-none pointer-events-auto">
-          <CopyButton text={source} size={14} />
+          <CopyButton text={throttledSource} size={14} />
         </div>
       )}
     </div>

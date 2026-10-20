@@ -9,12 +9,11 @@ import {
   deliverQueuedReplies,
   ignoreUnknownSubagent,
   patchLastAssistant,
-  patchMessage,
   patchReplyQueue,
   patchRetryDeadline,
-  rebuildToolSections,
+  patchToolRow,
   settlePendingTurns,
-  upsertToolMessage,
+  upsertToolRow,
 } from '@pi-code/webview/helpers/messages';
 import { findPendingQuestion } from '@pi-code/webview/helpers/questions';
 import { resolveThinkingLevel } from '@pi-code/webview/utilities/common';
@@ -78,7 +77,7 @@ function patchActiveTask(state: ChatState, patch: (task: ActiveTaskState) => Act
 // Approval and start events create or refresh one tool row, settling any turns
 // still marked running before it.
 function applyToolUpsert(task: ActiveTaskState, id: string, patch: Partial<ToolChatMessage>): ActiveTaskState {
-  return { ...task, messages: rebuildToolSections(upsertToolMessage(settlePendingTurns(task.messages), id, patch), id) };
+  return { ...task, messages: upsertToolRow(task.messages, id, patch) };
 }
 
 interface ChatState {
@@ -276,6 +275,9 @@ export const useChatStore = create<ChatState>((set, get) => {
       set((state) => ({
         isRunning: true,
         ...patchActiveTask(state, (task) =>
+          // A sub-agent's own tool calls belong to the row the parent
+          // sub-agent call already opened, so they never create a row of
+          // their own.
           ignoreUnknownSubagent(task.messages, subagent, id)
             ? task
             : applyToolUpsert(task, id, { text: tool_name, toolName: tool_name, toolArgs, toolStatus: 'running', subagent }),
@@ -286,17 +288,18 @@ export const useChatStore = create<ChatState>((set, get) => {
       const { id, result, subagent, subtitle } = msg.payload;
       set((state) =>
         patchActiveTask(state, (task) => {
-          if (ignoreUnknownSubagent(task.messages, subagent, id)) return task;
-          const target = task.messages.find((m) => m.id === id);
-          if (target?.sender === 'tool' && target.toolName === 'execute_command') {
-            return {
-              ...task,
-              messages: rebuildToolSections(patchMessage(task.messages, id, { diff: `${target.diff ?? ''}${result}`, subtitle }), id),
-            };
-          }
-          const startedNow = target?.sender === 'tool' && target.toolName === 'spawn_subagent' && target.diff === undefined;
-          const patch = startedNow ? { diff: result, subtitle, timestamp: Date.now() } : { diff: result, subtitle };
-          return { ...task, messages: rebuildToolSections(patchMessage(task.messages, id, patch), id) };
+          const messages = patchToolRow(task.messages, id, subagent, (target) => {
+            // A command reports its output in pieces that belong together, so
+            // they pile up on the row instead of replacing each other.
+            if (target.toolName === 'execute_command') {
+              return { diff: `${target.diff ?? ''}${result}`, subtitle };
+            }
+            // A sub-agent reports its first result only once, so the row's
+            // clock starts there rather than at the approval.
+            const startedNow = target.toolName === 'spawn_subagent' && target.diff === undefined;
+            return startedNow ? { diff: result, subtitle, timestamp: Date.now() } : { diff: result, subtitle };
+          });
+          return messages === task.messages ? task : { ...task, messages };
         }),
       );
     },
@@ -304,27 +307,22 @@ export const useChatStore = create<ChatState>((set, get) => {
       const { id, result, diff, duration, todos, files, is_error, exit_code, subagent, subtitle } = msg.payload;
       set((state) =>
         patchActiveTask(state, (task) => {
-          if (ignoreUnknownSubagent(task.messages, subagent, id)) return task;
-          const existing = task.messages.find((m) => m.id === id);
-          // A tool that measures its own work owns the numbers, and the
-          // transcript replay path trusts the same two fields. Only tools that
-          // report nothing fall back to what the row can work out itself.
-          const elapsed = existing ? elapsedSeconds(existing.timestamp) : undefined;
-          return {
-            ...task,
-            messages: rebuildToolSections(
-              patchMessage(task.messages, id, {
-                todos,
-                files,
-                toolStatus: is_error ? 'denied' : 'completed',
-                exitCode: exit_code,
-                diff: diff ?? result,
-                duration: duration ?? elapsed,
-                subtitle,
-              }),
-              id,
-            ),
-          };
+          const messages = patchToolRow(task.messages, id, subagent, (target) => {
+            // A tool that measures its own work owns the numbers, and the
+            // transcript replay path trusts the same two fields. Only tools that
+            // report nothing fall back to what the row can work out itself.
+            const elapsed = elapsedSeconds(target.timestamp);
+            return {
+              todos,
+              files,
+              toolStatus: is_error ? ('denied' as const) : ('completed' as const),
+              exitCode: exit_code,
+              diff: diff ?? result,
+              duration: duration ?? elapsed,
+              subtitle,
+            };
+          });
+          return messages === task.messages ? task : { ...task, messages };
         }),
       );
     },
