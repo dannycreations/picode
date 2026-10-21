@@ -88,6 +88,10 @@ export function truncateOutput(content: string, options: TruncateOutputOptions):
   return keep === 'tail' ? truncateTail(content, options.limits) : truncateHead(content, options.limits);
 }
 
+export function truncateAndRender(content: string, limits: OutputLimits, hint?: string): string {
+  return renderTruncatedText(truncateOutput(content, { limits }), 'head', hint);
+}
+
 interface ReadNumberedTextOptions {
   readonly ranges?: ReadonlyArray<LineRange>;
   readonly hint?: (truncation: TruncationResult) => string | undefined;
@@ -114,10 +118,9 @@ interface FileChangeResultOptions {
 
 export function buildFileChangeResult(opts: FileChangeResultOptions): CustomToolResult<{ diff: string }> {
   const diffResult = generateDiffString(opts.oldContent, opts.newContent);
-  const truncation = truncateOutput(diffResult.diff || opts.successMessage, { limits: opts.limits });
 
   return {
-    content: [{ type: 'text' as const, text: renderTruncatedText(truncation, 'head', opts.hint) }],
+    content: [{ type: 'text' as const, text: truncateAndRender(diffResult.diff || opts.successMessage, opts.limits, opts.hint) }],
     details: { diff: diffResult.diff },
   };
 }

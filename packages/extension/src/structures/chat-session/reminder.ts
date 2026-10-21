@@ -27,7 +27,7 @@ export function formatTodoReminder(todoList?: TodoItem[]): string {
   lines.push('|---|---------|--------|');
   todoList.forEach((item, idx) => {
     const escapedContent = item.content.replace(/\\/g, '\\\\').replace(/\|/g, '\\|');
-    lines.push(`| ${idx + 1} | ${escapedContent} | ${STATUS_MAP[item.status] || item.status} |`);
+    lines.push(`| ${idx + 1} | ${escapedContent} | ${STATUS_MAP[item.status]} |`);
   });
   lines.push('');
 

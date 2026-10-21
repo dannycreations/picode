@@ -10,7 +10,6 @@ import {
   messageVisibility,
   patchReplyQueue,
   patchToolRow,
-  previousTodosById,
   resolveApproval,
   settlePendingTurns,
   startApiRequest,
@@ -65,39 +64,6 @@ describe('isRenderableMessage', () => {
 function updateTodo(id: string, todos: TodoItem[]): ChatMessage {
   return { id, sender: 'tool', toolName: 'update_todo', text: '', timestamp: 1, todos } as ChatMessage;
 }
-
-describe('previousTodosById', () => {
-  it('maps each update_todo row to the todos from the most recent prior one', () => {
-    const messages: ChatMessage[] = [
-      updateTodo('a', [
-        { content: 'one', status: 'closed' },
-        { content: 'two', status: 'open' },
-      ]),
-      { id: 'u', sender: 'user', text: 'hi', timestamp: 2 },
-      updateTodo('b', [
-        { content: 'one', status: 'closed' },
-        { content: 'three', status: 'active' },
-      ]),
-    ];
-    const previous = previousTodosById(messages);
-    expect(previous.get('b')).toEqual([
-      { content: 'one', status: 'closed' },
-      { content: 'two', status: 'open' },
-    ]);
-  });
-
-  it('omits the first update_todo and any row that carries no todos', () => {
-    const messages: ChatMessage[] = [
-      updateTodo('a', [{ content: 'one', status: 'closed' }]),
-      updateTodo('b', [{ content: 'two', status: 'open' }]),
-      { id: 'u', sender: 'user', text: 'hi', timestamp: 2 },
-    ];
-    const previous = previousTodosById(messages);
-    expect(previous.get('a')).toBeUndefined();
-    expect(previous.has('u')).toBe(false);
-    expect(previous.get('b')).toEqual([{ content: 'one', status: 'closed' }]);
-  });
-});
 
 describe('deliverQueuedReplies', () => {
   it('should convert a queued message into a user message sharing the same id', () => {
@@ -578,6 +544,22 @@ describe('buildChatRenderModel', () => {
     expect(model.hasApproval).toBe(true);
     expect(model.latestTodos).toEqual(todos);
     expect(model.oldTodosById.has('u1')).toBe(false);
+  });
+
+  it('maps each update_todo row to the checklist from the most recent prior one', () => {
+    const first: TodoItem[] = [
+      { content: 'one', status: 'closed' },
+      { content: 'two', status: 'open' },
+    ];
+    const model = buildChatRenderModel([
+      updateTodo('a', first),
+      { id: 'u', sender: 'user', text: 'hi', timestamp: 2 },
+      updateTodo('b', [{ content: 'one', status: 'closed' }]),
+    ]);
+
+    expect(model.oldTodosById.get('b')).toEqual(first);
+    expect(model.oldTodosById.has('a')).toBe(false);
+    expect(model.oldTodosById.has('u')).toBe(false);
   });
 
   it('groups the tool rows the way the chat body renders them', () => {

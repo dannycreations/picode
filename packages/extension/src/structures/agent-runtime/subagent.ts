@@ -2,7 +2,7 @@ import { relative, resolve } from 'node:path';
 import { contentText } from '@earendil-works/pi-ai';
 import { createAgentSessionFromServices, SessionManager } from '@earendil-works/pi-coding-agent';
 
-import { readAppSettings, readDelegationTaskModelSelection, readDelegationTaskThinkingLevel } from '@pi-code/extension/core/settings';
+import { applySessionOverrides, readDelegationTaskModelSelection, readDelegationTaskThinkingLevel } from '@pi-code/extension/core/settings';
 import { registerSubagentSession, unregisterSubagentSession } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
 import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { deleteFileTool } from '@pi-code/extension/structures/tool-call/delete-file';
@@ -12,7 +12,6 @@ import { readFileTool } from '@pi-code/extension/structures/tool-call/read-file'
 import { writeFileTool } from '@pi-code/extension/structures/tool-call/write-file';
 import { createIsolatedWorktree, discardIsolatedWorktree, integrateIsolatedWorktree, withWorktreeLock } from '@pi-code/extension/utilities/worktree';
 import { logger } from '@pi-code/shared/core/logger';
-import { getSettingSpec } from '@pi-code/shared/core/settings';
 import { elapsedSeconds } from '@pi-code/shared/utilities/common';
 
 import type { Api, Model } from '@earendil-works/pi-ai';
@@ -219,12 +218,7 @@ async function createChildSession(
   // confirmation prompts it raises with the sub-agent name.
   registerSubagentSession(session.sessionId, agent.name, toolCallId);
 
-  const retrySpec = getSettingSpec('retryOnError');
-  const unlimitedValue = retrySpec.type === 'number' ? retrySpec.maximum : 0;
-  const settings = readAppSettings();
-  const enabled = settings.retryOnError !== 0;
-  const maxRetries = settings.retryOnError === unlimitedValue ? Number.MAX_SAFE_INTEGER : settings.retryOnError;
-  session.settingsManager.applyOverrides({ compaction: { enabled: false }, retry: { enabled, maxRetries } });
+  applySessionOverrides(session);
 
   await applyDelegationSettings(session, services.modelRuntime, inheritedModel);
 

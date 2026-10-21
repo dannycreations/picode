@@ -224,10 +224,13 @@ export async function* streamHistory(cwd: string, scope: HistoryScope): AsyncGen
     const root = scope === 'archives' ? join(getAgentDir(), ARCHIVES_DIR_NAME) : join(getAgentDir(), SESSIONS_DIR_NAME);
     if (!existsSync(root)) return;
     const entries = await workspace.fs.readDirectory(Uri.file(root));
-    for (const [name, type] of entries) {
-      if (type === FileType.Directory || (type & FileType.SymbolicLink) !== 0) {
-        files.push(...(await listJsonlFiles(join(root, name))));
-      }
+    const nested = await Promise.all(
+      entries
+        .filter(([, type]) => type === FileType.Directory || (type & FileType.SymbolicLink) !== 0)
+        .map(([name]) => listJsonlFiles(join(root, name))),
+    );
+    for (const group of nested) {
+      files.push(...group);
     }
   }
 

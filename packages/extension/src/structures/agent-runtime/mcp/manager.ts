@@ -117,8 +117,7 @@ export function createMcpGateway(connect: McpConnector = connectMcpServer) {
     if (cached?.identity === identity) return cached.pending;
 
     if (cached) {
-      cache.delete(name);
-      live.delete(name);
+      forget(name, cached);
       void cached.pending
         .then((connection) => connection.close())
         .catch((err) => logger.debug(`Failed to close stale MCP connection "${name}":`, err));
@@ -138,8 +137,6 @@ export function createMcpGateway(connect: McpConnector = connectMcpServer) {
   }
 
   return {
-    isConnected: (name: string): boolean => live.has(name),
-
     preconnect: async (config: McpConfig, cwd: string): Promise<void> => {
       const eager = Object.entries(config).filter(([, server]) => server.autorun === true);
       await Promise.all(

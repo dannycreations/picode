@@ -94,7 +94,7 @@ export function resolveContextLimit(contextWindow: number | undefined): number {
 const LITERAL_PATTERN_CACHE_LIMIT = 256;
 const literalPatterns = new Map<string, RegExp>();
 
-function setBounded<K, V>(cache: Map<K, V>, key: K, value: V, limit: number): void {
+export function setBounded<K, V>(cache: Map<K, V>, key: K, value: V, limit: number): void {
   if (cache.size >= limit) {
     const oldest = cache.keys().next();
     if (!oldest.done) cache.delete(oldest.value);
@@ -102,12 +102,12 @@ function setBounded<K, V>(cache: Map<K, V>, key: K, value: V, limit: number): vo
   cache.set(key, value);
 }
 
-function literalPattern(needle: string, caseSensitive: boolean): RegExp {
-  const key = `${caseSensitive ? 's' : 'i'}:${needle}`;
+function literalPattern(needle: string, flags: 'g' | 'gi' | 'i'): RegExp {
+  const key = `${flags}:${needle}`;
   const cached = literalPatterns.get(key);
   if (cached) return cached;
 
-  const pattern = new RegExp(escapeRegExp(needle), caseSensitive ? 'g' : 'gi');
+  const pattern = new RegExp(escapeRegExp(needle), flags);
   setBounded(literalPatterns, key, pattern, LITERAL_PATTERN_CACHE_LIMIT);
   return pattern;
 }
@@ -115,7 +115,7 @@ function literalPattern(needle: string, caseSensitive: boolean): RegExp {
 export function findOccurrences(haystack: string, needle: string, caseSensitive = false): number[] {
   if (needle === '') return [];
 
-  const pattern = literalPattern(needle, caseSensitive);
+  const pattern = literalPattern(needle, caseSensitive ? 'g' : 'gi');
   // The shared pattern carries its own scan position, so it is rewound before
   // every scan. The needle is never empty, so every match advances.
   pattern.lastIndex = 0;
@@ -132,7 +132,7 @@ export function findOccurrences(haystack: string, needle: string, caseSensitive 
 export function countOccurrences(haystack: string, needle: string, caseSensitive = false): number {
   if (needle === '') return 0;
 
-  const pattern = literalPattern(needle, caseSensitive);
+  const pattern = literalPattern(needle, caseSensitive ? 'g' : 'gi');
   pattern.lastIndex = 0;
 
   let count = 0;
@@ -144,17 +144,10 @@ export function countOccurrences(haystack: string, needle: string, caseSensitive
   return count;
 }
 
-const literalTests = new Map<string, RegExp>();
-
 export function containsIgnoreCase(haystack: string, needle: string): boolean {
   if (needle === '') return true;
 
-  let pattern = literalTests.get(needle);
-  if (!pattern) {
-    pattern = new RegExp(escapeRegExp(needle), 'i');
-    setBounded(literalTests, needle, pattern, LITERAL_PATTERN_CACHE_LIMIT);
-  }
-  return pattern.test(haystack);
+  return literalPattern(needle, 'i').test(haystack);
 }
 
 export interface OccurrenceSegment {

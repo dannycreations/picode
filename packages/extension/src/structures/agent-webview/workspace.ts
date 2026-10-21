@@ -7,6 +7,9 @@ import { extensionForMimeType, parseBase64DataUrl } from '@pi-code/extension/uti
 import type { TextEditor } from 'vscode';
 import type { Attachment } from '@pi-code/shared/core/types';
 
+const CHANGE_EDITOR_ATTEMPTS = 10;
+const CHANGE_EDITOR_RETRY_MS = 50;
+
 export class WorkspaceService {
   public constructor(private readonly storageUri: Uri) {}
 
@@ -52,7 +55,7 @@ export class WorkspaceService {
     const attachmentsUri = Uri.joinPath(this.storageUri, 'attachments');
 
     let target: Uri;
-    let write: () => unknown;
+    let write: () => Thenable<void>;
 
     // Reuse a fixed filename so each open overwrites the last instead of
     // accumulating a file per open in globalStorage.
@@ -95,20 +98,20 @@ export class WorkspaceService {
       // Git extension unavailable.
       return undefined;
     }
-    return this.findEditorForUri(uri, 10, 50);
+    return this.findEditorForUri(uri);
   }
 
-  private async findEditorForUri(uri: Uri, attempts: number, delayMs: number): Promise<TextEditor | undefined> {
+  private async findEditorForUri(uri: Uri): Promise<TextEditor | undefined> {
     const targetFsPath = uri.fsPath;
-    for (let attempt = 0; attempt < attempts; attempt++) {
+    for (let attempt = 0; attempt < CHANGE_EDITOR_ATTEMPTS; attempt++) {
       const editor = window.activeTextEditor;
       // The diff editor's active side carries a `git:`-schemed URI (index or HEAD version) rather
       // than the plain file URI for staged changes, so match on the file path, not the full URI.
       if (editor && editor.document.uri.fsPath === targetFsPath) {
         return editor;
       }
-      if (attempt < attempts - 1) {
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      if (attempt < CHANGE_EDITOR_ATTEMPTS - 1) {
+        await new Promise((resolve) => setTimeout(resolve, CHANGE_EDITOR_RETRY_MS));
       }
     }
     return undefined;

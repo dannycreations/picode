@@ -1,6 +1,6 @@
 import { AgentSession, createAgentSessionFromServices, SessionManager } from '@earendil-works/pi-coding-agent';
 
-import { readAppSettings } from '@pi-code/extension/core/settings';
+import { applySessionOverrides, readAppSettings } from '@pi-code/extension/core/settings';
 import { loadMcpConfig, setActiveMcpConfig } from '@pi-code/extension/structures/agent-runtime/mcp/config';
 import { mcpGateway } from '@pi-code/extension/structures/agent-runtime/mcp/manager';
 import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
@@ -14,7 +14,6 @@ import { spawnSubagentTool } from '@pi-code/extension/structures/tool-call/spawn
 import { updateTodoTool } from '@pi-code/extension/structures/tool-call/update-todo';
 import { writeFileTool } from '@pi-code/extension/structures/tool-call/write-file';
 import { isProjectTrusted } from '@pi-code/extension/utilities/vscode';
-import { getSettingSpec } from '@pi-code/shared/core/settings';
 
 import type { AgentSessionServices, ToolDefinition } from '@earendil-works/pi-coding-agent';
 import type { McpConfig } from '@pi-code/extension/structures/agent-runtime/mcp/config';
@@ -77,10 +76,6 @@ export async function createSession(cwd: string, sessionPath?: string): Promise<
     customTools: enabledTools,
   });
 
-  const retrySpec = getSettingSpec('retryOnError');
-  const unlimitedValue = retrySpec.type === 'number' ? retrySpec.maximum : 0;
-  const enabled = settings.retryOnError !== 0;
-  const maxRetries = settings.retryOnError === unlimitedValue ? Number.MAX_SAFE_INTEGER : settings.retryOnError;
-  session.settingsManager.applyOverrides({ compaction: { enabled: false }, retry: { enabled, maxRetries } });
+  applySessionOverrides(session);
   return { session, services };
 }

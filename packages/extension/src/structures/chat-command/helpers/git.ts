@@ -2,7 +2,7 @@ import { formatThrownValue } from '@earendil-works/pi-ai';
 import { Uri } from 'vscode';
 
 import { execGit, getGitRepository } from '@pi-code/extension/utilities/git';
-import { renderTruncatedText, truncateOutput } from '@pi-code/extension/utilities/truncate';
+import { truncateAndRender } from '@pi-code/extension/utilities/truncate';
 import { COMMIT_HASH_PATTERN, SHORT_HASH_LENGTH, WORKING_CHANGES_TAG } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
 
@@ -66,7 +66,7 @@ export async function searchCommits(query: string, cwd: string): Promise<CommitI
 
 async function commitBody(token: string, root: string, limits: OutputLimits): Promise<string> {
   const show = await execGit(root, ['show', '--no-color', '--stat', '--patch', token]);
-  return renderTruncatedText(truncateOutput(show, { limits }), 'head').trim();
+  return truncateAndRender(show, limits).trim();
 }
 
 async function workingChangesBody(root: string, limits: OutputLimits): Promise<string> {
@@ -75,15 +75,7 @@ async function workingChangesBody(root: string, limits: OutputLimits): Promise<s
     execGit(root, ['status', '--short']),
     execGit(root, ['diff', '--no-color', 'HEAD']).catch((err) => `Unavailable: ${formatThrownValue(err)}`),
   ]);
-  return [
-    'Status:',
-    '',
-    status.trim() || '(clean)',
-    '',
-    'Diff vs HEAD:',
-    '',
-    renderTruncatedText(truncateOutput(diff, { limits }), 'head').trim() || '(no diff)',
-  ].join('\n');
+  return ['Status:', '', status.trim() || '(clean)', '', 'Diff vs HEAD:', '', truncateAndRender(diff, limits).trim() || '(no diff)'].join('\n');
 }
 
 export async function resolveCommitTag(token: string, cwd: string, limits: OutputLimits): Promise<string | null> {

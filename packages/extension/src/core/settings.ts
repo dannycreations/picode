@@ -4,9 +4,10 @@ import { ConfigurationTarget, workspace } from 'vscode';
 import { isProjectTrusted } from '@pi-code/extension/utilities/vscode';
 import { DEFAULT_APP_ID } from '@pi-code/shared/core/constants';
 import { isThinkingLevel, parseModelSelection } from '@pi-code/shared/core/protocol';
-import { coerceSettings, SETTING_KEYS } from '@pi-code/shared/core/settings';
+import { coerceSettings, getSettingSpec, SETTING_KEYS } from '@pi-code/shared/core/settings';
 import { BYTES_PER_KILOBYTE } from '@pi-code/shared/utilities/common';
 
+import type { AgentSession } from '@earendil-works/pi-coding-agent';
 import type { WorkspaceConfiguration } from 'vscode';
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
 import type { ModelSelection } from '@pi-code/shared/core/protocol';
@@ -38,6 +39,15 @@ export function readAppSettings(): AppSettings {
 export function readOutputLimits(): OutputLimits {
   const settings = readAppSettings();
   return { maxLines: settings.maxToolOutputLines, maxBytes: settings.maxToolOutputSizeKb * BYTES_PER_KILOBYTE };
+}
+
+export function applySessionOverrides(session: AgentSession): void {
+  const settings = readAppSettings();
+  const retrySpec = getSettingSpec('retryOnError');
+  const unlimited = retrySpec.type === 'number' ? retrySpec.maximum : 0;
+  const enabled = settings.retryOnError !== 0;
+  const maxRetries = settings.retryOnError === unlimited ? Number.MAX_SAFE_INTEGER : settings.retryOnError;
+  session.settingsManager.applyOverrides({ compaction: { enabled: false }, retry: { enabled, maxRetries } });
 }
 
 // An empty string means "not configured", which callers translate into the

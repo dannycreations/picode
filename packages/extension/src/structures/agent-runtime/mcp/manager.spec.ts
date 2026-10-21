@@ -4,7 +4,7 @@ import { createMcpGateway } from '@pi-code/extension/structures/agent-runtime/mc
 import { logger } from '@pi-code/shared/core/logger';
 
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
-import type { McpServerConfig } from '@pi-code/extension/structures/agent-runtime/mcp/config';
+import type { McpConfig, McpServerConfig } from '@pi-code/extension/structures/agent-runtime/mcp/config';
 import type { McpConnection, McpConnector } from '@pi-code/extension/structures/agent-runtime/mcp/manager';
 
 const LOCAL: McpServerConfig = { kind: 'local', command: 'echo' };
@@ -61,6 +61,11 @@ async function settle(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
+// The catalog reports which servers hold a live connection.
+async function catalog(gateway: ReturnType<typeof createMcpGateway>, config: McpConfig): Promise<string> {
+  return (await gateway.dispatch(config, WORKSPACE, {})).text;
+}
+
 describe('createMcpGateway', () => {
   it('errors when no servers are configured', async () => {
     const { connector } = createFakeConnector();
@@ -99,7 +104,7 @@ describe('createMcpGateway', () => {
     expect(clients).toHaveLength(1);
     expect(first.subtitle).toBe('fs: 1 tools');
     expect(second.text).toContain('### ping');
-    expect(gateway.isConnected('fs')).toBe(true);
+    expect(await catalog(gateway, { fs: LOCAL })).toContain('- fs (local, running)');
   });
 
   it('forwards tool arguments and returns the tool result text', async () => {
@@ -138,7 +143,7 @@ describe('createMcpGateway', () => {
 
     expect(second.isError).toBeFalsy();
     expect(clients).toHaveLength(2);
-    expect(gateway.isConnected('fs')).toBe(true);
+    expect(await catalog(gateway, { fs: LOCAL })).toContain('- fs (local, running)');
   });
 
   it('replaces a running connection when its config changes underneath it', async () => {
@@ -163,7 +168,7 @@ describe('createMcpGateway', () => {
     await settle();
 
     expect(clients[0].closed).toBe(true);
-    expect(gateway.isConnected('fs')).toBe(false);
+    expect(await catalog(gateway, { fs: LOCAL })).toContain('- fs (local, not started)');
 
     await gateway.dispatch({ fs: LOCAL }, WORKSPACE, { server: 'fs' });
     expect(clients).toHaveLength(2);
@@ -176,8 +181,9 @@ describe('createMcpGateway', () => {
     await gateway.preconnect({ fs: LOCAL, hot: AUTO }, WORKSPACE);
 
     expect(clients).toHaveLength(1);
-    expect(gateway.isConnected('hot')).toBe(true);
-    expect(gateway.isConnected('fs')).toBe(false);
+    const listing = await catalog(gateway, { fs: LOCAL, hot: AUTO });
+    expect(listing).toContain('- hot (local, running)');
+    expect(listing).toContain('- fs (local, not started)');
   });
 
   it('reuses a preconnected server on its first dispatch', async () => {

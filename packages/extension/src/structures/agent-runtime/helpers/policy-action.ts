@@ -3,7 +3,7 @@ import { CONFIG_DIR_NAME, getAgentDir, getCwdRelativePath, resolvePath } from '@
 import { Minimatch } from 'minimatch';
 
 import { parseCommand } from '@pi-code/shared/utilities/command';
-import { normalizeSeparators } from '@pi-code/shared/utilities/common';
+import { normalizeSeparators, setBounded } from '@pi-code/shared/utilities/common';
 
 import type { AppSettings } from '@pi-code/shared/core/settings';
 import type { CommandTokenizer } from '@pi-code/shared/utilities/command';
@@ -111,8 +111,7 @@ function compiledRegex(source: string): RegExp | null {
     }
   }
 
-  if (regexCache.size >= PATTERN_CACHE_LIMIT) regexCache.clear();
-  regexCache.set(source, compiled);
+  setBounded(regexCache, source, compiled, PATTERN_CACHE_LIMIT);
   return compiled;
 }
 
@@ -133,8 +132,7 @@ function globMatcher(pattern: string): Minimatch {
   let matcher = globCache.get(pattern);
   if (!matcher) {
     matcher = new Minimatch(pattern, { nocase: true, dot: true });
-    if (globCache.size >= PATTERN_CACHE_LIMIT) globCache.clear();
-    globCache.set(pattern, matcher);
+    setBounded(globCache, pattern, matcher, PATTERN_CACHE_LIMIT);
   }
   return matcher;
 }
@@ -166,8 +164,7 @@ function normalizePatternForPathMatch(pattern: string): NormalizedPattern {
 
   const expanded = pattern.startsWith('~') ? resolvePath(pattern) : pattern;
   const normalized: NormalizedPattern = { comparable: comparableForm(expanded), isAbsolute: looksAbsolute(expanded) };
-  if (normalizedPatternCache.size >= PATTERN_CACHE_LIMIT) normalizedPatternCache.clear();
-  normalizedPatternCache.set(pattern, normalized);
+  setBounded(normalizedPatternCache, pattern, normalized, PATTERN_CACHE_LIMIT);
   return normalized;
 }
 
@@ -282,8 +279,7 @@ function loweredPattern(pattern: string): string {
   let lowered = loweredPatternCache.get(pattern);
   if (lowered === undefined) {
     lowered = pattern.toLowerCase();
-    if (loweredPatternCache.size >= PATTERN_CACHE_LIMIT) loweredPatternCache.clear();
-    loweredPatternCache.set(pattern, lowered);
+    setBounded(loweredPatternCache, pattern, lowered, PATTERN_CACHE_LIMIT);
   }
   return lowered;
 }

@@ -11,61 +11,53 @@ import { escapeRegExp, findOccurrences } from '@pi-code/shared/utilities/common'
 import type { CustomToolResult } from '@pi-code/extension/types/extension';
 import type { ToolName } from '@pi-code/shared/core/types';
 
+interface TextToken {
+  readonly text: string;
+  readonly isWhitespace: boolean;
+}
+
+function tokenizeText(text: string): TextToken[] {
+  const tokens: TextToken[] = [];
+  let index = 0;
+
+  while (index < text.length) {
+    const isWhitespace = /\s/.test(text[index]);
+    const start = index;
+    while (index < text.length && /\s/.test(text[index]) === isWhitespace) {
+      index++;
+    }
+    tokens.push({ text: text.slice(start, index), isWhitespace });
+  }
+
+  return tokens;
+}
+
 function buildWhitespaceTolerantRegex(oldText: string): RegExp {
-  if (oldText === '') {
+  const tokens = tokenizeText(oldText);
+  if (tokens.length === 0) {
     return /(?!)/g;
   }
-  let pattern = '';
-  let i = 0;
-  const len = oldText.length;
 
-  while (i < len) {
-    if (/\s/.test(oldText[i])) {
-      let hasNewline = false;
-      while (i < len && /\s/.test(oldText[i])) {
-        hasNewline = hasNewline || oldText[i] === '\n';
-        i++;
-      }
-      pattern += hasNewline ? '\\s+' : '[\\t ]+';
-    } else {
-      const start = i;
-      while (i < len && !/\s/.test(oldText[i])) {
-        i++;
-      }
-      pattern += escapeRegExp(oldText.slice(start, i));
+  let pattern = '';
+  for (const token of tokens) {
+    if (!token.isWhitespace) {
+      pattern += escapeRegExp(token.text);
+      continue;
     }
+    // A run that spans a line break may stand for any whitespace, one that
+    // does not may only stand for spaces and tabs.
+    pattern += token.text.includes('\n') ? '\\s+' : '[\\t ]+';
   }
   return new RegExp(pattern, 'g');
 }
 
 function buildTokenRegex(oldText: string): RegExp {
-  let pattern = '';
-  let i = 0;
-  const len = oldText.length;
-  let hasToken = false;
-
-  while (i < len) {
-    while (i < len && /\s/.test(oldText[i])) {
-      i++;
-    }
-    if (i >= len) break;
-
-    const start = i;
-    while (i < len && !/\s/.test(oldText[i])) {
-      i++;
-    }
-
-    if (hasToken) {
-      pattern += '\\s+';
-    }
-    pattern += escapeRegExp(oldText.slice(start, i));
-    hasToken = true;
-  }
-
-  if (!hasToken) {
+  const tokens = tokenizeText(oldText).filter((token) => !token.isWhitespace);
+  if (tokens.length === 0) {
     return /(?!)/g;
   }
-  return new RegExp(pattern, 'g');
+
+  return new RegExp(tokens.map((token) => escapeRegExp(token.text)).join('\\s+'), 'g');
 }
 
 type MatchStrategy = 'exact' | 'whitespace' | 'token';

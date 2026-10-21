@@ -1,4 +1,4 @@
-import { hasVisibleText } from '@pi-code/shared/utilities/common';
+import { findReplaceableFailedRequest, hasVisibleText, setBounded } from '@pi-code/shared/utilities/common';
 import { buildToolSections, GROUP_TOOLS } from '@pi-code/shared/utilities/tool';
 
 import type { ApiRequestChatMessage, AssistantChatMessage, ChatMessage, ToolChatMessage, ToolSection } from '@pi-code/shared/core/types';
@@ -70,11 +70,7 @@ export function groupToolMessages(messages: ReadonlyArray<ChatMessage>): ChatMes
         // The cache drops one entry instead of wiping itself, so a long
         // session never loses every grouped row at once and re-renders all of
         // its mounted tool rows in one frame.
-        if (groupedRowCache.size >= GROUPED_ROW_CACHE_LIMIT) {
-          const oldest = groupedRowCache.keys().next();
-          if (!oldest.done) groupedRowCache.delete(oldest.value);
-        }
-        groupedRowCache.set(first.id, { members: group, row });
+        setBounded(groupedRowCache, first.id, { members: group, row }, GROUPED_ROW_CACHE_LIMIT);
       }
     }
     result.push(row);
@@ -170,23 +166,6 @@ function todoListOf(message: ChatMessage): TodoItem[] | undefined {
   return message.sender === 'tool' && message.toolName === 'update_todo' ? message.todos : undefined;
 }
 
-// Every update_todo row needs the checklist that was in effect before it, so
-// the chat body can show only what that step changed. One forward pass answers
-// all of them; resolving each row on its own rescans the transcript per row.
-export function previousTodosById(messages: ReadonlyArray<ChatMessage>): ReadonlyMap<string, TodoItem[]> {
-  const previousById = new Map<string, TodoItem[]>();
-  let previous: TodoItem[] | undefined;
-
-  for (const message of messages) {
-    const todos = todoListOf(message);
-    if (!todos) continue;
-    if (previous) previousById.set(message.id, previous);
-    previous = todos;
-  }
-
-  return previousById;
-}
-
 // Sub-agent events can arrive before the webview has rendered the parent tool
 // row. Callers use this to skip such updates instead of creating orphan rows.
 export function ignoreUnknownSubagent(messages: ReadonlyArray<ChatMessage>, subagent: string | undefined, id: string): boolean {
@@ -264,16 +243,7 @@ export function startApiRequest(messages: ChatMessage[], id: string, timestamp: 
 
   // The failed request a retry replaces is the run of denied requests at the
   // end of the transcript.
-  let retryIndex: number | undefined;
-  for (let index = messages.length - 1; index >= 0; index--) {
-    const message = messages[index];
-    if (message.sender === 'assistant' && !messageVisibility(message).renderable) continue;
-    if (message.sender === 'api_request' && message.toolStatus === 'denied') {
-      retryIndex = index;
-      continue;
-    }
-    break;
-  }
+  const retryIndex = findReplaceableFailedRequest(messages);
 
   const limit = retryIndex !== undefined ? retryIndex : messages.length;
   const next: ChatMessage[] = [];
@@ -515,6 +485,8 @@ export function buildChatRenderModel(messages: ReadonlyArray<ChatMessage>): Chat
       if (message.toolStatus === 'approval') hasApproval = true;
     }
 
+    // Every update_todo row needs the checklist that was in effect before it,
+    // so the chat body can show only what that step changed.
     const todos = todoListOf(message);
     if (todos) {
       if (previousTodos) oldTodosById.set(message.id, previousTodos);

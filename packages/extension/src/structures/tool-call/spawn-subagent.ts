@@ -32,19 +32,18 @@ function formatUsage(usage: SubagentUsage): string {
   return `${turns}, ${usage.tokensIn.toLocaleString()} in / ${usage.tokensOut.toLocaleString()} out, $${usage.cost.toFixed(4)}`;
 }
 
-function wrapReport(outcome: SubagentOutcome, state: 'completed' | 'error', body: readonly string[]): string {
+function wrapReport(outcome: SubagentOutcome, body: readonly string[]): string {
+  const state = outcome.error === undefined ? 'completed' : 'error';
   return [`## Sub-agent ${outcome.agent} (${state})`, '', ...body, '', formatUsage(outcome.usage)].join('\n');
 }
 
-async function renderOutcome(outcome: SubagentOutcome, state: 'completed' | 'error'): Promise<{ text: string; tempFilePath?: string }> {
+async function renderOutcome(outcome: SubagentOutcome): Promise<{ text: string; tempFilePath?: string }> {
   // The error body reports the failure and the steps taken, never the report
   // itself, so truncating it and spilling it to a temp file would produce a
   // path that nothing in the result points at.
-  if (state === 'error') {
-    // `join` rendered a missing error as a blank line; keep that instead of
-    // letting the word "undefined" reach the model.
-    const body = [...(outcome.steps ? ['### Steps Taken', '', outcome.steps, ''] : []), '### Error', '', outcome.error ?? ''];
-    return { text: wrapReport(outcome, state, body) };
+  if (outcome.error !== undefined) {
+    const body = [...(outcome.steps ? ['### Steps Taken', '', outcome.steps, ''] : []), '### Error', '', outcome.error];
+    return { text: wrapReport(outcome, body) };
   }
 
   const limits = readOutputLimits();
@@ -66,7 +65,7 @@ async function renderOutcome(outcome: SubagentOutcome, state: 'completed' | 'err
   }
 
   const text = renderTruncatedText(truncation, 'head', hint);
-  return { text: wrapReport(outcome, state, ['### Result', '', text]), tempFilePath };
+  return { text: wrapReport(outcome, ['### Result', '', text]), tempFilePath };
 }
 
 const SUBAGENT_NAMES = SUBAGENTS.map((agent) => agent.name);
@@ -126,7 +125,7 @@ export const spawnSubagentTool = defineTool({
       // judge how far the sub-agent got. `spawnSubagent` pairs an empty report
       // with an error on every path, so the error alone decides it.
       const failed = outcome.error !== undefined;
-      const { text: report, tempFilePath } = await renderOutcome(outcome, failed ? 'error' : 'completed');
+      const { text: report, tempFilePath } = await renderOutcome(outcome);
 
       const details: SubagentDetails = {
         agent: outcome.agent,
