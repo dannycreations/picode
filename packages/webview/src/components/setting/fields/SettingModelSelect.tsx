@@ -1,3 +1,4 @@
+import { cn } from 'cn';
 import { ChevronDown } from 'lucide-react';
 import { useRef, useState } from 'react';
 
@@ -17,10 +18,10 @@ interface SelectButtonProps {
   readonly options: readonly SelectOption[];
   readonly onChange: (value: string) => void;
   readonly icon?: ReactNode;
-  readonly itemClassName?: string;
+  readonly labelClassName?: string;
 }
 
-const SelectButton: FC<SelectButtonProps> = ({ value, options, onChange, icon, itemClassName }) => {
+const SelectButton: FC<SelectButtonProps> = ({ value, options, onChange, icon, labelClassName }) => {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   useClickOutside(containerRef, () => setOpen(false));
@@ -35,7 +36,7 @@ const SelectButton: FC<SelectButtonProps> = ({ value, options, onChange, icon, i
         className="h-7 w-full px-2 text-xs rounded border border-vscode-focusBorder bg-vscode-settings-textInputBackground text-vscode-settings-textInputForeground outline-none hover:ring-1 hover:ring-vscode-focusBorder focus:ring-1 focus:ring-vscode-focusBorder flex items-center justify-between cursor-pointer"
       >
         {icon}
-        <span className="truncate">{selected?.label ?? ''}</span>
+        <span className={cn('truncate', labelClassName)}>{selected?.label ?? ''}</span>
         <ChevronDown size={12} className="shrink-0 ml-1" />
       </button>
       {open && (
@@ -45,7 +46,7 @@ const SelectButton: FC<SelectButtonProps> = ({ value, options, onChange, icon, i
               <DropdownMenuItem
                 key={option.value}
                 label={option.label}
-                className={itemClassName}
+                className={labelClassName}
                 selected={option.value === value}
                 onSelect={() => {
                   onChange(option.value);
@@ -105,7 +106,7 @@ export const SettingModelSelect: FC<SettingModelSelectProps> = ({
               value={thinkingLevel}
               options={thinkingOptions}
               onChange={(next) => onChangeThinkingLevel?.(next)}
-              itemClassName="capitalize"
+              labelClassName="capitalize"
             />
           </div>
         )}

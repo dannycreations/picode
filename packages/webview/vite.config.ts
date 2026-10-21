@@ -42,7 +42,9 @@ export default defineConfig(({ command }) => {
     },
     define: isBuild ? { 'process.env.NODE_ENV': '"production"' } : {},
     test: {
-      include: ['src/**/*.{test,spec}.{ts,mts,cts}'],
+      environment: 'jsdom',
+      setupFiles: ['./scripts/test.ts'],
+      include: ['src/**/*.{test,spec}.{ts,mts,cts,tsx}'],
       watch: false,
       testTimeout: 10_000,
     },
