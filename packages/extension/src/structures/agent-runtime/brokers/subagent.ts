@@ -1,4 +1,3 @@
-import { unregisterSubagentSession } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
 import { logger } from '@pi-code/shared/core/logger';
 
 import type { AgentSession } from '@earendil-works/pi-coding-agent';
@@ -16,6 +15,25 @@ interface LiveSubagentEntry extends LiveSubagent {
 }
 
 const liveSubagents = new Map<string, LiveSubagentEntry>();
+
+interface SubagentSessionInfo {
+  readonly name: string;
+  readonly toolCallId?: string;
+}
+
+const subagentBySession = new Map<string, SubagentSessionInfo>();
+
+export function registerSubagentSession(sessionId: string, name: string, toolCallId?: string): void {
+  subagentBySession.set(sessionId, { name, toolCallId });
+}
+
+export function unregisterSubagentSession(sessionId: string): void {
+  subagentBySession.delete(sessionId);
+}
+
+export function getSubagentSession(sessionId: string): SubagentSessionInfo | undefined {
+  return subagentBySession.get(sessionId);
+}
 
 type SessionsListener = (toolCallIds: readonly string[]) => void;
 

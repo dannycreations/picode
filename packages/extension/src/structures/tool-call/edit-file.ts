@@ -6,7 +6,7 @@ import { readOutputLimits } from '@pi-code/extension/core/settings';
 import { runFileMutation, toolError } from '@pi-code/extension/structures/tool-call/helpers';
 import { checkReadableFile, writeFileAtomic } from '@pi-code/extension/utilities/fs';
 import { buildFileChangeResult } from '@pi-code/extension/utilities/truncate';
-import { escapeRegExp, findOccurrences } from '@pi-code/shared/utilities/common';
+import { countOccurrences, escapeRegExp, isWhitespaceCode } from '@pi-code/shared/utilities/common';
 
 import type { CustomToolResult } from '@pi-code/extension/types/extension';
 import type { ToolName } from '@pi-code/shared/core/types';
@@ -21,9 +21,9 @@ function tokenizeText(text: string): TextToken[] {
   let index = 0;
 
   while (index < text.length) {
-    const isWhitespace = /\s/.test(text[index]);
+    const isWhitespace = isWhitespaceCode(text.charCodeAt(index));
     const start = index;
-    while (index < text.length && /\s/.test(text[index]) === isWhitespace) {
+    while (index < text.length && isWhitespaceCode(text.charCodeAt(index)) === isWhitespace) {
       index++;
     }
     tokens.push({ text: text.slice(start, index), isWhitespace });
@@ -67,7 +67,7 @@ type ReplacementOutcome =
   | { readonly content?: undefined; readonly strategy?: undefined; readonly matched?: undefined; readonly error: string };
 
 function replaceExpected(original: string, oldText: string, newText: string, expected: number, filePath: string): ReplacementOutcome {
-  const exact = findOccurrences(original, oldText, true).length;
+  const exact = countOccurrences(original, oldText, true);
   if (exact === expected) {
     // The function replacer keeps `$&` and friends in `newText` literal; a
     // string replacement would expand them. `expected` is at least 1 and

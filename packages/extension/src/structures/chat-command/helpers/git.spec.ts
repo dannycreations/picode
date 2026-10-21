@@ -5,15 +5,14 @@ import { logger } from '@pi-code/shared/core/logger';
 
 import type { MockInstance } from 'vitest';
 
-const { execGitMock, getGitRepositoryMock } = vi.hoisted(() => ({
+const { execGitMock, getGitRootMock } = vi.hoisted(() => ({
   execGitMock: vi.fn(),
-  getGitRepositoryMock: vi.fn(),
+  getGitRootMock: vi.fn(),
 }));
 
-vi.mock('vscode', () => ({ Uri: { file: (path: string) => ({ fsPath: path }) } }));
 vi.mock('@pi-code/extension/utilities/git', () => ({
   execGit: execGitMock,
-  getGitRepository: getGitRepositoryMock,
+  getGitRoot: getGitRootMock,
 }));
 
 const REPO_ROOT = '/repo';
@@ -47,7 +46,7 @@ function failGitWith(message: string): void {
 
 beforeEach(() => {
   execGitMock.mockReset();
-  getGitRepositoryMock.mockReset().mockResolvedValue({ rootUri: { fsPath: REPO_ROOT } });
+  getGitRootMock.mockReset().mockResolvedValue(REPO_ROOT);
   // A failed search reports through the logger; capture it so the run stays
   // quiet and the test can check what it reported.
   warn = vi.spyOn(logger, 'warn').mockImplementation(() => {});
@@ -120,7 +119,7 @@ describe('searchCommits', () => {
   });
 
   it('returns nothing when no repository is found', async () => {
-    getGitRepositoryMock.mockResolvedValue(undefined);
+    getGitRootMock.mockResolvedValue(null);
 
     await expect(searchCommits('', CWD)).resolves.toEqual([]);
     expect(execGitMock).not.toHaveBeenCalled();
@@ -137,7 +136,7 @@ describe('searchCommits', () => {
 describe('resolveCommitTag', () => {
   it('passes ordinary words through untouched', async () => {
     await expect(resolveCommitTag('todo', CWD, LIMITS)).resolves.toBeNull();
-    expect(getGitRepositoryMock).not.toHaveBeenCalled();
+    expect(getGitRootMock).not.toHaveBeenCalled();
   });
 
   it('expands #changes into status and diff blocks', async () => {
@@ -192,7 +191,7 @@ describe('resolveCommitTag', () => {
   });
 
   it('reports a missing repository for both tag kinds', async () => {
-    getGitRepositoryMock.mockResolvedValue(undefined);
+    getGitRootMock.mockResolvedValue(null);
 
     await expect(resolveCommitTag('changes', CWD, LIMITS)).resolves.toContain('no git repository found');
     await expect(resolveCommitTag('4e7c64a', CWD, LIMITS)).resolves.toContain('no git repository found');

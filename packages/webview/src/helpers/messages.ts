@@ -152,10 +152,6 @@ export function messageVisibility(message: ChatMessage): MessageVisibility {
   return { renderable: hasText || hasReasoning, hasText, hasReasoning };
 }
 
-export function isRenderableMessage(message: ChatMessage): boolean {
-  return messageVisibility(message).renderable;
-}
-
 function todoListOf(message: ChatMessage): TodoItem[] | undefined {
   return message.sender === 'tool' && message.toolName === 'update_todo' ? message.todos : undefined;
 }
@@ -478,7 +474,7 @@ export function buildChatRenderModel(messages: ReadonlyArray<ChatMessage>): Chat
       latestTodos = todos;
     }
 
-    if (!isRenderableMessage(message)) continue;
+    if (!messageVisibility(message).renderable) continue;
     visible.push(message);
   }
 

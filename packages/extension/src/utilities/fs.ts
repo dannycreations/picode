@@ -6,7 +6,7 @@ import { createInterface } from 'node:readline';
 import { formatPathRelativeToCwdOrAbsolute, getCwdRelativePath } from '@earendil-works/pi-coding-agent';
 
 import { logger } from '@pi-code/shared/core/logger';
-import { containsIgnoreCase, pathCollator } from '@pi-code/shared/utilities/common';
+import { containsIgnoreCase, pathCollator, setBounded } from '@pi-code/shared/utilities/common';
 
 import type { LineRange } from '@pi-code/shared/core/types';
 
@@ -126,8 +126,7 @@ async function listSearchableDirectory(start: string, cwd: string): Promise<Dire
     if (entries.length >= MAX_SCANNED) break;
   }
 
-  if (listingCache.size >= LISTING_CACHE_LIMIT) listingCache.clear();
-  listingCache.set(key, { at: Date.now(), entries });
+  setBounded(listingCache, key, { at: Date.now(), entries }, LISTING_CACHE_LIMIT);
   return entries;
 }
 

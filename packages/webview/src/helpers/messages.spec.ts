@@ -6,7 +6,6 @@ import {
   buildChatRenderModel,
   deliverQueuedReplies,
   groupToolMessages,
-  isRenderableMessage,
   messageVisibility,
   patchReplyQueue,
   patchToolRow,
@@ -37,26 +36,28 @@ function createToolMessage(id: string, toolName: ToolName, overrides: Partial<Ch
   return createMessage({ id, sender: 'tool', toolName, toolStatus: 'completed', ...overrides });
 }
 
-describe('isRenderableMessage', () => {
+const isRenderable = (message: ChatMessage): boolean => messageVisibility(message).renderable;
+
+describe('messageVisibility', () => {
   it('should render update_todo as its own row in the chat body', () => {
-    expect(isRenderableMessage(createMessage({ sender: 'tool', text: 'update_todo', toolName: 'update_todo' }))).toBe(true);
-    expect(isRenderableMessage(createMessage({ sender: 'tool', text: 'read_file', toolName: 'read_file' }))).toBe(true);
+    expect(isRenderable(createMessage({ sender: 'tool', text: 'update_todo', toolName: 'update_todo' }))).toBe(true);
+    expect(isRenderable(createMessage({ sender: 'tool', text: 'read_file', toolName: 'read_file' }))).toBe(true);
   });
 
   it('should hide an assistant turn until it has content', () => {
-    expect(isRenderableMessage(createMessage({ text: '' }))).toBe(false);
-    expect(isRenderableMessage(createMessage({ text: '   \n  ' }))).toBe(false);
-    expect(isRenderableMessage(createMessage({ text: '', reasoning: '  ' }))).toBe(false);
+    expect(isRenderable(createMessage({ text: '' }))).toBe(false);
+    expect(isRenderable(createMessage({ text: '   \n  ' }))).toBe(false);
+    expect(isRenderable(createMessage({ text: '', reasoning: '  ' }))).toBe(false);
   });
 
   it('should show an assistant turn once text or reasoning arrives', () => {
-    expect(isRenderableMessage(createMessage({ text: 'H' }))).toBe(true);
-    expect(isRenderableMessage(createMessage({ text: '', reasoning: 'thinking' }))).toBe(true);
+    expect(isRenderable(createMessage({ text: 'H' }))).toBe(true);
+    expect(isRenderable(createMessage({ text: '', reasoning: 'thinking' }))).toBe(true);
   });
 
   it('should always show senders that carry no incremental content', () => {
     for (const sender of SENDERS.filter((s) => s !== 'assistant')) {
-      expect(isRenderableMessage(createMessage({ sender, text: '' }))).toBe(true);
+      expect(isRenderable(createMessage({ sender, text: '' }))).toBe(true);
     }
   });
 });
@@ -121,10 +122,10 @@ describe('appendAssistantDelta', () => {
     const messages = [createMessage({ id: 'a1', sender: 'assistant', text: '' })];
 
     const blank = appendAssistantDelta(messages, '   ', undefined);
-    expect(isRenderableMessage(blank[0])).toBe(false);
+    expect(isRenderable(blank[0])).toBe(false);
 
     const visible = appendAssistantDelta(blank, 'x', undefined);
-    expect(isRenderableMessage(visible[0])).toBe(true);
+    expect(isRenderable(visible[0])).toBe(true);
   });
 
   it('keeps an answer that already showed something visible', () => {
@@ -133,7 +134,7 @@ describe('appendAssistantDelta', () => {
     const result = appendAssistantDelta(messages, ' there', undefined);
 
     expect(result[0].text).toBe('Hi there');
-    expect(isRenderableMessage(result[0])).toBe(true);
+    expect(isRenderable(result[0])).toBe(true);
   });
 
   it('streams the reasoning apart from the answer', () => {
@@ -143,7 +144,7 @@ describe('appendAssistantDelta', () => {
 
     expect((result[0] as { reasoning?: string }).reasoning).toBe('thinking');
     expect(result[0].text).toBe('');
-    expect(isRenderableMessage(result[0])).toBe(true);
+    expect(isRenderable(result[0])).toBe(true);
   });
 
   it('leaves the transcript alone when no answer is streaming', () => {

@@ -191,7 +191,7 @@ type SearchRequestBuilder = (query: string) => WebviewToExtensionMessage;
 
 const requestCommitSearch: SearchRequestBuilder = (query) => {
   // Drop the previous list so the menu never shows results from an older query.
-  useChatStore.setState({ commitResults: null });
+  useChatStore.getState().clearCommitResults();
   return { type: 'search_commits', query };
 };
 

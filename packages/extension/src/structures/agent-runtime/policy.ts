@@ -1,12 +1,10 @@
-import { resolve } from 'node:path';
-import { getCwdRelativePath, resolvePath } from '@earendil-works/pi-coding-agent';
-
 import { readAppSettings } from '@pi-code/extension/core/settings';
-import { requestApproval } from '@pi-code/extension/structures/agent-runtime/brokers/approval';
-import { getSubagentSession, recordApprovalDuration } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
+import { recordApprovalDuration, requestApproval } from '@pi-code/extension/structures/agent-runtime/brokers/approval';
+import { getSubagentSession } from '@pi-code/extension/structures/agent-runtime/brokers/subagent';
 import {
   applyYoloDecision,
   resolveCommandAction,
+  resolveFileLocation,
   resolvePathAction,
   resolveReadPath,
 } from '@pi-code/extension/structures/agent-runtime/helpers/policy-action';
@@ -32,7 +30,7 @@ const SELF_APPROVING_TOOLS: ReadonlySet<ToolName> = new Set<ToolName>(['update_t
 function commandCwdEscapesWorkspace(requestedCwd: string | null | undefined, workspaceCwd: string): boolean {
   const requested = typeof requestedCwd === 'string' ? requestedCwd.trim() : '';
   if (requested === '') return false;
-  return getCwdRelativePath(resolvePath(requested, workspaceCwd), resolve(workspaceCwd)) === undefined;
+  return resolveFileLocation(workspaceCwd, requested).insideRelative === undefined;
 }
 
 function evaluateToolCall(toolName: ToolName, cwd: string, input: object): ApprovalDecision {

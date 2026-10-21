@@ -2,7 +2,7 @@ import { cp, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { execGit } from '@pi-code/extension/utilities/git';
+import { execGit, getGitRoot } from '@pi-code/extension/utilities/git';
 import { logger } from '@pi-code/shared/core/logger';
 
 // A worktree carries binary patches, so it needs more room and more time than
@@ -39,16 +39,6 @@ async function runGit(cwd: string, args: readonly string[]): Promise<string> {
       GIT_COMMITTER_EMAIL: 'pi-code@local',
     },
   });
-}
-
-export async function getGitRoot(cwd: string): Promise<string | null> {
-  try {
-    const root = await runGit(cwd, ['rev-parse', '--show-toplevel']);
-    const trimmed = root.trim();
-    return trimmed.length > 0 ? trimmed : null;
-  } catch {
-    return null;
-  }
 }
 
 export async function removeWorktreeDirectory(worktree: IsolatedWorktree): Promise<void> {

@@ -47,6 +47,14 @@ const ElapsedTimer: FC<ElapsedTimerProps> = ({ startTs, isRunning, duration, rev
   );
 };
 
+function removePattern(list: readonly string[], pattern: string): string[] {
+  return list.filter((entry) => entry !== pattern);
+}
+
+function togglePattern(list: readonly string[], pattern: string): string[] {
+  return list.includes(pattern) ? removePattern(list, pattern) : [...list, pattern];
+}
+
 const DiffStat: FC<{ content?: string; className?: string }> = ({ content, className }) => {
   // Counting walks every diff line, and the section header renders even while
   // collapsed, so keep the result for as long as the content is unchanged.
@@ -277,16 +285,11 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onRespondTool }) =>
     const current = useChatStore.getState().settings;
     const allowed = (current?.[patternConfig.allowKey] as readonly string[] | undefined) ?? [];
     const denied = (current?.[patternConfig.denyKey] as readonly string[] | undefined) ?? [];
-    const nextAllowed = allow
-      ? allowed.includes(pattern)
-        ? allowed.filter((entry) => entry !== pattern)
-        : [...allowed, pattern]
-      : denied.filter((entry) => entry !== pattern);
-    const nextDenied = allow
-      ? denied.filter((entry) => entry !== pattern)
-      : denied.includes(pattern)
-        ? denied.filter((entry) => entry !== pattern)
-        : [...denied, pattern];
+    // The two lists are exclusive, because a denial outranks an approval. The
+    // newest decision wins, so approving clears a deny and denying clears an
+    // approval for the same pattern.
+    const nextAllowed = allow ? togglePattern(allowed, pattern) : removePattern(allowed, pattern);
+    const nextDenied = allow ? removePattern(denied, pattern) : togglePattern(denied, pattern);
     useChatStore.getState().send({
       type: 'update_settings',
       settings: { [patternConfig.allowKey]: nextAllowed, [patternConfig.denyKey]: nextDenied } as Partial<AppSettings>,

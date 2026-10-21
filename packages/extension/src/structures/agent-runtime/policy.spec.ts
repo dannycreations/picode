@@ -18,12 +18,12 @@ vi.mock('@pi-code/extension/core/settings', () => ({
 vi.mock('@pi-code/extension/structures/agent-runtime/brokers/approval', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@pi-code/extension/structures/agent-runtime/brokers/approval')>()),
   requestApproval: mocks.requestApproval,
+  recordApprovalDuration: mocks.recordApprovalDuration,
 }));
 
-vi.mock('@pi-code/extension/structures/agent-runtime/brokers/tool-call', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@pi-code/extension/structures/agent-runtime/brokers/tool-call')>()),
+vi.mock('@pi-code/extension/structures/agent-runtime/brokers/subagent', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@pi-code/extension/structures/agent-runtime/brokers/subagent')>()),
   getSubagentSession: mocks.getSubagentSession,
-  recordApprovalDuration: mocks.recordApprovalDuration,
 }));
 
 // Defaults materialized the same way readAppSettings builds them.

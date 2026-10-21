@@ -30,7 +30,7 @@ export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
 
   const { draftSettings, isChangeDetected, handleFieldChange, handleSave, resetDraft } = useSetting(settings);
 
-  const { containerRef, isCollapsed, shouldAnimate } = useResponsive(550);
+  const { containerRef, isCollapsed, shouldAnimate } = useResponsive();
 
   useEffect(() => {
     if (!searchQuery.trim() || tabHasMatch(activeTabId, searchQuery)) return;

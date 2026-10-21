@@ -8,9 +8,11 @@ interface UseResponsiveReturn {
   readonly shouldAnimate: boolean;
 }
 
-export const useResponsive = (threshold: number): UseResponsiveReturn => {
+const COLLAPSE_THRESHOLD_PX = 550;
+
+export const useResponsive = (): UseResponsiveReturn => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isCollapsed, setIsCollapsed] = useState(() => window.innerWidth < threshold);
+  const [isCollapsed, setIsCollapsed] = useState(() => window.innerWidth < COLLAPSE_THRESHOLD_PX);
   const [shouldAnimate, setShouldAnimate] = useState(false);
 
   useEffect(() => {
@@ -19,7 +21,7 @@ export const useResponsive = (threshold: number): UseResponsiveReturn => {
 
     const observer = new ResizeObserver(([entry]) => {
       if (entry) {
-        setIsCollapsed(entry.contentRect.width < threshold);
+        setIsCollapsed(entry.contentRect.width < COLLAPSE_THRESHOLD_PX);
       }
     });
 
@@ -31,7 +33,7 @@ export const useResponsive = (threshold: number): UseResponsiveReturn => {
       cancelAnimationFrame(frame);
       observer.disconnect();
     };
-  }, [threshold]);
+  }, []);
 
   return { containerRef, isCollapsed, shouldAnimate };
 };

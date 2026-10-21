@@ -139,6 +139,7 @@ interface ChatState {
   readonly setView: (view: ChatState['view']) => void;
   readonly setInputValue: (value: string) => void;
   readonly setInputAttachments: (value: Attachment[] | ((prev: Attachment[]) => Attachment[])) => void;
+  readonly clearCommitResults: () => void;
   readonly appendToInput: (text: string) => void;
   readonly setScope: (scope: HistoryScope) => void;
   readonly selectWorkspace: (path: string) => void;
@@ -594,6 +595,8 @@ export const useChatStore = create<ChatState>((set, get) => {
     setInputValue: (value) => set({ inputValue: value }),
 
     setInputAttachments: (value) => set((state) => ({ inputAttachments: typeof value === 'function' ? value(state.inputAttachments) : value })),
+
+    clearCommitResults: () => set({ commitResults: null }),
 
     appendToInput: (text) => {
       const textarea = composerTextarea?.current;

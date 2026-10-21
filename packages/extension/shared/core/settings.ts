@@ -285,6 +285,8 @@ export function getSettingSpec(key: SettingKey): SettingSpec {
   return SETTINGS_SCHEMA[key];
 }
 
+export const MAX_RETRY_COUNT = SETTINGS_SCHEMA.retryOnError.maximum;
+
 function defaultValue(key: SettingKey): unknown {
   const fallback = SETTINGS_SCHEMA[key].default;
   return Array.isArray(fallback) ? [...fallback] : fallback;

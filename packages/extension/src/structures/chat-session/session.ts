@@ -1,7 +1,7 @@
 import { contentText, uuidv7 } from '@earendil-works/pi-ai';
 import { calculateContextTokens, getLastAssistantUsage } from '@earendil-works/pi-coding-agent';
 
-import { clearApprovalDuration, getApprovalDuration } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
+import { clearApprovalDuration, getApprovalDuration } from '@pi-code/extension/structures/agent-runtime/brokers/approval';
 import { toBase64DataUrl } from '@pi-code/extension/utilities/codec';
 import { logger } from '@pi-code/shared/core/logger';
 import { elapsedSeconds, findReplaceableFailedRequest, parseTextAttachment, resolveContextLimit } from '@pi-code/shared/utilities/common';
@@ -212,8 +212,8 @@ function patchToolCall(result: ChatMessage[], msg: Extract<SessionMessage, { rol
   const details = msg.details as ToolResultDetails;
 
   const rawDuration = elapsedSeconds(existing.timestamp, timestamp);
-  const approvalMs = msg.toolCallId ? getApprovalDuration(msg.toolCallId) : undefined;
-  if (msg.toolCallId) clearApprovalDuration(msg.toolCallId);
+  const approvalMs = getApprovalDuration(msg.toolCallId);
+  clearApprovalDuration(msg.toolCallId);
   const netDuration = approvalMs !== undefined ? elapsedSeconds(existing.timestamp, timestamp - approvalMs) : rawDuration;
 
   result[index] = {

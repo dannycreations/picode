@@ -1,6 +1,6 @@
 import { uuidv7 } from '@earendil-works/pi-ai';
 
-import { getSubagentSession } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
+import { getSubagentSession } from '@pi-code/extension/structures/agent-runtime/brokers/subagent';
 import { SPAWN_SUBAGENT_TOOL_NAME, takeSubagentUsage } from '@pi-code/extension/structures/agent-runtime/subagent';
 import { logger } from '@pi-code/shared/core/logger';
 import { isSubagentEvent } from '@pi-code/shared/core/protocol';
@@ -84,6 +84,10 @@ function latestStep(steps: string | undefined): string | undefined {
     end = breakIndex;
   }
   return undefined;
+}
+
+function subagentName(session: AgentSession): string | undefined {
+  return getSubagentSession(session.sessionId)?.name;
 }
 
 interface MappedEvent {
@@ -175,7 +179,7 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
     // Only the tool cases need the owning sub-agent, and a session can emit
     // thousands of streaming deltas per turn, so the lookup stays inside them.
     case 'tool_execution_start': {
-      const subagent = getSubagentSession(session.sessionId)?.name;
+      const subagent = subagentName(session);
       return {
         message: {
           type: 'tool_execution_start',
@@ -191,7 +195,7 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
     }
 
     case 'tool_execution_update': {
-      const subagent = getSubagentSession(session.sessionId)?.name;
+      const subagent = subagentName(session);
       const result = toolResultText(event.partialResult);
       const steps = (event.partialResult as { details?: { steps?: string } } | undefined)?.details?.steps;
       const subtitle = event.toolName === SPAWN_SUBAGENT_TOOL_NAME ? latestStep(steps) : undefined;
@@ -205,7 +209,7 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
     }
 
     case 'tool_execution_end': {
-      const subagent = getSubagentSession(session.sessionId)?.name;
+      const subagent = subagentName(session);
       const toolResult = event.result as { details?: ToolResultDetails } | undefined;
       const details = toolResult?.details;
       return {

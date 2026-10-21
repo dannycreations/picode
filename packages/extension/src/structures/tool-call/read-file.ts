@@ -114,8 +114,9 @@ export const readFileTool = defineTool({
         return toolError('Error: read operation was aborted.');
       }
 
-      const { text, files } = assembleReadOutput(sections);
-      const allFailed = sections.every((section) => section.hasError);
+      const done = sections.filter((section): section is FileSection => section !== undefined);
+      const { text, files } = assembleReadOutput(done);
+      const allFailed = done.every((section) => section.hasError);
       return allFailed ? toolError(text, { files }) : toolResult(text, { files });
     } catch (err) {
       const result = toolErrorFrom(err, 'reading file');

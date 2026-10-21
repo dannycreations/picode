@@ -1,9 +1,11 @@
 import { act, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { coerceSetting, SETTING_KEYS } from '@pi-code/shared/core/settings';
 import { ToolMessage } from '@pi-code/webview/components/chat/messages/ToolMessage';
 import { useChatStore } from '@pi-code/webview/stores/useChatStore';
 
+import type { AppSettings } from '@pi-code/shared/core/settings';
 import type { ToolChatMessage } from '@pi-code/shared/core/types';
 
 const subagentMessage: ToolChatMessage = {
@@ -52,5 +54,56 @@ describe('ToolMessage sub-agent session button', () => {
     });
 
     expect(screen.queryByLabelText('Open sub-agent session')).toBeNull();
+  });
+});
+
+const writeMessage: ToolChatMessage = {
+  id: 'call-2',
+  sender: 'tool',
+  text: 'write_file',
+  toolName: 'write_file',
+  toolArgs: { path: 'app.ts' },
+  toolStatus: 'denied',
+  timestamp: 1_700_000_000_000,
+};
+
+// The settings snapshot the store holds is complete, so a test starts from the
+// schema defaults and overrides only the lists it cares about.
+function settingsWith(allowed: string[], denied: string[]): AppSettings {
+  const defaults = Object.fromEntries(SETTING_KEYS.map((key) => [key, coerceSetting(key, undefined)])) as AppSettings;
+  return { ...defaults, allowedWritePaths: allowed, deniedWritePaths: denied };
+}
+
+describe('ToolMessage auto-approval patterns', () => {
+  it('drops only the denied pattern from the allowed list', () => {
+    // Denying one pattern must not rewrite the whole allow list, or the
+    // remaining approvals are lost and denied patterns gain an approval.
+    const send = vi.fn();
+    useChatStore.setState({ send, settings: settingsWith(['app.ts', 'other.ts'], ['rm -rf']) });
+
+    render(<ToolMessage message={writeMessage} onRespondTool={vi.fn()} />);
+    act(() => {
+      screen.getByLabelText('Add to denied').click();
+    });
+
+    expect(send).toHaveBeenCalledWith({
+      type: 'update_settings',
+      settings: { allowedWritePaths: ['other.ts'], deniedWritePaths: ['rm -rf', 'app.ts'] },
+    });
+  });
+
+  it('drops the denied pattern from the denied list when it is allowed', () => {
+    const send = vi.fn();
+    useChatStore.setState({ send, settings: settingsWith([], ['app.ts']) });
+
+    render(<ToolMessage message={writeMessage} onRespondTool={vi.fn()} />);
+    act(() => {
+      screen.getByLabelText('Add to allowed').click();
+    });
+
+    expect(send).toHaveBeenCalledWith({
+      type: 'update_settings',
+      settings: { allowedWritePaths: ['app.ts'], deniedWritePaths: [] },
+    });
   });
 });

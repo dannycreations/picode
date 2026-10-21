@@ -34,6 +34,16 @@ async function getGitApi(): Promise<API | null> {
   }
 }
 
+export async function getGitRoot(cwd: string): Promise<string | null> {
+  try {
+    const root = await execGit(cwd, ['rev-parse', '--show-toplevel']);
+    const trimmed = root.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getGitRepository(uri?: Uri): Promise<Repository | null> {
   const api = await getGitApi();
   if (!api) {

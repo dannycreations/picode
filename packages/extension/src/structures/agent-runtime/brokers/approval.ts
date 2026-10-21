@@ -1,7 +1,6 @@
 import { uuidv7 } from '@earendil-works/pi-ai';
 
 import { createRequestRegistry } from '@pi-code/extension/structures/agent-runtime/brokers/registry';
-import { clearAllApprovalDurations, clearApprovalDuration } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
 import { logger } from '@pi-code/shared/core/logger';
 
 import type { ToolName } from '@pi-code/shared/core/types';
@@ -19,6 +18,24 @@ type ApprovalPresenter = (request: ApprovalRequest) => void;
 const approvals = createRequestRegistry<boolean>();
 
 let presenter: ApprovalPresenter | null = null;
+
+const approvalDurations = new Map<string, number>();
+
+export function getApprovalDuration(toolCallId: string): number | undefined {
+  return approvalDurations.get(toolCallId);
+}
+
+export function clearApprovalDuration(toolCallId: string): void {
+  approvalDurations.delete(toolCallId);
+}
+
+export function clearAllApprovalDurations(): void {
+  approvalDurations.clear();
+}
+
+export function recordApprovalDuration(toolCallId: string, durationMs: number): void {
+  approvalDurations.set(toolCallId, durationMs);
+}
 
 export function setApprovalPresenter(next: ApprovalPresenter): () => void {
   presenter = next;

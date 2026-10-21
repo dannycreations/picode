@@ -5,13 +5,8 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import {
-  createIsolatedWorktree,
-  getGitRoot,
-  integrateIsolatedWorktree,
-  removeWorktreeDirectory,
-  withWorktreeLock,
-} from '@pi-code/extension/utilities/worktree';
+import { getGitRoot } from '@pi-code/extension/utilities/git';
+import { createIsolatedWorktree, integrateIsolatedWorktree, removeWorktreeDirectory, withWorktreeLock } from '@pi-code/extension/utilities/worktree';
 import { logger } from '@pi-code/shared/core/logger';
 
 import type { IsolatedWorktree } from '@pi-code/extension/utilities/worktree';

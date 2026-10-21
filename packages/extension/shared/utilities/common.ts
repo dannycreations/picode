@@ -197,8 +197,6 @@ function startsWithFold(haystack: string, needle: string): boolean {
 }
 
 export function relativeToWorkspace(path: string, root: string): string {
-  if (!root) return path;
-
   const normPath = normalizeSeparators(path);
   const normRoot = normalizeSeparators(root).replace(/\/+$/, '');
   if (normRoot === '') return path;

@@ -31,12 +31,19 @@ function stripAnsiAndNormalize(raw: string): string {
   return stripped.includes('\r\n') ? stripped.replace(/\r\n/g, '\n') : stripped;
 }
 
-const DEFAULT_TIMEOUT_MS = 120_000;
 const STREAM_FLUSH_MS = 80;
-// How long a child's stdio pipes may stay open after its exit before the
-// result settles anyway. A killed shell can leave a descendant holding the
-// pipes forever, which would otherwise hang the caller.
 const EXIT_STDIO_GRACE_MS = 100;
+const DEFAULT_TIMEOUT_MS = 120_000;
+
+const COMPACT_THRESHOLD = 32;
+
+function compactChunks(chunks: string[], start: number): number {
+  if (start > COMPACT_THRESHOLD && start * 2 > chunks.length) {
+    chunks.splice(0, start);
+    return 0;
+  }
+  return start;
+}
 
 function resolveBashShell(): { shell: string; args: string[] } | null {
   try {
@@ -173,11 +180,7 @@ export const executeCommandTool = defineTool({
           pendingChunks[index] = pendingChunks[index].slice(partial);
         }
         pendingLength -= delta.length;
-        pendingStart = index;
-        if (pendingStart > 32 && pendingStart * 2 > pendingChunks.length) {
-          pendingChunks.splice(0, pendingStart);
-          pendingStart = 0;
-        }
+        pendingStart = compactChunks(pendingChunks, index);
         return delta;
       };
 
@@ -240,10 +243,7 @@ export const executeCommandTool = defineTool({
           }
           // The chunks that fell out of the window are dropped once they are
           // the larger half of the list.
-          if (pendingStart > 32 && pendingStart * 2 > pendingChunks.length) {
-            pendingChunks.splice(0, pendingStart);
-            pendingStart = 0;
-          }
+          pendingStart = compactChunks(pendingChunks, pendingStart);
         }
 
         streamDirty = true;
@@ -292,10 +292,7 @@ export const executeCommandTool = defineTool({
         }
         // The chunks that fell out of the window are dropped once they are the
         // larger half of the list.
-        if (outputStart > 32 && outputStart * 2 > output.length) {
-          output.splice(0, outputStart);
-          outputStart = 0;
-        }
+        outputStart = compactChunks(output, outputStart);
       };
 
       const spawnOptions: SpawnOptions = {

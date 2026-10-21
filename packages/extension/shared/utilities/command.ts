@@ -1,8 +1,10 @@
 import { parse } from 'shell-quote';
 
+import type { ParseEntry } from 'shell-quote';
+
 const SEPARATOR_OPS = ['&&', '||', ';', '|', '&'];
 
-function tokenize(command: string): unknown[] {
+function tokenize(command: string): ParseEntry[] {
   try {
     return parse(command);
   } catch {
@@ -27,24 +29,14 @@ function parseCommandLine(command: string): string[] {
       current.push(token);
       continue;
     }
-    if (typeof token !== 'object' || token === null) {
-      continue;
-    }
+    if ('comment' in token) continue;
 
-    const tok = token as { op?: string; pattern?: string; comment?: string };
-    if ('comment' in tok) continue;
-
-    const { op, pattern } = tok;
-    if (typeof op !== 'string') {
-      if (typeof pattern === 'string') current.push(pattern);
-      continue;
-    }
-    if (op === 'glob' && typeof pattern === 'string') {
-      current.push(pattern);
-    } else if (SEPARATOR_OPS.includes(op)) {
+    if (token.op === 'glob') {
+      current.push(token.pattern);
+    } else if (SEPARATOR_OPS.includes(token.op)) {
       flush();
     } else {
-      current.push(op);
+      current.push(token.op);
     }
   }
   flush();

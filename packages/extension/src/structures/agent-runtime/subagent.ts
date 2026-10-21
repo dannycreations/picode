@@ -3,8 +3,11 @@ import { contentText } from '@earendil-works/pi-ai';
 import { createAgentSessionFromServices, SessionManager } from '@earendil-works/pi-coding-agent';
 
 import { applySessionOverrides, readModelSelection, readThinkingLevel } from '@pi-code/extension/core/settings';
-import { attachLiveSubagentSession, unregisterLiveSubagent } from '@pi-code/extension/structures/agent-runtime/brokers/subagent';
-import { registerSubagentSession } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
+import {
+  attachLiveSubagentSession,
+  registerSubagentSession,
+  unregisterLiveSubagent,
+} from '@pi-code/extension/structures/agent-runtime/brokers/subagent';
 import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { deleteFileTool } from '@pi-code/extension/structures/tool-call/delete-file';
 import { editFileTool } from '@pi-code/extension/structures/tool-call/edit-file';
@@ -18,6 +21,7 @@ import { elapsedSeconds } from '@pi-code/shared/utilities/common';
 import type { Api, Model } from '@earendil-works/pi-ai';
 import type { AgentSession, AgentSessionEvent, ModelRuntime, ToolDefinition } from '@earendil-works/pi-coding-agent';
 import type { SubagentDefinition } from '@pi-code/extension/core/prompt';
+import type { IsolatedWorktree } from '@pi-code/extension/utilities/worktree';
 import type { ToolName } from '@pi-code/shared/core/types';
 
 type SubagentToolName = SubagentDefinition['tools'][number];
@@ -258,7 +262,7 @@ export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutco
   // Mutating agents work in an isolated copy of the workspace so parallel runs
   // cannot overwrite each other. Read-only agents keep using the shared cwd.
   const mutating = isMutatingAgent(input.agent);
-  let worktree: Awaited<ReturnType<typeof createIsolatedWorktree>> = null;
+  let worktree: IsolatedWorktree | null = null;
   let effectiveCwd = input.cwd;
   let integrated = false;
   let integrationFailed = false;

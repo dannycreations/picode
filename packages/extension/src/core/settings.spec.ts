@@ -70,7 +70,6 @@ describe('model and thinking level settings', () => {
 
 describe('contributed configuration', () => {
   it('matches the shared settings schema', () => {
-    // Regenerate with "pnpm --filter pi-code run check:settings" when this fails.
     const expected = buildManifestSettings(manifest.name);
     expect(manifest.contributes.configuration.properties).toEqual(expected.properties);
   });

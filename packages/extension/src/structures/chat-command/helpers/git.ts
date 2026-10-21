@@ -1,7 +1,6 @@
 import { formatThrownValue } from '@earendil-works/pi-ai';
-import { Uri } from 'vscode';
 
-import { execGit, getGitRepository } from '@pi-code/extension/utilities/git';
+import { execGit, getGitRoot } from '@pi-code/extension/utilities/git';
 import { truncateAndRender } from '@pi-code/extension/utilities/truncate';
 import { COMMIT_HASH_PATTERN, SHORT_HASH_LENGTH, WORKING_CHANGES_TAG } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
@@ -14,11 +13,6 @@ const COMMIT_SEARCH_WINDOW = 50;
 const COMMIT_RESULT_CAP = 10;
 // One commit per five lines: hash, short hash, author, date, subject.
 const LOG_ARGUMENTS = ['--date=short', '--format=%H%n%h%n%an%n%ad%n%s'] as const;
-
-async function resolveRepoRoot(cwd: string): Promise<string | null> {
-  const repo = await getGitRepository(Uri.file(cwd)).catch(() => null);
-  return repo?.rootUri.fsPath ?? null;
-}
 
 export function parseGitLog(output: string): CommitItem[] {
   const lines = output.split('\n').map((line) => line.trim());
@@ -52,7 +46,7 @@ export function matchCommits(commits: readonly CommitItem[], query: string): Com
 
 export async function searchCommits(query: string, cwd: string): Promise<CommitItem[]> {
   try {
-    const root = await resolveRepoRoot(cwd);
+    const root = await getGitRoot(cwd);
     if (!root) return [];
 
     const output = await execGit(root, ['log', `--max-count=${COMMIT_SEARCH_WINDOW}`, ...LOG_ARGUMENTS]);
@@ -84,7 +78,7 @@ export async function resolveCommitTag(token: string, cwd: string, limits: Outpu
   if (!isWorkingChanges && !COMMIT_HASH_PATTERN.test(token)) return null;
 
   const header = isWorkingChanges ? '## Working Changes' : `## Commit: ${token}`;
-  const root = await resolveRepoRoot(cwd);
+  const root = await getGitRoot(cwd);
   if (!root) return `${header}\n\nUnavailable: no git repository found.`;
 
   try {

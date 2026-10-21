@@ -172,7 +172,6 @@ interface PathForms {
   readonly normalizedFilePath: string;
   readonly absoluteFile: string | undefined;
   readonly comparableAbsolute: string | undefined;
-  readonly insideRelative: string | undefined;
   readonly normalizedRelative: string | undefined;
   readonly segments: readonly string[] | undefined;
 }
@@ -184,7 +183,6 @@ function pathForms(filePath: string, absoluteFile: string | undefined, insideRel
     normalizedFilePath: normalizeSeparators(filePath),
     absoluteFile,
     comparableAbsolute,
-    insideRelative,
     normalizedRelative: insideRelative !== undefined ? normalizeSeparators(insideRelative) : undefined,
     segments: comparableAbsolute !== undefined ? comparableAbsolute.split('/').filter(Boolean) : undefined,
   };
@@ -231,13 +229,13 @@ function matchesResolvedSegments(pattern: string, forms: PathForms): boolean {
   return false;
 }
 
-interface FileLocation {
+export interface FileLocation {
   readonly filePath: string;
   readonly absoluteFile: string | undefined;
   readonly insideRelative: string | undefined;
 }
 
-function resolveFileLocation(cwd: string | undefined, filePath: string): FileLocation {
+export function resolveFileLocation(cwd: string | undefined, filePath: string): FileLocation {
   const absoluteFile = cwd ? resolvePath(filePath, cwd) : undefined;
   const insideRelative = cwd && absoluteFile ? getCwdRelativePath(absoluteFile, resolve(cwd)) : undefined;
   return { filePath, absoluteFile, insideRelative };
