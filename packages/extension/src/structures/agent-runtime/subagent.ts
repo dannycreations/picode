@@ -240,7 +240,12 @@ export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutco
   const startTime = Date.now();
   const collected: string[] = [];
 
-  const steps = (): string => collected.slice(-MAX_SUBAGENT_STEP_HISTORY).join('\n');
+  const steps = (): string => collected.join('\n');
+
+  const recordStep = (step: string): void => {
+    collected.push(step);
+    if (collected.length > MAX_SUBAGENT_STEP_HISTORY) collected.shift();
+  };
 
   // Mutating agents work in an isolated copy of the workspace so parallel runs
   // cannot overwrite each other. Read-only agents keep using the shared cwd.
@@ -302,7 +307,7 @@ export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutco
     try {
       unsubscribe = session.subscribe((event: AgentSessionEvent) => {
         if (event.type === 'tool_execution_start') {
-          collected.push(formatSubagentStep(event.toolName as SubagentToolName, event.args));
+          recordStep(formatSubagentStep(event.toolName as SubagentToolName, event.args));
           input.onProgress?.(steps());
         }
         input.onEvent?.(event, session!);

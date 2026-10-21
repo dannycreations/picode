@@ -12,8 +12,14 @@ const PATH_TOOL_KEYS: Readonly<Record<string, { readonly allow: SettingKey; read
   delete_file: { allow: 'allowedDeletePaths', deny: 'deniedDeletePaths' },
 };
 
+const COMMAND_PATTERN_CACHE_LIMIT = 256;
+const commandPatterns = new Map<string, readonly string[]>();
+
 function extractCommandPatterns(command: string): readonly string[] {
   if (!command || !command.trim()) return [];
+
+  const cached = commandPatterns.get(command);
+  if (cached) return cached;
 
   let subCommands: string[];
   try {
@@ -26,7 +32,14 @@ function extractCommandPatterns(command: string): readonly string[] {
 
   // Each sub-command and its base command, so the user can allow this one call
   // or every call to the same tool.
-  return collectUnique(subCommands.map((sub) => [sub, sub.split(/\s+/)[0]]));
+  const patterns = collectUnique(subCommands.map((sub) => [sub, sub.split(/\s+/)[0]]));
+
+  if (commandPatterns.size >= COMMAND_PATTERN_CACHE_LIMIT) {
+    const oldest = commandPatterns.keys().next();
+    if (!oldest.done) commandPatterns.delete(oldest.value);
+  }
+  commandPatterns.set(command, patterns);
+  return patterns;
 }
 
 function collectUnique(groups: ReadonlyArray<readonly string[]>): string[] {

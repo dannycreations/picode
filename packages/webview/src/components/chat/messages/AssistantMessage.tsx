@@ -7,6 +7,7 @@ import { MessageHeader } from '@pi-code/webview/components/chat/messages/Message
 import { Accordion } from '@pi-code/webview/components/shared/Accordion';
 import { locateOccurrences, SearchableText } from '@pi-code/webview/components/shared/Highlight';
 import { Spinner } from '@pi-code/webview/components/shared/Spinner';
+import { messageVisibility } from '@pi-code/webview/helpers/messages';
 
 import type { FC } from 'react';
 import type { AssistantChatMessage } from '@pi-code/shared/core/types';
@@ -20,9 +21,10 @@ interface AssistantMessageProps {
 export const AssistantMessage: FC<AssistantMessageProps> = ({ message, search }) => {
   const [isReasoningExpanded, setIsReasoningExpanded] = useState(false);
 
-  const reasoning = message.reasoning?.trim() ?? '';
-  const hasReasoning = reasoning !== '';
-  const hasText = message.text.trim() !== '';
+  // What the answer shows is settled when the fragment arrives, so the answer
+  // that is still streaming in is never read from end to end.
+  const { hasText, hasReasoning } = messageVisibility(message);
+  const reasoning = hasReasoning ? (message.reasoning ?? '').trim() : '';
   const { count: reasoningCount, active: reasoningActive } = locateOccurrences(reasoning, search);
   // Reveal the reasoning block when the active match lives inside it, so the
   // highlight is visible; collapse it again once the match moves elsewhere

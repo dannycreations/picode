@@ -2,16 +2,18 @@ import { describe, expect, it } from 'vitest';
 
 import { buildToolSections } from '@pi-code/shared/utilities/tool';
 import {
+  appendAssistantDelta,
   buildChatRenderModel,
   deliverQueuedReplies,
   groupToolMessages,
   isRenderableMessage,
+  messageVisibility,
   patchReplyQueue,
   patchToolRow,
   previousTodosById,
   resolveApproval,
   settlePendingTurns,
-  upsertToolMessage,
+  startApiRequest,
   upsertToolRow,
 } from '@pi-code/webview/helpers/messages';
 
@@ -139,33 +141,97 @@ describe('deliverQueuedReplies', () => {
   });
 });
 
-describe('upsertToolMessage', () => {
-  it('should insert a tool call ahead of a trailing queued reply', () => {
+describe('appendAssistantDelta', () => {
+  it('appends the fragment to the answer that is streaming in', () => {
+    const messages = [createMessage({ id: 'a1', sender: 'assistant', text: '' })];
+
+    const result = appendAssistantDelta(messages, 'Hello', undefined);
+
+    expect(result[0].text).toBe('Hello');
+    expect((result[0] as { reasoning?: string }).reasoning).toBeUndefined();
+  });
+
+  it('keeps the answer hidden while it holds nothing the user can see', () => {
+    const messages = [createMessage({ id: 'a1', sender: 'assistant', text: '' })];
+
+    const blank = appendAssistantDelta(messages, '   ', undefined);
+    expect(isRenderableMessage(blank[0])).toBe(false);
+
+    const visible = appendAssistantDelta(blank, 'x', undefined);
+    expect(isRenderableMessage(visible[0])).toBe(true);
+  });
+
+  it('keeps an answer that already showed something visible', () => {
+    const messages = [createMessage({ id: 'a1', sender: 'assistant', text: 'Hi' })];
+
+    const result = appendAssistantDelta(messages, ' there', undefined);
+
+    expect(result[0].text).toBe('Hi there');
+    expect(isRenderableMessage(result[0])).toBe(true);
+  });
+
+  it('streams the reasoning apart from the answer', () => {
+    const messages = [createMessage({ id: 'a1', sender: 'assistant', text: '' })];
+
+    const result = appendAssistantDelta(messages, undefined, 'thinking');
+
+    expect((result[0] as { reasoning?: string }).reasoning).toBe('thinking');
+    expect(result[0].text).toBe('');
+    expect(isRenderableMessage(result[0])).toBe(true);
+  });
+
+  it('leaves the transcript alone when no answer is streaming', () => {
+    const messages = [createMessage({ id: 'u1', sender: 'user', text: 'hi' })];
+
+    expect(appendAssistantDelta(messages, 'x', undefined)).toBe(messages);
+  });
+
+  it('reports what the answer shows without reading it again', () => {
+    const messages = [createMessage({ id: 'a1', sender: 'assistant', text: '' })];
+    const result = appendAssistantDelta(messages, 'Hello', undefined);
+
+    expect(messageVisibility(result[0]).hasText).toBe(true);
+    expect(messageVisibility(result[0]).hasReasoning).toBe(false);
+  });
+});
+
+describe('startApiRequest', () => {
+  it('adds the request row and settles the turns that are still open', () => {
     const messages = [
-      createMessage({ id: 't', sender: 'assistant', reasoning: 'thinking' }),
-      createMessage({ id: 'q1', sender: 'queue', text: 'stand by' }),
+      createMessage({ id: 'a1', sender: 'assistant', toolStatus: 'running' }),
+      createMessage({ id: 'u1', sender: 'user', text: 'hi' }),
     ];
 
-    const result = upsertToolMessage(messages, 'tool-1', { text: 'read_file', toolName: 'read_file', toolStatus: 'running' });
+    const result = startApiRequest(messages, 'req-1', 5);
 
-    expect(result.map((m) => m.id)).toEqual(['t', 'tool-1', 'q1']);
+    expect(result.map((m) => m.id)).toEqual(['a1', 'u1', 'req-1']);
+    expect((result[0] as any).toolStatus).toBe('completed');
+    expect((result[2] as any).toolStatus).toBe('running');
   });
 
-  it('should append a tool call when no reply is queued', () => {
-    const messages = [createMessage({ id: 't', sender: 'assistant', reasoning: 'thinking' })];
+  it('takes the slot of the failed request it retries', () => {
+    const messages = [
+      createMessage({ id: 'u1', sender: 'user', text: 'hi' }),
+      createMessage({ id: 'req-0', sender: 'api_request', toolStatus: 'denied' }),
+    ];
 
-    const result = upsertToolMessage(messages, 'tool-1', { text: 'read_file', toolName: 'read_file' });
+    const result = startApiRequest(messages, 'req-1', 5);
 
-    expect(result.map((m) => m.id)).toEqual(['t', 'tool-1']);
+    expect(result.map((m) => m.id)).toEqual(['u1', 'req-1']);
   });
 
-  it('should patch an existing tool call instead of moving it', () => {
-    const messages = [createToolMessage('tool-1', 'read_file', { toolStatus: 'running' }), createMessage({ id: 'q1', sender: 'queue' })];
+  it('drops the retry deadline a waiting request left behind', () => {
+    const messages = [createMessage({ id: 'req-0', sender: 'api_request', toolStatus: 'completed', retryAt: 123 })];
 
-    const result = upsertToolMessage(messages, 'tool-1', { toolStatus: 'completed' });
+    const result = startApiRequest(messages, 'req-1', 5);
 
-    expect(result.map((m) => m.id)).toEqual(['tool-1', 'q1']);
-    expect(asTool(result[0]).toolStatus).toBe('completed');
+    expect((result[0] as any).retryAt).toBeUndefined();
+  });
+
+  it('leaves the transcript alone when the request is already on screen', () => {
+    const messages = [createMessage({ id: 'req-1', sender: 'api_request', toolStatus: 'running' })];
+
+    expect(startApiRequest(messages, 'req-1', 5)).toBe(messages);
   });
 });
 

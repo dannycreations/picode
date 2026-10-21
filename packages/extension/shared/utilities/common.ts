@@ -2,20 +2,15 @@ import { findFencedBlock } from '@pi-code/shared/utilities/markdown';
 
 import type { ActiveTaskState, AssistantChatMessage, ChatMessage, ModelThinkingLevel, StatsData, TextAttachment } from '@pi-code/shared/core/types';
 
+export const BYTES_PER_KILOBYTE = 1024;
 export const DEFAULT_CONTEXT_LIMIT = 200_000;
 
-export const BYTES_PER_KILOBYTE = 1024;
-
-// Sorts names with numeric segments in natural order (file2 before file10).
 export const pathCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
-// Windows paths are compared and matched with forward slashes everywhere, so
-// the separator is normalized once at every entry point.
 export function normalizeSeparators(path: string): string {
-  return path.replace(/\\/g, '/');
+  return path.includes('\\') ? path.replace(/\\/g, '/') : path;
 }
 
-// Escapes regex metacharacters so a literal needle can be used in a RegExp.
 export function escapeRegExp(input: string): string {
   return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -43,7 +38,7 @@ export function createActiveTask(id: string, title: string, messages: ChatMessag
   return { id, title, messages, ...EMPTY_STATS };
 }
 
-function isTrimmed(code: number): boolean {
+export function isWhitespaceCode(code: number): boolean {
   if (code === 0x20) return true;
   if (code < 0x09) return false;
   if (code <= 0x0d) return true;
@@ -54,10 +49,10 @@ function isTrimmed(code: number): boolean {
   return false;
 }
 
-function hasVisibleText(text: string | undefined): boolean {
+export function hasVisibleText(text: string | undefined): boolean {
   if (!text) return false;
   for (let index = 0; index < text.length; index++) {
-    if (!isTrimmed(text.charCodeAt(index))) return true;
+    if (!isWhitespaceCode(text.charCodeAt(index))) return true;
   }
   return false;
 }
@@ -68,7 +63,7 @@ export function hasVisibleOutput(message: AssistantChatMessage): boolean {
 
 export function startsWithIgnoringLeadingWhitespace(text: string, prefix: string): boolean {
   let index = 0;
-  while (index < text.length && isTrimmed(text.charCodeAt(index))) index++;
+  while (index < text.length && isWhitespaceCode(text.charCodeAt(index))) index++;
   return text.startsWith(prefix, index);
 }
 
@@ -92,8 +87,6 @@ export function defaultThinkingLevel(levels: readonly ModelThinkingLevel[]): Mod
   return levels.find((level) => level !== 'off') ?? levels[0];
 }
 
-// Models that do not report a context window share the EMPTY_STATS budget, so
-// every consumer resolves the effective limit through one function.
 export function resolveContextLimit(contextWindow: number | undefined): number {
   return contextWindow ?? EMPTY_STATS.contextLimit;
 }
@@ -101,14 +94,21 @@ export function resolveContextLimit(contextWindow: number | undefined): number {
 const LITERAL_PATTERN_CACHE_LIMIT = 256;
 const literalPatterns = new Map<string, RegExp>();
 
+function setBounded<K, V>(cache: Map<K, V>, key: K, value: V, limit: number): void {
+  if (cache.size >= limit) {
+    const oldest = cache.keys().next();
+    if (!oldest.done) cache.delete(oldest.value);
+  }
+  cache.set(key, value);
+}
+
 function literalPattern(needle: string, caseSensitive: boolean): RegExp {
   const key = `${caseSensitive ? 's' : 'i'}:${needle}`;
   const cached = literalPatterns.get(key);
   if (cached) return cached;
 
   const pattern = new RegExp(escapeRegExp(needle), caseSensitive ? 'g' : 'gi');
-  if (literalPatterns.size >= LITERAL_PATTERN_CACHE_LIMIT) literalPatterns.clear();
-  literalPatterns.set(key, pattern);
+  setBounded(literalPatterns, key, pattern, LITERAL_PATTERN_CACHE_LIMIT);
   return pattern;
 }
 
@@ -152,21 +152,16 @@ export function containsIgnoreCase(haystack: string, needle: string): boolean {
   let pattern = literalTests.get(needle);
   if (!pattern) {
     pattern = new RegExp(escapeRegExp(needle), 'i');
-    if (literalTests.size >= LITERAL_PATTERN_CACHE_LIMIT) literalTests.clear();
-    literalTests.set(needle, pattern);
+    setBounded(literalTests, needle, pattern, LITERAL_PATTERN_CACHE_LIMIT);
   }
   return pattern.test(haystack);
 }
 
 export interface OccurrenceSegment {
   readonly text: string;
-  // Match ordinal when this segment is a needle occurrence; null for the text
-  // between occurrences.
   readonly matchIndex: number | null;
 }
 
-// Splits text into plain and matched segments in order, so renderers can wrap
-// matches without repeating the position bookkeeping themselves.
 export function splitOnOccurrences(text: string, needle: string, caseSensitive = false): OccurrenceSegment[] {
   const positions = findOccurrences(text, needle, caseSensitive);
   if (positions.length === 0) return [{ text, matchIndex: null }];
@@ -195,6 +190,26 @@ export function remainingSeconds(deadline: number, now: number = Date.now()): nu
   return Math.max(0, Math.ceil((deadline - now) / 1000));
 }
 
+function startsWithFold(haystack: string, needle: string): boolean {
+  if (haystack.length < needle.length) return false;
+
+  let asciiOnly = true;
+  for (let index = 0; index < needle.length; index++) {
+    let left = haystack.charCodeAt(index);
+    let right = needle.charCodeAt(index);
+    if (left > 0x7f || right > 0x7f) {
+      asciiOnly = false;
+      break;
+    }
+    if (left >= 0x41 && left <= 0x5a) left += 0x20;
+    if (right >= 0x41 && right <= 0x5a) right += 0x20;
+    if (left !== right) return false;
+  }
+
+  if (asciiOnly) return true;
+  return haystack.slice(0, needle.length).toLowerCase() === needle.toLowerCase();
+}
+
 export function relativeToWorkspace(path: string, root: string): string {
   if (!root) return path;
 
@@ -204,7 +219,7 @@ export function relativeToWorkspace(path: string, root: string): string {
 
   const caseInsensitive = /^[a-zA-Z]:\//.test(normRoot);
   const rootWithSlash = `${normRoot}/`;
-  const inside = caseInsensitive ? normPath.toLowerCase().startsWith(rootWithSlash.toLowerCase()) : normPath.startsWith(rootWithSlash);
+  const inside = caseInsensitive ? startsWithFold(normPath, rootWithSlash) : normPath.startsWith(rootWithSlash);
 
   return inside ? normPath.slice(rootWithSlash.length) : path;
 }

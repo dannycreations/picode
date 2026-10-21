@@ -3,13 +3,12 @@ import { cn } from 'cn';
 import { Pi } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { countOccurrences } from '@pi-code/shared/utilities/common';
 import { ChatAction } from '@pi-code/webview/components/chat/ChatAction';
 import { ChatBody } from '@pi-code/webview/components/chat/ChatBody';
 import { ChatFooter } from '@pi-code/webview/components/chat/ChatFooter';
 import { ChatHeader, ChatSearchBar } from '@pi-code/webview/components/chat/ChatHeader';
 import { ChatInput } from '@pi-code/webview/components/chat/ChatInput';
-import { getMessageSearchText } from '@pi-code/webview/components/chat/helpers/search';
+import { countMessageMatches } from '@pi-code/webview/components/chat/helpers/search';
 import { useChatActions } from '@pi-code/webview/components/chat/hooks/useChatActions';
 import { useChatConfig } from '@pi-code/webview/components/chat/hooks/useChatConfig';
 import { WorkspacePicker } from '@pi-code/webview/components/chat/WorkspacePicker';
@@ -28,6 +27,7 @@ import { selectPendingQuestion, setComposerTextarea, useChatStore } from '@pi-co
 import type { FC } from 'react';
 import type { HistoryItem } from '@pi-code/shared/core/protocol';
 import type { Attachment, ChatMessage } from '@pi-code/shared/core/types';
+import type { SearchContext } from '@pi-code/webview/components/shared/Highlight';
 
 // Rough per-sender heights for the virtualizer's first estimate; measured row
 // sizes replace them once rows mount.
@@ -149,10 +149,10 @@ export const ChatView: FC = () => {
     }
   }, [setView]);
 
-  const { renderItems, oldTodosById, hasApproval, activeTaskTodos } = useMemo(() => {
-    const model = buildChatRenderModel(activeTask?.messages ?? []);
-    return { ...model, activeTaskTodos: model.latestTodos };
-  }, [activeTask?.messages]);
+  const taskMessages = activeTask?.messages;
+  const renderModel = useMemo(() => buildChatRenderModel(taskMessages ?? []), [taskMessages]);
+  const { renderItems, oldTodosById, hasApproval } = renderModel;
+  const activeTaskTodos = renderModel.latestTodos;
 
   // In-chat text search: count matches per message so we can show a total, jump
   // between them, and tell each renderer which occurrence to emphasize.
@@ -161,10 +161,10 @@ export const ChatView: FC = () => {
   const [activeMatch, setActiveMatch] = useState(-1);
 
   const matchCounts = useMemo(
-    () => (searchQuery ? renderItems.map((message) => countOccurrences(getMessageSearchText(message), searchQuery)) : []),
+    () => (searchQuery ? renderItems.map((message) => countMessageMatches(message, searchQuery)) : []),
     [renderItems, searchQuery],
   );
-  const totalMatches = matchCounts.reduce((sum, count) => sum + count, 0);
+  const totalMatches = useMemo(() => matchCounts.reduce((sum, count) => sum + count, 0), [matchCounts]);
   const globalOffsets = useMemo(() => {
     const offsets: number[] = [];
     let acc = 0;
@@ -182,14 +182,49 @@ export const ChatView: FC = () => {
     // the query keeps navigation stable when messages stream in during a search.
   }, [searchQuery]);
 
+  // The row that holds the active match. Resolving it here keeps the scroll
+  // effect below tied to the row rather than to the match counts, which change
+  // on every streamed token.
+  const activeMatchRow = useMemo(() => {
+    if (activeMatch < 0) return -1;
+    for (let index = 0; index < matchCounts.length; index++) {
+      const offset = globalOffsets[index];
+      if (activeMatch >= offset && activeMatch < offset + matchCounts[index]) return index;
+    }
+    return -1;
+  }, [activeMatch, globalOffsets, matchCounts]);
+
   // Per-row search context, built once per search state rather than inside the
   // virtualizer map. A fresh object literal per row would give every visible
   // ChatBody a new identity each render and defeat its memo.
   const isSearching = searchOpen && searchQuery !== '';
-  const searchContexts = useMemo(
-    () => (isSearching ? renderItems.map((_, index) => ({ query: searchQuery, globalOffset: globalOffsets[index], activeIndex: activeMatch })) : []),
-    [isSearching, searchQuery, renderItems, globalOffsets, activeMatch],
-  );
+  // The context of a row has to survive a re-render so the memoised chat body
+  // can keep the row it already drew. The cache is dropped when the query or
+  // the task changes, which is when every context is invalid anyway.
+  const searchContextCache = useRef(new Map<string, SearchContext>());
+  useEffect(() => {
+    searchContextCache.current.clear();
+  }, [searchQuery, activeTask?.id]);
+
+  const searchContexts = useMemo(() => {
+    if (!isSearching) return [];
+
+    const cache = searchContextCache.current;
+    const contexts: SearchContext[] = [];
+    for (let index = 0; index < renderItems.length; index++) {
+      const message = renderItems[index];
+      const globalOffset = globalOffsets[index];
+      const cached = cache.get(message.id);
+      if (cached && cached.query === searchQuery && cached.globalOffset === globalOffset && cached.activeIndex === activeMatch) {
+        contexts.push(cached);
+        continue;
+      }
+      const context: SearchContext = { query: searchQuery, globalOffset, activeIndex: activeMatch };
+      cache.set(message.id, context);
+      contexts.push(context);
+    }
+    return contexts;
+  }, [isSearching, searchQuery, renderItems, globalOffsets, activeMatch]);
 
   const goToMatch = useCallback(
     (direction: 1 | -1) => {
@@ -208,22 +243,28 @@ export const ChatView: FC = () => {
     setActiveMatch(-1);
   }, []);
 
+  // The virtualizer keys its measurements on the identity of these two
+  // callbacks. Handing it fresh ones on every render would drop its cached
+  // measurements and rebuild the row table on every streamed token.
+  const renderItemsRef = useRef(renderItems);
+  renderItemsRef.current = renderItems;
+  const estimateSize = useCallback((index: number) => ESTIMATED_ROW_HEIGHT[renderItemsRef.current[index].sender], []);
+  const getItemKey = useCallback((index: number) => renderItemsRef.current[index].id, []);
+
   const virtualizer = useVirtualizer({
     count: renderItems.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: (index) => ESTIMATED_ROW_HEIGHT[renderItems[index].sender],
-    getItemKey: (index) => renderItems[index].id,
+    estimateSize,
+    getItemKey,
     overscan: 8,
   });
 
   useEffect(() => {
-    if (activeMatch < 0) return;
-    const itemIndex = globalOffsets.findIndex((offset, index) => activeMatch >= offset && activeMatch < offset + matchCounts[index]);
-    if (itemIndex < 0) return;
+    if (activeMatchRow < 0) return;
 
     let innerRaf = 0;
     const outerRaf = requestAnimationFrame(() => {
-      virtualizer.scrollToIndex(itemIndex, { align: 'center' });
+      virtualizer.scrollToIndex(activeMatchRow, { align: 'center' });
       innerRaf = requestAnimationFrame(() => {
         document.querySelector(`.${SEARCH_HIT_ACTIVE_CLASS}`)?.scrollIntoView({ block: 'center', inline: 'nearest' });
       });
@@ -232,7 +273,7 @@ export const ChatView: FC = () => {
       cancelAnimationFrame(outerRaf);
       if (innerRaf) cancelAnimationFrame(innerRaf);
     };
-  }, [activeMatch, globalOffsets, matchCounts, virtualizer]);
+  }, [activeMatchRow, virtualizer]);
 
   // Acting on a row means the user is engaged with the newest output, so
   // re-engage bottom-follow before the response to that action arrives.
@@ -424,24 +465,27 @@ export const ChatView: FC = () => {
           className="flex-1 min-h-0 overflow-y-auto chat-viewport outline-none"
         >
           <div ref={contentRef} style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
-            {virtualizer.getVirtualItems().map((item) => (
-              <div
-                key={item.key}
-                data-index={item.index}
-                ref={virtualizer.measureElement}
-                style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${item.start}px)` }}
-              >
-                <ChatBody
-                  message={renderItems[item.index]}
-                  oldTodos={oldTodosById.get(renderItems[item.index].id)}
-                  commands={commands}
-                  search={searchContexts[item.index]}
-                  onRespondTool={handleRespondToTool}
-                  onAnswerQuestion={handleAnswer}
-                  onCopyToInput={appendToInput}
-                />
-              </div>
-            ))}
+            {virtualizer.getVirtualItems().map((item) => {
+              const message = renderItems[item.index];
+              return (
+                <div
+                  key={item.key}
+                  data-index={item.index}
+                  ref={virtualizer.measureElement}
+                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${item.start}px)` }}
+                >
+                  <ChatBody
+                    message={message}
+                    oldTodos={oldTodosById.get(message.id)}
+                    commands={commands}
+                    search={searchContexts[item.index]}
+                    onRespondTool={handleRespondToTool}
+                    onAnswerQuestion={handleAnswer}
+                    onCopyToInput={appendToInput}
+                  />
+                </div>
+              );
+            })}
           </div>
           {isCompacting && (
             <div className="px-3.5 py-2.5 flex items-center gap-2 text-xs text-vscode-foreground select-none">

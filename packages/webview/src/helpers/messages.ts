@@ -1,7 +1,7 @@
-import { hasVisibleOutput } from '@pi-code/shared/utilities/common';
+import { hasVisibleText } from '@pi-code/shared/utilities/common';
 import { buildToolSections, GROUP_TOOLS } from '@pi-code/shared/utilities/tool';
 
-import type { AssistantChatMessage, ChatMessage, ToolChatMessage, ToolSection } from '@pi-code/shared/core/types';
+import type { ApiRequestChatMessage, AssistantChatMessage, ChatMessage, ToolChatMessage, ToolSection } from '@pi-code/shared/core/types';
 import type { TodoItem } from '@pi-code/shared/utilities/todo';
 
 function canGroupTool(message: ChatMessage): message is ToolChatMessage {
@@ -26,17 +26,6 @@ function collectToolSections(messages: ReadonlyArray<ChatMessage>): ToolSection[
     for (const section of messageSections) sections.push(section);
   }
   return sections;
-}
-
-export function rebuildToolSections(messages: ChatMessage[], id: string): ChatMessage[] {
-  let next: ChatMessage[] | null = null;
-  for (let index = 0; index < messages.length; index++) {
-    const message = messages[index];
-    if (message.id !== id || message.sender !== 'tool') continue;
-    if (next === null) next = messages.slice();
-    next[index] = { ...message, toolSections: buildToolSections(message) };
-  }
-  return next ?? messages;
 }
 
 interface GroupedRow {
@@ -78,8 +67,14 @@ export function groupToolMessages(messages: ReadonlyArray<ChatMessage>): ChatMes
         row = cached.row;
       } else {
         row = { ...group[group.length - 1], id: first.id, toolSections: collectToolSections(group) };
-        if (groupedRowCache.size >= GROUPED_ROW_CACHE_LIMIT) groupedRowCache.clear();
-        groupedRowCache.set(first.id, { members: group.slice(), row });
+        // The cache drops one entry instead of wiping itself, so a long
+        // session never loses every grouped row at once and re-renders all of
+        // its mounted tool rows in one frame.
+        if (groupedRowCache.size >= GROUPED_ROW_CACHE_LIMIT) {
+          const oldest = groupedRowCache.keys().next();
+          if (!oldest.done) groupedRowCache.delete(oldest.value);
+        }
+        groupedRowCache.set(first.id, { members: group, row });
       }
     }
     result.push(row);
@@ -145,36 +140,34 @@ export function groupToolMessages(messages: ReadonlyArray<ChatMessage>): ChatMes
   return result;
 }
 
-const renderableCache = new WeakMap<ChatMessage, boolean>();
-
-export function isRenderableMessage(message: ChatMessage): boolean {
-  if (message.sender !== 'assistant') return true;
-  const cached = renderableCache.get(message);
-  if (cached !== undefined) return cached;
-  const renderable = hasVisibleOutput(message);
-  renderableCache.set(message, renderable);
-  return renderable;
+interface MessageVisibility {
+  readonly renderable: boolean;
+  readonly hasText: boolean;
+  readonly hasReasoning: boolean;
 }
 
-export function hasPendingApproval(messages: ReadonlyArray<ChatMessage>): boolean {
-  for (const message of messages) {
-    if (message.sender !== 'tool' && message.sender !== 'assistant' && message.sender !== 'api_request') continue;
-    if (message.toolStatus === 'approval') return true;
-  }
-  return false;
+const visibilityCache = new WeakMap<ChatMessage, MessageVisibility>();
+const STATIC_VISIBILITY: MessageVisibility = { renderable: true, hasText: true, hasReasoning: false };
+
+export function messageVisibility(message: ChatMessage): MessageVisibility {
+  if (message.sender !== 'assistant') return STATIC_VISIBILITY;
+
+  const cached = visibilityCache.get(message);
+  if (cached) return cached;
+
+  const hasText = hasVisibleText(message.text);
+  const hasReasoning = hasVisibleText(message.reasoning);
+  const computed: MessageVisibility = { renderable: hasText || hasReasoning, hasText, hasReasoning };
+  visibilityCache.set(message, computed);
+  return computed;
+}
+
+export function isRenderableMessage(message: ChatMessage): boolean {
+  return messageVisibility(message).renderable;
 }
 
 function todoListOf(message: ChatMessage): TodoItem[] | undefined {
   return message.sender === 'tool' && message.toolName === 'update_todo' ? message.todos : undefined;
-}
-
-// The newest update_todo row holds the checklist the task header should show.
-export function latestTodos(messages: ReadonlyArray<ChatMessage>): TodoItem[] | undefined {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const todos = todoListOf(messages[i]);
-    if (todos) return todos;
-  }
-  return undefined;
 }
 
 // Every update_todo row needs the checklist that was in effect before it, so
@@ -254,6 +247,61 @@ export function patchRetryDeadline(messages: ChatMessage[], retryAt: number | un
   return messages;
 }
 
+export function startApiRequest(messages: ChatMessage[], id: string, timestamp: number): ChatMessage[] {
+  for (let index = 0; index < messages.length; index++) {
+    // A request that is already on screen needs no second row.
+    if (messages[index].id === id) return messages;
+  }
+
+  // The row that still shows a retry deadline is the last request row.
+  let deadlineIndex = -1;
+  for (let index = messages.length - 1; index >= 0; index--) {
+    if (messages[index].sender === 'api_request') {
+      deadlineIndex = index;
+      break;
+    }
+  }
+
+  // The failed request a retry replaces is the run of denied requests at the
+  // end of the transcript.
+  let retryIndex: number | undefined;
+  for (let index = messages.length - 1; index >= 0; index--) {
+    const message = messages[index];
+    if (message.sender === 'assistant' && !messageVisibility(message).renderable) continue;
+    if (message.sender === 'api_request' && message.toolStatus === 'denied') {
+      retryIndex = index;
+      continue;
+    }
+    break;
+  }
+
+  const limit = retryIndex !== undefined ? retryIndex : messages.length;
+  const next: ChatMessage[] = [];
+  for (let index = 0; index < limit; index++) {
+    const message = messages[index];
+
+    let updated: ChatMessage = message;
+    if (message.sender === 'api_request') {
+      let request: ApiRequestChatMessage = message;
+      if (request.toolStatus === 'running') request = { ...request, toolStatus: 'completed' };
+      // A request in flight ends any retry wait still on screen. The retried
+      // turn usually replaces the failed row and drops the deadline with it, but
+      // a turn that streamed text first keeps that row, so the deadline has to
+      // go explicitly.
+      if (index === deadlineIndex && request.retryAt !== undefined) {
+        request = { ...request, retryAt: undefined };
+      }
+      updated = request;
+    } else if (message.sender === 'assistant') {
+      if (message.toolStatus === 'running') updated = { ...message, toolStatus: 'completed' };
+    }
+    next.push(updated);
+  }
+
+  next.push({ id, sender: 'api_request', text: 'API Request', timestamp, toolStatus: 'running' });
+  return next;
+}
+
 export function resolveApproval(messages: ChatMessage[], msgId: string, approved: boolean): ChatMessage[] {
   if (!approved) {
     return patchMessage(messages, msgId, { toolStatus: 'denied', pausedAt: undefined });
@@ -269,32 +317,40 @@ export function patchLastAssistant(messages: ChatMessage[], patch: (message: Ass
     const message = messages[i];
     if (message.sender !== 'assistant') continue;
 
-    const next = messages.slice();
-    next[i] = { ...message, ...patch(message) };
-    return next;
+    const next = { ...message, ...patch(message) } as AssistantChatMessage;
+    // A patch that leaves the text alone cannot change what the message shows,
+    // so the decision is carried over instead of being made again.
+    if (next.text === message.text && next.reasoning === message.reasoning) {
+      const previous = visibilityCache.get(message);
+      if (previous) visibilityCache.set(next, previous);
+    }
+    const copy = messages.slice();
+    copy[i] = next;
+    return copy;
   }
   return messages;
 }
 
-export function upsertToolMessage(messages: ChatMessage[], id: string, patch: Partial<ToolChatMessage>): ChatMessage[] {
-  let existingIndex = -1;
-  let queueIndex = -1;
-  for (let index = 0; index < messages.length; index++) {
+export function appendAssistantDelta(messages: ChatMessage[], text: string | undefined, thinking: string | undefined): ChatMessage[] {
+  for (let index = messages.length - 1; index >= 0; index--) {
     const message = messages[index];
-    if (existingIndex === -1 && message.id === id) existingIndex = index;
-    if (queueIndex === -1 && message.sender === 'queue') queueIndex = index;
-  }
+    if (message.sender !== 'assistant') continue;
 
-  if (existingIndex !== -1) {
-    const next = messages.slice();
-    next[existingIndex] = { ...messages[existingIndex], ...patch };
-    return next;
-  }
+    const previous = visibilityCache.get(message);
+    const nextText = text ? message.text + text : message.text;
+    const nextReasoning = thinking ? (message.reasoning ?? '') + thinking : message.reasoning;
 
-  const toolMessage: ChatMessage = { id, sender: 'tool', text: '', timestamp: Date.now(), ...patch };
-  const next = messages.slice();
-  next.splice(queueIndex === -1 ? messages.length : queueIndex, 0, toolMessage);
-  return next;
+    const hasText = previous ? previous.hasText || hasVisibleText(text) : hasVisibleText(nextText);
+    const hasReasoning = previous ? previous.hasReasoning || hasVisibleText(thinking) : hasVisibleText(nextReasoning);
+
+    const next: AssistantChatMessage = { ...message, text: nextText, reasoning: nextReasoning };
+    visibilityCache.set(next, { renderable: hasText || hasReasoning, hasText, hasReasoning });
+
+    const copy = messages.slice();
+    copy[index] = next;
+    return copy;
+  }
+  return messages;
 }
 
 export function upsertToolRow(messages: ChatMessage[], id: string, patch: Partial<ToolChatMessage>): ChatMessage[] {
@@ -304,6 +360,8 @@ export function upsertToolRow(messages: ChatMessage[], id: string, patch: Partia
     const message = messages[index];
     if (existingIndex === -1 && message.id === id) existingIndex = index;
     if (queueIndex === -1 && message.sender === 'queue') queueIndex = index;
+    // Both places are known, so the rest of the transcript needs no reading.
+    if (existingIndex !== -1 && queueIndex !== -1) break;
   }
 
   const createRow = (): ChatMessage => {
@@ -311,13 +369,18 @@ export function upsertToolRow(messages: ChatMessage[], id: string, patch: Partia
     return { ...row, toolSections: buildToolSections(row) };
   };
 
-  const result: ChatMessage[] = [];
+  const next = messages.slice();
+  // A new tool row lands ahead of the queued replies, so the reply the user
+  // typed while the tool ran still shows below it.
+  const inserted = existingIndex === -1;
+  if (inserted) {
+    next.splice(queueIndex === -1 ? messages.length : queueIndex, 0, createRow());
+  }
+
+  // The inserted row pushed the rows from its place onwards one place along.
+  const shifted = inserted && queueIndex !== -1;
   for (let index = 0; index < messages.length; index++) {
     const message = messages[index];
-
-    // A new tool row lands ahead of the queued replies, so the reply the user
-    // typed while the tool ran still shows below it.
-    if (existingIndex === -1 && index === queueIndex) result.push(createRow());
 
     let updated = message;
     if (message.sender === 'api_request' || message.sender === 'assistant') {
@@ -327,11 +390,10 @@ export function upsertToolRow(messages: ChatMessage[], id: string, patch: Partia
       const patched = { ...updated, ...patch } as ToolChatMessage;
       updated = { ...patched, toolSections: buildToolSections(patched) };
     }
-    result.push(updated);
+    next[shifted && index >= queueIndex ? index + 1 : index] = updated;
   }
-  if (existingIndex === -1 && queueIndex === -1) result.push(createRow());
 
-  return result;
+  return next;
 }
 
 export function patchToolRow(
@@ -365,37 +427,50 @@ export function deliverQueuedReplies(messages: ChatMessage[], delivered: ChatMes
   // A delivered reply reuses the id of the queued message it replaces, so the
   // queued variant must be swapped for the user variant instead of skipped as
   // a duplicate. Messages without a queued twin are appended.
-  const deliveredById = new Map(delivered.map((message) => [message.id, message]));
-  const replaced = messages.map((message) => deliveredById.get(message.id) ?? message);
-  const existingIds = new Set(messages.map((message) => message.id));
-  const appended = delivered.filter((deliveredMessage) => !existingIds.has(deliveredMessage.id));
+  const deliveredById = new Map<string, ChatMessage>();
+  for (const message of delivered) deliveredById.set(message.id, message);
 
-  return [...replaced, ...appended];
+  const seen = new Set<string>();
+  const result: ChatMessage[] = [];
+  for (const message of messages) {
+    seen.add(message.id);
+    result.push(deliveredById.get(message.id) ?? message);
+  }
+
+  for (const message of delivered) {
+    if (seen.has(message.id)) continue;
+    seen.add(message.id);
+    result.push(message);
+  }
+
+  return result;
 }
 
 export function patchReplyQueue(messages: ChatMessage[], queue: readonly ChatMessage[]): ChatMessage[] {
-  const queueById = new Map(queue.map((m) => [m.id, m]));
+  const queueById = new Map<string, ChatMessage>();
+  for (const message of queue) queueById.set(message.id, message);
 
-  // Update existing queued replies in place so their position stays fixed
-  // even if non-queue messages were added after them in the transcript.
-  const updated = messages.map((m) => {
-    if (m.sender === 'queue' && queueById.has(m.id)) {
-      return { ...m, ...queueById.get(m.id)! };
-    }
-    return m;
-  });
+  const seen = new Set<string>();
+  const result: ChatMessage[] = [];
+  for (const message of messages) {
+    // Update existing queued replies in place so their position stays fixed
+    // even if non-queue messages were added after them in the transcript.
+    const queued = message.sender === 'queue' ? queueById.get(message.id) : undefined;
+    // Drop queue entries that disappeared from the backend queue.
+    if (message.sender === 'queue' && !queued) continue;
 
-  // Drop queue entries that disappeared from the backend queue.
-  const filtered = updated.filter((m) => m.sender !== 'queue' || queueById.has(m.id));
-
-  // Append only genuinely new queue messages at the end.
-  const existingIds = new Set(filtered.map((m) => m.id));
-  const newQueueMessages = queue.filter((m) => !existingIds.has(m.id));
-  if (newQueueMessages.length === 0) {
-    return filtered;
+    seen.add(message.id);
+    result.push(queued ? { ...message, ...queued } : message);
   }
 
-  return [...filtered, ...newQueueMessages];
+  // Append only genuinely new queue messages at the end.
+  for (const message of queue) {
+    if (seen.has(message.id)) continue;
+    seen.add(message.id);
+    result.push(message);
+  }
+
+  return result;
 }
 
 function noticeKey(message: ChatMessage): string {
@@ -404,7 +479,9 @@ function noticeKey(message: ChatMessage): string {
 }
 
 export function appendOnce(messages: ChatMessage[], message: ChatMessage): ChatMessage[] {
-  if (messages.some((m) => m.id === message.id)) return messages;
+  for (let index = 0; index < messages.length; index++) {
+    if (messages[index].id === message.id) return messages;
+  }
 
   // Consecutive identical notices are collapsed into the first one.
   const last = messages[messages.length - 1];
@@ -412,7 +489,9 @@ export function appendOnce(messages: ChatMessage[], message: ChatMessage): ChatM
     return messages;
   }
 
-  return [...messages, message];
+  const next = messages.slice();
+  next.push(message);
+  return next;
 }
 
 export interface ChatRenderModel {

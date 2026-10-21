@@ -3,7 +3,7 @@ import { uuidv7 } from '@earendil-works/pi-ai';
 import { getSubagentSession } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
 import { SPAWN_SUBAGENT_TOOL_NAME, takeSubagentUsage } from '@pi-code/extension/structures/agent-runtime/subagent';
 import { logger } from '@pi-code/shared/core/logger';
-import { resolveContextLimit } from '@pi-code/shared/utilities/common';
+import { isWhitespaceCode, resolveContextLimit } from '@pi-code/shared/utilities/common';
 
 import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent';
 import type { ExtensionToWebviewMessage } from '@pi-code/shared/core/protocol';
@@ -11,6 +11,14 @@ import type { StatsData, ToolName, ToolResultDetails } from '@pi-code/shared/cor
 
 type SubagentEventCallback = (event: ExtensionToWebviewMessage) => void;
 let subagentEventCallback: SubagentEventCallback | null = null;
+
+interface SessionStatsEntry {
+  readonly entryCount: number;
+  readonly modelId: string | undefined;
+  readonly stats: StatsData;
+}
+
+const statsCache = new WeakMap<AgentSession, SessionStatsEntry>();
 
 export function setSubagentEventCallback(callback: SubagentEventCallback): () => void {
   subagentEventCallback = callback;
@@ -36,17 +44,16 @@ interface ToolResultPart {
 
 export function toolResultText(result: unknown): string {
   if (typeof result === 'string') return result;
+  if (result === undefined) return '';
 
   const content = (result as { content?: readonly ToolResultPart[] } | undefined)?.content;
   if (Array.isArray(content)) {
-    let text = '';
-    let hasText = false;
+    const texts: string[] = [];
     for (const part of content) {
       if (part.type !== 'text' || typeof part.text !== 'string') continue;
-      text = hasText ? `${text}\n${part.text}` : part.text;
-      hasText = true;
+      texts.push(part.text);
     }
-    if (hasText) return text;
+    if (texts.length > 0) return texts.join('\n');
   }
 
   try {
@@ -63,8 +70,15 @@ function latestStep(steps: string | undefined): string | undefined {
   while (end > 0) {
     const breakIndex = steps.lastIndexOf('\n', end - 1);
     const start = breakIndex === -1 ? 0 : breakIndex + 1;
-    const line = steps.slice(start, end).trim();
-    if (line !== '') return line;
+
+    let from = start;
+    while (from < end && isWhitespaceCode(steps.charCodeAt(from))) from++;
+    if (from < end) {
+      let to = end;
+      while (to > from && isWhitespaceCode(steps.charCodeAt(to - 1))) to--;
+      return steps.slice(from, to);
+    }
+
     if (breakIndex === -1) return undefined;
     end = breakIndex;
   }
@@ -240,6 +254,8 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
       return { message: { type: 'compaction_start' }, apiRequestId };
 
     case 'compaction_end': {
+      // The compaction rewrote the branch the context usage is read from.
+      statsCache.delete(session);
       const stats = createStats(session);
       return stats ? { message: { type: 'compaction_end', payload: stats }, apiRequestId } : { message: null, apiRequestId };
     }
@@ -252,8 +268,13 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
 
 export function createStats(session: AgentSession): StatsData | undefined {
   try {
+    const entryCount = session.sessionManager?.getEntryCount?.();
+    const modelId = session.model?.id;
+    const cached = entryCount === undefined ? undefined : statsCache.get(session);
+    if (cached && cached.entryCount === entryCount && cached.modelId === modelId) return cached.stats;
+
     const stats = session.getSessionStats();
-    return {
+    const result: StatsData = {
       tokensIn: stats.tokens.input,
       tokensOut: stats.tokens.output,
       cacheReads: stats.tokens.cacheRead,
@@ -262,6 +283,8 @@ export function createStats(session: AgentSession): StatsData | undefined {
       contextTokens: stats.contextUsage?.tokens ?? 0,
       contextLimit: resolveContextLimit(stats.contextUsage?.contextWindow ?? session.model?.contextWindow),
     };
+    if (entryCount !== undefined) statsCache.set(session, { entryCount, modelId, stats: result });
+    return result;
   } catch (err) {
     logger.error('Failed to create session stats message:', err);
     return undefined;

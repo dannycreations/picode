@@ -16,9 +16,17 @@ import { useChatStore } from '@pi-code/webview/stores/useChatStore';
 
 import type { FC, MouseEvent, ReactNode } from 'react';
 import type { Components } from 'react-markdown';
+import type { Pluggable } from 'unified';
 import type { SearchContext } from '@pi-code/webview/components/shared/Highlight';
 
 const MARKDOWN_REFRESH_MS = 100;
+const MARKDOWN_REFRESH_MAX_MS = 1000;
+const MARKDOWN_REFRESH_MS_PER_KB = 22;
+
+function markdownRefreshMs(markdown: string): number {
+  const scaled = (markdown.length / 1024) * MARKDOWN_REFRESH_MS_PER_KB;
+  return Math.min(MARKDOWN_REFRESH_MAX_MS, Math.max(MARKDOWN_REFRESH_MS, Math.round(scaled)));
+}
 
 interface MarkdownCodeNode {
   readonly type: 'code';
@@ -106,7 +114,15 @@ const MARKDOWN_COMPONENTS: Components = {
 
 const MarkdownBlock = memo(({ markdown, search }: MarkdownProps) => {
   const searchPlugin = useMemo(() => createSearchHighlightPlugin(search), [search?.query, search?.globalOffset, search?.activeIndex]);
-  const rehypePlugins = useMemo(() => [rehypeKatex, ...(searchPlugin ? [searchPlugin as typeof rehypeKatex] : [])], [searchPlugin]);
+  const rehypePlugins = useMemo(() => {
+    const plugins: Pluggable[] = [];
+    const source = markdown ?? '';
+    // Katex only has work to do where the answer holds math, and the plugin
+    // walks the whole tree to find it, so it is left out when there is none.
+    if (source.includes('$') || source.includes('\\(')) plugins.push(rehypeKatex);
+    if (searchPlugin) plugins.push(searchPlugin as Pluggable);
+    return plugins;
+  }, [markdown, searchPlugin]);
 
   return (
     <div className="prose-markdown select-text">
@@ -125,7 +141,7 @@ interface MarkdownProps {
 export const Markdown = memo(({ markdown, search }: MarkdownProps) => {
   const [isHovering, setIsHovering] = useState(false);
 
-  const throttledMarkdown = useThrottledValue(markdown ?? '', MARKDOWN_REFRESH_MS);
+  const throttledMarkdown = useThrottledValue(markdown ?? '', markdownRefreshMs(markdown ?? ''));
   const deferredMarkdown = useDeferredValue(throttledMarkdown);
 
   if (!markdown) return null;

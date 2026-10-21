@@ -1,6 +1,6 @@
 import { visit } from 'unist-util-visit';
 
-import { splitOnOccurrences } from '@pi-code/shared/utilities/common';
+import { countOccurrences, splitOnOccurrences } from '@pi-code/shared/utilities/common';
 import { SEARCH_HIT_ACTIVE_CLASS, SEARCH_HIT_CLASS } from '@pi-code/webview/components/shared/Highlight';
 import { getQuestionView } from '@pi-code/webview/helpers/questions';
 
@@ -32,6 +32,22 @@ export function getMessageSearchText(message: ChatMessage): string {
     default:
       return message.text || '';
   }
+}
+
+interface MessageSearchEntry {
+  readonly query: string;
+  readonly count: number;
+}
+
+const messageSearchCounts = new WeakMap<ChatMessage, MessageSearchEntry>();
+
+export function countMessageMatches(message: ChatMessage, query: string): number {
+  const cached = messageSearchCounts.get(message);
+  if (cached && cached.query === query) return cached.count;
+
+  const count = countOccurrences(getMessageSearchText(message), query);
+  messageSearchCounts.set(message, { query, count });
+  return count;
 }
 
 export function createSearchHighlightPlugin(search: SearchContext | undefined): (() => (tree: unknown) => void) | undefined {

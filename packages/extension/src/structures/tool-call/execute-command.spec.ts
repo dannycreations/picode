@@ -90,6 +90,38 @@ describe('executeCommandTool', () => {
     const expected = Array.from({ length: lines }, (_, index) => `line ${index + 1}\n`).join('');
     expect(updates.join('')).toBe(expected);
   });
+
+  it('streams the output once even when a burst outgrows the delta budget', async () => {
+    configValues['maxToolOutputLines'] = 2000;
+    configValues['maxToolOutputSizeKb'] = 5; // 5 KB budget
+
+    const updates: string[] = [];
+    const onUpdate = (partial: any) => {
+      if (partial?.details?.output) updates.push(partial.details.output);
+    };
+
+    // One burst of far more output than a single delta may carry, so the part
+    // that does not fit has to wait for the next delta.
+    const lines = 400;
+    const command = `node -e "for (let i = 1; i <= ${lines}; i++) console.log('line ' + i + ' ' + 'x'.repeat(60))"`;
+
+    const result = (await executeCommandTool.execute('streaming-burst-test', { command, timeout: 20_000 }, undefined, onUpdate, {
+      cwd: process.cwd(),
+    } as any)) as any;
+
+    // The burst outgrows the tail window, so the output is spilled to a file.
+    if (result.details.tempFilePath) await unlink(result.details.tempFilePath).catch(() => undefined);
+
+    expect(updates.length).toBeGreaterThan(0);
+    for (const delta of updates) {
+      expect(delta.length).toBeLessThanOrEqual(5 * 1024);
+    }
+
+    // The deltas are the tail of the command's output, dropped from the front
+    // once the tail window is full, so together they are the end of it.
+    const expected = Array.from({ length: lines }, (_, index) => `line ${index + 1} ${'x'.repeat(60)}\n`).join('');
+    expect(expected.endsWith(updates.join(''))).toBe(true);
+  });
 });
 
 describe('executeCommandTool output dumps', () => {

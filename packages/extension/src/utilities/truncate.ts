@@ -13,7 +13,7 @@ import type { CustomToolResult } from '@pi-code/extension/types/extension';
 import type { LineRange } from '@pi-code/shared/core/types';
 
 export function tempLogPath(kind: string): string {
-  return join(tmpdir(), `pi-code-${kind}-${uuidv7().slice(0, 8)}.log`);
+  return join(tmpdir(), `pi-code-${kind}-${uuidv7().replace(/-/g, '')}.log`);
 }
 
 // Output that outgrew the budget is spilled so the model can read the rest

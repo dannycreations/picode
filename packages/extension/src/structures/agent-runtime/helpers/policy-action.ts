@@ -171,37 +171,62 @@ function normalizePatternForPathMatch(pattern: string): NormalizedPattern {
   return normalized;
 }
 
-function matchesPathRegex(source: string, filePath: string, absoluteFile: string | undefined, insideRelative: string | undefined): boolean {
-  const candidates = [
-    normalizeSeparators(filePath),
-    insideRelative !== undefined ? normalizeSeparators(insideRelative) : undefined,
-    absoluteFile !== undefined ? comparableForm(absoluteFile) : undefined,
-  ].filter((candidate): candidate is string => candidate !== undefined);
-  return candidates.some((candidate) => matchesRegexPattern(source, candidate));
+interface PathForms {
+  readonly filePath: string;
+  readonly normalizedFilePath: string;
+  readonly absoluteFile: string | undefined;
+  readonly comparableAbsolute: string | undefined;
+  readonly insideRelative: string | undefined;
+  readonly normalizedRelative: string | undefined;
+  readonly segments: readonly string[] | undefined;
 }
 
-function matchesPathForms(pattern: string, filePath: string, absoluteFile: string | undefined, insideRelative: string | undefined): boolean {
+function pathForms(filePath: string, absoluteFile: string | undefined, insideRelative: string | undefined): PathForms {
+  const comparableAbsolute = absoluteFile !== undefined ? comparableForm(absoluteFile) : undefined;
+  return {
+    filePath,
+    normalizedFilePath: normalizeSeparators(filePath),
+    absoluteFile,
+    comparableAbsolute,
+    insideRelative,
+    normalizedRelative: insideRelative !== undefined ? normalizeSeparators(insideRelative) : undefined,
+    segments: comparableAbsolute !== undefined ? comparableAbsolute.split('/').filter(Boolean) : undefined,
+  };
+}
+
+function matchesPathRegex(source: string, forms: PathForms): boolean {
+  const candidates = [forms.normalizedFilePath, forms.normalizedRelative, forms.comparableAbsolute];
+  for (const candidate of candidates) {
+    if (candidate === undefined) continue;
+    if (matchesRegexPattern(source, candidate)) return true;
+  }
+  return false;
+}
+
+function matchesPathForms(pattern: string, forms: PathForms): boolean {
   if (!pattern) return false;
   if (pattern === '*') return true;
   if (isRegexPattern(pattern)) {
-    return matchesPathRegex(regexSource(pattern), filePath, absoluteFile, insideRelative);
+    return matchesPathRegex(regexSource(pattern), forms);
   }
 
   const { comparable, isAbsolute } = normalizePatternForPathMatch(pattern);
   if (isAbsolute) {
-    return absoluteFile !== undefined && matchesGlob(comparable, comparableForm(absoluteFile));
+    return forms.comparableAbsolute !== undefined && matchesGlob(comparable, forms.comparableAbsolute);
   }
-  if (!looksAbsolute(filePath) && matchesGlob(comparable, normalizeSeparators(filePath))) {
+  if (!looksAbsolute(forms.filePath) && matchesGlob(comparable, forms.normalizedFilePath)) {
     return true;
   }
-  return insideRelative !== undefined && matchesGlob(comparable, normalizeSeparators(insideRelative));
+  return forms.normalizedRelative !== undefined && matchesGlob(comparable, forms.normalizedRelative);
 }
 
-function matchesResolvedSegments(pattern: string, absoluteFile: string): boolean {
+function matchesResolvedSegments(pattern: string, forms: PathForms): boolean {
   const { comparable, isAbsolute } = normalizePatternForPathMatch(pattern);
   if (isAbsolute) return false;
 
-  const segments = comparableForm(absoluteFile).split('/').filter(Boolean);
+  const segments = forms.segments;
+  if (!segments) return false;
+
   let suffix = '';
   for (let index = segments.length - 1; index >= 0; index--) {
     suffix = suffix === '' ? segments[index] : `${segments[index]}/${suffix}`;
@@ -211,6 +236,7 @@ function matchesResolvedSegments(pattern: string, absoluteFile: string): boolean
 }
 
 interface FileLocation {
+  readonly filePath: string;
   readonly absoluteFile: string | undefined;
   readonly insideRelative: string | undefined;
 }
@@ -218,27 +244,24 @@ interface FileLocation {
 function resolveFileLocation(cwd: string | undefined, filePath: string): FileLocation {
   const absoluteFile = cwd ? resolvePath(filePath, cwd) : undefined;
   const insideRelative = cwd && absoluteFile ? getCwdRelativePath(absoluteFile, resolve(cwd)) : undefined;
-  return { absoluteFile, insideRelative };
+  return { filePath, absoluteFile, insideRelative };
 }
 
-function isPathDenied(pattern: string, filePath: string, absoluteFile: string | undefined, insideRelative: string | undefined): boolean {
-  if (matchesPathForms(pattern, filePath, absoluteFile, insideRelative)) return true;
-  return !isRegexPattern(pattern) && absoluteFile !== undefined && matchesResolvedSegments(pattern, absoluteFile);
+function isPathDenied(pattern: string, forms: PathForms): boolean {
+  if (matchesPathForms(pattern, forms)) return true;
+  return !isRegexPattern(pattern) && forms.absoluteFile !== undefined && matchesResolvedSegments(pattern, forms);
 }
 
-function decidePathAction(
-  filePath: string,
-  { absoluteFile, insideRelative }: FileLocation,
-  allowedPatterns: readonly string[],
-  deniedPatterns: readonly string[],
-): ApprovalDecision['action'] {
-  if (deniedPatterns.some((pattern) => isPathDenied(pattern, filePath, absoluteFile, insideRelative))) {
+function decidePathAction(location: FileLocation, allowedPatterns: readonly string[], deniedPatterns: readonly string[]): ApprovalDecision['action'] {
+  const forms = pathForms(location.filePath, location.absoluteFile, location.insideRelative);
+
+  if (deniedPatterns.some((pattern) => isPathDenied(pattern, forms))) {
     return 'deny';
   }
-  if (allowedPatterns.some((pattern) => matchesPathForms(pattern, filePath, absoluteFile, insideRelative))) {
+  if (allowedPatterns.some((pattern) => matchesPathForms(pattern, forms))) {
     return 'approve';
   }
-  return insideRelative !== undefined ? 'approve' : 'confirm';
+  return location.insideRelative !== undefined ? 'approve' : 'confirm';
 }
 
 export function resolvePathAction(
@@ -250,7 +273,7 @@ export function resolvePathAction(
 ): ApprovalDecision['action'] {
   if (!approveEnabled) return 'confirm';
   if (!filePath || filePath.includes('\0')) return 'deny';
-  return decidePathAction(filePath, resolveFileLocation(cwd, filePath), allowedPatterns, deniedPatterns);
+  return decidePathAction(resolveFileLocation(cwd, filePath), allowedPatterns, deniedPatterns);
 }
 
 const loweredPatternCache = new Map<string, string>();
@@ -342,7 +365,7 @@ function getSkillDirectories(cwd: string): readonly string[] {
 
 export function resolveReadPath(cwd: string, filePath: string, settings: AppSettings): ApprovalDecision['action'] {
   const location = resolveFileLocation(cwd, filePath);
-  const base = decidePathAction(filePath, location, settings.allowedReadPaths, settings.deniedReadPaths);
+  const base = decidePathAction(location, settings.allowedReadPaths, settings.deniedReadPaths);
   if (base === 'deny') return 'deny';
   if (!settings.autoApproveRead) return 'confirm';
 

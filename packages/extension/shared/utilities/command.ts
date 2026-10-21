@@ -53,6 +53,24 @@ function parseCommandLine(command: string, tokenizer: CommandTokenizer): string[
   return subCommands;
 }
 
-export function parseCommand(command: string, tokenizer: CommandTokenizer = parse): string[] {
+const PARSE_CACHE_LIMIT = 256;
+const parsedCommands = new Map<string, string[]>();
+
+function parseCommandUncached(command: string, tokenizer: CommandTokenizer): string[] {
   return command.split(/\r?\n/).flatMap((line) => parseCommandLine(line, tokenizer));
+}
+
+export function parseCommand(command: string, tokenizer: CommandTokenizer = parse): string[] {
+  if (tokenizer !== parse) return parseCommandUncached(command, tokenizer);
+
+  const cached = parsedCommands.get(command);
+  if (cached) return cached.slice();
+
+  const result = parseCommandUncached(command, tokenizer);
+  if (parsedCommands.size >= PARSE_CACHE_LIMIT) {
+    const oldest = parsedCommands.keys().next();
+    if (!oldest.done) parsedCommands.delete(oldest.value);
+  }
+  parsedCommands.set(command, result);
+  return result.slice();
 }

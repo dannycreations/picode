@@ -26,7 +26,8 @@ import type { CustomToolResult } from '@pi-code/extension/types/extension';
 import type { ToolName } from '@pi-code/shared/core/types';
 
 function stripAnsiAndNormalize(raw: string): string {
-  return stripAnsi(raw).replace(/\r\n/g, '\n');
+  const stripped = stripAnsi(raw);
+  return stripped.includes('\r\n') ? stripped.replace(/\r\n/g, '\n') : stripped;
 }
 
 const DEFAULT_TIMEOUT_MS = 120_000;
@@ -78,12 +79,11 @@ export function cleanCommandOutput(raw: string): string {
 }
 
 function collapseCarriageReturns(line: string): string {
-  let idx = line.lastIndexOf('\r');
-  while (idx === line.length - 1 && idx > 0) {
-    line = line.slice(0, -1);
-    idx = line.lastIndexOf('\r');
-  }
-  return idx === -1 ? line : line.slice(idx + 1);
+  let end = line.length;
+  while (end > 0 && line.charCodeAt(end - 1) === 0x0d) end--;
+  const last = line.lastIndexOf('\r', end - 1);
+  if (last === -1) return line.slice(0, end);
+  return line.slice(last + 1, end);
 }
 
 type ExecuteCommandReturn = CustomToolResult<{
@@ -118,6 +118,7 @@ export const executeCommandTool = defineTool({
       }
 
       const output: string[] = [];
+      let outputStart = 0;
       let retainedLength = 0;
       let totalLength = 0;
 
@@ -132,9 +133,57 @@ export const executeCommandTool = defineTool({
       // growing command never rebuilds one big string, and so the part that
       // already went out is never carried along.
       const pendingChunks: string[] = [];
+      let pendingStart = 0;
       let pendingLength = 0;
       let streamDirty = false;
       let streamTimer: ReturnType<typeof setTimeout> | null = null;
+
+      // Takes the part of the pending output that fits in one delta and leaves
+      // the rest of it for the next one.
+      const takeDelta = (): string | undefined => {
+        if (pendingLength === 0) return undefined;
+
+        // Only the part that fits in this delta is taken, so the part that has
+        // to wait for the next one is never copied.
+        let budget = limits.maxBytes;
+        let index = pendingStart;
+        let partial = 0;
+        const deltaChunks: string[] = [];
+        while (index < pendingChunks.length && budget > 0) {
+          const chunk = pendingChunks[index];
+          if (chunk.length <= budget) {
+            deltaChunks.push(chunk);
+            budget -= chunk.length;
+            index++;
+            continue;
+          }
+          // The chunk is only partly taken, so the rest of it stays pending.
+          deltaChunks.push(chunk.slice(0, budget));
+          partial = budget;
+          budget = 0;
+        }
+
+        const delta = deltaChunks.length === 1 ? deltaChunks[0] : deltaChunks.join('');
+
+        // Whatever did not fit in this delta waits for the next one.
+        if (partial > 0) {
+          pendingChunks[index] = pendingChunks[index].slice(partial);
+        }
+        pendingLength -= delta.length;
+        pendingStart = index;
+        if (pendingStart > 32 && pendingStart * 2 > pendingChunks.length) {
+          pendingChunks.splice(0, pendingStart);
+          pendingStart = 0;
+        }
+        return delta;
+      };
+
+      const sendDelta = (delta: string): void => {
+        onUpdate?.({
+          content: [{ type: 'text', text: delta }],
+          details: { exitCode: null, signalCode: null, output: delta, timedOut: false },
+        });
+      };
 
       const flushStream = () => {
         if (streamTimer !== null) {
@@ -143,25 +192,19 @@ export const executeCommandTool = defineTool({
         }
         if (!streamDirty || !onUpdate) return;
         streamDirty = false;
-        if (pendingLength === 0) return;
 
-        const available = pendingChunks.length === 1 ? pendingChunks[0] : pendingChunks.join('');
-        const delta = available.length > limits.maxBytes ? available.slice(0, limits.maxBytes) : available;
+        const delta = takeDelta();
+        if (delta === undefined) return;
+        sendDelta(delta);
+      };
 
-        // Whatever did not fit in this delta waits for the next one.
-        if (delta.length >= available.length) {
-          pendingChunks.length = 0;
-          pendingLength = 0;
-        } else {
-          pendingChunks.length = 0;
-          pendingChunks.push(available.slice(delta.length));
-          pendingLength = available.length - delta.length;
+      // Everything that is still waiting goes out, even when nothing arrived
+      // since the last flush, so no part of the output is left behind.
+      const drainStream = () => {
+        if (!onUpdate) return;
+        for (let delta = takeDelta(); delta !== undefined; delta = takeDelta()) {
+          sendDelta(delta);
         }
-
-        onUpdate({
-          content: [{ type: 'text', text: delta }],
-          details: { exitCode: null, signalCode: null, output: delta, timedOut: false },
-        });
       };
 
       const scheduleStream = () => {
@@ -180,17 +223,23 @@ export const executeCommandTool = defineTool({
           // The tail is what the user still needs; the older output is already
           // in the model's copy of the command output.
           let excess = pendingLength - retainedBytes;
-          while (excess > 0 && pendingChunks.length > 0) {
-            const head = pendingChunks[0];
+          while (excess > 0 && pendingStart < pendingChunks.length) {
+            const head = pendingChunks[pendingStart];
             if (head.length <= excess) {
-              pendingChunks.shift();
+              pendingStart++;
               pendingLength -= head.length;
               excess -= head.length;
             } else {
-              pendingChunks[0] = head.slice(excess);
+              pendingChunks[pendingStart] = head.slice(excess);
               pendingLength -= excess;
               excess = 0;
             }
+          }
+          // The chunks that fell out of the window are dropped once they are
+          // the larger half of the list.
+          if (pendingStart > 32 && pendingStart * 2 > pendingChunks.length) {
+            pendingChunks.splice(0, pendingStart);
+            pendingStart = 0;
           }
         }
 
@@ -234,8 +283,15 @@ export const executeCommandTool = defineTool({
         }
 
         // Rolling window for the model/UI: drop oldest chunks to keep tail.
-        while (retainedLength > retainedBytes && output.length > 1) {
-          retainedLength -= output.shift()!.length;
+        while (retainedLength > retainedBytes && outputStart < output.length - 1) {
+          retainedLength -= output[outputStart].length;
+          outputStart++;
+        }
+        // The chunks that fell out of the window are dropped once they are the
+        // larger half of the list.
+        if (outputStart > 32 && outputStart * 2 > output.length) {
+          output.splice(0, outputStart);
+          outputStart = 0;
         }
       };
 
@@ -297,7 +353,7 @@ export const executeCommandTool = defineTool({
         appendOutput(stderrTail);
         streamUpdate(stdoutTail);
         streamUpdate(stderrTail);
-        flushStream();
+        drainStream();
 
         // Release pipes a descendant may still hold after the grace settle.
         cp.stdout?.destroy();
@@ -319,7 +375,9 @@ export const executeCommandTool = defineTool({
         }
 
         const exitInfo = exitCode !== null ? `Exit code: ${exitCode}` : `Killed by signal: ${signalCode ?? 'UNKNOWN'}`;
-        const rawTailOutput = output.join('');
+        // Only the tail of the output is kept once the command outgrows the
+        // window, so the raw output starts where the window starts.
+        const rawTailOutput = outputStart === 0 ? output.join('') : output.slice(outputStart).join('');
         const cleanOutput = cleanCommandOutput(rawTailOutput);
 
         // Truncate once. Whether the tail is truncated decides if the raw output

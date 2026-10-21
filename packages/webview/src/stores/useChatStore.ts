@@ -3,8 +3,9 @@ import { create } from 'zustand';
 import { DEFAULT_APP_ID } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
 import { findModel, HISTORY_SCOPES } from '@pi-code/shared/core/protocol';
-import { elapsedSeconds, findReplaceableFailedRequest } from '@pi-code/shared/utilities/common';
+import { elapsedSeconds } from '@pi-code/shared/utilities/common';
 import {
+  appendAssistantDelta,
   appendOnce,
   deliverQueuedReplies,
   ignoreUnknownSubagent,
@@ -13,6 +14,7 @@ import {
   patchRetryDeadline,
   patchToolRow,
   settlePendingTurns,
+  startApiRequest,
   upsertToolRow,
 } from '@pi-code/webview/helpers/messages';
 import { findPendingQuestion } from '@pi-code/webview/helpers/questions';
@@ -32,14 +34,7 @@ import type {
   WorkspaceFolderItem,
 } from '@pi-code/shared/core/protocol';
 import type { AppSettings } from '@pi-code/shared/core/settings';
-import type {
-  ActiveTaskState,
-  ApiRequestChatMessage,
-  Attachment,
-  ChatMessage,
-  ModelThinkingLevel,
-  ToolChatMessage,
-} from '@pi-code/shared/core/types';
+import type { ActiveTaskState, Attachment, ChatMessage, ModelThinkingLevel, ToolChatMessage } from '@pi-code/shared/core/types';
 
 interface WebviewApi extends Omit<InternalWebviewApi<unknown>, 'postMessage'> {
   postMessage(message: WebviewToExtensionMessage): void;
@@ -196,17 +191,8 @@ export const useChatStore = create<ChatState>((set, get) => {
       const { id, timestamp } = msg.payload;
       set((state) =>
         patchActiveTask(state, (task) => {
-          if (task.messages.some((m) => m.id === id)) return task;
-          // A request in flight ends any retry wait still on screen. The retried
-          // turn usually replaces the failed row and drops the deadline with it,
-          // but a turn that streamed text first keeps that row, so the deadline
-          // has to go explicitly.
-          const settled = patchRetryDeadline(settlePendingTurns(task.messages), undefined);
-          const row: ApiRequestChatMessage = { id, sender: 'api_request', text: 'API Request', timestamp, toolStatus: 'running' };
-          // A retry reuses the previous failed request's slot, so one attempt
-          // chain renders as a single row until a turn succeeds.
-          const retryIndex = findReplaceableFailedRequest(settled);
-          return { ...task, messages: retryIndex === undefined ? [...settled, row] : [...settled.slice(0, retryIndex), row] };
+          const messages = startApiRequest(task.messages, id, timestamp);
+          return messages === task.messages ? task : { ...task, messages };
         }),
       );
     },
@@ -247,10 +233,7 @@ export const useChatStore = create<ChatState>((set, get) => {
       set((state) =>
         patchActiveTask(state, (task) => ({
           ...task,
-          messages: patchLastAssistant(task.messages, (message) => ({
-            text: text ? message.text + text : message.text,
-            reasoning: thinking ? (message.reasoning || '') + thinking : message.reasoning,
-          })),
+          messages: appendAssistantDelta(task.messages, text, thinking),
         })),
       );
     },
@@ -565,7 +548,16 @@ export const useChatStore = create<ChatState>((set, get) => {
   };
 });
 
-export const selectPendingQuestion = (state: ChatState): ChatMessage | undefined => findPendingQuestion(state.activeTask?.messages ?? []);
+let pendingQuestionSource: readonly ChatMessage[] | undefined;
+let pendingQuestionResult: ChatMessage | undefined;
+
+export const selectPendingQuestion = (state: ChatState): ChatMessage | undefined => {
+  const messages = state.activeTask?.messages;
+  if (messages !== undefined && messages === pendingQuestionSource) return pendingQuestionResult;
+  pendingQuestionSource = messages;
+  pendingQuestionResult = findPendingQuestion(messages ?? []);
+  return pendingQuestionResult;
+};
 
 // The level shown to the user, clamped to what the selected model supports.
 // The stored value is the raw preference, so a catalog refresh never has to

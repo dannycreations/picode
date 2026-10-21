@@ -10,7 +10,7 @@ const FLUSH_INTERVAL_MS = 16;
 export function postToWebview(webview: Webview | null, message: ExtensionToWebviewMessage): void {
   const sent = webview?.postMessage(message);
   if (sent) {
-    void Promise.resolve(sent).catch((err) => logger.error('Failed to post webview message:', err));
+    sent.then(undefined, (err) => logger.error('Failed to post webview message:', err));
   }
 }
 

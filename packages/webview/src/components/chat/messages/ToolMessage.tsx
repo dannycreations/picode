@@ -1,8 +1,8 @@
 import { cn } from 'cn';
 import { Play, X } from 'lucide-react';
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, memo, useCallback, useMemo, useState } from 'react';
 
-import { relativeToWorkspace } from '@pi-code/shared/utilities/common';
+import { hasVisibleText, relativeToWorkspace } from '@pi-code/shared/utilities/common';
 import { buildToolSections, getDiffStat, getFirstDiffLine, getToolHeaderMeta } from '@pi-code/shared/utilities/tool';
 import { CodeBlock } from '@pi-code/webview/components/chat/CodeBlock';
 import { getToolPatternConfig } from '@pi-code/webview/components/chat/helpers/tool-pattern';
@@ -72,95 +72,97 @@ interface ToolSectionProps {
   readonly onOpenFile: (path: string, content?: string) => void;
 }
 
-const ToolSection: FC<ToolSectionProps> = ({
-  section: { title, subtitle, content, language, openPath, status },
-  defaultOpen,
-  isFirst,
-  isLast,
-  showTimer,
-  isRunning,
-  isWaiting,
-  startTs,
-  duration,
-  revealTimerOnHover,
-  onOpenFile,
-}) => {
-  const [open, setOpen] = useState(defaultOpen);
-  const hasContent = !!content && content.trim() !== '';
-  const isApproval = status === 'approval';
+const ToolSection: FC<ToolSectionProps> = memo(
+  ({
+    section: { title, subtitle, content, language, openPath, status },
+    defaultOpen,
+    isFirst,
+    isLast,
+    showTimer,
+    isRunning,
+    isWaiting,
+    startTs,
+    duration,
+    revealTimerOnHover,
+    onOpenFile,
+  }) => {
+    const [open, setOpen] = useState(defaultOpen);
+    const hasContent = !!content && hasVisibleText(content);
+    const isApproval = status === 'approval';
 
-  const radiusClass = isFirst && isLast ? 'rounded-md' : isFirst ? 'rounded-t-md' : isLast ? 'rounded-b-md' : 'rounded-none';
+    const radiusClass = isFirst && isLast ? 'rounded-md' : isFirst ? 'rounded-t-md' : isLast ? 'rounded-b-md' : 'rounded-none';
 
-  return (
-    <div className={cn('group border border-vscode-editorGroup-border overflow-hidden bg-vscode-input-background', radiusClass)}>
-      <div className="p-2 flex items-center gap-2 select-none">
-        {hasContent ? (
-          <button
-            type="button"
-            onClick={() => setOpen(!open)}
-            aria-label={open ? 'Collapse' : 'Expand'}
-            className={cn(
-              'codicon cursor-pointer text-vscode-descriptionForeground hover:text-vscode-foreground shrink-0',
-              open ? 'codicon-chevron-up' : 'codicon-chevron-down',
-            )}
-          />
-        ) : isRunning && !isWaiting ? (
-          <Spinner className="text-vscode-focusBorder" />
-        ) : isApproval || isWaiting ? (
-          <span className="codicon codicon-clock text-vscode-descriptionForeground shrink-0" />
-        ) : (
-          <div className="w-3.5 h-3.5 shrink-0" />
-        )}
-        <div className="min-w-0 flex-1">
-          <Tooltip content={openPath ?? title}>
-            {hasContent ? (
-              <button
-                type="button"
-                onClick={() => setOpen(!open)}
-                aria-label={open ? 'Collapse' : 'Expand'}
-                className="font-mono text-xs text-vscode-foreground truncate hover:text-vscode-textLink cursor-pointer select-text block max-w-full text-left"
-              >
-                {title}
-              </button>
-            ) : (
-              <span className="font-mono text-xs text-vscode-foreground truncate select-text block max-w-full text-left">{title}</span>
-            )}
-          </Tooltip>
-          {subtitle && (
-            <Tooltip content={subtitle}>
-              <span className="block max-w-full truncate text-[10px] text-vscode-descriptionForeground select-text cursor-pointer">{subtitle}</span>
-            </Tooltip>
+    return (
+      <div className={cn('group border border-vscode-editorGroup-border overflow-hidden bg-vscode-input-background', radiusClass)}>
+        <div className="p-2 flex items-center gap-2 select-none">
+          {hasContent ? (
+            <button
+              type="button"
+              onClick={() => setOpen(!open)}
+              aria-label={open ? 'Collapse' : 'Expand'}
+              className={cn(
+                'codicon cursor-pointer text-vscode-descriptionForeground hover:text-vscode-foreground shrink-0',
+                open ? 'codicon-chevron-up' : 'codicon-chevron-down',
+              )}
+            />
+          ) : isRunning && !isWaiting ? (
+            <Spinner className="text-vscode-focusBorder" />
+          ) : isApproval || isWaiting ? (
+            <span className="codicon codicon-clock text-vscode-descriptionForeground shrink-0" />
+          ) : (
+            <div className="w-3.5 h-3.5 shrink-0" />
           )}
-        </div>
-        {openPath ? (
-          <div className="flex items-center shrink-0">
-            {language === 'diff' && <DiffStat content={content} className="group-hover:hidden" />}
-            <span className="hidden group-hover:inline-flex">
-              <Tooltip content="Open file">
+          <div className="min-w-0 flex-1">
+            <Tooltip content={openPath ?? title}>
+              {hasContent ? (
                 <button
                   type="button"
-                  onClick={() => onOpenFile(openPath, content)}
-                  aria-label="Open file"
-                  className="codicon codicon-link-external text-vscode-descriptionForeground hover:text-vscode-foreground cursor-pointer"
-                />
+                  onClick={() => setOpen(!open)}
+                  aria-label={open ? 'Collapse' : 'Expand'}
+                  className="font-mono text-xs text-vscode-foreground truncate hover:text-vscode-textLink cursor-pointer select-text block max-w-full text-left"
+                >
+                  {title}
+                </button>
+              ) : (
+                <span className="font-mono text-xs text-vscode-foreground truncate select-text block max-w-full text-left">{title}</span>
+              )}
+            </Tooltip>
+            {subtitle && (
+              <Tooltip content={subtitle}>
+                <span className="block max-w-full truncate text-[10px] text-vscode-descriptionForeground select-text cursor-pointer">{subtitle}</span>
               </Tooltip>
-            </span>
+            )}
           </div>
-        ) : showTimer ? (
-          <ElapsedTimer startTs={startTs} isRunning={isRunning} duration={duration} revealOnHover={revealTimerOnHover} />
-        ) : null}
-      </div>
+          {openPath ? (
+            <div className="flex items-center shrink-0">
+              {language === 'diff' && <DiffStat content={content} className="group-hover:hidden" />}
+              <span className="hidden group-hover:inline-flex">
+                <Tooltip content="Open file">
+                  <button
+                    type="button"
+                    onClick={() => onOpenFile(openPath, content)}
+                    aria-label="Open file"
+                    className="codicon codicon-link-external text-vscode-descriptionForeground hover:text-vscode-foreground cursor-pointer"
+                  />
+                </Tooltip>
+              </span>
+            </div>
+          ) : showTimer ? (
+            <ElapsedTimer startTs={startTs} isRunning={isRunning} duration={duration} revealOnHover={revealTimerOnHover} />
+          ) : null}
+        </div>
 
-      {hasContent && (
-        <Accordion open={open}>
-          <div className="border-t border-vscode-editorGroup-border/30 p-2 pt-0">
-            <CodeBlock source={content} language={language ?? 'text'} />
-          </div>
-        </Accordion>
-      )}
-    </div>
-  );
-};
+        {hasContent && (
+          <Accordion open={open}>
+            <div className="border-t border-vscode-editorGroup-border/30 p-2 pt-0">
+              <CodeBlock source={content} language={language ?? 'text'} />
+            </div>
+          </Accordion>
+        )}
+      </div>
+    );
+  },
+);
 
 function appendElapsed(subtitle: string | undefined, duration: number): string {
   const elapsed = formatDuration(duration);
@@ -180,11 +182,45 @@ interface ToolMessageProps {
 
 export const ToolMessage: FC<ToolMessageProps> = ({ message, onRespondTool }) => {
   const { title, icon } = getToolHeaderMeta(message.toolName, message.toolStatus, message.exitCode);
-  const sections: ReadonlyArray<ToolSection> = message.toolSections ?? buildToolSections(message);
   const activeWorkspace = useChatStore((s) => s.activeWorkspace);
   const settings = useChatStore((s) => s.settings);
 
+  const sections: ReadonlyArray<ToolSection> = useMemo(() => message.toolSections ?? buildToolSections(message), [message]);
+
   const patternConfig = useMemo(() => getToolPatternConfig(message, settings), [message, settings]);
+
+  const renderedSections = useMemo(() => {
+    const isSubagent = message.toolName === 'spawn_subagent';
+    const isDeleted = message.toolName === 'delete_file';
+
+    return sections.map((section) => {
+      const normalizedTitle = relativeToWorkspace(section.title, activeWorkspace);
+      const titledSection: ToolSection = normalizedTitle === section.title ? section : { ...section, title: normalizedTitle };
+
+      const sectionStatus = titledSection.status ?? message.toolStatus;
+      const isRunning = sectionStatus === 'running';
+      const isWaiting = isRunning && isSubagent && !titledSection.content;
+      const isDone = !isRunning && titledSection.duration !== undefined;
+      const subagentDone = isSubagent && isDone;
+      const showTimer = message.toolName === 'execute_command' || (isSubagent && titledSection.content !== undefined);
+
+      const displaySection = subagentDone
+        ? { ...withExitCode(titledSection), subtitle: appendElapsed(titledSection.subtitle, titledSection.duration) }
+        : withExitCode(titledSection);
+
+      return {
+        section: isDeleted ? { ...displaySection, openPath: undefined } : displaySection,
+        approvalMessage: titledSection.approvalMessage,
+        isRunning,
+        isWaiting,
+        isDone,
+        subagentDone,
+        showTimer: showTimer && !subagentDone,
+        startTs: section.timestamp ?? message.timestamp,
+        duration: section.duration,
+      };
+    });
+  }, [sections, activeWorkspace, message.toolName, message.toolStatus, message.timestamp]);
 
   const onTogglePattern = (pattern: string, allow: boolean): void => {
     if (!patternConfig) return;
@@ -217,13 +253,16 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onRespondTool }) =>
   const isExpanded = userExpanded || shouldExpandForApproval;
 
   // Only called from the openPath branch, so the path is always a real file.
-  const openFile = (target: string, content?: string) => {
-    if (message.toolName === 'edit_file') {
-      useChatStore.getState().send({ type: 'open_file', text: target, values: { line: getFirstDiffLine(content), diff: true } });
-      return;
-    }
-    useChatStore.getState().send({ type: 'open_file', text: target });
-  };
+  const openFile = useCallback(
+    (target: string, content?: string) => {
+      if (message.toolName === 'edit_file') {
+        useChatStore.getState().send({ type: 'open_file', text: target, values: { line: getFirstDiffLine(content), diff: true } });
+        return;
+      }
+      useChatStore.getState().send({ type: 'open_file', text: target });
+    },
+    [message.toolName],
+  );
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -235,48 +274,32 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onRespondTool }) =>
 
       <div className="ml-6 text-sm">
         <div className="border border-vscode-editorGroup-border rounded-md overflow-hidden bg-vscode-input-background">
-          {sections.map((section, index) => {
-            const normalizedTitle = relativeToWorkspace(section.title, activeWorkspace);
-            const titledSection: ToolSection = normalizedTitle === section.title ? section : { ...section, title: normalizedTitle };
-
-            const sectionStatus = titledSection.status ?? message.toolStatus;
-            const approvalMessage = titledSection.approvalMessage;
-            const hasSecApproval = approvalMessage !== undefined;
-
-            const isRunning = sectionStatus === 'running';
-            const isWaiting = isRunning && message.toolName === 'spawn_subagent' && !titledSection.content;
-            const isSubagent = message.toolName === 'spawn_subagent';
-            const isDone = !isRunning && titledSection.duration !== undefined;
-            const subagentDone = isSubagent && isDone;
-            const showTimer = message.toolName === 'execute_command' || (isSubagent && titledSection.content !== undefined);
-            const isDeleted = message.toolName === 'delete_file';
-            const displaySection = subagentDone
-              ? { ...withExitCode(titledSection), subtitle: appendElapsed(titledSection.subtitle, titledSection.duration) }
-              : withExitCode(titledSection);
-            const renderedSection = isDeleted ? { ...displaySection, openPath: undefined } : displaySection;
-
+          {renderedSections.map((rendered, index) => {
             const item = (
               <Fragment key={index}>
                 <ToolSection
-                  section={renderedSection}
+                  section={rendered.section}
                   defaultOpen={false}
                   isFirst={index === 0}
-                  isLast={sections.length === 1 && !hasSecApproval}
-                  showTimer={showTimer && !subagentDone}
-                  isRunning={isRunning}
-                  isWaiting={isWaiting}
-                  startTs={section.timestamp ?? message.timestamp}
-                  duration={section.duration}
-                  revealTimerOnHover={showTimer && isDone}
+                  isLast={renderedSections.length === 1 && !rendered.approvalMessage}
+                  showTimer={rendered.showTimer}
+                  isRunning={rendered.isRunning}
+                  isWaiting={rendered.isWaiting}
+                  startTs={rendered.startTs}
+                  duration={rendered.duration}
+                  revealTimerOnHover={rendered.showTimer && rendered.isDone}
                   onOpenFile={openFile}
                 />
-                {approvalMessage && (
+                {rendered.approvalMessage && (
                   <div className="p-2 bg-vscode-editorWarning-background/10 flex flex-col gap-2">
                     <div className="flex items-center gap-2 select-none">
-                      <button onClick={() => onRespondTool(approvalMessage.id, true)} className="action-button flex-1">
+                      <button onClick={() => onRespondTool(rendered.approvalMessage!.id, true)} className="action-button flex-1">
                         <Play size={12} fill="currentColor" /> Approve
                       </button>
-                      <button onClick={() => onRespondTool(approvalMessage.id, false)} className="action-button action-button-secondary flex-1">
+                      <button
+                        onClick={() => onRespondTool(rendered.approvalMessage!.id, false)}
+                        className="action-button action-button-secondary flex-1"
+                      >
                         <X size={12} /> Deny
                       </button>
                     </div>
