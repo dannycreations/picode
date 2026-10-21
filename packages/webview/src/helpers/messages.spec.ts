@@ -152,7 +152,7 @@ describe('appendAssistantDelta', () => {
     expect(appendAssistantDelta(messages, 'x', undefined)).toBe(messages);
   });
 
-  it('reports what the answer shows without reading it again', () => {
+  it('reports what the answer shows', () => {
     const messages = [createMessage({ id: 'a1', sender: 'assistant', text: '' })];
     const result = appendAssistantDelta(messages, 'Hello', undefined);
 

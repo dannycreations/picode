@@ -199,20 +199,20 @@ export const ChatView: FC = () => {
   // ChatBody a new identity each render and defeat its memo.
   const isSearching = searchOpen && searchQuery !== '';
   // The context of a row has to survive a re-render so the memoised chat body
-  // can keep the row it already drew. The cache is dropped when the query or
-  // the task changes, which is when every context is invalid anyway.
+  // can keep the row it already drew. Each entry carries the query, the offset
+  // and the active index it was built for, so an entry left over from an
+  // earlier search is rebuilt rather than reused.
   const searchContextCache = useRef(new Map<string, SearchContext>());
-  useEffect(() => {
-    searchContextCache.current.clear();
-  }, [searchQuery, activeTask?.id]);
 
   const searchContexts = useMemo(() => {
     if (!isSearching) return [];
 
     const cache = searchContextCache.current;
     const contexts: SearchContext[] = [];
+    const live = new Set<string>();
     for (let index = 0; index < renderItems.length; index++) {
       const message = renderItems[index];
+      live.add(message.id);
       const globalOffset = globalOffsets[index];
       const cached = cache.get(message.id);
       if (cached && cached.query === searchQuery && cached.globalOffset === globalOffset && cached.activeIndex === activeMatch) {
@@ -222,6 +222,11 @@ export const ChatView: FC = () => {
       const context: SearchContext = { query: searchQuery, globalOffset, activeIndex: activeMatch };
       cache.set(message.id, context);
       contexts.push(context);
+    }
+    // Rows that left the transcript leave the cache with them, so the cache
+    // never holds more than the transcript it describes.
+    for (const id of cache.keys()) {
+      if (!live.has(id)) cache.delete(id);
     }
     return contexts;
   }, [isSearching, searchQuery, renderItems, globalOffsets, activeMatch]);

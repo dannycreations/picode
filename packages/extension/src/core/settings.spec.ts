@@ -11,7 +11,7 @@ import {
 } from '@pi-code/extension/core/settings';
 import { getSettingSpec, SETTING_KEYS } from '@pi-code/shared/core/settings';
 import manifest from '../../package.json' with { type: 'json' };
-import { buildManifestSettings } from '../../scripts/settings.ts';
+import { buildManifestSettings } from '../../scripts/settings';
 
 const { configValues } = vi.hoisted(() => ({ configValues: {} as Record<string, unknown> }));
 

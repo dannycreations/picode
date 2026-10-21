@@ -142,20 +142,14 @@ interface MessageVisibility {
   readonly hasReasoning: boolean;
 }
 
-const visibilityCache = new WeakMap<ChatMessage, MessageVisibility>();
 const STATIC_VISIBILITY: MessageVisibility = { renderable: true, hasText: true, hasReasoning: false };
 
 export function messageVisibility(message: ChatMessage): MessageVisibility {
   if (message.sender !== 'assistant') return STATIC_VISIBILITY;
 
-  const cached = visibilityCache.get(message);
-  if (cached) return cached;
-
   const hasText = hasVisibleText(message.text);
   const hasReasoning = hasVisibleText(message.reasoning);
-  const computed: MessageVisibility = { renderable: hasText || hasReasoning, hasText, hasReasoning };
-  visibilityCache.set(message, computed);
-  return computed;
+  return { renderable: hasText || hasReasoning, hasText, hasReasoning };
 }
 
 export function isRenderableMessage(message: ChatMessage): boolean {
@@ -288,12 +282,6 @@ export function patchLastAssistant(messages: ChatMessage[], patch: (message: Ass
     if (message.sender !== 'assistant') continue;
 
     const next = { ...message, ...patch(message) } as AssistantChatMessage;
-    // A patch that leaves the text alone cannot change what the message shows,
-    // so the decision is carried over instead of being made again.
-    if (next.text === message.text && next.reasoning === message.reasoning) {
-      const previous = visibilityCache.get(message);
-      if (previous) visibilityCache.set(next, previous);
-    }
     const copy = messages.slice();
     copy[i] = next;
     return copy;
@@ -306,15 +294,11 @@ export function appendAssistantDelta(messages: ChatMessage[], text: string | und
     const message = messages[index];
     if (message.sender !== 'assistant') continue;
 
-    const previous = visibilityCache.get(message);
-    const nextText = text ? message.text + text : message.text;
-    const nextReasoning = thinking ? (message.reasoning ?? '') + thinking : message.reasoning;
-
-    const hasText = previous ? previous.hasText || hasVisibleText(text) : hasVisibleText(nextText);
-    const hasReasoning = previous ? previous.hasReasoning || hasVisibleText(thinking) : hasVisibleText(nextReasoning);
-
-    const next: AssistantChatMessage = { ...message, text: nextText, reasoning: nextReasoning };
-    visibilityCache.set(next, { renderable: hasText || hasReasoning, hasText, hasReasoning });
+    const next: AssistantChatMessage = {
+      ...message,
+      text: text ? message.text + text : message.text,
+      reasoning: thinking ? (message.reasoning ?? '') + thinking : message.reasoning,
+    };
 
     const copy = messages.slice();
     copy[index] = next;

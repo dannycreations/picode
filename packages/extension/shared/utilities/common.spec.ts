@@ -14,10 +14,10 @@ import {
   resolveContextLimit,
   splitOnOccurrences,
   startsWithIgnoringLeadingWhitespace,
-} from './common';
-import { wrapCodeBlock } from './markdown';
+} from '@pi-code/shared/utilities/common';
+import { wrapCodeBlock } from '@pi-code/shared/utilities/markdown';
 
-import type { ChatMessage } from '../core/types';
+import type { ChatMessage } from '@pi-code/shared/core/types';
 
 describe('parseTextAttachment', () => {
   // The writer and the reader must agree on the fence grammar, otherwise a

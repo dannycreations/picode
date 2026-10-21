@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getDefaultModelSelection } from '@pi-code/extension/core/settings';
 import { getInitData, refreshModelCatalog } from '@pi-code/extension/structures/agent-webview/session';
@@ -6,6 +6,7 @@ import { logger } from '@pi-code/shared/core/logger';
 
 import type { Api, Model } from '@earendil-works/pi-ai';
 import type { AgentSessionServices, ModelRuntime } from '@earendil-works/pi-coding-agent';
+import type { MockInstance } from 'vitest';
 
 vi.mock('@pi-code/extension/core/settings', () => ({
   getDefaultModelSelection: vi.fn(async () => ({ id: 'zen-model', provider: 'zen' })),
@@ -30,11 +31,20 @@ function makeRuntime(cached: Model<Api>[], available: Model<Api>[], all: Model<A
 
 const makeServices = (modelRuntime: ModelRuntime): AgentSessionServices => ({ modelRuntime, resourceLoader: {} }) as unknown as AgentSessionServices;
 
-describe('getInitData model list', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+let warn: MockInstance<typeof logger.warn>;
 
+beforeEach(() => {
+  vi.clearAllMocks();
+  // Every path in this file reports through the logger; capture the calls so
+  // the run stays quiet and the tests can check what was reported.
+  warn = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+});
+
+afterEach(() => {
+  warn.mockRestore();
+});
+
+describe('getInitData model list', () => {
   it('lists the restored snapshot without waiting on the availability pass', async () => {
     // An extension provider's models are in the cache but its auth check has
     // not settled yet, so a list built from getAvailable() would drop them.
@@ -49,6 +59,7 @@ describe('getInitData model list', () => {
     // The persisted "zen-model" is not in this catalog, so the first model of
     // the provider the user chose stands in, not the first model overall.
     expect(data.default_model).toMatchObject({ id: 'space-bunny-free', provider: 'zen' });
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('"zen/zen-model" is not in the catalog'));
   });
 
   it('falls back to the full catalog when nothing is cached yet', async () => {
@@ -58,6 +69,7 @@ describe('getInitData model list', () => {
     const data = await getInitData('C:/workspace', makeServices(runtime));
 
     expect(data.models.map((entry) => `${entry.provider}/${entry.id}`)).toEqual(['openai/gpt-5']);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('"zen/zen-model" is not in the catalog'));
   });
 
   it('names the selection it could not resolve and keeps its provider', async () => {
@@ -67,7 +79,6 @@ describe('getInitData model list', () => {
     const anthropic = model('anthropic', 'claude-opus-4-8');
     const runtime = makeRuntime([kilo, anthropic], [kilo, anthropic]);
     vi.mocked(getDefaultModelSelection).mockResolvedValue({ id: 'stepfun/step-3.7-flash:free', provider: 'ext-kilo' });
-    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {});
 
     const data = await getInitData('C:/workspace', makeServices(runtime));
 
@@ -91,7 +102,6 @@ describe('getInitData model list', () => {
     const runtime = makeRuntime([anthropic], [anthropic]);
     // "kilo" is not a provider id; the extension registers as "ext-kilo".
     vi.mocked(getDefaultModelSelection).mockResolvedValue({ id: 'stepfun/step-3.7-flash:free', provider: 'kilo' });
-    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {});
 
     const data = await getInitData('C:/workspace', makeServices(runtime));
 
@@ -109,7 +119,6 @@ describe('refreshModelCatalog', () => {
       })),
       getAvailable: vi.fn(async () => [model('ext-zen', 'big-pickle')]),
     } as unknown as ModelRuntime;
-    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {});
 
     const models = await refreshModelCatalog(runtime);
 

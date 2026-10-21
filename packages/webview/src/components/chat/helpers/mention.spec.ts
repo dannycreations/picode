@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { applyTag, readTagQuery, toCommitTagItem } from './mention';
+import { applyTag, readTagQuery, toCommitTagItem } from '@pi-code/webview/components/chat/helpers/mention';
 
 describe('readTagQuery', () => {
   it('reads the query after a # token at the caret', () => {

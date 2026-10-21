@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { registerContextCommands } from '@pi-code/extension/structures/context-command/command';
 import { COMMAND_IDS } from '@pi-code/shared/core/constants';
-import { registerContextCommands } from './command';
 
 const mocks = vi.hoisted(() => ({
   handlers: new Map<string, (...args: unknown[]) => unknown>(),
@@ -57,7 +57,7 @@ vi.mock('@pi-code/extension/structures/agent-runtime/helpers/complete', () => ({
 }));
 
 vi.mock('@pi-code/extension/structures/context-command/helpers', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('./helpers')>()),
+  ...(await importOriginal()),
   mapDiagnostics: mocks.mapDiagnostics,
   resolveSelectionFromDocument: mocks.resolveSelectionFromDocument,
 }));

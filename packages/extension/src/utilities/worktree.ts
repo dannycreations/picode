@@ -1,13 +1,12 @@
-import { execFile } from 'node:child_process';
 import { cp, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { promisify } from 'node:util';
 
+import { execGit } from '@pi-code/extension/utilities/git';
 import { logger } from '@pi-code/shared/core/logger';
 
-const execFileAsync = promisify(execFile);
-
+// A worktree carries binary patches, so it needs more room and more time than
+// the read-only git commands.
 const GIT_TIMEOUT_MS = 120_000;
 const GIT_MAX_BUFFER = 64 * 1024 * 1024;
 
@@ -29,11 +28,9 @@ export function withWorktreeLock<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 async function runGit(cwd: string, args: readonly string[]): Promise<string> {
-  const { stdout } = await execFileAsync('git', [...args], {
-    cwd,
-    encoding: 'utf-8',
+  return execGit(cwd, args, {
     maxBuffer: GIT_MAX_BUFFER,
-    timeout: GIT_TIMEOUT_MS,
+    timeoutMs: GIT_TIMEOUT_MS,
     env: {
       ...process.env,
       GIT_AUTHOR_NAME: 'Pi Code',
@@ -42,7 +39,6 @@ async function runGit(cwd: string, args: readonly string[]): Promise<string> {
       GIT_COMMITTER_EMAIL: 'pi-code@local',
     },
   });
-  return stdout;
 }
 
 export async function getGitRoot(cwd: string): Promise<string | null> {

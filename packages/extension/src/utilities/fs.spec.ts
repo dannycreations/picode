@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import { isBinaryFile, numberLines, searchWorkspaceFiles } from './fs';
+import { isBinaryFile, numberLines, searchWorkspaceFiles } from '@pi-code/extension/utilities/fs';
 
 let cwd: string;
 

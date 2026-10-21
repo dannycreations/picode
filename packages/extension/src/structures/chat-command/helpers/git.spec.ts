@@ -1,6 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { matchCommits, parseGitLog, resolveCommitTag, searchCommits } from '../helpers/git';
+import { matchCommits, parseGitLog, resolveCommitTag, searchCommits } from '@pi-code/extension/structures/chat-command/helpers/git';
+import { logger } from '@pi-code/shared/core/logger';
+
+import type { MockInstance } from 'vitest';
 
 const { execGitMock, getGitRepositoryMock } = vi.hoisted(() => ({
   execGitMock: vi.fn(),
@@ -16,6 +19,8 @@ vi.mock('@pi-code/extension/utilities/git', () => ({
 const REPO_ROOT = '/repo';
 const CWD = '/repo/sub';
 const LIMITS = { maxLines: 2000, maxBytes: 512 * 1024 };
+
+let warn: MockInstance<typeof logger.warn>;
 
 // CRLF on purpose: `git` emits platform line endings that the parser must trim.
 const LOG_OUTPUT = [
@@ -43,6 +48,13 @@ function failGitWith(message: string): void {
 beforeEach(() => {
   execGitMock.mockReset();
   getGitRepositoryMock.mockReset().mockResolvedValue({ rootUri: { fsPath: REPO_ROOT } });
+  // A failed search reports through the logger; capture it so the run stays
+  // quiet and the test can check what it reported.
+  warn = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+});
+
+afterEach(() => {
+  warn.mockRestore();
 });
 
 describe('parseGitLog', () => {
@@ -118,6 +130,7 @@ describe('searchCommits', () => {
     failGitWith('not a git repository');
 
     await expect(searchCommits('', CWD)).resolves.toEqual([]);
+    expect(warn).toHaveBeenCalledWith('Commit search failed:', expect.any(Error));
   });
 });
 

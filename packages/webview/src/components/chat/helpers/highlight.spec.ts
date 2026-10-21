@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { splitTokenSegments } from './highlight';
+import { splitTokenSegments } from '@pi-code/webview/components/chat/helpers/highlight';
 
 import type { CommandItem } from '@pi-code/shared/core/protocol';
 

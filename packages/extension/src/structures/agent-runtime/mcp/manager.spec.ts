@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createMcpGateway } from '@pi-code/extension/structures/agent-runtime/mcp/manager';
 import { logger } from '@pi-code/shared/core/logger';
 
-import type { Tool } from '@modelcontextprotocol/sdk/types.js';
+import type { Tool } from '@modelcontextprotocol/sdk/types';
 import type { McpConfig, McpServerConfig } from '@pi-code/extension/structures/agent-runtime/mcp/config';
 import type { McpConnection, McpConnector } from '@pi-code/extension/structures/agent-runtime/mcp/manager';
 

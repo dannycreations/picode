@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { resolveCommitTag } from '@pi-code/extension/structures/chat-command/helpers/git';
-import { expandMentions } from './mention';
+import { expandMentions } from '@pi-code/extension/structures/chat-command/mention';
 
 // expandMentions reads its truncation budget from app settings, which depend on
 // the VS Code API. Stub just that one function so the logic can run in isolation.

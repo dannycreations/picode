@@ -1,6 +1,9 @@
-import { describe, expect, it, vi } from 'vitest';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { getIgnoredPaths } from '@pi-code/extension/utilities/git';
+import { execGit, getIgnoredPaths } from '@pi-code/extension/utilities/git';
 
 import type { Repository } from '@pi-code/extension/types/git';
 
@@ -31,5 +34,36 @@ describe('getIgnoredPaths', () => {
     });
 
     expect(await getIgnoredPaths(repo, ['a.ts'])).toEqual(new Set());
+  });
+});
+
+let repo: string;
+
+beforeEach(async () => {
+  repo = await mkdtemp(join(tmpdir(), 'pi-code-git-cli-'));
+  await execGit(repo, ['init']);
+});
+
+afterEach(async () => {
+  await rm(repo, { recursive: true, force: true });
+});
+
+describe('execGit', () => {
+  it('returns the standard output of the command', async () => {
+    const output = await execGit(repo, ['rev-parse', '--is-inside-work-tree']);
+
+    expect(output.trim()).toBe('true');
+  });
+
+  it('rejects when the command fails', async () => {
+    await expect(execGit(repo, ['rev-parse', '--verify', 'refs/heads/missing-branch'])).rejects.toThrow();
+  });
+
+  it('runs the command with the given environment', async () => {
+    const output = await execGit(repo, ['var', 'GIT_AUTHOR_IDENT'], {
+      env: { ...process.env, GIT_AUTHOR_NAME: 'Pi Code', GIT_AUTHOR_EMAIL: 'pi-code@local' },
+    });
+
+    expect(output).toContain('Pi Code <pi-code@local>');
   });
 });

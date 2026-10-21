@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { PiCodeActionProvider } from './provider';
+import { PiCodeActionProvider } from '@pi-code/extension/structures/context-command/provider';
 
 vi.mock('vscode', () => {
   class MockSelection {

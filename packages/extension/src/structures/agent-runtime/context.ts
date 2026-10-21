@@ -146,53 +146,16 @@ function renderProjectContext(contextFiles: ReadonlyArray<{ path: string; conten
   return ['## Project Context', 'Project-specific instructions and guidelines:', ...sections].join('\n\n');
 }
 
-interface ComposedContext {
-  readonly customPrompt: string | undefined;
-  readonly appendSystemPrompt: string | undefined;
-  readonly selectedTools: readonly string[] | undefined;
-  readonly skills: readonly Skill[] | undefined;
-  readonly contextFiles: ReadonlyArray<{ path: string; content: string }> | undefined;
-  readonly mcpConfig: unknown;
-  readonly composed: string;
-}
-
-let composedContext: ComposedContext | null = null;
-
 export function composeSystemContext(options: BuildSystemPromptOptions): string {
-  const mcpConfig = getActiveMcpConfig();
-  const cached = composedContext;
-  if (
-    cached &&
-    cached.customPrompt === options.customPrompt &&
-    cached.appendSystemPrompt === options.appendSystemPrompt &&
-    cached.selectedTools === options.selectedTools &&
-    cached.skills === options.skills &&
-    cached.contextFiles === options.contextFiles &&
-    cached.mcpConfig === mcpConfig
-  ) {
-    return cached.composed;
-  }
-
   const sections = [
     options.customPrompt?.trim(),
     options.appendSystemPrompt?.trim(),
     renderSkills(options.selectedTools, options.skills).trim(),
-    renderMcpServers(mcpConfig).trim(),
+    renderMcpServers(getActiveMcpConfig()).trim(),
     renderSubagentGuidance(options.selectedTools).trim(),
     renderProjectContext(options.contextFiles).trim(),
   ];
-  const composed = sections.filter((section) => section !== undefined && section.length > 0).join('\n\n');
-
-  composedContext = {
-    customPrompt: options.customPrompt,
-    appendSystemPrompt: options.appendSystemPrompt,
-    selectedTools: options.selectedTools,
-    skills: options.skills,
-    contextFiles: options.contextFiles,
-    mcpConfig,
-    composed,
-  };
-  return composed;
+  return sections.filter((section) => section !== undefined && section.length > 0).join('\n\n');
 }
 
 export function createContextExtension(): InlineExtension {

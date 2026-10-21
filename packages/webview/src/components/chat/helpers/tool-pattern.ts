@@ -1,5 +1,5 @@
 import { parseCommand } from '@pi-code/shared/utilities/command';
-import { normalizeSeparators } from '@pi-code/shared/utilities/common';
+import { normalizeSeparators, setBounded } from '@pi-code/shared/utilities/common';
 import { getToolFilePaths } from '@pi-code/shared/utilities/tool';
 
 import type { AppSettings, SettingKey } from '@pi-code/shared/core/settings';
@@ -34,11 +34,7 @@ function extractCommandPatterns(command: string): readonly string[] {
   // or every call to the same tool.
   const patterns = collectUnique(subCommands.map((sub) => [sub, sub.split(/\s+/)[0]]));
 
-  if (commandPatterns.size >= COMMAND_PATTERN_CACHE_LIMIT) {
-    const oldest = commandPatterns.keys().next();
-    if (!oldest.done) commandPatterns.delete(oldest.value);
-  }
-  commandPatterns.set(command, patterns);
+  setBounded(commandPatterns, command, patterns, COMMAND_PATTERN_CACHE_LIMIT);
   return patterns;
 }
 

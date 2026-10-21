@@ -9,11 +9,6 @@ import type { API, GitExtension, Repository } from '@pi-code/extension/types/git
 // The VS Code git extension reports untracked files with status 7.
 export const GIT_STATUS_UNTRACKED = 7;
 
-// The whole `git show` output must survive the exec buffer; trimming to a
-// display budget happens afterwards on the complete text.
-const GIT_MAX_BUFFER = 10 * 1024 * 1024;
-const GIT_TIMEOUT_MS = 60_000;
-
 async function getGitApi(): Promise<API | null> {
   const gitExtension = extensions.getExtension<GitExtension>('vscode.git');
   if (!gitExtension) {
@@ -55,22 +50,6 @@ export async function getGitRepository(uri?: Uri): Promise<Repository | null> {
   return api.repositories[0] ?? null;
 }
 
-export function execGit(root: string, args: readonly string[]): Promise<string> {
-  return new Promise((resolve, reject) => {
-    execFile(
-      'git',
-      [...args],
-      {
-        cwd: root,
-        encoding: 'utf-8',
-        maxBuffer: GIT_MAX_BUFFER,
-        timeout: GIT_TIMEOUT_MS,
-      },
-      (err, stdout) => (err ? reject(err) : resolve(stdout)),
-    );
-  });
-}
-
 export async function getIgnoredPaths(repo: Repository, absolutePaths: readonly string[]): Promise<Set<string>> {
   if (absolutePaths.length === 0) {
     return new Set();
@@ -81,4 +60,41 @@ export async function getIgnoredPaths(repo: Repository, absolutePaths: readonly 
     logger.debug('git check-ignore failed; treating all paths as tracked:', err);
     return new Set();
   }
+}
+
+const DEFAULT_MAX_BUFFER = 10 * 1024 * 1024;
+const DEFAULT_TIMEOUT_MS = 60_000;
+
+interface GitCommandOptions {
+  readonly maxBuffer?: number;
+  readonly timeoutMs?: number;
+  readonly env?: NodeJS.ProcessEnv;
+}
+
+export function execGit(cwd: string, args: readonly string[], options: GitCommandOptions = {}): Promise<string> {
+  return new Promise((resolve, reject) => {
+    execFile(
+      'git',
+      [...args],
+      {
+        cwd,
+        encoding: 'utf-8',
+        maxBuffer: options.maxBuffer ?? DEFAULT_MAX_BUFFER,
+        timeout: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+        env: options.env,
+      },
+      (err, stdout, stderr) => {
+        if (!err) {
+          resolve(stdout);
+          return;
+        }
+        // A failed command still produced output, and the caller usually wants
+        // to show it, so the captured streams travel with the error.
+        const failure = err as Error & { stdout?: string; stderr?: string };
+        failure.stdout = stdout;
+        failure.stderr = stderr;
+        reject(failure);
+      },
+    );
+  });
 }

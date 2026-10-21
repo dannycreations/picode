@@ -1,7 +1,5 @@
 import { parse } from 'shell-quote';
 
-import { setBounded } from '@pi-code/shared/utilities/common';
-
 export type CommandTokenizer = (command: string) => unknown[];
 
 const SEPARATOR_OPS = ['&&', '||', ';', '|', '&'];
@@ -55,20 +53,6 @@ function parseCommandLine(command: string, tokenizer: CommandTokenizer): string[
   return subCommands;
 }
 
-const PARSE_CACHE_LIMIT = 256;
-const parsedCommands = new Map<string, string[]>();
-
-function parseCommandUncached(command: string, tokenizer: CommandTokenizer): string[] {
-  return command.split(/\r?\n/).flatMap((line) => parseCommandLine(line, tokenizer));
-}
-
 export function parseCommand(command: string, tokenizer: CommandTokenizer = parse): string[] {
-  if (tokenizer !== parse) return parseCommandUncached(command, tokenizer);
-
-  const cached = parsedCommands.get(command);
-  if (cached) return cached.slice();
-
-  const result = parseCommandUncached(command, tokenizer);
-  setBounded(parsedCommands, command, result, PARSE_CACHE_LIMIT);
-  return result.slice();
+  return command.split(/\r?\n/).flatMap((line) => parseCommandLine(line, tokenizer));
 }
