@@ -15,7 +15,7 @@ let subagentEventCallback: SubagentEventCallback | null = null;
 
 interface SessionStatsEntry {
   readonly entryCount: number;
-  readonly modelId: string | undefined;
+  readonly modelKey: string;
   readonly stats: StatsData;
 }
 
@@ -268,22 +268,23 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
   }
 }
 
+function withoutSubagent<T extends { readonly subagent?: string }>(payload: T): Omit<T, 'subagent'> {
+  const { subagent: _subagent, ...rest } = payload;
+  return rest;
+}
+
 export function toSubagentEvent(message: ExtensionToWebviewMessage): SubagentEvent | null {
   if (!isSubagentEvent(message)) return null;
 
+  // The sub-agent pane does not render the owning sub-agent, so the field is
+  // dropped from the three tool events that carry it.
   switch (message.type) {
-    case 'tool_execution_start': {
-      const { subagent: _subagent, ...payload } = message.payload;
-      return { type: message.type, payload };
-    }
-    case 'tool_execution_update': {
-      const { subagent: _subagent, ...payload } = message.payload;
-      return { type: message.type, payload };
-    }
-    case 'tool_execution_end': {
-      const { subagent: _subagent, ...payload } = message.payload;
-      return { type: message.type, payload };
-    }
+    case 'tool_execution_start':
+      return { type: message.type, payload: withoutSubagent(message.payload) };
+    case 'tool_execution_update':
+      return { type: message.type, payload: withoutSubagent(message.payload) };
+    case 'tool_execution_end':
+      return { type: message.type, payload: withoutSubagent(message.payload) };
     default:
       return message;
   }
@@ -292,9 +293,13 @@ export function toSubagentEvent(message: ExtensionToWebviewMessage): SubagentEve
 export function createStats(session: AgentSession): StatsData | undefined {
   try {
     const entryCount = session.sessionManager?.getEntryCount?.();
-    const modelId = session.model?.id;
+    // The context window comes from the routed model when one is set, so the
+    // key names that model. Two providers can share a model id, and a switch
+    // between them changes the limit without changing the entry count.
+    const limitsModel = session.routedModel?.model ?? session.model;
+    const modelKey = limitsModel ? `${limitsModel.provider}/${limitsModel.id}` : '';
     const cached = entryCount === undefined ? undefined : statsCache.get(session);
-    if (cached && cached.entryCount === entryCount && cached.modelId === modelId) return cached.stats;
+    if (cached && cached.entryCount === entryCount && cached.modelKey === modelKey) return cached.stats;
 
     const stats = session.getSessionStats();
     const result: StatsData = {
@@ -306,7 +311,7 @@ export function createStats(session: AgentSession): StatsData | undefined {
       contextTokens: stats.contextUsage?.tokens ?? 0,
       contextLimit: resolveContextLimit(stats.contextUsage?.contextWindow ?? session.model?.contextWindow),
     };
-    if (entryCount !== undefined) statsCache.set(session, { entryCount, modelId, stats: result });
+    if (entryCount !== undefined) statsCache.set(session, { entryCount, modelKey, stats: result });
     return result;
   } catch (err) {
     logger.error('Failed to create session stats message:', err);

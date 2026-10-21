@@ -1,5 +1,5 @@
 import { stat } from 'node:fs/promises';
-import { relative, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { formatThrownValue } from '@earendil-works/pi-ai';
 import { formatPathRelativeToCwdOrAbsolute } from '@earendil-works/pi-coding-agent';
 
@@ -9,7 +9,6 @@ import { checkReadableFile, walkDirectory } from '@pi-code/extension/utilities/f
 import { readNumberedText } from '@pi-code/extension/utilities/truncate';
 import { MENTION_PATTERN, TAG_PATTERN } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
-import { normalizeSeparators } from '@pi-code/shared/utilities/common';
 import { buildFileTree, renderFileTree } from '@pi-code/shared/utilities/tree';
 
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
@@ -106,13 +105,12 @@ async function listFolderEntries(dir: string, cwd: string): Promise<string> {
   let totalChars = 0;
   let truncated = false;
 
-  for await (const { abs } of walkDirectory(dir, FOLDER_MAX_DEPTH)) {
+  for await (const { rel } of walkDirectory(dir, FOLDER_MAX_DEPTH)) {
     if (entryCount >= FOLDER_MAX_FILES) {
       truncated = true;
       break;
     }
 
-    const rel = normalizeSeparators(relative(dir, abs));
     if (totalChars + rel.length > FOLDER_CHAR_CAP) {
       truncated = true;
       break;

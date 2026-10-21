@@ -1,5 +1,3 @@
-import { useMemo } from 'react';
-
 import { findModel } from '@pi-code/shared/core/protocol';
 import { resolveContextLimit } from '@pi-code/shared/utilities/common';
 import { selectThinkingLevel, useChatStore } from '@pi-code/webview/stores/useChatStore';
@@ -30,9 +28,9 @@ export const useChatConfig = (): UseChatConfigReturn => {
   const setSelectedModel = useChatStore((state) => state.setSelectedModel);
   const setSelectedThinkingLevel = useChatStore((state) => state.setSelectedThinkingLevel);
 
-  const selectedModelItem = useMemo(() => findModel(models, selectedModel), [models, selectedModel]);
+  const selectedModelItem = findModel(models, selectedModel);
 
-  const thinkingLevels = useMemo(() => selectedModelItem?.thinkingLevels ?? [], [selectedModelItem]);
+  const thinkingLevels = selectedModelItem?.thinkingLevels ?? [];
   const supportsImages = selectedModelItem?.supportsImages ?? false;
   const selectedModelContextWindow = resolveContextLimit(selectedModelItem?.contextWindow);
 

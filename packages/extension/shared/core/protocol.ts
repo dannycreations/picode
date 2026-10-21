@@ -185,7 +185,7 @@ export type ExtensionToWebviewMessage =
   | { type: 'subagent_event'; payload: { toolCallId: string; event: SubagentEvent } }
   | { type: 'subagent_sessions'; payload: { toolCallIds: readonly string[] } };
 
-export const SUBAGENT_EVENT_TYPES = [
+const SUBAGENT_EVENT_TYPES = [
   'agent_start',
   'message_start',
   'message_end',

@@ -24,7 +24,7 @@ export function parseBase64DataUrl(value: string): DataUrlParts | null {
   return { mimeType: match[1], data: match[3] };
 }
 
-export function toBase64DataUrl(data: string, mimeType: string = DEFAULT_MIME_TYPE): string {
+export function toBase64DataUrl(data: string, mimeType?: string): string {
   return `data:${mimeType || DEFAULT_MIME_TYPE};base64,${data}`;
 }
 

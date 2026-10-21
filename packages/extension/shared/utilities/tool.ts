@@ -132,7 +132,7 @@ function toolMeta(toolName?: string): ToolMeta {
 }
 
 export function getToolFilePaths(message: ToolChatMessage): readonly string[] {
-  const resultPaths = (message.files ?? []).map((file) => file.path).filter((path): path is string => Boolean(path));
+  const resultPaths = (message.files ?? []).map((file) => file.path);
   if (resultPaths.length > 0) return resultPaths;
 
   const args = message.toolArgs;

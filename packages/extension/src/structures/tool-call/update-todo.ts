@@ -1,7 +1,7 @@
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
-import { toolError, toolResult } from '@pi-code/extension/structures/tool-call/helpers';
+import { toolResult } from '@pi-code/extension/structures/tool-call/helpers';
 import { TODO_STATUSES } from '@pi-code/shared/utilities/todo';
 
 import type { ToolName } from '@pi-code/shared/core/types';
@@ -46,10 +46,7 @@ export const updateTodoTool = defineTool({
 
     return input;
   },
-  async execute(_toolCallId, params, signal, onUpdate, _ctx) {
-    if (signal?.aborted) {
-      return toolError('Todo update cancelled.');
-    }
+  async execute(_toolCallId, params, _signal, onUpdate, _ctx) {
     const result = toolResult('Todo list updated.', { todos: params.todos });
     onUpdate?.(result);
     return result;

@@ -40,17 +40,6 @@ describe('ReplyQueue', () => {
     expect(queue.all().map((m) => m.text)).toEqual(['second']);
   });
 
-  it('retain replaces the contents with only the undelivered entries', () => {
-    const { queue, onChange } = makeQueue();
-    queue.add('a');
-    queue.add('b');
-    onChange.mockClear();
-
-    queue.retain([queue.all()[1]]);
-    expect(queue.all().map((m) => m.text)).toEqual(['b']);
-    expect(onChange).toHaveBeenCalledTimes(1);
-  });
-
   it('reports its size without handing out a snapshot', () => {
     const { queue } = makeQueue();
     expect(queue.size).toBe(0);

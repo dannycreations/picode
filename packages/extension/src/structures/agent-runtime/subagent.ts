@@ -11,7 +11,7 @@ import { editFileTool } from '@pi-code/extension/structures/tool-call/edit-file'
 import { executeCommandTool } from '@pi-code/extension/structures/tool-call/execute-command';
 import { readFileTool } from '@pi-code/extension/structures/tool-call/read-file';
 import { writeFileTool } from '@pi-code/extension/structures/tool-call/write-file';
-import { createIsolatedWorktree, discardIsolatedWorktree, integrateIsolatedWorktree, withWorktreeLock } from '@pi-code/extension/utilities/worktree';
+import { createIsolatedWorktree, integrateIsolatedWorktree, removeWorktreeDirectory, withWorktreeLock } from '@pi-code/extension/utilities/worktree';
 import { logger } from '@pi-code/shared/core/logger';
 import { elapsedSeconds } from '@pi-code/shared/utilities/common';
 
@@ -241,6 +241,15 @@ export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutco
 
   const steps = (): string => collected.join('\n');
 
+  const cancelled = (): SubagentOutcome => ({
+    agent: input.agent.name,
+    text: '',
+    steps: '',
+    usage: emptyUsage(),
+    error: 'Sub-agent was cancelled.',
+    duration: elapsedSeconds(startTime),
+  });
+
   const recordStep = (step: string): void => {
     collected.push(step);
     if (collected.length > MAX_SUBAGENT_STEP_HISTORY) collected.shift();
@@ -269,15 +278,8 @@ export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutco
 
     input.onProgress?.('');
     if (input.signal?.aborted) {
-      if (worktree) await withWorktreeLock(() => discardIsolatedWorktree(worktree!));
-      return {
-        agent: input.agent.name,
-        text: '',
-        steps: '',
-        usage: emptyUsage(),
-        error: 'Sub-agent was cancelled.',
-        duration: elapsedSeconds(startTime),
-      };
+      if (worktree) await withWorktreeLock(() => removeWorktreeDirectory(worktree!));
+      return cancelled();
     }
 
     session = await createChildSession(effectiveCwd, input.agent, input.model, input.toolCallId);
@@ -287,15 +289,8 @@ export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutco
     if (input.signal?.aborted) {
       // The session never ran, so there is no transcript worth keeping.
       unregisterLiveSubagent(input.toolCallId);
-      if (worktree) await withWorktreeLock(() => discardIsolatedWorktree(worktree!));
-      return {
-        agent: input.agent.name,
-        text: '',
-        steps: '',
-        usage: emptyUsage(),
-        error: 'Sub-agent was cancelled.',
-        duration: elapsedSeconds(startTime),
-      };
+      if (worktree) await withWorktreeLock(() => removeWorktreeDirectory(worktree!));
+      return cancelled();
     }
 
     const onAbort = (): void => {
@@ -342,7 +337,7 @@ export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutco
       }
 
       if (worktree && aborted) {
-        await withWorktreeLock(() => discardIsolatedWorktree(worktree!));
+        await withWorktreeLock(() => removeWorktreeDirectory(worktree!));
       }
 
       return {
@@ -364,7 +359,7 @@ export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutco
     // A sub-agent that never got a session has no transcript to open.
     if (!session) unregisterLiveSubagent(input.toolCallId);
     if (worktree && !integrated && !integrationFailed) {
-      await withWorktreeLock(() => discardIsolatedWorktree(worktree!));
+      await withWorktreeLock(() => removeWorktreeDirectory(worktree!));
     }
     release();
   }

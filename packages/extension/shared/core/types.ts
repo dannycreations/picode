@@ -65,7 +65,7 @@ export interface ToolResultDetails {
   readonly cancelled?: boolean;
 }
 
-export interface ImageAttachment {
+interface ImageAttachment {
   readonly kind: 'image';
   readonly dataUrl: string;
 }

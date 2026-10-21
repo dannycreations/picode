@@ -60,28 +60,27 @@ export function getLiveSubagent(toolCallId: string): LiveSubagent | undefined {
   return liveSubagents.get(toolCallId);
 }
 
-export function unregisterLiveSubagent(toolCallId: string): void {
-  const entry = liveSubagents.get(toolCallId);
-  if (!entry) return;
-  liveSubagents.delete(toolCallId);
+function disposeEntry(entry: LiveSubagentEntry): void {
   if (entry.sessionId) unregisterSubagentSession(entry.sessionId);
   try {
     entry.session?.dispose();
   } catch (err) {
     logger.error('Failed to dispose sub-agent session:', err);
   }
+}
+
+export function unregisterLiveSubagent(toolCallId: string): void {
+  const entry = liveSubagents.get(toolCallId);
+  if (!entry) return;
+  liveSubagents.delete(toolCallId);
+  disposeEntry(entry);
   notifySessionsChanged();
 }
 
 export function releaseLiveSubagents(): void {
   if (liveSubagents.size === 0) return;
   for (const entry of liveSubagents.values()) {
-    if (entry.sessionId) unregisterSubagentSession(entry.sessionId);
-    try {
-      entry.session?.dispose();
-    } catch (err) {
-      logger.error('Failed to dispose sub-agent session:', err);
-    }
+    disposeEntry(entry);
   }
   liveSubagents.clear();
   notifySessionsChanged();

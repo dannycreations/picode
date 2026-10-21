@@ -31,8 +31,9 @@ const HISTORY_PREVIEW_CONCURRENCY = 6;
 
 const CATALOG_TIMEOUT_MS = 60_000;
 
-function toModelItems(models: readonly Model<Api>[]): ModelItem[] {
-  return models.map((model) => ({
+function toCatalogItems(modelRuntime: ModelRuntime, models: readonly Model<Api>[]): ModelItem[] {
+  const catalog = models.length > 0 ? models : modelRuntime.getModels();
+  return catalog.map((model) => ({
     id: model.id,
     name: model.name,
     provider: model.provider,
@@ -40,10 +41,6 @@ function toModelItems(models: readonly Model<Api>[]): ModelItem[] {
     supportsImages: model.input.includes('image'),
     thinkingLevels: getSupportedThinkingLevels(model),
   }));
-}
-
-function toCatalogItems(modelRuntime: ModelRuntime, models: readonly Model<Api>[]): ModelItem[] {
-  return toModelItems(models.length > 0 ? models : modelRuntime.getModels());
 }
 
 function resolveDefaultModel(models: ModelItem[], preferred: { id?: string; provider?: string }): ModelSelection | undefined {
@@ -237,16 +234,14 @@ export async function* streamHistory(cwd: string, scope: HistoryScope): AsyncGen
   // One cheap stat per file so we can stream newest-first without reading full
   // contents up front.
   const metas = (
-    await Promise.all(
-      files.map(async (path) => {
-        try {
-          const stat = await workspace.fs.stat(Uri.file(path));
-          return { path, mtime: typeof stat.mtime === 'number' ? stat.mtime : 0 };
-        } catch {
-          return null;
-        }
-      }),
-    )
+    await mapConcurrent(files, HISTORY_PREVIEW_CONCURRENCY, undefined, async (path) => {
+      try {
+        const stat = await workspace.fs.stat(Uri.file(path));
+        return { path, mtime: typeof stat.mtime === 'number' ? stat.mtime : 0 };
+      } catch {
+        return null;
+      }
+    })
   ).filter((meta): meta is { path: string; mtime: number } => meta !== null);
   metas.sort((a, b) => b.mtime - a.mtime);
 

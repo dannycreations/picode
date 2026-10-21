@@ -48,14 +48,17 @@ interface QueueMessageProps {
 }
 
 export const QueueMessage: FC<QueueMessageProps> = ({ message, commands, search }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editText, setEditText] = useState(message.text);
+  // The draft only exists while the row is being edited, so one state carries
+  // both the mode and the text.
+  const [draft, setDraft] = useState<string | null>(null);
+  const isEditing = draft !== null;
+  const editText = draft ?? message.text;
 
   const handleSave = (): void => {
     const trimmed = editText.trim();
     if (!trimmed) return;
     useChatStore.getState().send({ type: 'edit_reply_queue', id: message.id, text: trimmed });
-    setIsEditing(false);
+    setDraft(null);
   };
 
   const handleRemove = (): void => {
@@ -74,14 +77,14 @@ export const QueueMessage: FC<QueueMessageProps> = ({ message, commands, search 
         <div className="message-surface flex flex-col gap-2">
           <textarea
             value={editText}
-            onChange={(e) => setEditText(e.target.value)}
+            onChange={(e) => setDraft(e.target.value)}
             className="w-full min-h-[60px] p-2 rounded border border-vscode-focusBorder bg-vscode-input-background text-vscode-input-foreground outline-none resize-y font-sans text-sm"
           />
           <div className="flex gap-2 justify-end text-xs">
             <button onClick={handleSave} className="action-button px-2.5 py-1">
               Save
             </button>
-            <button onClick={() => setIsEditing(false)} className="action-button action-button-secondary px-2.5 py-1">
+            <button onClick={() => setDraft(null)} className="action-button action-button-secondary px-2.5 py-1">
               Cancel
             </button>
           </div>
@@ -91,13 +94,7 @@ export const QueueMessage: FC<QueueMessageProps> = ({ message, commands, search 
           <TokenizedText text={message.text} commands={commands} search={search} />
           <AttachmentRow attachments={message.attachments} />
           <div className="flex justify-end gap-3.5 mt-3 pt-2.5 border-t border-vscode-panel-border/50 text-xs select-none">
-            <button
-              onClick={() => {
-                setIsEditing(true);
-                setEditText(message.text);
-              }}
-              className="text-button text-vscode-textLink-foreground hover:underline"
-            >
+            <button onClick={() => setDraft(message.text)} className="text-button text-vscode-textLink-foreground hover:underline">
               <Pencil size={12} /> Edit
             </button>
             <button onClick={handleRemove} className="text-button text-vscode-errorForeground hover:underline">

@@ -7,9 +7,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
   createIsolatedWorktree,
-  discardIsolatedWorktree,
   getGitRoot,
   integrateIsolatedWorktree,
+  removeWorktreeDirectory,
   withWorktreeLock,
 } from '@pi-code/extension/utilities/worktree';
 import { logger } from '@pi-code/shared/core/logger';
@@ -278,7 +278,7 @@ describe('integrateIsolatedWorktree', () => {
   });
 });
 
-describe('discardIsolatedWorktree', () => {
+describe('removeWorktreeDirectory', () => {
   it('drops the isolated worktree and leaves the base repository untouched', async () => {
     const base = await baseRepo();
     await writeFile(join(base, 'tracked.txt'), 'original\n');
@@ -287,7 +287,7 @@ describe('discardIsolatedWorktree', () => {
     const worktree = await expectWorktree(base);
     await writeFile(join(worktree.path, 'tracked.txt'), 'agent change\n');
 
-    await discardIsolatedWorktree(worktree);
+    await removeWorktreeDirectory(worktree);
 
     expect(await exists(worktree.path)).toBe(false);
     expect(await readFile(join(base, 'tracked.txt'), 'utf8')).toBe('original\n');

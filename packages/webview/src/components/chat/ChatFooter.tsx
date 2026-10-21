@@ -1,5 +1,5 @@
 import { ChevronDown, ImageIcon, Sparkles } from 'lucide-react';
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 
 import { findModel, formatModelSelection, isSameModel } from '@pi-code/shared/core/protocol';
 import { DropdownMenu, DropdownMenuItem } from '@pi-code/webview/components/shared/DropdownMenu';
@@ -93,10 +93,13 @@ export const ChatFooter = memo(
 
     // A selection the catalog does not carry still needs a row, otherwise the
     // footer would show a different model than the chat is running on.
-    const displayModels = [...models];
-    if (!findModel(models, currentModel)) {
-      displayModels.unshift({ id: currentModel.id, name: currentModel.id, provider: currentModel.provider });
-    }
+    const displayModels = useMemo(() => {
+      const list = [...models];
+      if (!findModel(models, currentModel)) {
+        list.unshift({ id: currentModel.id, name: currentModel.id, provider: currentModel.provider });
+      }
+      return list;
+    }, [models, currentModel]);
 
     const selectedModelObj = findModel(displayModels, currentModel) ?? displayModels[0];
 

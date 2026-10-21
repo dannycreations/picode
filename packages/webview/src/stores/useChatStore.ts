@@ -69,9 +69,9 @@ type ExtensionMessageMap = {
   readonly [T in ExtensionToWebviewMessage['type']]: ExtensionMessageHandler<T>;
 };
 
-export type TaskScope = 'main' | 'subagent';
+type TaskScope = 'main' | 'subagent';
 
-export interface SubagentView {
+interface SubagentView {
   readonly toolCallId: string;
   readonly task: ActiveTaskState;
   readonly isRunning: boolean;

@@ -60,10 +60,13 @@ function assembleReadOutput(sections: readonly FileSection[]): {
   text: string;
   files: { path: string; content: string }[];
 } {
-  return {
-    text: sections.map((section) => (section.hasError ? section.body : `${section.header}\n${section.body}`)).join('\n\n'),
-    files: sections.map((section) => ({ path: section.path, content: section.body })),
-  };
+  const text: string[] = [];
+  const files: { path: string; content: string }[] = [];
+  for (const section of sections) {
+    text.push(section.hasError ? section.body : `${section.header}\n${section.body}`);
+    files.push({ path: section.path, content: section.body });
+  }
+  return { text: text.join('\n\n'), files };
 }
 
 export const readFileTool = defineTool({

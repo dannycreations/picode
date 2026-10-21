@@ -9,7 +9,7 @@ import { logger } from '@pi-code/shared/core/logger';
 const SENSITIVE_HEADERS = new Set(['authorization', 'cookie', 'set-cookie', 'x-api-key', 'x-auth-token', 'proxy-authorization']);
 
 let logPath = '';
-let nativeFetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response> = globalThis.fetch.bind(globalThis);
+const nativeFetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response> = globalThis.fetch.bind(globalThis);
 let writeChain: Promise<void> = Promise.resolve();
 // Body captures outlive the response that started them, so draining the log
 // has to wait for them too or the tail of the transcript is lost.

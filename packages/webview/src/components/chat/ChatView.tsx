@@ -229,12 +229,17 @@ export const ChatView: FC = () => {
       const message = renderItems[index];
       live.add(message.id);
       const globalOffset = globalOffsets[index];
+      // Only the row that holds the active match carries the global index.
+      // Every other row resolves to "no active match" either way, so giving
+      // it -1 keeps its context stable across a navigation and lets the
+      // memoised row keep the one it already drew.
+      const activeIndex = activeMatch >= globalOffset && activeMatch < globalOffset + matchCounts[index] ? activeMatch : -1;
       const cached = cache.get(message.id);
-      if (cached && cached.query === searchQuery && cached.globalOffset === globalOffset && cached.activeIndex === activeMatch) {
+      if (cached && cached.query === searchQuery && cached.globalOffset === globalOffset && cached.activeIndex === activeIndex) {
         contexts.push(cached);
         continue;
       }
-      const context: SearchContext = { query: searchQuery, globalOffset, activeIndex: activeMatch };
+      const context: SearchContext = { query: searchQuery, globalOffset, activeIndex };
       cache.set(message.id, context);
       contexts.push(context);
     }
@@ -244,7 +249,7 @@ export const ChatView: FC = () => {
       if (!live.has(id)) cache.delete(id);
     }
     return contexts;
-  }, [isSearching, searchQuery, renderItems, globalOffsets, activeMatch]);
+  }, [isSearching, searchQuery, renderItems, globalOffsets, matchCounts, activeMatch]);
 
   const goToMatch = useCallback(
     (direction: 1 | -1) => {

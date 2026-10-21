@@ -49,23 +49,22 @@ export function parseMcpServer(raw: unknown): ParsedServer {
     return { ok: false, error: 'entry must be an object' };
   }
 
-  const record = raw;
-  if (record['disabled'] === true) return { ok: true };
+  if (raw['disabled'] === true) return { ok: true };
 
-  const declared = declaredKind(record);
+  const declared = declaredKind(raw);
   if (declared !== undefined && 'error' in declared) {
     return { ok: false, error: declared.error };
   }
 
-  const autorun = record['autorun'];
+  const autorun = raw['autorun'];
   if (autorun !== undefined && typeof autorun !== 'boolean') {
     return { ok: false, error: '`autorun` must be a boolean' };
   }
 
-  const description = optionalDescription(record);
-  const timeoutMs = optionalTimeout(record);
-  const url = optionalUrl(record);
-  const command = typeof record['command'] === 'string' ? record['command'] : undefined;
+  const description = optionalDescription(raw);
+  const timeoutMs = optionalTimeout(raw);
+  const url = optionalUrl(raw);
+  const command = typeof raw['command'] === 'string' ? raw['command'] : undefined;
 
   if (url !== undefined && command !== undefined) {
     return { ok: false, error: 'specify either `command` or `url`, not both' };
@@ -86,8 +85,8 @@ export function parseMcpServer(raw: unknown): ParsedServer {
   };
 
   if (url !== undefined) {
-    const headers = optionalStringMap(record, 'headers');
-    if (record['headers'] !== undefined && headers === undefined) {
+    const headers = optionalStringMap(raw, 'headers');
+    if (raw['headers'] !== undefined && headers === undefined) {
       return { ok: false, error: '`headers` must map strings to strings' };
     }
     return {
@@ -104,13 +103,13 @@ export function parseMcpServer(raw: unknown): ParsedServer {
   if (command !== undefined) {
     if (command.trim() === '') return { ok: false, error: '`command` cannot be empty' };
 
-    const args = optionalStrings(record, 'args');
-    if (record['args'] !== undefined && args === undefined) return { ok: false, error: '`args` must be a list of strings' };
+    const args = optionalStrings(raw, 'args');
+    if (raw['args'] !== undefined && args === undefined) return { ok: false, error: '`args` must be a list of strings' };
 
-    const env = optionalStringMap(record, 'env');
-    if (record['env'] !== undefined && env === undefined) return { ok: false, error: '`env` must map strings to strings' };
+    const env = optionalStringMap(raw, 'env');
+    if (raw['env'] !== undefined && env === undefined) return { ok: false, error: '`env` must map strings to strings' };
 
-    const cwd = record['cwd'];
+    const cwd = raw['cwd'];
     if (cwd !== undefined && (typeof cwd !== 'string' || cwd.trim() === '')) {
       return { ok: false, error: '`cwd` must be a non-empty string' };
     }

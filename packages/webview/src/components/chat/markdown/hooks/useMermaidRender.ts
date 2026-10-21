@@ -19,10 +19,9 @@ export const useMermaidRender = (originalCode: string, enabled: boolean): UseMer
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // The error belongs to the previous code, so it is cleared as soon as the
+    // new code starts loading.
     setError(null);
-  }, [originalCode]);
-
-  useEffect(() => {
     if (!enabled) return;
     setIsLoading(true);
 
@@ -35,7 +34,6 @@ export const useMermaidRender = (originalCode: string, enabled: boolean): UseMer
         .then(() => mermaid.render(id, originalCode))
         .then(({ svg }) => {
           if (cancelled) return;
-          setError(null);
           setSvgContent(svg);
         })
         .catch((err) => {

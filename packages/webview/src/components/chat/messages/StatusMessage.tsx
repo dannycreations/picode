@@ -2,11 +2,12 @@ import { cn } from 'cn';
 import { AlertTriangle, ChevronUp, Info, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 
+import { formatCost } from '@pi-code/shared/utilities/common';
 import { Accordion } from '@pi-code/webview/components/shared/Accordion';
 import { SearchableText } from '@pi-code/webview/components/shared/Highlight';
 import { Spinner } from '@pi-code/webview/components/shared/Spinner';
 import { useCountdown } from '@pi-code/webview/hooks/useCountdown';
-import { formatCost, formatTime } from '@pi-code/webview/utilities/common';
+import { formatTime } from '@pi-code/webview/utilities/common';
 
 import type { FC } from 'react';
 import type { ApiRequestChatMessage, CheckpointChatMessage, ErrorChatMessage } from '@pi-code/shared/core/types';

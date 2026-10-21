@@ -41,10 +41,6 @@ export class ReplyQueue {
     this.replace([]);
   }
 
-  public retain(messages: readonly ChatMessage[]): void {
-    this.replace(messages);
-  }
-
   public retainExcept(ids: ReadonlySet<string>): void {
     this.replace(this.messages.filter((m) => !ids.has(m.id)));
   }

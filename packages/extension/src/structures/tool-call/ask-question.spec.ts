@@ -21,7 +21,8 @@ describe('askQuestionTool', () => {
 
     expect(result.isError).toBeUndefined();
     expect(result.content[0]).toEqual({ type: 'text', text: 'Yes' });
-    expect(result.details).toEqual({ response: 'Yes' });
+    // The answer travels in the content only; nothing reads a copy from details.
+    expect(result.details).toEqual({});
   });
 
   it('appends answered images as image content blocks', async () => {

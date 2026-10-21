@@ -88,7 +88,7 @@ export function defaultThinkingLevel(levels: readonly ModelThinkingLevel[]): Mod
 }
 
 export function resolveContextLimit(contextWindow: number | undefined): number {
-  return contextWindow ?? EMPTY_STATS.contextLimit;
+  return contextWindow ?? DEFAULT_CONTEXT_LIMIT;
 }
 
 const LITERAL_PATTERN_CACHE_LIMIT = 256;
@@ -112,35 +112,32 @@ function literalPattern(needle: string, flags: 'g' | 'gi' | 'i'): RegExp {
   return pattern;
 }
 
-export function findOccurrences(haystack: string, needle: string, caseSensitive = false): number[] {
-  if (needle === '') return [];
+function scanOccurrences(haystack: string, needle: string, caseSensitive: boolean, visit: (index: number) => void): void {
+  if (needle === '') return;
 
   const pattern = literalPattern(needle, caseSensitive ? 'g' : 'gi');
   // The shared pattern carries its own scan position, so it is rewound before
   // every scan. The needle is never empty, so every match advances.
   pattern.lastIndex = 0;
 
-  const positions: number[] = [];
   let match = pattern.exec(haystack);
   while (match !== null) {
-    positions.push(match.index);
+    visit(match.index);
     match = pattern.exec(haystack);
   }
+}
+
+export function findOccurrences(haystack: string, needle: string, caseSensitive = false): number[] {
+  const positions: number[] = [];
+  scanOccurrences(haystack, needle, caseSensitive, (index) => positions.push(index));
   return positions;
 }
 
 export function countOccurrences(haystack: string, needle: string, caseSensitive = false): number {
-  if (needle === '') return 0;
-
-  const pattern = literalPattern(needle, caseSensitive ? 'g' : 'gi');
-  pattern.lastIndex = 0;
-
   let count = 0;
-  let match = pattern.exec(haystack);
-  while (match !== null) {
+  scanOccurrences(haystack, needle, caseSensitive, () => {
     count++;
-    match = pattern.exec(haystack);
-  }
+  });
   return count;
 }
 
@@ -175,6 +172,10 @@ export function splitOnOccurrences(text: string, needle: string, caseSensitive =
   return segments;
 }
 
+export function formatCost(cost: number): string {
+  return `$${cost.toFixed(4)}`;
+}
+
 export function elapsedSeconds(start: number, end: number = Date.now()): number {
   return Math.max(0, Math.round((end - start) / 1000));
 }
@@ -184,23 +185,7 @@ export function remainingSeconds(deadline: number, now: number = Date.now()): nu
 }
 
 function startsWithFold(haystack: string, needle: string): boolean {
-  if (haystack.length < needle.length) return false;
-
-  let asciiOnly = true;
-  for (let index = 0; index < needle.length; index++) {
-    let left = haystack.charCodeAt(index);
-    let right = needle.charCodeAt(index);
-    if (left > 0x7f || right > 0x7f) {
-      asciiOnly = false;
-      break;
-    }
-    if (left >= 0x41 && left <= 0x5a) left += 0x20;
-    if (right >= 0x41 && right <= 0x5a) right += 0x20;
-    if (left !== right) return false;
-  }
-
-  if (asciiOnly) return true;
-  return haystack.slice(0, needle.length).toLowerCase() === needle.toLowerCase();
+  return haystack.length >= needle.length && haystack.slice(0, needle.length).toLowerCase() === needle.toLowerCase();
 }
 
 export function relativeToWorkspace(path: string, root: string): string {

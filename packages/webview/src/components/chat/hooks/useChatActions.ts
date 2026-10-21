@@ -26,13 +26,21 @@ function sendablePrompt(text: string, attachments: readonly Attachment[]): strin
   return attachments.length > 0 ? '' : null;
 }
 
+// The host reads a missing list as none, so it is only sent when there is one.
+function outgoingAttachments(attachments: Attachment[]): Attachment[] | undefined {
+  return attachments.length > 0 ? attachments : undefined;
+}
+
+function buildUserMessage(text: string, attachments: Attachment[]): ChatMessage {
+  return { id: crypto.randomUUID(), sender: 'user', text, attachments, timestamp: Date.now() };
+}
+
 export const useChatActions = (): UseChatActionsReturn => {
   const handleAnswerQuestion = useCallback((questionId: string, text: string, attachments: Attachment[] = []): void => {
     const answer = sendablePrompt(text, attachments);
     if (answer === null) return;
 
-    // The host reads a missing list as none, so it is only sent when there is one.
-    const outgoing = attachments.length > 0 ? attachments : undefined;
+    const outgoing = outgoingAttachments(attachments);
 
     const store = useChatStore.getState();
     store.setActiveTask((prev) =>
@@ -56,7 +64,7 @@ export const useChatActions = (): UseChatActionsReturn => {
       const promptText = sendablePrompt(text, attachments);
       if (promptText === null) return;
 
-      const outgoing = attachments.length > 0 ? attachments : undefined;
+      const outgoing = outgoingAttachments(attachments);
       const store = useChatStore.getState();
       const { activeTask, isRunning } = store;
       const pendingQuestion = selectPendingQuestion(store);
@@ -94,13 +102,7 @@ export const useChatActions = (): UseChatActionsReturn => {
         return;
       }
 
-      const userMsg: ChatMessage = {
-        id: crypto.randomUUID(),
-        sender: 'user',
-        text: promptText,
-        attachments,
-        timestamp: Date.now(),
-      };
+      const userMsg = buildUserMessage(promptText, attachments);
 
       store.setIsRunning(true);
       store.setActiveTask((prev) =>
@@ -127,19 +129,13 @@ export const useChatActions = (): UseChatActionsReturn => {
     const subagent = store.subagent;
     if (!subagent) return;
 
-    const userMsg: ChatMessage = {
-      id: crypto.randomUUID(),
-      sender: 'user',
-      text: promptText,
-      attachments,
-      timestamp: Date.now(),
-    };
+    const userMsg = buildUserMessage(promptText, attachments);
     store.setSubagent({ ...subagent, task: { ...subagent.task, messages: [...subagent.task.messages, userMsg] } });
     store.send({
       type: 'send_subagent_message',
       tool_call_id: subagent.toolCallId,
       text: promptText,
-      attachments: attachments.length > 0 ? attachments : undefined,
+      attachments: outgoingAttachments(attachments),
     });
   }, []);
 

@@ -308,18 +308,16 @@ export function loadSubagentTranscript(session: AgentSession, task: string): { m
   // session was opened would land on the previous response.
   const streaming = session.agent.state.streamingMessage;
   if (streaming?.role === 'assistant') {
-    for (const row of convertAssistantMessage(`streaming-${session.sessionId}`, streaming, streaming.timestamp)) {
-      messages.push(row.sender === 'tool' ? { ...row, toolSections: buildToolSections(row) } : row);
-    }
+    const rows: ChatMessage[] = [];
+    appendAssistantTurn(rows, `streaming-${session.sessionId}`, streaming, streaming.timestamp);
+    for (const row of rows) messages.push(withToolSections(row));
   }
 
   return { messages, stats };
 }
 
-function convertAssistantMessage(id: string, message: Extract<SessionMessage, { role: 'assistant' }>, timestamp: number): ChatMessage[] {
-  const result: ChatMessage[] = [];
-  appendAssistantTurn(result, id, message, timestamp);
-  return result;
+function withToolSections(message: ChatMessage): ChatMessage {
+  return message.sender === 'tool' ? { ...message, toolSections: buildToolSections(message) } : message;
 }
 
 function fillToolSections(messages: ChatMessage[]): void {
@@ -327,8 +325,6 @@ function fillToolSections(messages: ChatMessage[]): void {
   // on every render. Filling them in place keeps the transcript one array
   // instead of a converted copy plus a sectioned copy.
   for (let index = 0; index < messages.length; index++) {
-    const message = messages[index];
-    if (message.sender !== 'tool') continue;
-    messages[index] = { ...message, toolSections: buildToolSections(message) };
+    messages[index] = withToolSections(messages[index]);
   }
 }

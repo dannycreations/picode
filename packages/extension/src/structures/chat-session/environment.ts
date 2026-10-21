@@ -3,6 +3,7 @@ import ignore from 'ignore';
 import { FileType, TabInputText, Uri, window, workspace } from 'vscode';
 
 import { readAppSettings } from '@pi-code/extension/core/settings';
+import { mapConcurrent } from '@pi-code/extension/utilities/common';
 import { excludeVcsEntries } from '@pi-code/extension/utilities/fs';
 import { getGitRepository, getIgnoredPaths } from '@pi-code/extension/utilities/git';
 import { toRelativePath, toWorkspaceRelativePath } from '@pi-code/extension/utilities/vscode';
@@ -63,46 +64,6 @@ function isIgnoredByLocalRules(childRelative: string, isDir: boolean, ignores: r
     if (filter.ignores(pathToTest)) return true;
   }
   return false;
-}
-
-async function walkConcurrently<T>(seed: readonly T[], concurrency: number, process: (item: T) => Promise<T[]>): Promise<void> {
-  const queue: T[] = seed.slice();
-  let active = 0;
-
-  return new Promise<void>((resolve, reject) => {
-    let settled = false;
-
-    const fail = (err: unknown) => {
-      if (!settled) {
-        settled = true;
-        reject(err);
-      }
-    };
-
-    const pump = () => {
-      if (settled) return;
-      if (queue.length === 0 && active === 0) {
-        settled = true;
-        resolve();
-        return;
-      }
-      while (active < concurrency && queue.length > 0) {
-        const item = queue.pop()!;
-        active++;
-        process(item)
-          .then((children) => {
-            active--;
-            // Avoid `queue.push(...children)`: spreading a large array as call
-            // arguments risks a stack overflow and is slower than a plain loop.
-            for (let i = 0; i < children.length; i++) queue.push(children[i]);
-            pump();
-          })
-          .catch(fail);
-      }
-    };
-
-    pump();
-  });
 }
 
 export async function walkWorkspace(
@@ -180,7 +141,12 @@ export async function walkWorkspace(
     return nextNodes;
   };
 
-  await walkConcurrently<UriNode>([{ uri: rootUri, relative: '', depth: 0, ignores: [] }], WALK_CONCURRENCY, processNode);
+  // The tree is walked one level at a time, so only the current frontier is
+  // held in memory and each level is read with a bounded number of workers.
+  let level: UriNode[] = [{ uri: rootUri, relative: '', depth: 0, ignores: [] }];
+  while (level.length > 0) {
+    level = (await mapConcurrent(level, WALK_CONCURRENCY, undefined, processNode)).flat();
+  }
 
   fileResults.sort((a, b) => pathCollator.compare(a, b));
 
@@ -232,14 +198,19 @@ export async function getEnvironmentDetails(cwd: string, includeFileDetails = fa
   const maxOpenTabsContext = settings.maxOpenTabsContext;
 
   if (maxOpenTabsContext > 0) {
-    const visibleFiles = window.visibleTextEditors.map((editor) => toWorkspaceRelativePath(editor.document.uri)).filter((path) => path !== undefined);
+    const visibleFiles = window.visibleTextEditors.flatMap((editor) => {
+      const path = toWorkspaceRelativePath(editor.document.uri);
+      return path === undefined ? [] : [path];
+    });
     details = appendPathSection(details, 'VS Code Visible Files', 'visible files', visibleFiles, maxOpenTabsContext);
 
     const openTabs = window.tabGroups.all
       .flatMap((group) => group.tabs)
       .filter((tab) => tab.input instanceof TabInputText)
-      .map((tab) => toWorkspaceRelativePath((tab.input as TabInputText).uri))
-      .filter((path) => path !== undefined);
+      .flatMap((tab) => {
+        const path = toWorkspaceRelativePath((tab.input as TabInputText).uri);
+        return path === undefined ? [] : [path];
+      });
     details = appendPathSection(details, 'VS Code Open Tabs', 'open tabs', openTabs, maxOpenTabsContext);
   }
 

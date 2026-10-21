@@ -14,11 +14,11 @@ import {
 } from 'lucide-react';
 import { memo, useEffect, useRef, useState } from 'react';
 
+import { formatCost } from '@pi-code/shared/utilities/common';
 import { TodoHeader } from '@pi-code/webview/components/chat/TodoView';
 import { Accordion } from '@pi-code/webview/components/shared/Accordion';
 import { TaskActions } from '@pi-code/webview/components/shared/TaskActions';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
-import { formatCost } from '@pi-code/webview/utilities/common';
 
 import type { FC, KeyboardEvent, MouseEvent } from 'react';
 import type { StatsData } from '@pi-code/shared/core/types';

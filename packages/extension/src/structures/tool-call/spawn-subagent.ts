@@ -15,6 +15,7 @@ import {
 } from '@pi-code/extension/structures/agent-runtime/subagent';
 import { toolError, toolResult } from '@pi-code/extension/structures/tool-call/helpers';
 import { renderTruncatedText, spillToTempLog, truncateOutput } from '@pi-code/extension/utilities/truncate';
+import { formatCost } from '@pi-code/shared/utilities/common';
 
 import type { SubagentOutcome, SubagentUsage } from '@pi-code/extension/structures/agent-runtime/subagent';
 import type { CustomToolResult } from '@pi-code/extension/types/extension';
@@ -32,7 +33,7 @@ interface SubagentDetails {
 
 function formatUsage(usage: SubagentUsage): string {
   const turns = `${usage.turns} turn${usage.turns === 1 ? '' : 's'}`;
-  return `${turns}, ${usage.tokensIn.toLocaleString()} in / ${usage.tokensOut.toLocaleString()} out, $${usage.cost.toFixed(4)}`;
+  return `${turns}, ${usage.tokensIn.toLocaleString()} in / ${usage.tokensOut.toLocaleString()} out, ${formatCost(usage.cost)}`;
 }
 
 function wrapReport(outcome: SubagentOutcome, body: readonly string[]): string {

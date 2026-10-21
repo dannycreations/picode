@@ -15,12 +15,6 @@ export function postToWebview(webview: Webview | null, message: ExtensionToWebvi
   }
 }
 
-function joinChunks(chunks: readonly string[]): string {
-  if (chunks.length === 0) return '';
-  if (chunks.length === 1) return chunks[0];
-  return chunks.join('');
-}
-
 interface CoalescedToolUpdate {
   toolName?: string;
   chunks: string[];
@@ -158,8 +152,8 @@ export class Messenger {
     }
 
     for (const [scope, buffer] of this.buffers) {
-      const text = joinChunks(buffer.text);
-      const thinking = joinChunks(buffer.thinking);
+      const text = buffer.text.join('');
+      const thinking = buffer.thinking.join('');
       if (text.length > 0 || thinking.length > 0) {
         this.emit(scope, {
           type: 'stream_delta',
@@ -171,7 +165,7 @@ export class Messenger {
 
       if (buffer.toolUpdates.size > 0) {
         for (const [id, update] of buffer.toolUpdates) {
-          const result = joinChunks(update.chunks);
+          const result = update.chunks.join('');
           if (result || update.subtitle !== undefined) {
             this.emit(scope, {
               type: 'tool_execution_update',
@@ -186,7 +180,7 @@ export class Messenger {
       }
 
       // A sub-agent that has nothing left to coalesce needs no buffer.
-      if (scope !== MAIN_SCOPE && buffer.text.length === 0 && buffer.thinking.length === 0 && buffer.toolUpdates.size === 0) {
+      if (scope !== MAIN_SCOPE && buffer.toolUpdates.size === 0) {
         this.buffers.delete(scope);
       }
     }

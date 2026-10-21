@@ -77,8 +77,11 @@ export const ChatInput = memo(({ onSend, sendingDisabled, placeholderText, texta
   // user cannot send attachments the model would reject. Text attachments stay,
   // because they are delivered as plain text the model can always read.
   useEffect(() => {
-    if (!supportsImages) setSelectedAttachments((prev) => prev.filter((attachment) => attachment.kind !== 'image'));
-  }, [supportsImages]);
+    if (supportsImages) return;
+    setSelectedAttachments((prev) =>
+      prev.some((attachment) => attachment.kind === 'image') ? prev.filter((attachment) => attachment.kind !== 'image') : prev,
+    );
+  }, [supportsImages, setSelectedAttachments]);
 
   const pushAttachment = (attachment: Attachment): void => {
     setSelectedAttachments((prev) => [...prev, attachment]);

@@ -11,6 +11,7 @@ import type { LoaderConfig } from '@pi-code/extension/structures/agent-runtime/c
 interface CachedResources {
   readonly cwd: string;
   readonly key: string;
+  readonly factory: ServicesFactory;
   readonly services: Promise<AgentSessionServices>;
 }
 
@@ -56,8 +57,10 @@ export async function createAgentResources(
   };
 
   const key = [config.agentRules, config.skillInvocation, config.projectTrusted].join('|');
-  if (resourceCache?.cwd !== cwd || resourceCache.key !== key) {
-    const created: CachedResources = { cwd, key, services: createServices(cwd, config, createSessionServices) };
+  // The factory is part of the identity of the services it produces, so a
+  // caller that injects a different one never receives another's result.
+  if (resourceCache?.cwd !== cwd || resourceCache.key !== key || resourceCache.factory !== createSessionServices) {
+    const created: CachedResources = { cwd, key, factory: createSessionServices, services: createServices(cwd, config, createSessionServices) };
     resourceCache = created;
     // A rejected creation must not poison the cache for later attempts.
     created.services.catch(() => {

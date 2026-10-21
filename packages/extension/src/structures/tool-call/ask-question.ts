@@ -7,23 +7,20 @@ import { toolError, toolErrorFrom, toolResult } from '@pi-code/extension/structu
 import type { CustomToolResult } from '@pi-code/extension/types/extension';
 import type { ToolName } from '@pi-code/shared/core/types';
 
-interface AnswerDetails {
-  readonly response?: string;
-}
-
-async function askUser(question: string, toolCallId: string, signal: AbortSignal | undefined): Promise<CustomToolResult<AnswerDetails>> {
+async function askUser(question: string, toolCallId: string, signal: AbortSignal | undefined): Promise<CustomToolResult> {
   // The chat view renders the question straight from the tool call
   // arguments, so an empty question would surface as an empty card.
   if (!question.trim()) {
-    return toolError<AnswerDetails>('Error: `question` is required and cannot be empty.');
+    return toolError('Error: `question` is required and cannot be empty.');
   }
 
   const response = await askQuestion(toolCallId, signal);
   if (response === null || (response.text.trim() === '' && !response.attachments?.length)) {
-    return toolError<AnswerDetails>('Error: the user provided no response.');
+    return toolError('Error: the user provided no response.');
   }
 
-  return toolResult<AnswerDetails>(response.text, { response: response.text }, response.attachments);
+  // The answer travels as the tool result text; the webview reads it from there.
+  return toolResult(response.text, {}, response.attachments);
 }
 
 export const askQuestionTool = defineTool({
@@ -37,14 +34,14 @@ export const askQuestionTool = defineTool({
       description: '2-4 answer options, ordered from most to least likely.',
     }),
   }),
-  async execute(toolCallId, params, signal, onUpdate, _ctx): Promise<CustomToolResult<AnswerDetails>> {
+  async execute(toolCallId, params, signal, onUpdate, _ctx): Promise<CustomToolResult> {
     // Every outcome, including a thrown one, resolves to a single result that
     // is reported and returned once.
-    let result: CustomToolResult<AnswerDetails>;
+    let result: CustomToolResult;
     try {
       result = await askUser(params.question, toolCallId, signal);
     } catch (err) {
-      result = toolErrorFrom<AnswerDetails>(err, 'asking question');
+      result = toolErrorFrom(err, 'asking question');
     }
 
     onUpdate?.(result);

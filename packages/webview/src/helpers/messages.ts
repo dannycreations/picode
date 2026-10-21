@@ -448,7 +448,7 @@ export function appendOnce(messages: ChatMessage[], message: ChatMessage): ChatM
   return next;
 }
 
-export interface ChatRenderModel {
+interface ChatRenderModel {
   readonly renderItems: ChatMessage[];
   readonly oldTodosById: ReadonlyMap<string, TodoItem[]>;
   readonly hasApproval: boolean;

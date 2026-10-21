@@ -28,6 +28,7 @@ import { wrapCodeBlock } from '@pi-code/shared/utilities/markdown';
 
 import type { AgentSession, AgentSessionEvent, AgentSessionServices, SessionEntry } from '@earendil-works/pi-coding-agent';
 import type { Webview } from 'vscode';
+import type { LiveSubagent } from '@pi-code/extension/structures/agent-runtime/brokers/subagent';
 import type { ExtensionToWebviewMessage } from '@pi-code/shared/core/protocol';
 import type { Attachment, ChatMessage, QueueChatMessage, StatsData, TextAttachment } from '@pi-code/shared/core/types';
 
@@ -65,22 +66,12 @@ export class Runtime {
   }
 
   public async openSubagentSession(toolCallId: string): Promise<void> {
-    const subagent = getLiveSubagent(toolCallId);
-    if (!subagent) {
-      this.messenger.postError(new Error('That sub-agent session is no longer available.'));
-      return;
-    }
-
-    // A sub-agent that is still starting has no session yet. Waiting for it is
-    // better than telling the user there is nothing to open.
-    const session = subagent.session ?? (await withTimeout(subagent.ready, SUBAGENT_READY_TIMEOUT_MS));
-    if (!session) {
-      this.messenger.postError(new Error('The sub-agent session is not ready yet.'));
-      return;
-    }
+    const resolved = await this.resolveLiveSubagent(toolCallId);
+    if (!resolved) return;
 
     this.closeSubagentSession();
 
+    const { subagent, session } = resolved;
     const { messages, stats } = loadSubagentTranscript(session, subagent.task);
 
     this.unsubscribeSubagentEvents = session.subscribe((event) => {
@@ -104,6 +95,24 @@ export class Runtime {
     });
   }
 
+  private async resolveLiveSubagent(toolCallId: string): Promise<{ subagent: LiveSubagent; session: AgentSession } | null> {
+    const subagent = getLiveSubagent(toolCallId);
+    if (!subagent) {
+      this.messenger.postError(new Error('That sub-agent session is no longer available.'));
+      return null;
+    }
+
+    // A sub-agent that is still starting has no session yet. Waiting for it is
+    // better than telling the user there is nothing to open.
+    const session = subagent.session ?? (await withTimeout(subagent.ready, SUBAGENT_READY_TIMEOUT_MS));
+    if (!session) {
+      this.messenger.postError(new Error('The sub-agent session is not ready yet.'));
+      return null;
+    }
+
+    return { subagent, session };
+  }
+
   public closeSubagentSession(): void {
     this.unsubscribeSubagentEvents?.();
     this.unsubscribeSubagentEvents = null;
@@ -111,18 +120,10 @@ export class Runtime {
   }
 
   public async sendSubagentMessage(toolCallId: string, text: string, attachments?: readonly Attachment[]): Promise<void> {
-    const subagent = getLiveSubagent(toolCallId);
-    if (!subagent) {
-      this.messenger.postError(new Error('That sub-agent session is no longer available.'));
-      return;
-    }
+    const resolved = await this.resolveLiveSubagent(toolCallId);
+    if (!resolved) return;
 
-    // A sub-agent that is still starting has no session to reply to yet.
-    const session = subagent.session ?? (await withTimeout(subagent.ready, SUBAGENT_READY_TIMEOUT_MS));
-    if (!session) {
-      this.messenger.postError(new Error('The sub-agent session is not ready yet.'));
-      return;
-    }
+    const { session } = resolved;
 
     try {
       const expanded = await expandMentions(text, getWorkspaceCwd());

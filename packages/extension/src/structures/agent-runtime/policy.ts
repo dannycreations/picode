@@ -35,13 +35,13 @@ function commandCwdEscapesWorkspace(requestedCwd: string | null | undefined, wor
   return getCwdRelativePath(resolvePath(requested, workspaceCwd), resolve(workspaceCwd)) === undefined;
 }
 
-function evaluateToolCall(toolName: ToolName, cwd: string, input: unknown): ApprovalDecision {
+function evaluateToolCall(toolName: ToolName, cwd: string, input: object): ApprovalDecision {
   if (SELF_APPROVING_TOOLS.has(toolName)) {
     return { action: 'approve' };
   }
 
   const settings = readAppSettings();
-  const args = (input ?? {}) as ToolCallArgs;
+  const args = input as ToolCallArgs;
 
   let action: ApprovalDecision['action'] = 'confirm';
   let denyReason = '';
