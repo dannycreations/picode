@@ -3,7 +3,8 @@ import { contentText } from '@earendil-works/pi-ai';
 import { createAgentSessionFromServices, SessionManager } from '@earendil-works/pi-coding-agent';
 
 import { applySessionOverrides, readDelegationTaskModelSelection, readDelegationTaskThinkingLevel } from '@pi-code/extension/core/settings';
-import { registerSubagentSession, unregisterSubagentSession } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
+import { attachLiveSubagentSession, unregisterLiveSubagent } from '@pi-code/extension/structures/agent-runtime/brokers/subagent';
+import { registerSubagentSession } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
 import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { deleteFileTool } from '@pi-code/extension/structures/tool-call/delete-file';
 import { editFileTool } from '@pi-code/extension/structures/tool-call/edit-file';
@@ -51,7 +52,7 @@ interface SubagentInput {
   readonly cwd: string;
   readonly model?: Model<Api>;
   readonly signal?: AbortSignal;
-  readonly toolCallId?: string;
+  readonly toolCallId: string;
   readonly onProgress?: (steps: string) => void;
   readonly onEvent?: (event: AgentSessionEvent, session: AgentSession) => void;
 }
@@ -198,7 +199,7 @@ async function createChildSession(
   cwd: string,
   agent: SubagentDefinition,
   inheritedModel: Model<Api> | undefined,
-  toolCallId?: string,
+  toolCallId: string,
 ): Promise<AgentSession> {
   // Services are cached per workspace, so a child session reuses the parent's
   // model runtime, credentials, and tool policy extension instead of rebuilding
@@ -217,6 +218,10 @@ async function createChildSession(
   // Tag this child session so the shared tool policy can label any
   // confirmation prompts it raises with the sub-agent name.
   registerSubagentSession(session.sessionId, agent.name, toolCallId);
+
+  // The registry keeps the session reachable after this run ends, so the user
+  // can open the sub-agent's own transcript the way they open a task.
+  attachLiveSubagentSession(toolCallId, session);
 
   applySessionOverrides(session);
 
@@ -280,9 +285,8 @@ export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutco
     // createChildSession does not observe the signal, so check it again before
     // starting any model work.
     if (input.signal?.aborted) {
-      unregisterSubagentSession(session.sessionId);
-      session.dispose();
-      session = undefined;
+      // The session never ran, so there is no transcript worth keeping.
+      unregisterLiveSubagent(input.toolCallId);
       if (worktree) await withWorktreeLock(() => discardIsolatedWorktree(worktree!));
       return {
         agent: input.agent.name,
@@ -307,8 +311,7 @@ export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutco
         input.onEvent?.(event, session!);
       });
     } catch (err) {
-      unregisterSubagentSession(session.sessionId);
-      session.dispose();
+      unregisterLiveSubagent(input.toolCallId);
       session = undefined;
       throw err;
     }
@@ -353,12 +356,13 @@ export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutco
     } finally {
       input.signal?.removeEventListener('abort', onAbort);
       unsubscribe?.();
-      if (session) {
-        unregisterSubagentSession(session.sessionId);
-        session.dispose();
-      }
+      // The session stays alive: it is the sub-agent's own transcript, and the
+      // user opens it from the task that delegated the work. The registry
+      // releases it together with the parent task.
     }
   } finally {
+    // A sub-agent that never got a session has no transcript to open.
+    if (!session) unregisterLiveSubagent(input.toolCallId);
     if (worktree && !integrated && !integrationFailed) {
       await withWorktreeLock(() => discardIsolatedWorktree(worktree!));
     }

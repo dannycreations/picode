@@ -139,6 +139,9 @@ const HANDLER_MAP: HandlerMap = {
     const data = await getInitData(ctx.cwd, services);
     ctx.runtime.postMessage({ type: 'init_data', payload: data });
     ctx.runtime.postMessage({ type: 'workspace_data', payload: buildWorkspaceData() });
+    // The webview starts with no sub-agent sessions, so it needs the current
+    // list to tell a live sub-agent from one read back from disk.
+    ctx.runtime.publishSubagentSessions();
     void postHistory(ctx, 'current');
     // The local catalog is enough to render the chat view, so refresh the
     // remote catalog in the background and push the merged models once it lands.
@@ -164,6 +167,15 @@ const HANDLER_MAP: HandlerMap = {
   },
   remove_from_reply_queue: (msg, ctx) => {
     ctx.runtime.replyQueue.remove(msg.id);
+  },
+  open_subagent_session: async (msg, ctx) => {
+    await ctx.runtime.openSubagentSession(msg.tool_call_id);
+  },
+  close_subagent_session: (_, ctx) => {
+    ctx.runtime.closeSubagentSession();
+  },
+  send_subagent_message: async (msg, ctx) => {
+    await ctx.runtime.sendSubagentMessage(msg.tool_call_id, msg.text, msg.attachments);
   },
   continue_task: async (msg, ctx) => {
     await ctx.runtime.continueTask(msg.path || '');

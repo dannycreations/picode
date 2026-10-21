@@ -108,6 +108,9 @@ export type WebviewToExtensionMessage =
   | { type: 'add_to_reply_queue'; text: string; attachments?: Attachment[] }
   | { type: 'edit_reply_queue'; id: string; text: string }
   | { type: 'remove_from_reply_queue'; id: string }
+  | { type: 'open_subagent_session'; tool_call_id: string }
+  | { type: 'close_subagent_session' }
+  | { type: 'send_subagent_message'; tool_call_id: string; text: string; attachments?: Attachment[] }
   | { type: 'select_workspace'; path: string };
 
 export type ExtensionToWebviewMessage =
@@ -177,4 +180,28 @@ export type ExtensionToWebviewMessage =
   | { type: 'reply_queue_data'; payload: { queue: readonly ChatMessage[] } }
   | { type: 'reply_queue_delivered'; payload: { messages: ChatMessage[] } }
   | { type: 'stream_delta'; payload: { text?: string; thinking?: string } }
-  | { type: 'workspace_data'; payload: { folders: WorkspaceFolderItem[]; active: string } };
+  | { type: 'workspace_data'; payload: { folders: WorkspaceFolderItem[]; active: string } }
+  | { type: 'subagent_session_opened'; payload: { toolCallId: string; task: ActiveTaskState; isRunning: boolean } }
+  | { type: 'subagent_event'; payload: { toolCallId: string; event: SubagentEvent } }
+  | { type: 'subagent_sessions'; payload: { toolCallIds: readonly string[] } };
+
+export const SUBAGENT_EVENT_TYPES = [
+  'agent_start',
+  'message_start',
+  'message_end',
+  'api_request_start',
+  'api_request_end',
+  'api_retry_start',
+  'api_retry_end',
+  'stream_delta',
+  'tool_execution_start',
+  'tool_execution_update',
+  'tool_execution_end',
+  'agent_settled',
+] as const;
+
+export type SubagentEvent = Extract<ExtensionToWebviewMessage, { type: (typeof SUBAGENT_EVENT_TYPES)[number] }>;
+
+export function isSubagentEvent(message: ExtensionToWebviewMessage): message is SubagentEvent {
+  return (SUBAGENT_EVENT_TYPES as readonly string[]).includes(message.type);
+}

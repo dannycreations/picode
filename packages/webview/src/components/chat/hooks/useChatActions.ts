@@ -3,13 +3,14 @@ import { useCallback } from 'react';
 import { ACTIVE_TASK_ID } from '@pi-code/shared/core/constants';
 import { parseBuiltinCommand } from '@pi-code/shared/utilities/commands';
 import { createActiveTask } from '@pi-code/shared/utilities/common';
-import { patchMessage, resolveApproval } from '@pi-code/webview/helpers/messages';
+import { patchMessage } from '@pi-code/webview/helpers/messages';
 import { selectPendingQuestion, useChatStore } from '@pi-code/webview/stores/useChatStore';
 
 import type { Attachment, ChatMessage } from '@pi-code/shared/core/types';
 
 interface UseChatActionsReturn {
   readonly handleSendPrompt: (text: string, attachments: Attachment[]) => void;
+  readonly handleSendSubagentPrompt: (text: string, attachments: Attachment[]) => void;
   readonly handleToolResponse: (msgId: string, approved: boolean) => void;
   readonly handleAnswerQuestion: (questionId: string, text: string, attachments?: Attachment[]) => void;
   readonly handleCloseTask: () => void;
@@ -115,10 +116,39 @@ export const useChatActions = (): UseChatActionsReturn => {
     [handleAnswerQuestion],
   );
 
+  // A reply to an open sub-agent goes to that sub-agent, not to the task that
+  // delegated the work. The host decides whether it joins the running turn or
+  // starts a new one.
+  const handleSendSubagentPrompt = useCallback((text: string, attachments: Attachment[]): void => {
+    const promptText = sendablePrompt(text, attachments);
+    if (promptText === null) return;
+
+    const store = useChatStore.getState();
+    const subagent = store.subagent;
+    if (!subagent) return;
+
+    const userMsg: ChatMessage = {
+      id: crypto.randomUUID(),
+      sender: 'user',
+      text: promptText,
+      attachments,
+      timestamp: Date.now(),
+    };
+    store.setSubagent({ ...subagent, task: { ...subagent.task, messages: [...subagent.task.messages, userMsg] } });
+    store.send({
+      type: 'send_subagent_message',
+      tool_call_id: subagent.toolCallId,
+      text: promptText,
+      attachments: attachments.length > 0 ? attachments : undefined,
+    });
+  }, []);
+
   const handleToolResponse = useCallback((msgId: string, approved: boolean): void => {
     const store = useChatStore.getState();
     store.setIsRunning(true);
-    store.setActiveTask((prev) => (prev ? { ...prev, messages: resolveApproval(prev.messages, msgId, approved) } : null));
+    // The approval can sit in the task and in the sub-agent session at once,
+    // so both copies are settled here.
+    store.respondToApproval(msgId, approved);
     store.send({ type: 'tool_response', approval_id: msgId, approved });
   }, []);
 
@@ -130,7 +160,9 @@ export const useChatActions = (): UseChatActionsReturn => {
     const store = useChatStore.getState();
     store.send({ type: 'cancel_task' });
     store.setActiveTask(null);
+    store.setSubagent(null);
     store.setIsRunning(false);
+    store.setView('chat');
   }, []);
 
   const handleDeleteActiveTask = useCallback((): void => {
@@ -142,5 +174,13 @@ export const useChatActions = (): UseChatActionsReturn => {
     store.setIsRunning(false);
   }, []);
 
-  return { handleSendPrompt, handleToolResponse, handleAnswerQuestion, handleCloseTask, handleCancelTask, handleDeleteActiveTask };
+  return {
+    handleSendPrompt,
+    handleSendSubagentPrompt,
+    handleToolResponse,
+    handleAnswerQuestion,
+    handleCloseTask,
+    handleCancelTask,
+    handleDeleteActiveTask,
+  };
 };

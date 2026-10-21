@@ -5,7 +5,7 @@ import { selectThinkingLevel, setComposerTextarea, useChatStore } from '@pi-code
 
 import type { ExtensionToWebviewMessage, ModelItem, ModelSelection } from '@pi-code/shared/core/protocol';
 import type { AppSettings } from '@pi-code/shared/core/settings';
-import type { StatsData } from '@pi-code/shared/core/types';
+import type { ChatMessage, StatsData } from '@pi-code/shared/core/types';
 
 const stats = (contextTokens: number): StatsData => ({
   tokensIn: 1000,
@@ -365,5 +365,115 @@ describe('appendToInput', () => {
     useChatStore.setState({ inputValue: 'existing' });
     useChatStore.getState().appendToInput(' more');
     expect(useChatStore.getState().inputValue).toBe('existing more');
+  });
+});
+
+describe('sub-agent session', () => {
+  const subagentTask = {
+    id: 'subagent-call-1',
+    title: 'explore',
+    messages: [],
+    ...stats(0),
+  };
+
+  beforeEach(() => {
+    apply([{ type: 'session_loaded', payload: { id: 'task-1', title: 'Task', messages: [], path: '/tmp/task.json', ...stats(0) } }]);
+    apply([
+      {
+        type: 'subagent_session_opened',
+        payload: { toolCallId: 'call-1', task: subagentTask, isRunning: true },
+      },
+    ]);
+  });
+
+  it('shows the sub-agent session instead of the task that delegated the work', () => {
+    expect(useChatStore.getState().view).toBe('subagent');
+    expect(useChatStore.getState().subagent?.toolCallId).toBe('call-1');
+  });
+
+  it('routes a sub-agent event to the sub-agent transcript and leaves the task alone', () => {
+    apply([
+      { type: 'subagent_event', payload: { toolCallId: 'call-1', event: { type: 'message_start', payload: { timestamp: 5 } } } },
+      { type: 'subagent_event', payload: { toolCallId: 'call-1', event: { type: 'stream_delta', payload: { text: 'hello' } } } },
+    ]);
+
+    expect(useChatStore.getState().subagent?.task.messages).toEqual([
+      { id: 'assistant-5', sender: 'assistant', text: 'hello', timestamp: 5, toolStatus: 'running' },
+    ]);
+    expect(useChatStore.getState().activeTask?.messages).toEqual([]);
+  });
+
+  it('drops an event for a sub-agent that is no longer on screen', () => {
+    apply([{ type: 'subagent_event', payload: { toolCallId: 'other', event: { type: 'message_start', payload: { timestamp: 6 } } } }]);
+
+    expect(useChatStore.getState().subagent?.task.messages).toEqual([]);
+  });
+
+  it('shows an approval for the open sub-agent in both transcripts', () => {
+    // The approval blocks the task as much as it blocks the sub-agent, so it
+    // has to be answerable from either side.
+    apply([
+      {
+        type: 'tool_approval_request',
+        payload: { id: 'call-2', tool_name: 'write_file', arguments: { path: 'a.ts' }, toolCallId: 'call-1' },
+      },
+    ]);
+
+    expect(useChatStore.getState().subagent?.task.messages).toHaveLength(1);
+    expect(useChatStore.getState().activeTask?.messages).toHaveLength(1);
+  });
+
+  it('keeps the approval in the task when the sub-agent session is closed', () => {
+    // Closing the sub-agent session throws its transcript away. The task
+    // still holds the approval, so the call can never be left unanswerable.
+    apply([
+      {
+        type: 'tool_approval_request',
+        payload: { id: 'call-2', tool_name: 'write_file', arguments: { path: 'a.ts' }, toolCallId: 'call-1' },
+      },
+    ]);
+    useChatStore.getState().closeSubagentSession();
+
+    expect(useChatStore.getState().subagent).toBeNull();
+    expect(useChatStore.getState().view).toBe('chat');
+    expect(useChatStore.getState().activeTask?.messages).toHaveLength(1);
+  });
+
+  it('settles the approval in both transcripts when it is answered', () => {
+    apply([
+      {
+        type: 'tool_approval_request',
+        payload: { id: 'call-2', tool_name: 'write_file', arguments: { path: 'a.ts' }, toolCallId: 'call-1' },
+      },
+    ]);
+    useChatStore.getState().respondToApproval('call-2', true);
+
+    const status = (messages: ChatMessage[] | undefined): string | undefined => {
+      const first = messages?.[0];
+      return first?.sender === 'tool' ? first.toolStatus : undefined;
+    };
+    expect(status(useChatStore.getState().activeTask?.messages)).toBe('running');
+    expect(status(useChatStore.getState().subagent?.task.messages)).toBe('running');
+  });
+});
+
+describe('openable sub-agent sessions', () => {
+  it('starts with no sub-agent the user could open', () => {
+    // A transcript read back from disk names calls whose session is gone, so
+    // the webview must not offer them.
+    expect(useChatStore.getState().openableSubagents).toEqual([]);
+  });
+
+  it('takes the calls the extension still holds a session for', () => {
+    apply([{ type: 'subagent_sessions', payload: { toolCallIds: ['call-1', 'call-2'] } }]);
+
+    expect(useChatStore.getState().openableSubagents).toEqual(['call-1', 'call-2']);
+  });
+
+  it('drops the calls again once the extension releases them', () => {
+    apply([{ type: 'subagent_sessions', payload: { toolCallIds: ['call-1'] } }]);
+    apply([{ type: 'subagent_sessions', payload: { toolCallIds: [] } }]);
+
+    expect(useChatStore.getState().openableSubagents).toEqual([]);
   });
 });

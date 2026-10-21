@@ -4,11 +4,11 @@ import { calculateContextTokens, getLastAssistantUsage } from '@earendil-works/p
 import { clearApprovalDuration, getApprovalDuration } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
 import { toBase64DataUrl } from '@pi-code/extension/utilities/codec';
 import { logger } from '@pi-code/shared/core/logger';
-import { elapsedSeconds, findReplaceableFailedRequest, parseTextAttachment } from '@pi-code/shared/utilities/common';
+import { elapsedSeconds, findReplaceableFailedRequest, parseTextAttachment, resolveContextLimit } from '@pi-code/shared/utilities/common';
 import { buildToolSections } from '@pi-code/shared/utilities/tool';
 
 import type { ImageContent, TextContent, ThinkingContent, ToolCall, Usage } from '@earendil-works/pi-ai';
-import type { SessionEntry, SessionEntryBase, SessionMessageEntry } from '@earendil-works/pi-coding-agent';
+import type { AgentSession, SessionEntry, SessionEntryBase, SessionMessageEntry } from '@earendil-works/pi-coding-agent';
 import type { Attachment, ChatMessage, StatsData, TextAttachment, ToolArguments, ToolName, ToolResultDetails } from '@pi-code/shared/core/types';
 
 type MessageContentPart = TextContent | ThinkingContent | ToolCall | ImageContent;
@@ -276,6 +276,53 @@ function calculateSessionStats(entries: readonly SessionEntry[], contextLimit: n
 
 export function loadSessionTranscript(entries: readonly SessionEntry[], contextLimit: number): { messages: ChatMessage[]; stats: StatsData } {
   const messages = convertSessionEntries(entries);
+  fillToolSections(messages);
+  const stats = calculateSessionStats(entries, contextLimit);
+  return { messages, stats };
+}
+
+export function loadSubagentTranscript(session: AgentSession, task: string): { messages: ChatMessage[]; stats: StatsData } {
+  const entries = session.sessionManager.getBranch();
+  const context = resolveContextLimit(session.model?.contextWindow);
+  const { messages, stats } = loadSessionTranscript(entries, context);
+
+  // The child receives the agent's standing instructions and the brief as one
+  // prompt, so the first user row shows only the brief the user delegated.
+  const briefIndex = messages.findIndex((message) => message.sender === 'user');
+  if (briefIndex !== -1) messages[briefIndex] = { ...messages[briefIndex], text: task };
+
+  // A tool whose result has not arrived is still going, and a tool waiting on
+  // an approval is waiting on the user. Replaying it as finished would claim
+  // work that never happened.
+  const finishedToolCalls = new Set(
+    entries.flatMap((entry) => (entry.type === 'message' && entry.message.role === 'toolResult' ? [entry.message.toolCallId] : [])),
+  );
+  for (let index = 0; index < messages.length; index++) {
+    const message = messages[index];
+    if (message.sender !== 'tool' || finishedToolCalls.has(message.id)) continue;
+    messages[index] = { ...message, toolStatus: 'running' };
+  }
+
+  // A response that is still streaming is not in the transcript yet, so its row
+  // is rebuilt from the live message. Without it the text streamed after the
+  // session was opened would land on the previous response.
+  const streaming = session.agent.state.streamingMessage;
+  if (streaming?.role === 'assistant') {
+    for (const row of convertAssistantMessage(`streaming-${session.sessionId}`, streaming, streaming.timestamp)) {
+      messages.push(row.sender === 'tool' ? { ...row, toolSections: buildToolSections(row) } : row);
+    }
+  }
+
+  return { messages, stats };
+}
+
+function convertAssistantMessage(id: string, message: Extract<SessionMessage, { role: 'assistant' }>, timestamp: number): ChatMessage[] {
+  const result: ChatMessage[] = [];
+  appendAssistantTurn(result, id, message, timestamp);
+  return result;
+}
+
+function fillToolSections(messages: ChatMessage[]): void {
   // The tool rows carry their sections, so the webview does not rebuild them
   // on every render. Filling them in place keeps the transcript one array
   // instead of a converted copy plus a sectioned copy.
@@ -284,6 +331,4 @@ export function loadSessionTranscript(entries: readonly SessionEntry[], contextL
     if (message.sender !== 'tool') continue;
     messages[index] = { ...message, toolSections: buildToolSections(message) };
   }
-  const stats = calculateSessionStats(entries, contextLimit);
-  return { messages, stats };
 }

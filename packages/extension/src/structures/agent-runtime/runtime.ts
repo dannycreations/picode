@@ -1,9 +1,15 @@
 import { readAppSettings } from '@pi-code/extension/core/settings';
 import { cancelAllApprovals } from '@pi-code/extension/structures/agent-runtime/brokers/approval';
 import { cancelAllQuestions } from '@pi-code/extension/structures/agent-runtime/brokers/question';
+import {
+  getLiveSubagent,
+  liveSubagentToolCallIds,
+  onSubagentSessionsChanged,
+  releaseLiveSubagents,
+} from '@pi-code/extension/structures/agent-runtime/brokers/subagent';
 import { Messenger } from '@pi-code/extension/structures/agent-runtime/core/messenger';
 import { ReplyQueue } from '@pi-code/extension/structures/agent-runtime/core/reply-queue';
-import { createStats, mapEvent } from '@pi-code/extension/structures/agent-runtime/event';
+import { createStats, mapEvent, toSubagentEvent } from '@pi-code/extension/structures/agent-runtime/event';
 import { appendHiddenMessage, appendUserTurn } from '@pi-code/extension/structures/agent-runtime/helpers/agent-message';
 import { applyPersistedModelAndThinking } from '@pi-code/extension/structures/agent-runtime/helpers/model-selection';
 import { initSessionHooks } from '@pi-code/extension/structures/agent-runtime/hooks';
@@ -13,21 +19,27 @@ import { collectCommands } from '@pi-code/extension/structures/chat-command/comm
 import { injectResourceMessages } from '@pi-code/extension/structures/chat-command/invocation';
 import { expandMentions } from '@pi-code/extension/structures/chat-command/mention';
 import { getEnvironmentDetails } from '@pi-code/extension/structures/chat-session/environment';
-import { loadSessionTranscript } from '@pi-code/extension/structures/chat-session/session';
+import { loadSessionTranscript, loadSubagentTranscript } from '@pi-code/extension/structures/chat-session/session';
+import { parseAttachments } from '@pi-code/extension/utilities/codec';
 import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
 import { logger } from '@pi-code/shared/core/logger';
 import { resolveContextLimit } from '@pi-code/shared/utilities/common';
+import { wrapCodeBlock } from '@pi-code/shared/utilities/markdown';
 
 import type { AgentSession, AgentSessionEvent, AgentSessionServices, SessionEntry } from '@earendil-works/pi-coding-agent';
 import type { Webview } from 'vscode';
 import type { ExtensionToWebviewMessage } from '@pi-code/shared/core/protocol';
-import type { Attachment, ChatMessage, QueueChatMessage, StatsData } from '@pi-code/shared/core/types';
+import type { Attachment, ChatMessage, QueueChatMessage, StatsData, TextAttachment } from '@pi-code/shared/core/types';
 
 export class Runtime {
-  private session: AgentSession | null = null;
-  private unsubscribeSessionEvents: (() => void) | null = null;
-  private apiRequestId: string | null = null;
   private taskGeneration = 0;
+  private session: AgentSession | null = null;
+  private apiRequestId: string | null = null;
+  private unsubscribeSessionEvents: (() => void) | null = null;
+
+  private subagentApiRequestId: string | null = null;
+  private unsubscribeSubagentEvents: (() => void) | null = null;
+  private unsubscribeSubagentSessions: (() => void) | null = null;
 
   private readonly messenger: Messenger;
   public readonly replyQueue: ReplyQueue;
@@ -37,10 +49,91 @@ export class Runtime {
     this.replyQueue = new ReplyQueue((messages) => {
       this.messenger.post({ type: 'reply_queue_data', payload: { queue: messages } });
     });
+    // The webview offers the button that opens a sub-agent session only for
+    // the calls the extension still holds a session for.
+    this.unsubscribeSubagentSessions = onSubagentSessionsChanged((toolCallIds) => {
+      this.publishSubagentSessions(toolCallIds);
+    });
+  }
+
+  public publishSubagentSessions(toolCallIds: readonly string[] = liveSubagentToolCallIds()): void {
+    this.messenger.post({ type: 'subagent_sessions', payload: { toolCallIds } });
   }
 
   public postMessage(message: ExtensionToWebviewMessage): void {
     this.messenger.post(message);
+  }
+
+  public async openSubagentSession(toolCallId: string): Promise<void> {
+    const subagent = getLiveSubagent(toolCallId);
+    if (!subagent) {
+      this.messenger.postError(new Error('That sub-agent session is no longer available.'));
+      return;
+    }
+
+    // A sub-agent that is still starting has no session yet. Waiting for it is
+    // better than telling the user there is nothing to open.
+    const session = subagent.session ?? (await withTimeout(subagent.ready, SUBAGENT_READY_TIMEOUT_MS));
+    if (!session) {
+      this.messenger.postError(new Error('The sub-agent session is not ready yet.'));
+      return;
+    }
+
+    this.closeSubagentSession();
+
+    const { messages, stats } = loadSubagentTranscript(session, subagent.task);
+
+    this.unsubscribeSubagentEvents = session.subscribe((event) => {
+      const { message, apiRequestId } = mapEvent(event, session, this.subagentApiRequestId);
+      this.subagentApiRequestId = apiRequestId;
+      if (!message) return;
+
+      const subagentEvent = toSubagentEvent(message);
+      if (subagentEvent) {
+        this.messenger.post({ type: 'subagent_event', payload: { toolCallId, event: subagentEvent } });
+      }
+    });
+
+    this.messenger.post({
+      type: 'subagent_session_opened',
+      payload: {
+        toolCallId,
+        task: { id: `subagent-${toolCallId}`, title: subagent.name, messages, ...stats },
+        isRunning: session.isStreaming,
+      },
+    });
+  }
+
+  public closeSubagentSession(): void {
+    this.unsubscribeSubagentEvents?.();
+    this.unsubscribeSubagentEvents = null;
+    this.subagentApiRequestId = null;
+  }
+
+  public async sendSubagentMessage(toolCallId: string, text: string, attachments?: readonly Attachment[]): Promise<void> {
+    const subagent = getLiveSubagent(toolCallId);
+    if (!subagent) {
+      this.messenger.postError(new Error('That sub-agent session is no longer available.'));
+      return;
+    }
+
+    // A sub-agent that is still starting has no session to reply to yet.
+    const session = subagent.session ?? (await withTimeout(subagent.ready, SUBAGENT_READY_TIMEOUT_MS));
+    if (!session) {
+      this.messenger.postError(new Error('The sub-agent session is not ready yet.'));
+      return;
+    }
+
+    try {
+      const expanded = await expandMentions(text, getWorkspaceCwd());
+      // A sub-agent takes one message, so the files a mention points at ride
+      // along with it instead of travelling as a separate hidden message.
+      const mentioned = expanded.mentionContent ? `${expanded.text}\n\n${expanded.mentionContent}` : expanded.text;
+      const content = [{ type: 'text' as const, text: withTextAttachments(mentioned, attachments) }, ...parseAttachments(attachments)];
+      await session.sendUserMessage(content, { deliverAs: 'steer' });
+    } catch (err) {
+      this.messenger.postError(err);
+    }
   }
 
   public async startTask(promptText: string, attachments?: readonly Attachment[], path?: string): Promise<void> {
@@ -241,6 +334,8 @@ export class Runtime {
   }
 
   public dispose(): void {
+    this.unsubscribeSubagentSessions?.();
+    this.unsubscribeSubagentSessions = null;
     this.messenger.dispose();
     this.cleanupSession();
     this.cleanupPending();
@@ -393,6 +488,11 @@ export class Runtime {
       }
     }
 
+    // The sub-agent sessions belong to the task that started them, so they go
+    // away with it.
+    this.closeSubagentSession();
+    releaseLiveSubagents();
+
     try {
       session?.dispose();
     } catch (err) {
@@ -404,5 +504,27 @@ export class Runtime {
   private cleanupPending(): void {
     cancelAllQuestions();
     cancelAllApprovals();
+  }
+}
+
+function withTextAttachments(text: string, attachments: readonly Attachment[] | undefined): string {
+  const blocks = (attachments ?? [])
+    .filter((attachment): attachment is TextAttachment => attachment.kind === 'text')
+    .map((attachment) => wrapCodeBlock(attachment.content, attachment.language));
+  if (blocks.length === 0) return text;
+  return [text, ...blocks].join('\n\n');
+}
+
+const SUBAGENT_READY_TIMEOUT_MS = 15_000;
+
+async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<undefined>((resolve) => {
+    timer = setTimeout(() => resolve(undefined), ms);
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }

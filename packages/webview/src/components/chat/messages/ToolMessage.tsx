@@ -74,6 +74,7 @@ interface ToolSectionProps {
   readonly canCancel?: boolean;
   readonly onCancel: (toolCallId: string) => void;
   readonly onOpenFile: (path: string, content?: string) => void;
+  readonly onOpenSubagent?: (toolCallId: string) => void;
 }
 
 const ToolSection: FC<ToolSectionProps> = memo(
@@ -91,6 +92,7 @@ const ToolSection: FC<ToolSectionProps> = memo(
     canCancel,
     onCancel,
     onOpenFile,
+    onOpenSubagent,
   }) => {
     const [open, setOpen] = useState(defaultOpen);
     const hasContent = !!content && hasVisibleText(content);
@@ -153,7 +155,7 @@ const ToolSection: FC<ToolSectionProps> = memo(
                 </Tooltip>
               </span>
             </div>
-          ) : showTimer || canCancel ? (
+          ) : showTimer || canCancel || onOpenSubagent ? (
             <div className="flex items-center gap-1 shrink-0">
               {showTimer && (
                 <ElapsedTimer
@@ -161,10 +163,22 @@ const ToolSection: FC<ToolSectionProps> = memo(
                   isRunning={isRunning}
                   duration={duration}
                   revealOnHover={revealTimerOnHover}
-                  // The stop button takes this slot over while the row is
-                  // hovered, so the clock never sits next to it.
-                  className={canCancel ? 'group-hover:hidden' : undefined}
+                  // The buttons take this slot over while the row is hovered,
+                  // so the clock never sits next to them.
+                  className={canCancel || onOpenSubagent ? 'group-hover:hidden' : undefined}
                 />
+              )}
+              {onOpenSubagent && id !== undefined && (
+                <span className="hidden group-hover:inline-flex">
+                  <Tooltip content="Open sub-agent session">
+                    <button
+                      type="button"
+                      onClick={() => onOpenSubagent(id)}
+                      aria-label="Open sub-agent session"
+                      className="codicon codicon-preview text-vscode-descriptionForeground hover:text-vscode-foreground cursor-pointer"
+                    />
+                  </Tooltip>
+                </span>
               )}
               {canCancel && id !== undefined && (
                 <span className="hidden group-hover:inline-flex">
@@ -216,6 +230,7 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onRespondTool }) =>
   const { title, icon } = getToolHeaderMeta(message.toolName, message.toolStatus, message.exitCode);
   const activeWorkspace = useChatStore((s) => s.activeWorkspace);
   const settings = useChatStore((s) => s.settings);
+  const openableSubagents = useChatStore((s) => s.openableSubagents);
 
   const sections: ReadonlyArray<ToolSection> = useMemo(() => message.toolSections ?? buildToolSections(message), [message]);
 
@@ -292,6 +307,12 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onRespondTool }) =>
     useChatStore.getState().send({ type: 'cancel_tool_call', tool_call_id: toolCallId });
   }, []);
 
+  // A sub-agent has a session of its own, which opens next to the task that
+  // delegated the work.
+  const openSubagent = useCallback((toolCallId: string): void => {
+    useChatStore.getState().openSubagentSession(toolCallId);
+  }, []);
+
   // Only called from the openPath branch, so the path is always a real file.
   const openFile = useCallback(
     (target: string, content?: string) => {
@@ -331,6 +352,14 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onRespondTool }) =>
                   canCancel={rendered.canCancel}
                   onCancel={cancelTool}
                   onOpenFile={openFile}
+                  onOpenSubagent={
+                    // Only a call whose session the extension still holds can
+                    // be opened. A row read back from disk names a sub-agent
+                    // that no longer exists in memory.
+                    message.toolName === 'spawn_subagent' && rendered.section.id !== undefined && openableSubagents.includes(rendered.section.id)
+                      ? openSubagent
+                      : undefined
+                  }
                 />
                 {rendered.approvalMessage && (
                   <div className="p-2 bg-vscode-editorWarning-background/10 flex flex-col gap-2">

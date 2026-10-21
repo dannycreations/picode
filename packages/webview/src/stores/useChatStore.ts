@@ -13,6 +13,7 @@ import {
   patchReplyQueue,
   patchRetryDeadline,
   patchToolRow,
+  resolveApproval,
   settlePendingTurns,
   startApiRequest,
   upsertToolRow,
@@ -30,6 +31,7 @@ import type {
   HistoryScope,
   ModelItem,
   ModelSelection,
+  SubagentEvent,
   WebviewToExtensionMessage,
   WorkspaceFolderItem,
 } from '@pi-code/shared/core/protocol';
@@ -58,15 +60,40 @@ function scopedRecord<T>(fill: () => T): Record<HistoryScope, T> {
   return record;
 }
 
-type ExtensionMessageHandler<T extends ExtensionToWebviewMessage['type']> = (msg: Extract<ExtensionToWebviewMessage, { type: T }>) => void;
+type ExtensionMessageHandler<T extends ExtensionToWebviewMessage['type']> = (
+  msg: Extract<ExtensionToWebviewMessage, { type: T }>,
+  scope: TaskScope,
+) => void;
 
 type ExtensionMessageMap = {
   readonly [T in ExtensionToWebviewMessage['type']]: ExtensionMessageHandler<T>;
 };
 
-// Applies a change to the open task; events arriving with no task open are dropped.
-function patchActiveTask(state: ChatState, patch: (task: ActiveTaskState) => ActiveTaskState): Partial<ChatState> {
-  return state.activeTask ? { activeTask: patch(state.activeTask) } : {};
+export type TaskScope = 'main' | 'subagent';
+
+export interface SubagentView {
+  readonly toolCallId: string;
+  readonly task: ActiveTaskState;
+  readonly isRunning: boolean;
+}
+
+// Applies a change to the transcript the scope points at; events arriving for
+// a scope with nothing open are dropped.
+function patchTask(state: ChatState, scope: TaskScope, patch: (task: ActiveTaskState) => ActiveTaskState): Partial<ChatState> {
+  if (scope === 'subagent') {
+    if (!state.subagent) return {};
+    return { subagent: { ...state.subagent, task: patch(state.subagent.task) } };
+  }
+  if (!state.activeTask) return {};
+  return { activeTask: patch(state.activeTask) };
+}
+
+function patchRunning(state: ChatState, scope: TaskScope, running: boolean): Partial<ChatState> {
+  if (scope === 'subagent') {
+    if (!state.subagent) return {};
+    return { subagent: { ...state.subagent, isRunning: running } };
+  }
+  return { isRunning: running };
 }
 
 // Approval and start events create or refresh one tool row, settling any turns
@@ -77,9 +104,11 @@ function applyToolUpsert(task: ActiveTaskState, id: string, patch: Partial<ToolC
 
 interface ChatState {
   readonly activeTask: ActiveTaskState | null;
+  readonly subagent: SubagentView | null;
+  readonly openableSubagents: readonly string[];
   readonly isRunning: boolean;
   readonly isCompacting: boolean;
-  readonly view: 'chat' | 'history' | 'settings';
+  readonly view: 'chat' | 'history' | 'settings' | 'subagent';
   readonly inputValue: string;
   readonly inputAttachments: Attachment[];
   readonly models: ModelItem[];
@@ -105,6 +134,8 @@ interface ChatState {
   readonly deleteSessions: (paths: string[]) => void;
   readonly applyMessage: (msg: ExtensionToWebviewMessage) => void;
   readonly setActiveTask: (value: ActiveTaskState | null | ((prev: ActiveTaskState | null) => ActiveTaskState | null)) => void;
+  readonly setSubagent: (value: SubagentView | null) => void;
+  readonly respondToApproval: (msgId: string, approved: boolean) => void;
   readonly setIsRunning: (value: boolean) => void;
   readonly setView: (view: ChatState['view']) => void;
   readonly setInputValue: (value: string) => void;
@@ -112,6 +143,8 @@ interface ChatState {
   readonly appendToInput: (text: string) => void;
   readonly setScope: (scope: HistoryScope) => void;
   readonly selectWorkspace: (path: string) => void;
+  readonly openSubagentSession: (toolCallId: string) => void;
+  readonly closeSubagentSession: () => void;
 }
 
 const NO_MODEL: ModelSelection = { id: 'unknown', provider: DEFAULT_APP_ID };
@@ -127,7 +160,13 @@ export const useChatStore = create<ChatState>((set, get) => {
 
   const messageHandlers: ExtensionMessageMap = {
     session_loaded: (msg) => {
-      set({ activeTask: msg.payload, isRunning: false, isCompacting: false, view: 'chat' });
+      set((state) => ({
+        activeTask: msg.payload,
+        isRunning: false,
+        isCompacting: false,
+        // A sub-agent session stays on screen; the task behind it is replaced.
+        view: state.view === 'subagent' ? 'subagent' : 'chat',
+      }));
     },
     // The banner is owned by this pair alone. An auto-compaction outlives the
     // turn that triggered it, so agent_settled and the follow-up agent_start
@@ -140,7 +179,7 @@ export const useChatStore = create<ChatState>((set, get) => {
         const { compactionEntry, ...stats } = msg.payload ?? {};
         return {
           isCompacting: false,
-          ...patchActiveTask(state, (task) => ({
+          ...patchTask(state, 'main', (task) => ({
             ...task,
             ...stats,
             // The summary is the only record of what compaction dropped, so it
@@ -163,22 +202,22 @@ export const useChatStore = create<ChatState>((set, get) => {
       });
     },
     reply_queue_data: (msg) => {
-      set((state) => patchActiveTask(state, (task) => ({ ...task, messages: patchReplyQueue(task.messages, msg.payload.queue) })));
+      set((state) => patchTask(state, 'main', (task) => ({ ...task, messages: patchReplyQueue(task.messages, msg.payload.queue) })));
     },
     reply_queue_delivered: (msg) => {
-      set((state) => patchActiveTask(state, (task) => ({ ...task, messages: deliverQueuedReplies(task.messages, msg.payload.messages) })));
+      set((state) => patchTask(state, 'main', (task) => ({ ...task, messages: deliverQueuedReplies(task.messages, msg.payload.messages) })));
     },
-    agent_start: (msg) => {
+    agent_start: (msg, scope) => {
       const { path, stats } = msg.payload;
       set((state) => ({
-        isRunning: true,
-        ...patchActiveTask(state, (task) => ({ ...task, path: path ?? task.path, ...stats })),
+        ...patchRunning(state, scope, true),
+        ...patchTask(state, scope, (task) => ({ ...task, path: path ?? task.path, ...stats })),
       }));
     },
-    message_start: (msg) => {
+    message_start: (msg, scope) => {
       const { timestamp } = msg.payload;
       set((state) =>
-        patchActiveTask(state, (task) => ({
+        patchTask(state, scope, (task) => ({
           ...task,
           messages: [
             ...settlePendingTurns(task.messages),
@@ -187,19 +226,19 @@ export const useChatStore = create<ChatState>((set, get) => {
         })),
       );
     },
-    api_request_start: (msg) => {
+    api_request_start: (msg, scope) => {
       const { id, timestamp } = msg.payload;
       set((state) =>
-        patchActiveTask(state, (task) => {
+        patchTask(state, scope, (task) => {
           const messages = startApiRequest(task.messages, id, timestamp);
           return messages === task.messages ? task : { ...task, messages };
         }),
       );
     },
-    api_request_end: (msg) => {
+    api_request_end: (msg, scope) => {
       const { id, cost, error, stats } = msg.payload;
       set((state) =>
-        patchActiveTask(state, (task) => {
+        patchTask(state, scope, (task) => {
           // A turn that never got its own row still has to close, so the id is
           // only honoured when a matching request row is actually on screen.
           const rowExists = task.messages.some((m) => m.id === id && m.sender === 'api_request');
@@ -208,17 +247,17 @@ export const useChatStore = create<ChatState>((set, get) => {
         }),
       );
     },
-    api_retry_start: (msg) => {
+    api_retry_start: (msg, scope) => {
       const { delayMs } = msg.payload;
-      set((state) => patchActiveTask(state, (task) => ({ ...task, messages: patchRetryDeadline(task.messages, Date.now() + delayMs) })));
+      set((state) => patchTask(state, scope, (task) => ({ ...task, messages: patchRetryDeadline(task.messages, Date.now() + delayMs) })));
     },
-    api_retry_end: () => {
-      set((state) => patchActiveTask(state, (task) => ({ ...task, messages: patchRetryDeadline(task.messages, undefined) })));
+    api_retry_end: (_msg, scope) => {
+      set((state) => patchTask(state, scope, (task) => ({ ...task, messages: patchRetryDeadline(task.messages, undefined) })));
     },
-    message_end: (msg) => {
+    message_end: (msg, scope) => {
       const { cost, stats } = msg.payload;
       set((state) =>
-        patchActiveTask(state, (task) => ({
+        patchTask(state, scope, (task) => ({
           ...task,
           messages: patchLastAssistant(task.messages, (message) => ({
             toolStatus: 'completed',
@@ -228,10 +267,10 @@ export const useChatStore = create<ChatState>((set, get) => {
         })),
       );
     },
-    stream_delta: (msg) => {
+    stream_delta: (msg, scope) => {
       const { text, thinking } = msg.payload;
       set((state) =>
-        patchActiveTask(state, (task) => ({
+        patchTask(state, scope, (task) => ({
           ...task,
           messages: appendAssistantDelta(task.messages, text, thinking),
         })),
@@ -239,25 +278,31 @@ export const useChatStore = create<ChatState>((set, get) => {
     },
     tool_approval_request: (msg) => {
       const { id, tool_name, arguments: toolArgs, subagent, toolCallId } = msg.payload;
-      set((state) =>
-        patchActiveTask(state, (task) =>
-          applyToolUpsert(task, id, {
-            text: tool_name,
-            toolName: tool_name,
-            toolArgs,
-            toolStatus: 'approval',
-            subagent,
-            toolCallId,
-            pausedAt: Date.now(),
-          }),
-        ),
-      );
+      const patch: Partial<ToolChatMessage> = {
+        text: tool_name,
+        toolName: tool_name,
+        toolArgs,
+        toolStatus: 'approval',
+        subagent,
+        toolCallId,
+        pausedAt: Date.now(),
+      };
+      set((state) => {
+        // The approval belongs to the sub-agent that asked for it and to the
+        // task that waits on it, so it is shown in both. Leaving the sub-agent
+        // session must never take the only copy of a call the user has to
+        // answer with.
+        const inTask = patchTask(state, 'main', (task) => applyToolUpsert(task, id, patch));
+        const inSubagent =
+          toolCallId && toolCallId === state.subagent?.toolCallId ? patchTask(state, 'subagent', (task) => applyToolUpsert(task, id, patch)) : {};
+        return { ...inTask, ...inSubagent };
+      });
     },
-    tool_execution_start: (msg) => {
+    tool_execution_start: (msg, scope) => {
       const { id, tool_name, arguments: toolArgs, subagent } = msg.payload;
       set((state) => ({
-        isRunning: true,
-        ...patchActiveTask(state, (task) =>
+        ...patchRunning(state, scope, true),
+        ...patchTask(state, scope, (task) =>
           // A sub-agent's own tool calls belong to the row the parent
           // sub-agent call already opened, so they never create a row of
           // their own.
@@ -267,10 +312,10 @@ export const useChatStore = create<ChatState>((set, get) => {
         ),
       }));
     },
-    tool_execution_update: (msg) => {
+    tool_execution_update: (msg, scope) => {
       const { id, result, subagent, subtitle } = msg.payload;
       set((state) =>
-        patchActiveTask(state, (task) => {
+        patchTask(state, scope, (task) => {
           const messages = patchToolRow(task.messages, id, subagent, (target) => {
             // A command reports its output in pieces that belong together, so
             // they pile up on the row instead of replacing each other.
@@ -286,10 +331,10 @@ export const useChatStore = create<ChatState>((set, get) => {
         }),
       );
     },
-    tool_execution_end: (msg) => {
+    tool_execution_end: (msg, scope) => {
       const { id, result, diff, duration, todos, files, is_error, exit_code, cancelled, subagent, subtitle } = msg.payload;
       set((state) =>
-        patchActiveTask(state, (task) => {
+        patchTask(state, scope, (task) => {
           const messages = patchToolRow(task.messages, id, subagent, (target) => {
             // A tool that measures its own work owns the numbers, and the
             // transcript replay path trusts the same two fields. Only tools that
@@ -310,11 +355,11 @@ export const useChatStore = create<ChatState>((set, get) => {
         }),
       );
     },
-    agent_error: (msg) => {
+    agent_error: (msg, scope) => {
       const { message } = msg.payload;
       set((state) => ({
-        isRunning: false,
-        ...patchActiveTask(state, (task) => ({
+        ...patchRunning(state, scope, false),
+        ...patchTask(state, scope, (task) => ({
           ...task,
           messages: appendOnce(settlePendingTurns(task.messages, { error: message }), {
             id: crypto.randomUUID(),
@@ -326,10 +371,10 @@ export const useChatStore = create<ChatState>((set, get) => {
         })),
       }));
     },
-    agent_settled: (msg) => {
+    agent_settled: (msg, scope) => {
       set((state) => ({
-        isRunning: false,
-        ...patchActiveTask(state, (task) => ({ ...task, messages: settlePendingTurns(task.messages), ...msg.payload })),
+        ...patchRunning(state, scope, false),
+        ...patchTask(state, scope, (task) => ({ ...task, messages: settlePendingTurns(task.messages), ...msg.payload })),
       }));
     },
     archive_result: (msg) => {
@@ -415,10 +460,31 @@ export const useChatStore = create<ChatState>((set, get) => {
     workspace_data: (msg) => {
       set({ workspaceFolders: msg.payload.folders, activeWorkspace: msg.payload.active });
     },
+    subagent_session_opened: (msg) => {
+      const { toolCallId, task, isRunning } = msg.payload;
+      set({ subagent: { toolCallId, task, isRunning }, view: 'subagent' });
+    },
+    subagent_sessions: (msg) => {
+      set({ openableSubagents: msg.payload.toolCallIds });
+    },
+    subagent_event: (msg) => {
+      const { toolCallId, event } = msg.payload;
+      // An event for a sub-agent that is no longer on screen has nowhere to go.
+      if (get().subagent?.toolCallId !== toolCallId) return;
+      applyToScope(event, 'subagent');
+    },
   };
+
+  // Routes an event to the transcript the scope points at.
+  function applyToScope(event: SubagentEvent, scope: TaskScope): void {
+    const handler = messageHandlers[event.type] as ExtensionMessageHandler<typeof event.type>;
+    handler(event, scope);
+  }
 
   return {
     activeTask: null,
+    subagent: null,
+    openableSubagents: [],
     isRunning: false,
     isCompacting: false,
     view: 'chat',
@@ -494,13 +560,33 @@ export const useChatStore = create<ChatState>((set, get) => {
 
     applyMessage: (msg) => {
       // The handler map covers every message type, so the lookup cannot miss.
-      (messageHandlers[msg.type] as ExtensionMessageHandler<typeof msg.type>)(msg);
+      (messageHandlers[msg.type] as ExtensionMessageHandler<typeof msg.type>)(msg, 'main');
     },
 
     setActiveTask: (value) =>
       set((state) => ({
         activeTask: typeof value === 'function' ? (value as (prev: ActiveTaskState | null) => ActiveTaskState | null)(state.activeTask) : value,
       })),
+
+    setSubagent: (value) => set({ subagent: value }),
+
+    // The approval row lives in the task and, while its sub-agent is open, in
+    // the sub-agent session too. Answering it settles both copies.
+    respondToApproval: (msgId, approved) => {
+      set((state) => {
+        const inTask = patchTask(state, 'main', (task) => ({
+          ...task,
+          messages: resolveApproval(task.messages, msgId, approved),
+        }));
+        const inSubagent = state.subagent
+          ? patchTask(state, 'subagent', (task) => ({
+              ...task,
+              messages: resolveApproval(task.messages, msgId, approved),
+            }))
+          : {};
+        return { ...inTask, ...inSubagent };
+      });
+    },
 
     setIsRunning: (value) => set({ isRunning: value }),
 
@@ -545,6 +631,15 @@ export const useChatStore = create<ChatState>((set, get) => {
       });
       get().send({ type: 'select_workspace', path });
       get().send({ type: 'init' });
+    },
+
+    openSubagentSession: (toolCallId) => {
+      get().send({ type: 'open_subagent_session', tool_call_id: toolCallId });
+    },
+
+    closeSubagentSession: () => {
+      get().send({ type: 'close_subagent_session' });
+      set({ subagent: null, view: 'chat' });
     },
   };
 });

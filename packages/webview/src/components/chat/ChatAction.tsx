@@ -14,7 +14,9 @@ interface ChatActionProps {
   readonly onScrollToBottom: () => void;
   readonly onCancelTask: () => void;
   readonly onCloseTask: () => void;
-  readonly onContinueTask: () => void;
+  readonly onContinueTask?: () => void;
+  readonly closeLabel?: string;
+  readonly cancelLabel?: string;
 }
 
 export const ChatAction: FC<ChatActionProps> = memo(
@@ -29,6 +31,8 @@ export const ChatAction: FC<ChatActionProps> = memo(
     onCancelTask,
     onCloseTask,
     onContinueTask,
+    closeLabel,
+    cancelLabel = 'Cancel Task',
   }) => {
     // Archived tasks are read-only, so their action bar is hidden entirely.
     if (isArchived) return null;
@@ -49,15 +53,17 @@ export const ChatAction: FC<ChatActionProps> = memo(
         ) : showCancel ? (
           <button onClick={onCancelTask} className="action-button action-button-secondary w-full">
             <span className="w-1.5 h-1.5 rounded-full bg-vscode-errorForeground animate-pulse mr-1" />
-            Cancel Task
+            {cancelLabel}
           </button>
         ) : (
           <>
-            <button onClick={onContinueTask} className="action-button flex-1">
-              Continue
-            </button>
+            {onContinueTask && (
+              <button onClick={onContinueTask} className="action-button flex-1">
+                Continue
+              </button>
+            )}
             <button onClick={onCloseTask} className="action-button action-button-secondary flex-1">
-              New Task
+              {closeLabel ?? 'New Task'}
             </button>
           </>
         )}

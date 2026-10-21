@@ -73,9 +73,16 @@ export const ChatView: FC = () => {
   const [historySelectedPaths, setHistorySelectedPaths] = useState<string[]>([]);
 
   const activeTask = useChatStore((state) => state.activeTask);
+  const subagent = useChatStore((state) => state.subagent);
   const isRunning = useChatStore((state) => state.isRunning);
   const isCompacting = useChatStore((state) => state.isCompacting);
   const pendingQuestion = useChatStore(selectPendingQuestion);
+
+  // An open sub-agent session takes over the chat view. The task that
+  // delegated the work stays behind it and comes back when it closes.
+  const isSubagentView = view === 'subagent' && subagent !== null;
+  const displayedTask = isSubagentView && subagent ? subagent.task : activeTask;
+  const displayedIsRunning = isSubagentView && subagent ? subagent.isRunning : isRunning;
 
   // Remembers whether the open task was launched from the history list so it
   // returns there on close. Kept separate from the settings flag because
@@ -105,10 +112,18 @@ export const ChatView: FC = () => {
     supportsImages,
     commands,
   } = config;
-  const { handleSendPrompt, handleToolResponse, handleAnswerQuestion, handleCloseTask, handleCancelTask, handleDeleteActiveTask } = useChatActions();
+  const {
+    handleSendPrompt,
+    handleSendSubagentPrompt,
+    handleToolResponse,
+    handleAnswerQuestion,
+    handleCloseTask,
+    handleCancelTask,
+    handleDeleteActiveTask,
+  } = useChatActions();
 
   const { scrollRef, contentRef, showScrollToBottom, handleScroll, scrollToBottom, onWheel, onPointerDown, onPointerUp, onKeyDown } = useAutoScroll(
-    activeTask?.id,
+    displayedTask?.id,
   );
 
   // Closing a task opened from the history list must return to that list (with
@@ -149,7 +164,7 @@ export const ChatView: FC = () => {
     }
   }, [setView]);
 
-  const taskMessages = activeTask?.messages;
+  const taskMessages = displayedTask?.messages;
   const renderModel = useMemo(() => buildChatRenderModel(taskMessages ?? []), [taskMessages]);
   const { renderItems, oldTodosById, hasApproval } = renderModel;
   const activeTaskTodos = renderModel.latestTodos;
@@ -354,10 +369,30 @@ export const ChatView: FC = () => {
   const handleSend = useCallback(
     (text: string, attachments: Attachment[]) => {
       scrollToBottom();
+      // A question the task is waiting on owns the composer, whichever
+      // session happens to be on screen.
+      if (isSubagentView && !selectPendingQuestion(useChatStore.getState())) {
+        handleSendSubagentPrompt(text, attachments);
+        return;
+      }
       handleSendPrompt(text, attachments);
     },
-    [scrollToBottom, handleSendPrompt],
+    [scrollToBottom, isSubagentView, handleSendPrompt, handleSendSubagentPrompt],
   );
+
+  // Closing a sub-agent session leaves the task that delegated the work on
+  // screen, exactly as it was before the session was opened.
+  const handleCloseSubagent = useCallback((): void => {
+    useChatStore.getState().closeSubagentSession();
+  }, []);
+
+  // A sub-agent runs inside the tool call that started it, so cancelling it
+  // means cancelling that call.
+  const handleCancelSubagent = useCallback((): void => {
+    const open = useChatStore.getState().subagent;
+    if (!open) return;
+    useChatStore.getState().send({ type: 'cancel_tool_call', tool_call_id: open.toolCallId });
+  }, []);
 
   const handleContinueTask = useCallback((): void => {
     const task = useChatStore.getState().activeTask;
@@ -406,7 +441,7 @@ export const ChatView: FC = () => {
   return (
     <div className="view-container">
       {/* Task Header / Welcome Header */}
-      {activeTask ? (
+      {displayedTask ? (
         searchOpen ? (
           <div className="py-2 px-3.5 border-b border-vscode-editorGroup-border/30 bg-vscode-sideBar-background shrink-0 select-none">
             <ChatSearchBar
@@ -421,24 +456,26 @@ export const ChatView: FC = () => {
           </div>
         ) : (
           <ChatHeader
-            title={activeTask.title}
-            tokensIn={activeTask.tokensIn}
-            tokensOut={activeTask.tokensOut}
-            cacheWrites={activeTask.cacheWrites}
-            cacheReads={activeTask.cacheReads}
-            totalCost={activeTask.totalCost}
-            contextTokens={activeTask.contextTokens}
+            label={isSubagentView ? 'Sub-agent' : 'Task'}
+            closeTooltip={isSubagentView ? 'Close sub-agent session' : 'Close task'}
+            title={displayedTask.title}
+            tokensIn={displayedTask.tokensIn}
+            tokensOut={displayedTask.tokensOut}
+            cacheWrites={displayedTask.cacheWrites}
+            cacheReads={displayedTask.cacheReads}
+            totalCost={displayedTask.totalCost}
+            contextTokens={displayedTask.contextTokens}
             todos={activeTaskTodos}
-            contextLimit={config.selectedModelContextWindow}
-            onClose={handleCloseTaskReturn}
-            onCompact={handleCompact}
-            onExport={activeTask.path ? handleExportActive : undefined}
-            onDelete={activeTask.path ? handleDeleteActive : undefined}
-            onViewRaw={handleViewRawActive}
-            onArchive={handleArchive}
-            isArchived={activeTask.isArchived}
-            archiveDisabled={isRunning || !activeTask.path}
-            deleteDisabled={isRunning}
+            contextLimit={isSubagentView ? displayedTask.contextLimit : config.selectedModelContextWindow}
+            onClose={isSubagentView ? handleCloseSubagent : handleCloseTaskReturn}
+            onCompact={isSubagentView ? undefined : handleCompact}
+            onExport={!isSubagentView && displayedTask.path ? handleExportActive : undefined}
+            onDelete={!isSubagentView && displayedTask.path ? handleDeleteActive : undefined}
+            onViewRaw={!isSubagentView ? handleViewRawActive : undefined}
+            onArchive={!isSubagentView ? handleArchive : undefined}
+            isArchived={displayedTask.isArchived}
+            archiveDisabled={displayedIsRunning || !displayedTask.path}
+            deleteDisabled={displayedIsRunning}
             onSearchOpen={handleSearchOpen}
           />
         )
@@ -458,7 +495,7 @@ export const ChatView: FC = () => {
       )}
 
       {/* Main Viewport */}
-      {activeTask ? (
+      {displayedTask ? (
         <div
           ref={scrollRef}
           onScroll={handleScroll}
@@ -524,31 +561,41 @@ export const ChatView: FC = () => {
 
       {/* Action Buttons */}
       <ChatAction
-        hasTask={activeTask !== null}
-        isArchived={activeTask?.isArchived === true}
+        hasTask={displayedTask !== null}
+        isArchived={displayedTask?.isArchived === true}
         showScrollToBottom={showScrollToBottom}
-        isRunning={isRunning}
+        isRunning={displayedIsRunning}
         isCompacting={isCompacting}
         onScrollToBottom={scrollToBottom}
-        onCancelTask={handleCancelTask}
-        onCloseTask={handleCloseTaskReturn}
-        onContinueTask={handleContinueTask}
+        onCancelTask={isSubagentView ? handleCancelSubagent : handleCancelTask}
+        onCloseTask={isSubagentView ? handleCloseSubagent : handleCloseTaskReturn}
+        onContinueTask={isSubagentView ? undefined : handleContinueTask}
+        closeLabel={isSubagentView ? 'Close' : undefined}
+        cancelLabel={isSubagentView ? 'Cancel Sub-agent' : undefined}
         isAwaitingApproval={hasApproval}
       />
 
       {/* Input Area */}
-      {!activeTask?.isArchived && (
+      {!displayedTask?.isArchived && (
         <ChatInput
           textareaRef={textareaRef}
           onSend={handleSend}
           sendingDisabled={isInputDisabled}
           supportsImages={supportsImages}
-          placeholderText={pendingQuestion ? 'Type your answer...' : activeTask ? 'Reply something...' : 'Ask a question or type a command...'}
+          placeholderText={
+            pendingQuestion
+              ? 'Type your answer...'
+              : isSubagentView
+                ? 'Reply to the sub-agent...'
+                : displayedTask
+                  ? 'Reply something...'
+                  : 'Ask a question or type a command...'
+          }
         />
       )}
 
       {/* Footer */}
-      {!activeTask?.isArchived && (
+      {!displayedTask?.isArchived && (
         <ChatFooter
           currentModel={selectedModel}
           onChangeModel={setSelectedModel}

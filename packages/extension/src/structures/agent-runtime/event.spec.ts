@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { registerSubagentSession, unregisterSubagentSession } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
-import { mapEvent, toolResultText } from '@pi-code/extension/structures/agent-runtime/event';
+import { mapEvent, toolResultText, toSubagentEvent } from '@pi-code/extension/structures/agent-runtime/event';
 import { recordSubagentUsage, takeSubagentUsage } from '@pi-code/extension/structures/agent-runtime/subagent';
 import { logger } from '@pi-code/shared/core/logger';
 
@@ -239,5 +239,33 @@ describe('mapEvent', () => {
 
     expect(message.payload.diff).toBe('--- a\n+++ b\n');
     expect(message.payload.duration).toBe(42);
+  });
+});
+
+describe('toSubagentEvent', () => {
+  it('drops the sub-agent label so the webview treats the row as its own', () => {
+    // The label makes the webview skip a row it has never seen, which is what
+    // keeps a sub-agent's tools out of the task that delegated the work. The
+    // sub-agent's own session has to show them, so the label cannot travel.
+    const message = toSubagentEvent({
+      type: 'tool_execution_start',
+      payload: { id: 'call-1', tool_name: 'read_file', arguments: { path: 'a.ts' }, subagent: 'explore' },
+    });
+
+    expect(message).toEqual({
+      type: 'tool_execution_start',
+      payload: { id: 'call-1', tool_name: 'read_file', arguments: { path: 'a.ts' } },
+    });
+  });
+
+  it('rejects an event the sub-agent session cannot show', () => {
+    expect(toSubagentEvent({ type: 'compaction_start' })).toBeNull();
+    expect(toSubagentEvent({ type: 'history_data', payload: { scope: 'current', epoch: 1, items: [] } })).toBeNull();
+  });
+
+  it('passes an event that carries no sub-agent label through unchanged', () => {
+    const message = toSubagentEvent({ type: 'stream_delta', payload: { text: 'hello' } });
+
+    expect(message).toEqual({ type: 'stream_delta', payload: { text: 'hello' } });
   });
 });

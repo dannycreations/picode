@@ -4,6 +4,7 @@ import { Type } from 'typebox';
 
 import { SUBAGENTS } from '@pi-code/extension/core/prompt';
 import { readOutputLimits } from '@pi-code/extension/core/settings';
+import { registerLiveSubagent } from '@pi-code/extension/structures/agent-runtime/brokers/subagent';
 import { createToolAbort } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
 import { mapEvent, notifySubagentEvent } from '@pi-code/extension/structures/agent-runtime/event';
 import {
@@ -95,6 +96,10 @@ export const spawnSubagentTool = defineTool({
     }
 
     const abort = createToolAbort(toolCallId, signal);
+
+    // The session is registered before the run starts, so a user who opens the
+    // sub-agent while it is still starting finds it instead of an error.
+    registerLiveSubagent(agent.name, toolCallId, params.task);
 
     try {
       const outcome = await spawnSubagent({

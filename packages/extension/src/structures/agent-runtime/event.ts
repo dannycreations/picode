@@ -3,10 +3,11 @@ import { uuidv7 } from '@earendil-works/pi-ai';
 import { getSubagentSession } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
 import { SPAWN_SUBAGENT_TOOL_NAME, takeSubagentUsage } from '@pi-code/extension/structures/agent-runtime/subagent';
 import { logger } from '@pi-code/shared/core/logger';
+import { isSubagentEvent } from '@pi-code/shared/core/protocol';
 import { isWhitespaceCode, resolveContextLimit } from '@pi-code/shared/utilities/common';
 
 import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent';
-import type { ExtensionToWebviewMessage } from '@pi-code/shared/core/protocol';
+import type { ExtensionToWebviewMessage, SubagentEvent } from '@pi-code/shared/core/protocol';
 import type { StatsData, ToolName, ToolResultDetails } from '@pi-code/shared/core/types';
 
 type SubagentEventCallback = (event: ExtensionToWebviewMessage) => void;
@@ -264,6 +265,27 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
     default:
       logger.debug(`Ignoring unmapped agent session event: ${event.type}`);
       return { message: null, apiRequestId };
+  }
+}
+
+export function toSubagentEvent(message: ExtensionToWebviewMessage): SubagentEvent | null {
+  if (!isSubagentEvent(message)) return null;
+
+  switch (message.type) {
+    case 'tool_execution_start': {
+      const { subagent: _subagent, ...payload } = message.payload;
+      return { type: message.type, payload };
+    }
+    case 'tool_execution_update': {
+      const { subagent: _subagent, ...payload } = message.payload;
+      return { type: message.type, payload };
+    }
+    case 'tool_execution_end': {
+      const { subagent: _subagent, ...payload } = message.payload;
+      return { type: message.type, payload };
+    }
+    default:
+      return message;
   }
 }
 

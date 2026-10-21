@@ -28,7 +28,8 @@ interface ChatHeaderProps extends StatsData {
   readonly title: string;
   readonly todos?: TodoItem[];
   readonly onClose: () => void;
-  readonly onCompact: () => void;
+  readonly closeTooltip?: string;
+  readonly onCompact?: () => void;
   readonly onExport?: () => void;
   readonly onDelete?: () => void;
   readonly onViewRaw?: () => void;
@@ -37,6 +38,7 @@ interface ChatHeaderProps extends StatsData {
   readonly archiveDisabled?: boolean;
   readonly deleteDisabled?: boolean;
   readonly onSearchOpen: () => void;
+  readonly label?: string;
 }
 
 const ContextProgressBar: FC<{ readonly percentage: number }> = ({ percentage }) => (
@@ -132,6 +134,8 @@ export const ChatHeader: FC<ChatHeaderProps> = memo(
     archiveDisabled,
     deleteDisabled,
     onSearchOpen,
+    label = 'Task',
+    closeTooltip = 'Close task',
   }) => {
     const [isExpanded, setIsExpanded] = useState(false);
 
@@ -155,7 +159,7 @@ export const ChatHeader: FC<ChatHeaderProps> = memo(
                 {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
               </div>
               <div className="flex items-center gap-1.5 ml-1.5 grow min-w-0">
-                <span className="font-bold text-xs uppercase tracking-wider text-vscode-descriptionForeground shrink-0">Task:</span>
+                <span className="font-bold text-xs uppercase tracking-wider text-vscode-descriptionForeground shrink-0">{label}:</span>
                 <Tooltip content={title.trim()} side="bottom">
                   <span className="whitespace-nowrap overflow-hidden text-ellipsis text-sm font-medium text-vscode-foreground grow min-w-0">
                     {title.trim()}
@@ -164,7 +168,7 @@ export const ChatHeader: FC<ChatHeaderProps> = memo(
               </div>
             </div>
             <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-              <Tooltip content="Close task" side="bottom">
+              <Tooltip content={closeTooltip} side="bottom">
                 <button onClick={onClose} className="icon-button">
                   <X size={14} />
                 </button>
@@ -206,7 +210,7 @@ export const ChatHeader: FC<ChatHeaderProps> = memo(
                           {contextTokens.toLocaleString()} / {contextLimit.toLocaleString()} ({contextPercentage}%)
                         </span>
                         <ContextProgressBar percentage={contextPercentage} />
-                        {!isArchived && (
+                        {!isArchived && onCompact && (
                           <Tooltip content="Compact context">
                             <button onClick={onCompact} className="icon-button">
                               <FoldVertical size={14} />

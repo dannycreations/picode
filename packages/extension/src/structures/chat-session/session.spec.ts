@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import { recordApprovalDuration } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
-import { convertSessionEntries } from '@pi-code/extension/structures/chat-session/session';
+import { convertSessionEntries, loadSubagentTranscript } from '@pi-code/extension/structures/chat-session/session';
 
 import type { AssistantMessage, ImageContent, ToolResultMessage, UserMessage } from '@earendil-works/pi-ai';
-import type { SessionEntry } from '@earendil-works/pi-coding-agent';
+import type { AgentSession, SessionEntry } from '@earendil-works/pi-coding-agent';
 import type { ChatMessage, ToolChatMessage } from '@pi-code/shared/core/types';
 
 function messageEntry(id: string, message: UserMessage | AssistantMessage | ToolResultMessage): SessionEntry {
@@ -182,5 +182,78 @@ describe('convertSessionEntries text attachment rehydration', () => {
     const user = convertSessionEntries(entries).find((m): m is Extract<ChatMessage, { sender: 'user' }> => m.sender === 'user');
 
     expect(user?.attachments).toBeUndefined();
+  });
+});
+
+describe('loadSubagentTranscript', () => {
+  function subagentSession(entries: SessionEntry[], streamingMessage?: AssistantMessage): AgentSession {
+    return {
+      sessionId: 'sub-1',
+      sessionManager: { getBranch: () => entries },
+      model: { contextWindow: 100_000 },
+      agent: { state: { streamingMessage } },
+    } as unknown as AgentSession;
+  }
+
+  function userEntry(id: string, content: UserMessage['content']): SessionEntry {
+    return { id, type: 'message', parentId: null, timestamp: new Date().toISOString(), message: { role: 'user', content, timestamp: Date.now() } };
+  }
+
+  it('shows the delegated brief instead of the instructions the child was given', () => {
+    // The child receives the agent's standing rules and the brief as one
+    // prompt, so the raw first user message is mostly boilerplate.
+    const session = subagentSession([userEntry('u1', 'AGENT RULES\n\n## Task\n\nfind the leak')]);
+
+    const { messages } = loadSubagentTranscript(session, 'find the leak');
+
+    expect(messages.find((m) => m.sender === 'user')?.text).toBe('find the leak');
+  });
+
+  it('adds the response that is still streaming so its text has a row to land on', () => {
+    const streaming = assistantMessage([{ type: 'text', text: 'half a sen' }]);
+    const session = subagentSession([userEntry('u1', 'find the leak')], streaming);
+
+    const { messages } = loadSubagentTranscript(session, 'find the leak');
+
+    const assistant = messages.find((m) => m.sender === 'assistant');
+    expect(assistant?.text).toBe('half a sen');
+  });
+
+  it('keeps the transcript of a finished sub-agent', () => {
+    const session = subagentSession([
+      userEntry('u1', 'find the leak'),
+      messageEntry('m1', assistantMessage([{ type: 'text', text: 'the leak is in foo()' }])),
+    ]);
+
+    const { messages } = loadSubagentTranscript(session, 'find the leak');
+
+    expect(messages.map((m) => m.sender)).toEqual(['user', 'api_request', 'assistant']);
+  });
+
+  it('shows a call that has not produced a result as still running', () => {
+    // The call is waiting on an approval, so replaying it as finished would
+    // claim a write that never happened.
+    const session = subagentSession([
+      userEntry('u1', 'fix the leak'),
+      messageEntry('m1', assistantMessage([{ type: 'toolCall', id: 'tc1', name: 'write_file', arguments: { path: 'a.ts', content: 'x' } }])),
+    ]);
+
+    const { messages } = loadSubagentTranscript(session, 'fix the leak');
+
+    const tool = messages.find((m) => m.sender === 'tool');
+    expect(tool?.toolStatus).toBe('running');
+  });
+
+  it('shows a call whose result arrived as finished', () => {
+    const session = subagentSession([
+      userEntry('u1', 'fix the leak'),
+      messageEntry('m1', assistantMessage([{ type: 'toolCall', id: 'tc1', name: 'write_file', arguments: { path: 'a.ts', content: 'x' } }])),
+      messageEntry('m2', toolResultMessage('tc1', 'write_file', 'wrote a.ts')),
+    ]);
+
+    const { messages } = loadSubagentTranscript(session, 'fix the leak');
+
+    const tool = messages.find((m) => m.sender === 'tool');
+    expect(tool?.toolStatus).toBe('completed');
   });
 });
