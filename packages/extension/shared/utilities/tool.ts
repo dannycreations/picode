@@ -9,6 +9,7 @@ interface ToolMeta {
     readonly denied: string;
     readonly failed: string;
     readonly done: string;
+    readonly cancelled?: string;
   };
 }
 
@@ -48,6 +49,7 @@ const TOOL_META: Readonly<Record<GroupToolName, ToolMeta>> = {
       denied: 'Command denied',
       failed: 'Command failed',
       done: 'Ran command',
+      cancelled: 'Command cancelled',
     },
   },
   read_file: {
@@ -104,6 +106,7 @@ const TOOL_META: Readonly<Record<GroupToolName, ToolMeta>> = {
       denied: 'Sub-agent denied',
       failed: 'Sub-agent failed',
       done: 'Ran sub-agent',
+      cancelled: 'Sub-agent cancelled',
     },
   },
   mcp: {
@@ -120,6 +123,8 @@ const TOOL_META: Readonly<Record<GroupToolName, ToolMeta>> = {
 };
 
 export const GROUP_TOOLS: ReadonlySet<ToolName> = new Set(GROUP_TOOL_NAMES);
+
+export const CANCELLABLE_TOOLS: ReadonlySet<ToolName> = new Set(['execute_command', 'spawn_subagent']);
 
 function toolMeta(toolName?: string): ToolMeta {
   const meta = toolName === undefined ? undefined : TOOL_META[toolName as GroupToolName];
@@ -257,7 +262,10 @@ export function getToolHeaderMeta(toolName: string | undefined, status?: ToolSta
   // recorded leaves it missing and keeps the older wording.
   const ranThenFailed = status === 'denied' && exitCode !== undefined;
   const state = ranThenFailed ? 'failed' : status === undefined || status === 'completed' ? 'done' : status;
-  return { title: meta.fileTitle[state], icon: meta.fileIcon };
+  // A call the user stopped is neither a denial nor a failure, so it keeps its
+  // own wording.
+  const title = state === 'cancelled' ? (meta.fileTitle.cancelled ?? 'Tool call cancelled') : meta.fileTitle[state];
+  return { title, icon: meta.fileIcon };
 }
 
 interface DiffStat {

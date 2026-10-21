@@ -1,9 +1,9 @@
 import { cn } from 'cn';
-import { Play, X } from 'lucide-react';
+import { Play, Square, X } from 'lucide-react';
 import { Fragment, memo, useCallback, useMemo, useState } from 'react';
 
 import { hasVisibleText, relativeToWorkspace } from '@pi-code/shared/utilities/common';
-import { buildToolSections, getDiffStat, getFirstDiffLine, getToolHeaderMeta } from '@pi-code/shared/utilities/tool';
+import { buildToolSections, CANCELLABLE_TOOLS, getDiffStat, getFirstDiffLine, getToolHeaderMeta } from '@pi-code/shared/utilities/tool';
 import { CodeBlock } from '@pi-code/webview/components/chat/CodeBlock';
 import { getToolPatternConfig } from '@pi-code/webview/components/chat/helpers/tool-pattern';
 import { MessageHeader } from '@pi-code/webview/components/chat/messages/MessageHeader';
@@ -24,9 +24,10 @@ interface ElapsedTimerProps {
   readonly isRunning: boolean;
   readonly duration?: number;
   readonly revealOnHover?: boolean;
+  readonly className?: string;
 }
 
-const ElapsedTimer: FC<ElapsedTimerProps> = ({ startTs, isRunning, duration, revealOnHover }) => {
+const ElapsedTimer: FC<ElapsedTimerProps> = ({ startTs, isRunning, duration, revealOnHover, className }) => {
   // A tool that reported its own duration shows that; otherwise the live
   // counter runs only while the call is still going.
   const elapsed = useElapsedSeconds(startTs, isRunning && duration === undefined);
@@ -36,6 +37,7 @@ const ElapsedTimer: FC<ElapsedTimerProps> = ({ startTs, isRunning, duration, rev
       className={cn(
         'flex items-center gap-1 text-xs font-mono text-vscode-descriptionForeground tabular-nums',
         revealOnHover && 'hidden group-hover:inline-flex',
+        className,
       )}
       aria-label={isRunning ? 'Elapsed loading time' : 'Time taken'}
     >
@@ -69,12 +71,14 @@ interface ToolSectionProps {
   readonly startTs: number;
   readonly duration?: number;
   readonly revealTimerOnHover?: boolean;
+  readonly canCancel?: boolean;
+  readonly onCancel: (toolCallId: string) => void;
   readonly onOpenFile: (path: string, content?: string) => void;
 }
 
 const ToolSection: FC<ToolSectionProps> = memo(
   ({
-    section: { title, subtitle, content, language, openPath, status },
+    section: { id, title, subtitle, content, language, openPath, status },
     defaultOpen,
     isFirst,
     isLast,
@@ -84,6 +88,8 @@ const ToolSection: FC<ToolSectionProps> = memo(
     startTs,
     duration,
     revealTimerOnHover,
+    canCancel,
+    onCancel,
     onOpenFile,
   }) => {
     const [open, setOpen] = useState(defaultOpen);
@@ -147,8 +153,34 @@ const ToolSection: FC<ToolSectionProps> = memo(
                 </Tooltip>
               </span>
             </div>
-          ) : showTimer ? (
-            <ElapsedTimer startTs={startTs} isRunning={isRunning} duration={duration} revealOnHover={revealTimerOnHover} />
+          ) : showTimer || canCancel ? (
+            <div className="flex items-center gap-1 shrink-0">
+              {showTimer && (
+                <ElapsedTimer
+                  startTs={startTs}
+                  isRunning={isRunning}
+                  duration={duration}
+                  revealOnHover={revealTimerOnHover}
+                  // The stop button takes this slot over while the row is
+                  // hovered, so the clock never sits next to it.
+                  className={canCancel ? 'group-hover:hidden' : undefined}
+                />
+              )}
+              {canCancel && id !== undefined && (
+                <span className="hidden group-hover:inline-flex">
+                  <Tooltip content="Stop">
+                    <button
+                      type="button"
+                      onClick={() => onCancel(id)}
+                      aria-label="Stop"
+                      className="text-vscode-descriptionForeground hover:text-vscode-foreground cursor-pointer"
+                    >
+                      <Square size={12} fill="currentColor" />
+                    </button>
+                  </Tooltip>
+                </span>
+              )}
+            </div>
           ) : null}
         </div>
 
@@ -203,6 +235,8 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onRespondTool }) =>
       const isDone = !isRunning && titledSection.duration !== undefined;
       const subagentDone = isSubagent && isDone;
       const showTimer = message.toolName === 'execute_command' || (isSubagent && titledSection.content !== undefined);
+      // Only a call the extension can stop on its own offers the button.
+      const canCancel = isRunning && message.toolName !== undefined && CANCELLABLE_TOOLS.has(message.toolName);
 
       const displaySection = subagentDone
         ? { ...withExitCode(titledSection), subtitle: appendElapsed(titledSection.subtitle, titledSection.duration) }
@@ -216,6 +250,7 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onRespondTool }) =>
         isDone,
         subagentDone,
         showTimer: showTimer && !subagentDone,
+        canCancel,
         startTs: section.timestamp ?? message.timestamp,
         duration: section.duration,
       };
@@ -251,6 +286,11 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onRespondTool }) =>
   // input to the state rather than something an effect has to keep asserting.
   const [userExpanded, setUserExpanded] = useState(shouldExpandForApproval);
   const isExpanded = userExpanded || shouldExpandForApproval;
+
+  // The extension stops the one call, so the rest of the task keeps running.
+  const cancelTool = useCallback((toolCallId: string): void => {
+    useChatStore.getState().send({ type: 'cancel_tool_call', tool_call_id: toolCallId });
+  }, []);
 
   // Only called from the openPath branch, so the path is always a real file.
   const openFile = useCallback(
@@ -288,6 +328,8 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onRespondTool }) =>
                   startTs={rendered.startTs}
                   duration={rendered.duration}
                   revealTimerOnHover={rendered.showTimer && rendered.isDone}
+                  canCancel={rendered.canCancel}
+                  onCancel={cancelTool}
                   onOpenFile={openFile}
                 />
                 {rendered.approvalMessage && (

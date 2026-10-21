@@ -287,7 +287,7 @@ export const useChatStore = create<ChatState>((set, get) => {
       );
     },
     tool_execution_end: (msg) => {
-      const { id, result, diff, duration, todos, files, is_error, exit_code, subagent, subtitle } = msg.payload;
+      const { id, result, diff, duration, todos, files, is_error, exit_code, cancelled, subagent, subtitle } = msg.payload;
       set((state) =>
         patchActiveTask(state, (task) => {
           const messages = patchToolRow(task.messages, id, subagent, (target) => {
@@ -298,7 +298,8 @@ export const useChatStore = create<ChatState>((set, get) => {
             return {
               todos,
               files,
-              toolStatus: is_error ? ('denied' as const) : ('completed' as const),
+              // A call the user stopped is neither a denial nor a failure.
+              toolStatus: cancelled ? ('cancelled' as const) : is_error ? ('denied' as const) : ('completed' as const),
               exitCode: exit_code,
               diff: diff ?? result,
               duration: duration ?? elapsed,

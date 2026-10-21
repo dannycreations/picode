@@ -16,6 +16,7 @@ import {
 import { Type } from 'typebox';
 
 import { readAppSettings, readOutputLimits } from '@pi-code/extension/core/settings';
+import { createToolAbort } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
 import { renderTruncatedText, spillToTempLog, tempLogPath, truncateOutput } from '@pi-code/extension/utilities/truncate';
 import { logger } from '@pi-code/shared/core/logger';
 
@@ -91,6 +92,7 @@ type ExecuteCommandReturn = CustomToolResult<{
   readonly signalCode: string | null;
   readonly output: string;
   readonly timedOut: boolean;
+  readonly cancelled?: boolean;
   readonly tempFilePath?: string | null;
 }>;
 
@@ -103,7 +105,8 @@ export const executeCommandTool = defineTool({
     cwd: Type.Optional(Type.Union([Type.String(), Type.Null()], { description: 'Optional working directory; defaults to the workspace.' })),
     timeout: Type.Optional(Type.Integer({ minimum: 1, description: 'Optional timeout in milliseconds; defaults to 120000 ms (2 minutes).' })),
   }),
-  async execute(_toolCallId, params, signal, onUpdate, ctx) {
+  async execute(toolCallId, params, signal, onUpdate, ctx) {
+    const abort = createToolAbort(toolCallId, signal);
     const limits = readOutputLimits();
     const retainedBytes = limits.maxBytes * 2;
     const effectiveTimeout = Math.min(params.timeout ?? DEFAULT_TIMEOUT_MS, readAppSettings().maxCommandTimeoutMs);
@@ -318,8 +321,8 @@ export const executeCommandTool = defineTool({
       let killing = false;
 
       const detachSignal = () => {
-        if (signal && onAbort) {
-          signal.removeEventListener('abort', onAbort);
+        if (onAbort) {
+          abort.signal.removeEventListener('abort', onAbort);
           onAbort = null;
         }
       };
@@ -407,10 +410,21 @@ export const executeCommandTool = defineTool({
           modelText = `${modelText}\n\nCommand timed out after ${effectiveTimeout} ms. If it is not waiting for input, rerun with a larger \`timeout\`.`;
         }
 
+        if (abort.cancelled) {
+          modelText = `${modelText}\n\nCommand cancelled by the user.`;
+        }
+
         const finalText = modelText || `Command completed with no output. ${exitInfo}`;
         res({
           content: [{ type: 'text', text: finalText.trim() }],
-          details: { exitCode, signalCode, output: cleanOutput, timedOut, ...(tempFilePath ? { tempFilePath } : {}) },
+          details: {
+            exitCode,
+            signalCode,
+            output: cleanOutput,
+            timedOut,
+            cancelled: abort.cancelled || undefined,
+            ...(tempFilePath ? { tempFilePath } : {}),
+          },
           isError: exitCode !== 0,
         });
       };
@@ -520,27 +534,29 @@ export const executeCommandTool = defineTool({
         await killCommand();
       }, effectiveTimeout);
 
-      if (signal) {
-        if (signal.aborted) {
-          await killCommand();
-          void finish(null, 'SIGABRT');
-        } else {
-          onAbort = () => {
-            void killCommand();
-          };
-          signal.addEventListener('abort', onAbort, { once: true });
-        }
+      if (abort.signal.aborted) {
+        await killCommand();
+        void finish(null, 'SIGABRT');
+      } else {
+        onAbort = () => {
+          void killCommand();
+        };
+        abort.signal.addEventListener('abort', onAbort, { once: true });
       }
     };
 
-    return new Promise<ExecuteCommandReturn>((res) => {
-      void executeCommand(res).catch((err) => {
-        res({
-          content: [{ type: 'text', text: `Command failed before execution: ${formatThrownValue(err)}` }],
-          details: { exitCode: null, signalCode: null, output: '', timedOut: false },
-          isError: true,
+    try {
+      return await new Promise<ExecuteCommandReturn>((res) => {
+        void executeCommand(res).catch((err) => {
+          res({
+            content: [{ type: 'text', text: `Command failed before execution: ${formatThrownValue(err)}` }],
+            details: { exitCode: null, signalCode: null, output: '', timedOut: false },
+            isError: true,
+          });
         });
       });
-    });
+    } finally {
+      abort.dispose();
+    }
   },
 });

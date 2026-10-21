@@ -4,6 +4,7 @@ import { Uri, window, workspace } from 'vscode';
 import { writeAppSettings } from '@pi-code/extension/core/settings';
 import { approveApproval, denyApproval } from '@pi-code/extension/structures/agent-runtime/brokers/approval';
 import { answerQuestion } from '@pi-code/extension/structures/agent-runtime/brokers/question';
+import { abortToolCall } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
 import { persistModelAndThinking } from '@pi-code/extension/structures/agent-runtime/helpers/model-selection';
 import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import {
@@ -175,6 +176,9 @@ const HANDLER_MAP: HandlerMap = {
   cancel_task: async (_, ctx) => {
     await ctx.runtime.cancelTask();
     await postHistory(ctx, 'current');
+  },
+  cancel_tool_call: (msg) => {
+    abortToolCall(msg.tool_call_id);
   },
   builtin_command: async (msg, ctx) => {
     switch (msg.command) {

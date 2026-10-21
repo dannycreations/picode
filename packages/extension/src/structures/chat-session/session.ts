@@ -218,7 +218,7 @@ function patchToolCall(result: ChatMessage[], msg: Extract<SessionMessage, { rol
 
   result[index] = {
     ...existing,
-    toolStatus: msg.isError ? 'denied' : 'completed',
+    toolStatus: details?.cancelled ? 'cancelled' : msg.isError ? 'denied' : 'completed',
     exitCode: details?.exitCode ?? existing.exitCode,
     diff: details?.diff || resultText,
     todos: details?.todos,

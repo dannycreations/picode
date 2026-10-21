@@ -219,6 +219,7 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
             files: details?.files,
             subtitle: details?.subtitle,
             exit_code: details?.exitCode,
+            cancelled: details?.cancelled,
             is_error: event.isError,
             subagent,
           },

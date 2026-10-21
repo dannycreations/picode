@@ -101,6 +101,11 @@ describe('getToolHeaderMeta denied versus failed', () => {
     expect(getToolHeaderMeta('execute_command', 'approval').title).toBe('Wants to run command');
     expect(getToolHeaderMeta('execute_command', 'running').title).toBe('Running command');
   });
+
+  it('names a call the user stopped apart from a denial or a failure', () => {
+    expect(getToolHeaderMeta('execute_command', 'cancelled').title).toBe('Command cancelled');
+    expect(getToolHeaderMeta('spawn_subagent', 'cancelled').title).toBe('Sub-agent cancelled');
+  });
 });
 
 describe('buildToolSections exit code', () => {

@@ -2,6 +2,7 @@ import { readFile, unlink } from 'node:fs/promises';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { invalidateAppSettings } from '@pi-code/extension/core/settings';
+import { abortToolCall } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
 import { cleanCommandOutput, executeCommandTool } from '@pi-code/extension/structures/tool-call/execute-command';
 
 // Settings are memoized, so tests write raw VS Code values into this record and
@@ -193,6 +194,24 @@ describe('executeCommandTool cancellation', () => {
     )) as any;
 
     expect(result.details.timedOut).toBe(true);
+  }, 20_000);
+
+  it('stops one command on its own and says the user stopped it', async () => {
+    const startedAt = Date.now();
+    const running = executeCommandTool.execute('cancel-one-test', { command: 'node -e "setInterval(() => {}, 5000)"' }, undefined, undefined, {
+      cwd: process.cwd(),
+    } as any);
+
+    // The process needs a moment to come up before it can be killed.
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(abortToolCall('cancel-one-test')).toBe(true);
+
+    const result = (await running) as any;
+    expect(result.details.cancelled).toBe(true);
+    expect(result.details.timedOut).toBe(false);
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('cancelled by the user');
+    expect(Date.now() - startedAt).toBeLessThan(9000);
   }, 20_000);
 });
 

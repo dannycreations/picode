@@ -129,6 +129,19 @@ describe('tool completion', () => {
     expect(row).toMatchObject({ diff: 'a.ts' });
     expect(typeof (row as { duration?: number }).duration).toBe('number');
   });
+
+  it('marks a call the user stopped as cancelled rather than failed', () => {
+    apply([{ type: 'tool_execution_start', payload: { id: 't1', tool_name: 'execute_command', arguments: { command: 'ls' } } }]);
+    apply([
+      {
+        type: 'tool_execution_end',
+        payload: { id: 't1', result: 'stopped', is_error: true, exit_code: null, cancelled: true },
+      },
+    ]);
+
+    const [row] = useChatStore.getState().activeTask?.messages ?? [];
+    expect(row).toMatchObject({ toolStatus: 'cancelled' });
+  });
 });
 
 describe('api request failure', () => {

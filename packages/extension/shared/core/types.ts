@@ -23,7 +23,7 @@ export interface StatsData {
 export type ToolName =
   'ask_question' | 'delete_file' | 'edit_file' | 'execute_command' | 'mcp' | 'read_file' | 'spawn_subagent' | 'update_todo' | 'write_file';
 
-export type ToolStatus = 'approval' | 'completed' | 'denied' | 'running';
+export type ToolStatus = 'approval' | 'cancelled' | 'completed' | 'denied' | 'running';
 
 export interface LineRange {
   start: number;
@@ -62,6 +62,7 @@ export interface ToolResultDetails {
   readonly duration?: number;
   readonly subtitle?: string;
   readonly exitCode?: number | null;
+  readonly cancelled?: boolean;
 }
 
 export interface ImageAttachment {

@@ -100,6 +100,7 @@ export type WebviewToExtensionMessage =
   | { type: 'open_attachment'; attachment: Attachment }
   | { type: 'save_image'; dataUrl: string; filename: string }
   | { type: 'cancel_task' }
+  | { type: 'cancel_tool_call'; tool_call_id: string }
   | { type: 'builtin_command'; command: Exclude<BuiltinCommandName, 'compact' | 'fork'> }
   | { type: 'builtin_command'; command: Extract<BuiltinCommandName, 'compact' | 'fork'>; id: string; path?: string; title: string }
   | { type: 'set_model'; model: ModelSelection; thinkingLevel?: ModelThinkingLevel }
@@ -150,6 +151,7 @@ export type ExtensionToWebviewMessage =
         todos?: TodoItem[];
         is_error?: boolean;
         exit_code?: number | null;
+        cancelled?: boolean;
         files?: ReadonlyArray<ReadFileSection>;
         subagent?: string;
         subtitle?: string;

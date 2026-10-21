@@ -4,6 +4,7 @@ import { Type } from 'typebox';
 
 import { SUBAGENTS } from '@pi-code/extension/core/prompt';
 import { readOutputLimits } from '@pi-code/extension/core/settings';
+import { createToolAbort } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
 import { mapEvent, notifySubagentEvent } from '@pi-code/extension/structures/agent-runtime/event';
 import {
   recordSubagentUsage,
@@ -24,6 +25,7 @@ interface SubagentDetails {
   readonly usage?: SubagentUsage;
   readonly subtitle?: string;
   readonly duration?: number;
+  readonly cancelled?: boolean;
   readonly tempFilePath?: string;
 }
 
@@ -92,13 +94,15 @@ export const spawnSubagentTool = defineTool({
       return failure('Error: `task` is required and cannot be empty.', agent.name);
     }
 
+    const abort = createToolAbort(toolCallId, signal);
+
     try {
       const outcome = await spawnSubagent({
         agent,
         task: params.task,
         cwd: ctx.cwd,
         model: ctx.model,
-        signal,
+        signal: abort.signal,
         toolCallId,
         onProgress: onUpdate
           ? (steps) =>
@@ -134,12 +138,15 @@ export const spawnSubagentTool = defineTool({
         usage: outcome.usage,
         subtitle: formatUsage(outcome.usage),
         duration: outcome.duration,
+        cancelled: abort.cancelled || undefined,
         tempFilePath,
       };
 
       return failed ? toolError(report, details) : toolResult(report, details);
     } catch (err) {
       return failure(`Error running the ${agent.name} sub-agent: ${formatThrownValue(err)}`, agent.name);
+    } finally {
+      abort.dispose();
     }
   },
 });
