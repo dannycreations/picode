@@ -52,24 +52,13 @@ export function applySessionOverrides(session: AgentSession): void {
 
 // An empty string means "not configured", which callers translate into the
 // selection the chat is currently running.
-export function readCommitMessageModelSelection(): ModelSelection | undefined {
-  return parseModelSelection(readAppSettings().commitMessageModel);
+export function readModelSelection(key: 'commitMessageModel' | 'delegationTaskModel'): ModelSelection | undefined {
+  return parseModelSelection(readAppSettings()[key]);
 }
 
-export function readDelegationTaskModelSelection(): ModelSelection | undefined {
-  return parseModelSelection(readAppSettings().delegationTaskModel);
-}
-
-function readThinkingLevel(value: string): ModelThinkingLevel | undefined {
+export function readThinkingLevel(key: 'commitMessageThinkingLevel' | 'delegationTaskThinkingLevel'): ModelThinkingLevel | undefined {
+  const value = readAppSettings()[key];
   return isThinkingLevel(value) ? value : undefined;
-}
-
-export function readCommitMessageThinkingLevel(): ModelThinkingLevel | undefined {
-  return readThinkingLevel(readAppSettings().commitMessageThinkingLevel);
-}
-
-export function readDelegationTaskThinkingLevel(): ModelThinkingLevel | undefined {
-  return readThinkingLevel(readAppSettings().delegationTaskThinkingLevel);
 }
 
 function resolveConfigurationTarget(config: WorkspaceConfiguration, key: string): ConfigurationTarget {

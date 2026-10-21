@@ -292,13 +292,13 @@ export function toSubagentEvent(message: ExtensionToWebviewMessage): SubagentEve
 
 export function createStats(session: AgentSession): StatsData | undefined {
   try {
-    const entryCount = session.sessionManager?.getEntryCount?.();
+    const entryCount = session.sessionManager.getEntryCount();
     // The context window comes from the routed model when one is set, so the
     // key names that model. Two providers can share a model id, and a switch
     // between them changes the limit without changing the entry count.
     const limitsModel = session.routedModel?.model ?? session.model;
     const modelKey = limitsModel ? `${limitsModel.provider}/${limitsModel.id}` : '';
-    const cached = entryCount === undefined ? undefined : statsCache.get(session);
+    const cached = statsCache.get(session);
     if (cached && cached.entryCount === entryCount && cached.modelKey === modelKey) return cached.stats;
 
     const stats = session.getSessionStats();
@@ -311,7 +311,7 @@ export function createStats(session: AgentSession): StatsData | undefined {
       contextTokens: stats.contextUsage?.tokens ?? 0,
       contextLimit: resolveContextLimit(stats.contextUsage?.contextWindow ?? session.model?.contextWindow),
     };
-    if (entryCount !== undefined) statsCache.set(session, { entryCount, modelKey, stats: result });
+    statsCache.set(session, { entryCount, modelKey, stats: result });
     return result;
   } catch (err) {
     logger.error('Failed to create session stats message:', err);

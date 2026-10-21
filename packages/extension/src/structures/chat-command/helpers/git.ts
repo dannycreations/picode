@@ -5,6 +5,7 @@ import { execGit, getGitRepository } from '@pi-code/extension/utilities/git';
 import { truncateAndRender } from '@pi-code/extension/utilities/truncate';
 import { COMMIT_HASH_PATTERN, SHORT_HASH_LENGTH, WORKING_CHANGES_TAG } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
+import { containsIgnoreCase } from '@pi-code/shared/utilities/common';
 
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
 import type { CommitItem } from '@pi-code/shared/core/protocol';
@@ -37,8 +38,8 @@ export function matchCommits(commits: readonly CommitItem[], query: string): Com
     (commit) =>
       needle.length === 0 ||
       commit.hash.toLowerCase().startsWith(needle) ||
-      commit.subject.toLowerCase().includes(needle) ||
-      (commit.author ?? '').toLowerCase().includes(needle),
+      containsIgnoreCase(commit.subject, needle) ||
+      containsIgnoreCase(commit.author ?? '', needle),
   );
 
   const results = matched.slice(0, COMMIT_RESULT_CAP);

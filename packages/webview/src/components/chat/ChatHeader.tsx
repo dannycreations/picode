@@ -26,9 +26,10 @@ import type { TodoItem } from '@pi-code/shared/utilities/todo';
 
 interface ChatHeaderProps extends StatsData {
   readonly title: string;
+  readonly label: string;
   readonly todos?: TodoItem[];
   readonly onClose: () => void;
-  readonly closeTooltip?: string;
+  readonly closeTooltip: string;
   readonly onCompact?: () => void;
   readonly onExport?: () => void;
   readonly onDelete?: () => void;
@@ -38,7 +39,6 @@ interface ChatHeaderProps extends StatsData {
   readonly archiveDisabled?: boolean;
   readonly deleteDisabled?: boolean;
   readonly onSearchOpen: () => void;
-  readonly label?: string;
 }
 
 const ContextProgressBar: FC<{ readonly percentage: number }> = ({ percentage }) => (
@@ -116,6 +116,7 @@ export const ChatSearchBar: FC<{
 export const ChatHeader: FC<ChatHeaderProps> = memo(
   ({
     title,
+    label,
     tokensIn,
     tokensOut,
     cacheWrites = 0,
@@ -134,8 +135,7 @@ export const ChatHeader: FC<ChatHeaderProps> = memo(
     archiveDisabled,
     deleteDisabled,
     onSearchOpen,
-    label = 'Task',
-    closeTooltip = 'Close task',
+    closeTooltip,
   }) => {
     const [isExpanded, setIsExpanded] = useState(false);
 

@@ -397,7 +397,7 @@ export class Runtime {
 
   private bindSessionHooks(session: AgentSession): void {
     initSessionHooks(session, {
-      isDisposed: () => !this.session,
+      isDisposed: () => this.session !== session,
       prepareTurn: (target) => applyPersistedModelAndThinking(target),
       isContextAboveThreshold: (target) => this.isContextAtCompactionThreshold(target),
       requestCompaction: async () => {
@@ -420,8 +420,6 @@ export class Runtime {
     const delivered: ChatMessage[] = [];
 
     for (const msg of pending) {
-      if (msg.sender !== 'queue') continue;
-
       const deliveredEntry = await this.processQueuedReply(msg, cwd, session);
       if (deliveredEntry) {
         delivered.push(deliveredEntry);

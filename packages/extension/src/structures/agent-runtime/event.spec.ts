@@ -45,6 +45,7 @@ describe('mapEvent', () => {
       sessionId: 'test-session-123',
       sessionFile: 'test.json',
       model: { contextWindow: 1000 },
+      sessionManager: { getEntryCount: () => 0 },
       getSessionStats: () => ({
         tokens: { input: 10, output: 20, cacheRead: 0, cacheWrite: 0 },
         cost: 0.5,

@@ -3,10 +3,9 @@ import { CONFIG_DIR_NAME, getAgentDir, getCwdRelativePath, resolvePath } from '@
 import { Minimatch } from 'minimatch';
 
 import { parseCommand } from '@pi-code/shared/utilities/command';
-import { normalizeSeparators, setBounded } from '@pi-code/shared/utilities/common';
+import { isWindowsAbsolutePath, normalizeSeparators, setBounded } from '@pi-code/shared/utilities/common';
 
 import type { AppSettings } from '@pi-code/shared/core/settings';
-import type { CommandTokenizer } from '@pi-code/shared/utilities/command';
 
 export type ApprovalDecision = { action: 'approve' } | { action: 'deny'; reason: string } | { action: 'confirm' };
 
@@ -144,7 +143,7 @@ export function matchesGlob(pattern: string, filePath: string): boolean {
 
 function looksAbsolute(path: string): boolean {
   const normalized = normalizeSeparators(path);
-  return normalized.startsWith('/') || /^[a-z]:\//i.test(normalized);
+  return normalized.startsWith('/') || isWindowsAbsolutePath(normalized);
 }
 
 function comparableForm(path: string): string {
@@ -333,14 +332,13 @@ export function resolveCommandAction(
   approveEnabled: boolean,
   allowedPatterns: readonly string[],
   deniedPatterns: readonly string[],
-  tokenizer?: CommandTokenizer,
 ): ApprovalDecision['action'] {
   if (!approveEnabled) return 'confirm';
   if (containsDangerousSubstitution(command)) return 'confirm';
 
   let subCommands: string[];
   try {
-    subCommands = parseCommand(command, tokenizer);
+    subCommands = parseCommand(command);
   } catch {
     return 'confirm';
   }

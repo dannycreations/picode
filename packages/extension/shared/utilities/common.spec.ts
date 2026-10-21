@@ -12,6 +12,7 @@ import {
   relativeToWorkspace,
   remainingSeconds,
   resolveContextLimit,
+  resolveThinkingLevel,
   splitOnOccurrences,
   startsWithIgnoringLeadingWhitespace,
 } from '@pi-code/shared/utilities/common';
@@ -99,6 +100,27 @@ describe('remainingSeconds', () => {
 
   it('clamps a passed deadline to zero', () => {
     expect(remainingSeconds(0, 1000)).toBe(0);
+  });
+});
+
+describe('resolveThinkingLevel', () => {
+  const levels = ['off', 'low', 'medium'] as const;
+
+  it('keeps the preferred level while the model supports it', () => {
+    expect(resolveThinkingLevel(levels, 'low')).toBe('low');
+  });
+
+  it('falls back when the preferred level is unsupported or absent', () => {
+    expect(resolveThinkingLevel(levels, 'high')).toBe('medium');
+    expect(resolveThinkingLevel(levels, null)).toBe('medium');
+  });
+
+  it('falls back to the first level when only "off" exists', () => {
+    expect(resolveThinkingLevel(['off'] as const, null)).toBe('off');
+  });
+
+  it('returns null for a model without thinking levels', () => {
+    expect(resolveThinkingLevel([], null)).toBeNull();
   });
 });
 

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { containsIgnoreCase } from '@pi-code/shared/utilities/common';
+
 import type { Dispatch, SetStateAction } from 'react';
 import type { HistoryItem } from '@pi-code/shared/core/protocol';
 
@@ -27,9 +29,9 @@ export const useHistoryFilter = (history: HistoryItem[], itemsPerPage: number): 
   const filteredHistory = useMemo(() => {
     let result = [...history];
 
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter((item) => item.task.toLowerCase().includes(q));
+    const query = searchQuery.trim();
+    if (query) {
+      result = result.filter((item) => containsIgnoreCase(item.task, query));
     }
 
     result.sort((a, b) => {

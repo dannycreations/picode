@@ -1,6 +1,6 @@
 import { parseCommand } from '@pi-code/shared/utilities/command';
 import { normalizeSeparators, setBounded } from '@pi-code/shared/utilities/common';
-import { getToolFilePaths } from '@pi-code/shared/utilities/tool';
+import { getToolCommand, getToolFilePaths } from '@pi-code/shared/utilities/tool';
 
 import type { AppSettings, SettingKey } from '@pi-code/shared/core/settings';
 import type { ToolChatMessage } from '@pi-code/shared/core/types';
@@ -75,8 +75,7 @@ export function extractPathPatterns(filePath: string): readonly string[] {
 export function getToolPatternConfig(message: ToolChatMessage, settings: AppSettings | null): ToolPatternConfig | null {
   if (message.toolName === 'execute_command') {
     const commands: string[] = [];
-    const args = message.toolArgs;
-    const command = args && 'command' in args && typeof args.command === 'string' ? args.command : undefined;
+    const command = getToolCommand(message);
     if (command) commands.push(command);
     for (const section of message.toolSections ?? []) {
       if (section.title) commands.push(section.title);

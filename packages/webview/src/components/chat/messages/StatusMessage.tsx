@@ -36,7 +36,7 @@ export const ApiRequestMessage: FC<{ readonly message: ApiRequestChatMessage }> 
           onClick={error ? () => setIsExpanded(!isExpanded) : undefined}
         >
           {isRunning ? (
-            <Spinner className="text-vscode-focusBorder" />
+            <Spinner />
           ) : error ? (
             <AlertTriangle size={14} className="text-vscode-editorError-foreground shrink-0" />
           ) : (

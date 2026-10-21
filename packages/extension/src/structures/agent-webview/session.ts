@@ -8,7 +8,7 @@ import { getDefaultModelSelection, getSettingsManager, readAppSettings } from '@
 import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { collectCommands } from '@pi-code/extension/structures/chat-command/command';
 import { convertSessionEntries, loadSessionTranscript } from '@pi-code/extension/structures/chat-session/session';
-import { mapConcurrent } from '@pi-code/extension/utilities/common';
+import { mapConcurrent } from '@pi-code/extension/utilities/concurrency';
 import { streamLines } from '@pi-code/extension/utilities/fs';
 import { logger, readEnvLevel } from '@pi-code/shared/core/logger';
 import { resolveContextLimit } from '@pi-code/shared/utilities/common';
@@ -260,7 +260,14 @@ export async function* streamHistory(cwd: string, scope: HistoryScope): AsyncGen
 }
 
 export async function deleteSessions(paths: string[]): Promise<void> {
-  await Promise.allSettled(paths.map((path) => workspace.fs.delete(Uri.file(path), { useTrash: true })));
+  const results = await Promise.allSettled(paths.map((path) => workspace.fs.delete(Uri.file(path), { useTrash: true })));
+  // A file that cannot be deleted stays in the history, so the reason has to
+  // come from the log.
+  results.forEach((result, index) => {
+    if (result.status === 'rejected') {
+      logger.warn(`Failed to delete session "${paths[index]}":`, result.reason);
+    }
+  });
 }
 
 export async function exportSession(sessionPath: string, defaultId?: string): Promise<boolean> {

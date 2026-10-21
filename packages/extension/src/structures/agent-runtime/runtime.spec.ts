@@ -84,7 +84,7 @@ const SERVICES = { resourceLoader: { getSkills: () => ({ skills: [] }), getPromp
 function makeStartableSession() {
   return {
     agent: { state: { messages: [] }, steer: vi.fn(), finishTurn: undefined, prepareNextTurnWithContext: undefined },
-    sessionManager: { appendMessage: vi.fn(() => 'persisted-id'), appendCustomMessageEntry: vi.fn() },
+    sessionManager: { appendMessage: vi.fn(() => 'persisted-id'), appendCustomMessageEntry: vi.fn(), getEntryCount: () => 0 },
     settingsManager: {
       applyOverrides: vi.fn(),
       getCompactionSettings: vi.fn(() => ({ enabled: true, reserveTokens: 16384, keepRecentTokens: 20000 })),
@@ -125,6 +125,7 @@ function makeFakeSession(steer: () => void, appendMessage: ReturnType<typeof vi.
     sessionManager: {
       appendMessage,
       appendCustomMessageEntry: vi.fn(),
+      getEntryCount: () => 0,
     },
     settingsManager: {
       applyOverrides: vi.fn(),
@@ -508,7 +509,7 @@ describe('Runtime compaction', () => {
     return {
       ...makeStartableSession(),
       compact: vi.fn(impl),
-      sessionManager: { appendMessage: vi.fn(() => 'persisted-id'), appendCustomMessageEntry: vi.fn(), getBranch: () => [] },
+      sessionManager: { appendMessage: vi.fn(() => 'persisted-id'), appendCustomMessageEntry: vi.fn(), getBranch: () => [], getEntryCount: () => 0 },
       getSessionStats: SESSION_STATS,
     } as unknown as AgentSession & { compact: ReturnType<typeof vi.fn> };
   }

@@ -1,17 +1,17 @@
 import { uuidv7 } from '@earendil-works/pi-ai';
 
-import type { Attachment, ChatMessage } from '@pi-code/shared/core/types';
+import type { Attachment, QueueChatMessage } from '@pi-code/shared/core/types';
 
 export class ReplyQueue {
-  private messages: readonly ChatMessage[] = [];
+  private messages: readonly QueueChatMessage[] = [];
 
-  public constructor(private readonly onChange: (messages: readonly ChatMessage[]) => void) {}
+  public constructor(private readonly onChange: (messages: readonly QueueChatMessage[]) => void) {}
 
   public get size(): number {
     return this.messages.length;
   }
 
-  public all(): readonly ChatMessage[] {
+  public all(): readonly QueueChatMessage[] {
     // A snapshot, not the live array: callers hold this across awaits while
     // edits and removals arrive from the webview, and a drain must not act on a
     // row the user has already deleted.
@@ -19,7 +19,7 @@ export class ReplyQueue {
   }
 
   public add(text: string, attachments?: readonly Attachment[]): void {
-    const msg: ChatMessage = {
+    const msg: QueueChatMessage = {
       id: uuidv7(),
       sender: 'queue',
       text,
@@ -45,7 +45,7 @@ export class ReplyQueue {
     this.replace(this.messages.filter((m) => !ids.has(m.id)));
   }
 
-  private replace(messages: readonly ChatMessage[]): void {
+  private replace(messages: readonly QueueChatMessage[]): void {
     this.messages = messages;
     this.onChange(messages);
   }

@@ -6,14 +6,15 @@ import type { AgentSession, CustomMessage } from '@earendil-works/pi-coding-agen
 import type { ExpandedMentions } from '@pi-code/extension/structures/chat-command/mention';
 import type { Attachment } from '@pi-code/shared/core/types';
 
-function appendAgentMessage(session: AgentSession, message: Message | CustomMessage): string {
+function appendAgentMessage(session: AgentSession, message: Message | CustomMessage): void {
   session.agent.state.messages.push(message);
 
   if (message.role === 'custom') {
-    return session.sessionManager.appendCustomMessageEntry(message.customType, message.content, message.display, message.details);
+    session.sessionManager.appendCustomMessageEntry(message.customType, message.content, message.display, message.details);
+    return;
   }
 
-  return session.sessionManager.appendMessage(message);
+  session.sessionManager.appendMessage(message);
 }
 
 export function appendHiddenMessage(session: AgentSession, customType: string, content: string): void {

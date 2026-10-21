@@ -4,7 +4,7 @@ import { Type } from 'typebox';
 
 import { readAppSettings, readOutputLimits } from '@pi-code/extension/core/settings';
 import { toolError, toolErrorFrom, toolResult } from '@pi-code/extension/structures/tool-call/helpers';
-import { mapConcurrent } from '@pi-code/extension/utilities/common';
+import { mapConcurrent } from '@pi-code/extension/utilities/concurrency';
 import { checkReadableFile, hasRanges, parseNumberedLine } from '@pi-code/extension/utilities/fs';
 import { readNumberedText, shareOutputLimits } from '@pi-code/extension/utilities/truncate';
 

@@ -41,7 +41,7 @@ const ElapsedTimer: FC<ElapsedTimerProps> = ({ startTs, isRunning, duration, rev
       )}
       aria-label={isRunning ? 'Elapsed loading time' : 'Time taken'}
     >
-      {isRunning && <Spinner className="text-vscode-focusBorder" />}
+      {isRunning && <Spinner />}
       {formatDuration(displaySeconds)}
     </span>
   );
@@ -114,7 +114,7 @@ const ToolSection: FC<ToolSectionProps> = memo(
               )}
             />
           ) : isRunning && !isWaiting ? (
-            <Spinner className="text-vscode-focusBorder" />
+            <Spinner />
           ) : isApproval || isWaiting ? (
             <span className="codicon codicon-clock text-vscode-descriptionForeground shrink-0" />
           ) : (

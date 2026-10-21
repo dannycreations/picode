@@ -16,7 +16,7 @@ import { HistoryPreview } from '@pi-code/webview/components/history/HistoryPrevi
 import { HistoryView } from '@pi-code/webview/components/history/HistoryView';
 import { useHistoryFilter } from '@pi-code/webview/components/history/hooks/useHistoryFilter';
 import { SettingsView } from '@pi-code/webview/components/setting/SettingsView';
-import { ConfirmDialog } from '@pi-code/webview/components/shared/ConfirmDialog';
+import { ConfirmDialog, DELETE_TASK_DESCRIPTION, DELETE_TASK_TITLE } from '@pi-code/webview/components/shared/ConfirmDialog';
 import { SEARCH_HIT_ACTIVE_CLASS } from '@pi-code/webview/components/shared/Highlight';
 import { Spinner } from '@pi-code/webview/components/shared/Spinner';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
@@ -461,9 +461,9 @@ export const ChatView: FC = () => {
           </div>
         ) : (
           <ChatHeader
+            title={displayedTask.title}
             label={isSubagentView ? 'Sub-agent' : 'Task'}
             closeTooltip={isSubagentView ? 'Close sub-agent session' : 'Close task'}
-            title={displayedTask.title}
             tokensIn={displayedTask.tokensIn}
             tokensOut={displayedTask.tokensOut}
             cacheWrites={displayedTask.cacheWrites}
@@ -536,7 +536,7 @@ export const ChatView: FC = () => {
           </div>
           {isCompacting && (
             <div className="px-3.5 py-2.5 flex items-center gap-2 text-xs text-vscode-foreground select-none">
-              <Spinner className="text-vscode-focusBorder" />
+              <Spinner />
               <span className="font-semibold">Compacting context...</span>
             </div>
           )}
@@ -614,8 +614,8 @@ export const ChatView: FC = () => {
       {/* Delete Modal */}
       <ConfirmDialog
         isOpen={showDeleteActiveConfirm}
-        title="Delete Task"
-        description="Are you sure you want to delete this task?"
+        title={DELETE_TASK_TITLE}
+        description={DELETE_TASK_DESCRIPTION}
         onConfirm={handleConfirmDelete}
         onCancel={handleCancelDelete}
       />

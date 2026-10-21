@@ -1,7 +1,7 @@
 import { commands, Disposable, ProgressLocation, window } from 'vscode';
 
 import { COMMIT_MESSAGE_PROMPT } from '@pi-code/extension/core/prompt';
-import { readCommitMessageModelSelection, readCommitMessageThinkingLevel } from '@pi-code/extension/core/settings';
+import { readModelSelection, readThinkingLevel } from '@pi-code/extension/core/settings';
 import { completeAndExtract } from '@pi-code/extension/structures/agent-runtime/helpers/complete';
 import { getGitChanges, getGitDiffContext } from '@pi-code/extension/structures/commit-message/git';
 import { getGitRepository } from '@pi-code/extension/utilities/git';
@@ -98,7 +98,13 @@ async function generateAndApply(
   logger.debug(`Fully assembled prompt (character length: ${prompt.length})`);
 
   const cwd = repo.rootUri.fsPath;
-  const cleanMessage = await completeAndExtract(cwd, prompt, signal, readCommitMessageModelSelection(), readCommitMessageThinkingLevel());
+  const cleanMessage = await completeAndExtract(
+    cwd,
+    prompt,
+    signal,
+    readModelSelection('commitMessageModel'),
+    readThinkingLevel('commitMessageThinkingLevel'),
+  );
   logger.debug(`Extracted commit message: ${cleanMessage}`);
   if (signal.aborted) {
     throw new Error('Commit message generation cancelled.');

@@ -1,18 +1,16 @@
 import { parse } from 'shell-quote';
 
-export type CommandTokenizer = (command: string) => unknown[];
-
 const SEPARATOR_OPS = ['&&', '||', ';', '|', '&'];
 
-function tokenize(command: string, tokenizer: CommandTokenizer): unknown[] {
+function tokenize(command: string): unknown[] {
   try {
-    return tokenizer(command);
+    return parse(command);
   } catch {
     throw new Error('Command could not be parsed into tokens.');
   }
 }
 
-function parseCommandLine(command: string, tokenizer: CommandTokenizer): string[] {
+function parseCommandLine(command: string): string[] {
   if (!command.trim()) return [];
 
   const subCommands: string[] = [];
@@ -24,7 +22,7 @@ function parseCommandLine(command: string, tokenizer: CommandTokenizer): string[
     }
   };
 
-  for (const token of tokenize(command, tokenizer)) {
+  for (const token of tokenize(command)) {
     if (typeof token === 'string') {
       current.push(token);
       continue;
@@ -53,6 +51,6 @@ function parseCommandLine(command: string, tokenizer: CommandTokenizer): string[
   return subCommands;
 }
 
-export function parseCommand(command: string, tokenizer: CommandTokenizer = parse): string[] {
-  return command.split(/\r?\n/).flatMap((line) => parseCommandLine(line, tokenizer));
+export function parseCommand(command: string): string[] {
+  return command.split(/\r?\n/).flatMap((line) => parseCommandLine(line));
 }

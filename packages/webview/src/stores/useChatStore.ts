@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import { DEFAULT_APP_ID } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
 import { findModel, HISTORY_SCOPES } from '@pi-code/shared/core/protocol';
-import { elapsedSeconds } from '@pi-code/shared/utilities/common';
+import { elapsedSeconds, resolveThinkingLevel } from '@pi-code/shared/utilities/common';
 import {
   appendAssistantDelta,
   appendOnce,
@@ -19,7 +19,6 @@ import {
   upsertToolRow,
 } from '@pi-code/webview/helpers/messages';
 import { findPendingQuestion } from '@pi-code/webview/helpers/questions';
-import { resolveThinkingLevel } from '@pi-code/webview/utilities/common';
 
 import type { RefObject } from 'react';
 import type { WebviewApi as InternalWebviewApi } from 'vscode-webview';

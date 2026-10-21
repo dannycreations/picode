@@ -2,7 +2,7 @@ import { relative, resolve } from 'node:path';
 import { contentText } from '@earendil-works/pi-ai';
 import { createAgentSessionFromServices, SessionManager } from '@earendil-works/pi-coding-agent';
 
-import { applySessionOverrides, readDelegationTaskModelSelection, readDelegationTaskThinkingLevel } from '@pi-code/extension/core/settings';
+import { applySessionOverrides, readModelSelection, readThinkingLevel } from '@pi-code/extension/core/settings';
 import { attachLiveSubagentSession, unregisterLiveSubagent } from '@pi-code/extension/structures/agent-runtime/brokers/subagent';
 import { registerSubagentSession } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
 import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
@@ -173,7 +173,7 @@ function collectUsage(session: AgentSession): SubagentUsage {
 }
 
 async function applyDelegationSettings(session: AgentSession, runtime: ModelRuntime, inherited: Model<Api> | undefined): Promise<void> {
-  const configured = readDelegationTaskModelSelection();
+  const configured = readModelSelection('delegationTaskModel');
   // Delegated runs can be pointed at their own model, which keeps a cheap model
   // off the main chat's budget. Without one the child inherits the caller's
   // model. A failure here is not fatal because the child falls back to the
@@ -185,7 +185,7 @@ async function applyDelegationSettings(session: AgentSession, runtime: ModelRunt
 
   // setModel resolves the persisted chat level, so a configured delegation level
   // is applied on top of it, once the model it belongs to is settled.
-  const level = readDelegationTaskThinkingLevel();
+  const level = readThinkingLevel('delegationTaskThinkingLevel');
   if (level && level !== 'off') {
     try {
       session.setThinkingLevel(level);
@@ -306,7 +306,6 @@ export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutco
         input.onEvent?.(event, session!);
       });
     } catch (err) {
-      unregisterLiveSubagent(input.toolCallId);
       session = undefined;
       throw err;
     }

@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 
 import { HistoryCard } from '@pi-code/webview/components/history/HistoryCard';
-import { ConfirmDialog } from '@pi-code/webview/components/shared/ConfirmDialog';
+import { ConfirmDialog, DELETE_TASK_DESCRIPTION, DELETE_TASK_TITLE } from '@pi-code/webview/components/shared/ConfirmDialog';
 
 import type { FC } from 'react';
 import type { HistoryItem } from '@pi-code/shared/core/protocol';
@@ -37,8 +37,8 @@ export const HistoryPreview: FC<HistoryPreviewProps> = ({ history, onSelectTask,
 
       <ConfirmDialog
         isOpen={deleteConfirmPath !== null}
-        title="Delete Task"
-        description="Are you sure you want to delete this task?"
+        title={DELETE_TASK_TITLE}
+        description={DELETE_TASK_DESCRIPTION}
         onConfirm={() => {
           if (deleteConfirmPath) {
             onDeleteTask(deleteConfirmPath);

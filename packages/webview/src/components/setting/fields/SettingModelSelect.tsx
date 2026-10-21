@@ -5,7 +5,7 @@ import { useRef, useState } from 'react';
 import { DropdownMenu, DropdownMenuItem } from '@pi-code/webview/components/shared/DropdownMenu';
 import { useClickOutside } from '@pi-code/webview/hooks/useClickOutside';
 
-import type { FC, ReactNode } from 'react';
+import type { FC } from 'react';
 import type { ModelThinkingLevel } from '@pi-code/shared/core/types';
 
 interface SelectOption {
@@ -17,11 +17,10 @@ interface SelectButtonProps {
   readonly value: string;
   readonly options: readonly SelectOption[];
   readonly onChange: (value: string) => void;
-  readonly icon?: ReactNode;
   readonly labelClassName?: string;
 }
 
-const SelectButton: FC<SelectButtonProps> = ({ value, options, onChange, icon, labelClassName }) => {
+const SelectButton: FC<SelectButtonProps> = ({ value, options, onChange, labelClassName }) => {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   useClickOutside(containerRef, () => setOpen(false));
@@ -35,7 +34,6 @@ const SelectButton: FC<SelectButtonProps> = ({ value, options, onChange, icon, l
         onClick={() => setOpen(!open)}
         className="h-7 w-full px-2 text-xs rounded border border-vscode-focusBorder bg-vscode-settings-textInputBackground text-vscode-settings-textInputForeground outline-none hover:ring-1 hover:ring-vscode-focusBorder focus:ring-1 focus:ring-vscode-focusBorder flex items-center justify-between cursor-pointer"
       >
-        {icon}
         <span className={cn('truncate', labelClassName)}>{selected?.label ?? ''}</span>
         <ChevronDown size={12} className="shrink-0 ml-1" />
       </button>

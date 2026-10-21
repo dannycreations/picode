@@ -43,13 +43,7 @@ export const AssistantMessage: FC<AssistantMessageProps> = ({ message, search })
       {hasReasoning && (
         <div className={cn('flex flex-col', hasText && 'mb-2')}>
           <MessageHeader
-            icon={
-              message.toolStatus === 'running' && !hasText ? (
-                <Spinner className="text-vscode-focusBorder" />
-              ) : (
-                <Lightbulb size={14} className="text-vscode-focusBorder shrink-0" />
-              )
-            }
+            icon={message.toolStatus === 'running' && !hasText ? <Spinner /> : <Lightbulb size={14} className="text-vscode-focusBorder shrink-0" />}
             title="Thinking"
             timestamp={message.timestamp}
             onClick={() => setIsReasoningExpanded(!isReasoningExpanded)}
@@ -67,13 +61,7 @@ export const AssistantMessage: FC<AssistantMessageProps> = ({ message, search })
       {hasText && (
         <div className="flex flex-col gap-1.5">
           <MessageHeader
-            icon={
-              message.toolStatus === 'running' ? (
-                <Spinner className="text-vscode-focusBorder" />
-              ) : (
-                <MessageCircle size={14} className="text-vscode-focusBorder shrink-0" />
-              )
-            }
+            icon={message.toolStatus === 'running' ? <Spinner /> : <MessageCircle size={14} className="text-vscode-focusBorder shrink-0" />}
             title="Answer"
             timestamp={message.timestamp}
           />

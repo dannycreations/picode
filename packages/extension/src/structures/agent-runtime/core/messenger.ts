@@ -91,9 +91,9 @@ export class Messenger {
 
     if (event.type === 'tool_execution_end') {
       buffer.toolUpdates.delete(event.payload.id);
+      // The flush inside send() drops a sub-agent buffer that has nothing
+      // left to coalesce.
       this.send(scope, event);
-      // A sub-agent that finished its last call has nothing left to coalesce.
-      if (scope !== MAIN_SCOPE && buffer.toolUpdates.size === 0) this.buffers.delete(scope);
       return;
     }
 
@@ -144,11 +144,6 @@ export class Messenger {
     if (this.flushTimer !== null) {
       clearTimeout(this.flushTimer);
       this.flushTimer = null;
-    }
-
-    if (this.isDisposed) {
-      this.buffers.clear();
-      return;
     }
 
     for (const [scope, buffer] of this.buffers) {

@@ -11,6 +11,10 @@ export function normalizeSeparators(path: string): string {
   return path.includes('\\') ? path.replace(/\\/g, '/') : path;
 }
 
+export function isWindowsAbsolutePath(path: string): boolean {
+  return /^[a-z]:\//i.test(path);
+}
+
 export function escapeRegExp(input: string): string {
   return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -81,7 +85,11 @@ export function findReplaceableFailedRequest(messages: readonly ChatMessage[]): 
   return chainStart;
 }
 
-export function defaultThinkingLevel(levels: readonly ModelThinkingLevel[]): ModelThinkingLevel | null {
+export function resolveThinkingLevel(
+  levels: readonly ModelThinkingLevel[],
+  preferred: ModelThinkingLevel | null | undefined,
+): ModelThinkingLevel | null {
+  if (preferred && levels.includes(preferred)) return preferred;
   if (levels.length === 0) return null;
   if (levels.includes('medium')) return 'medium';
   return levels.find((level) => level !== 'off') ?? levels[0];
@@ -195,7 +203,7 @@ export function relativeToWorkspace(path: string, root: string): string {
   const normRoot = normalizeSeparators(root).replace(/\/+$/, '');
   if (normRoot === '') return path;
 
-  const caseInsensitive = /^[a-zA-Z]:\//.test(normRoot);
+  const caseInsensitive = isWindowsAbsolutePath(normRoot);
   const rootWithSlash = `${normRoot}/`;
   const inside = caseInsensitive ? startsWithFold(normPath, rootWithSlash) : normPath.startsWith(rootWithSlash);
 

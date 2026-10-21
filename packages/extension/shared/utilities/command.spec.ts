@@ -33,9 +33,8 @@ describe('parseCommand', () => {
   });
 
   it('should throw when tokenization fails', () => {
-    const brokenTokenizer = () => {
-      throw new Error('boom');
-    };
-    expect(() => parseCommand('echo hi', brokenTokenizer)).toThrow('Command could not be parsed into tokens.');
+    // An empty parameter expansion is not valid shell, so the tokenizer
+    // refuses it and the caller has to fall back to asking the user.
+    expect(() => parseCommand('echo ${}')).toThrow('Command could not be parsed into tokens.');
   });
 });

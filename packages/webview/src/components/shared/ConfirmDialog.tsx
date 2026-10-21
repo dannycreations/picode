@@ -11,6 +11,9 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   readonly variant?: 'secondary' | 'danger';
 }
 
+export const DELETE_TASK_TITLE = 'Delete Task';
+export const DELETE_TASK_DESCRIPTION = 'Are you sure you want to delete this task?';
+
 interface ConfirmDialogProps {
   readonly isOpen: boolean;
   readonly title: string;

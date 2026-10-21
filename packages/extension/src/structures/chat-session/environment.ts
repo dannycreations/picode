@@ -3,7 +3,7 @@ import ignore from 'ignore';
 import { FileType, TabInputText, Uri, window, workspace } from 'vscode';
 
 import { readAppSettings } from '@pi-code/extension/core/settings';
-import { mapConcurrent } from '@pi-code/extension/utilities/common';
+import { mapConcurrent } from '@pi-code/extension/utilities/concurrency';
 import { excludeVcsEntries } from '@pi-code/extension/utilities/fs';
 import { getGitRepository, getIgnoredPaths } from '@pi-code/extension/utilities/git';
 import { toRelativePath, toWorkspaceRelativePath } from '@pi-code/extension/utilities/vscode';
@@ -113,7 +113,12 @@ export async function walkWorkspace(
       ? await getIgnoredPaths(
           repo,
           entries.map((entry) => entry.uri.fsPath),
-        ).catch(() => null)
+        ).catch((err) => {
+          // Without the ignore list the whole directory is listed, so the
+          // reason has to come from the log.
+          logger.warn('Failed to read the ignored paths; every file under this directory is listed:', err);
+          return null;
+        })
       : null;
 
     const nextNodes: UriNode[] = [];

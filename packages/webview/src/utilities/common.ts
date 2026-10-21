@@ -1,7 +1,3 @@
-import { defaultThinkingLevel } from '@pi-code/shared/utilities/common';
-
-import type { ModelThinkingLevel } from '@pi-code/shared/core/types';
-
 const TIME_AGO = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
 const TIME_DIVISIONS: Array<[Intl.RelativeTimeFormatUnit, number]> = [
   ['year', 60 * 60 * 24 * 365],
@@ -56,11 +52,4 @@ export function readFileAsDataUrl(file: File): Promise<string> {
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(file);
   });
-}
-
-export function resolveThinkingLevel(
-  levels: readonly ModelThinkingLevel[],
-  preferred: ModelThinkingLevel | null | undefined,
-): ModelThinkingLevel | null {
-  return preferred && levels.includes(preferred) ? preferred : defaultThinkingLevel(levels);
 }

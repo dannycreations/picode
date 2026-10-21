@@ -21,14 +21,10 @@ import type { SubagentOutcome, SubagentUsage } from '@pi-code/extension/structur
 import type { CustomToolResult } from '@pi-code/extension/types/extension';
 
 interface SubagentDetails {
-  readonly agent: string;
-  readonly description: string;
-  readonly steps: string;
-  readonly usage?: SubagentUsage;
+  readonly steps?: string;
   readonly subtitle?: string;
   readonly duration?: number;
   readonly cancelled?: boolean;
-  readonly tempFilePath?: string;
 }
 
 function formatUsage(usage: SubagentUsage): string {
@@ -41,13 +37,13 @@ function wrapReport(outcome: SubagentOutcome, body: readonly string[]): string {
   return [`## Sub-agent ${outcome.agent} (${state})`, '', ...body, '', formatUsage(outcome.usage)].join('\n');
 }
 
-async function renderOutcome(outcome: SubagentOutcome): Promise<{ text: string; tempFilePath?: string }> {
+async function renderOutcome(outcome: SubagentOutcome): Promise<string> {
   // The error body reports the failure and the steps taken, never the report
   // itself, so truncating it and spilling it to a temp file would produce a
   // path that nothing in the result points at.
   if (outcome.error !== undefined) {
     const body = [...(outcome.steps ? ['### Steps Taken', '', outcome.steps, ''] : []), '### Error', '', outcome.error];
-    return { text: wrapReport(outcome, body) };
+    return wrapReport(outcome, body);
   }
 
   const limits = readOutputLimits();
@@ -57,10 +53,9 @@ async function renderOutcome(outcome: SubagentOutcome): Promise<{ text: string; 
   const truncation = truncateOutput(outcome.text, { limits });
 
   let hint = baseHint;
-  let tempFilePath: string | undefined;
 
   if (truncation.truncated) {
-    tempFilePath = await spillToTempLog('subagent', outcome.text);
+    const tempFilePath = await spillToTempLog('subagent', outcome.text);
 
     const resolution = tempFilePath
       ? `Full output saved to: "${tempFilePath}". Read this file with \`read_file\` to inspect the rest.`
@@ -69,7 +64,7 @@ async function renderOutcome(outcome: SubagentOutcome): Promise<{ text: string; 
   }
 
   const text = renderTruncatedText(truncation, 'head', hint);
-  return { text: wrapReport(outcome, ['### Result', '', text]), tempFilePath };
+  return wrapReport(outcome, ['### Result', '', text]);
 }
 
 const SUBAGENT_NAMES = SUBAGENTS.map((agent) => agent.name);
@@ -84,16 +79,15 @@ export const spawnSubagentTool = defineTool({
     task: Type.String({ description: 'The complete brief for the sub-agent, including the goal, relevant paths, and what to report back.' }),
   }),
   async execute(toolCallId, params, signal, onUpdate, ctx): Promise<CustomToolResult<SubagentDetails>> {
-    const failure = (text: string, agentName: string): CustomToolResult<SubagentDetails> =>
-      toolError(text, { agent: agentName, description: params.description, steps: '' });
+    const failure = (text: string): CustomToolResult<SubagentDetails> => toolError<SubagentDetails>(text);
 
     const agent = SUBAGENTS.find((agent) => agent.name === params.agent);
     if (!agent) {
-      return failure(`Error: unknown sub-agent "${params.agent}". Available sub-agents: ${SUBAGENT_NAMES.join(', ')}.`, params.agent);
+      return failure(`Error: unknown sub-agent "${params.agent}". Available sub-agents: ${SUBAGENT_NAMES.join(', ')}.`);
     }
 
     if (!params.task.trim()) {
-      return failure('Error: `task` is required and cannot be empty.', agent.name);
+      return failure('Error: `task` is required and cannot be empty.');
     }
 
     const abort = createToolAbort(toolCallId, signal);
@@ -114,7 +108,7 @@ export const spawnSubagentTool = defineTool({
           ? (steps) =>
               onUpdate({
                 content: [{ type: 'text', text: `Running the ${agent.name} sub-agent...\n\n${steps}` }],
-                details: { agent: agent.name, description: params.description, steps },
+                details: { steps },
               })
           : undefined,
         onEvent: (event, subagentSession) => {
@@ -135,22 +129,17 @@ export const spawnSubagentTool = defineTool({
       // judge how far the sub-agent got. `spawnSubagent` pairs an empty report
       // with an error on every path, so the error alone decides it.
       const failed = outcome.error !== undefined;
-      const { text: report, tempFilePath } = await renderOutcome(outcome);
+      const report = await renderOutcome(outcome);
 
       const details: SubagentDetails = {
-        agent: outcome.agent,
-        description: params.description,
-        steps: outcome.steps,
-        usage: outcome.usage,
         subtitle: formatUsage(outcome.usage),
         duration: outcome.duration,
         cancelled: abort.cancelled || undefined,
-        tempFilePath,
       };
 
       return failed ? toolError(report, details) : toolResult(report, details);
     } catch (err) {
-      return failure(`Error running the ${agent.name} sub-agent: ${formatThrownValue(err)}`, agent.name);
+      return failure(`Error running the ${agent.name} sub-agent: ${formatThrownValue(err)}`);
     } finally {
       abort.dispose();
     }

@@ -4,12 +4,11 @@ export function createRequestRegistry<T>() {
     register(id: string, settle: (value: T) => void): void {
       pending.set(id, settle);
     },
-    resolve(id: string, value: T): boolean {
+    resolve(id: string, value: T): void {
       const settle = pending.get(id);
-      if (!settle) return false;
+      if (!settle) return;
       pending.delete(id);
       settle(value);
-      return true;
     },
     cancelAll(value: T): void {
       const settlers = [...pending.values()];

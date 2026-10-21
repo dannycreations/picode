@@ -1,14 +1,7 @@
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES } from '@earendil-works/pi-coding-agent';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  invalidateAppSettings,
-  readCommitMessageModelSelection,
-  readCommitMessageThinkingLevel,
-  readDelegationTaskModelSelection,
-  readDelegationTaskThinkingLevel,
-  readOutputLimits,
-} from '@pi-code/extension/core/settings';
+import { invalidateAppSettings, readModelSelection, readOutputLimits, readThinkingLevel } from '@pi-code/extension/core/settings';
 import { getSettingSpec, SETTING_KEYS } from '@pi-code/shared/core/settings';
 import manifest from '../../package.json' with { type: 'json' };
 import { buildManifestSettings } from '../../scripts/settings';
@@ -55,23 +48,23 @@ describe('model and thinking level settings', () => {
   it('splits a configured model into provider and id', () => {
     Object.assign(configValues, { delegationTaskModel: 'openrouter/anthropic/claude-sonnet-4' });
 
-    expect(readDelegationTaskModelSelection()).toEqual({ provider: 'openrouter', id: 'anthropic/claude-sonnet-4' });
+    expect(readModelSelection('delegationTaskModel')).toEqual({ provider: 'openrouter', id: 'anthropic/claude-sonnet-4' });
   });
 
   it('reports nothing for an unset or unusable value', () => {
     Object.assign(configValues, { delegationTaskModel: 'anthropic', commitMessageThinkingLevel: 'maximum' });
 
-    expect(readDelegationTaskModelSelection()).toBeUndefined();
-    expect(readCommitMessageThinkingLevel()).toBeUndefined();
-    expect(readCommitMessageModelSelection()).toBeUndefined();
-    expect(readDelegationTaskThinkingLevel()).toBeUndefined();
+    expect(readModelSelection('delegationTaskModel')).toBeUndefined();
+    expect(readThinkingLevel('commitMessageThinkingLevel')).toBeUndefined();
+    expect(readModelSelection('commitMessageModel')).toBeUndefined();
+    expect(readThinkingLevel('delegationTaskThinkingLevel')).toBeUndefined();
   });
 
   it('keeps a stored thinking level the agent understands', () => {
     Object.assign(configValues, { commitMessageThinkingLevel: 'high', delegationTaskThinkingLevel: 'off' });
 
-    expect(readCommitMessageThinkingLevel()).toBe('high');
-    expect(readDelegationTaskThinkingLevel()).toBe('off');
+    expect(readThinkingLevel('commitMessageThinkingLevel')).toBe('high');
+    expect(readThinkingLevel('delegationTaskThinkingLevel')).toBe('off');
   });
 });
 

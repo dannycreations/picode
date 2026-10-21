@@ -285,10 +285,8 @@ describe('resolveCommandAction', () => {
   });
 
   it('should defer to the user instead of approving a command whose tokenization fails', () => {
-    const brokenTokenizer = () => {
-      throw new Error('boom');
-    };
-    expect(resolveCommandAction('echo hi', true, [], [], brokenTokenizer)).toBe('confirm');
+    // An empty parameter expansion is not valid shell, so tokenizing it fails.
+    expect(resolveCommandAction('echo ${}', true, [], [])).toBe('confirm');
   });
 });
 

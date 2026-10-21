@@ -1,6 +1,7 @@
 import { Cog, Database, ShieldCheck, Sparkles } from 'lucide-react';
 
 import { getSettingSpec } from '@pi-code/shared/core/settings';
+import { containsIgnoreCase } from '@pi-code/shared/utilities/common';
 
 import type { SettingKey } from '@pi-code/shared/core/settings';
 import type { SettingFieldRegistry, SettingsTab, SettingsTabId } from '@pi-code/webview/components/setting/core/types';
@@ -90,13 +91,13 @@ export function getChildFieldKeys(parent: SettingKey): readonly SettingKey[] {
 }
 
 export function matchesQuery(key: SettingKey, query: string): boolean {
-  const q = query.toLowerCase().trim();
+  const q = query.trim();
   if (!q) return true;
 
   const field = SETTING_FIELDS[key];
   const spec = getSettingSpec(key);
 
-  return key.toLowerCase().includes(q) || field.label.toLowerCase().includes(q) || spec.description.toLowerCase().includes(q);
+  return containsIgnoreCase(key, q) || containsIgnoreCase(field.label, q) || containsIgnoreCase(spec.description, q);
 }
 
 export function isFieldVisible(key: SettingKey, query: string, parentMatched = false): boolean {

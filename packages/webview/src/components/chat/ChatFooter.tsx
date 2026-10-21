@@ -2,6 +2,7 @@ import { ChevronDown, ImageIcon, Sparkles } from 'lucide-react';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 
 import { findModel, formatModelSelection, isSameModel } from '@pi-code/shared/core/protocol';
+import { containsIgnoreCase } from '@pi-code/shared/utilities/common';
 import { DropdownMenu, DropdownMenuItem } from '@pi-code/webview/components/shared/DropdownMenu';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { useClickOutside } from '@pi-code/webview/hooks/useClickOutside';
@@ -27,9 +28,7 @@ interface ModelDropdownMenuProps {
 
 const ModelDropdownMenu: FC<ModelDropdownMenuProps> = ({ models, currentModel, onSelectModel }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const filteredModels = models.filter(
-    (m) => m.name.toLowerCase().includes(searchQuery.toLowerCase()) || m.id.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
+  const filteredModels = models.filter((m) => containsIgnoreCase(m.name, searchQuery) || containsIgnoreCase(m.id, searchQuery));
   const selectedItemRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 

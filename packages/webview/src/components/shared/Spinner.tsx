@@ -1,18 +1,12 @@
-import { cn } from 'cn';
-
 import type { FC } from 'react';
 
 const SPINNER_STYLE = { fontSize: 14, width: 14, height: 14 };
 
-interface SpinnerProps {
-  readonly className?: string;
-}
-
-export const Spinner: FC<SpinnerProps> = ({ className }) => (
+export const Spinner: FC = () => (
   <span
     role="status"
     aria-label="Working"
-    className={cn('codicon codicon-loading codicon-modifier-spin shrink-0', className)}
+    className="codicon codicon-loading codicon-modifier-spin shrink-0 text-vscode-focusBorder"
     style={SPINNER_STYLE}
   />
 );

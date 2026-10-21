@@ -31,8 +31,8 @@ export function askQuestion(questionId: string, signal?: AbortSignal): Promise<Q
   });
 }
 
-export function answerQuestion(questionId: string, text: string, attachments?: readonly Attachment[]): boolean {
-  return questions.resolve(questionId, { text, attachments });
+export function answerQuestion(questionId: string, text: string, attachments?: readonly Attachment[]): void {
+  questions.resolve(questionId, { text, attachments });
 }
 
 export function cancelAllQuestions(): void {

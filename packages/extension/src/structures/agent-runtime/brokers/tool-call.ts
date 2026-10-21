@@ -26,7 +26,7 @@ interface ToolAbortState {
 
 const toolAbortByCallId = new Map<string, ToolAbortState>();
 
-export interface ToolAbort {
+interface ToolAbort {
   readonly signal: AbortSignal;
   readonly cancelled: boolean;
   readonly dispose: () => void;

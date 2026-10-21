@@ -6,7 +6,7 @@ import { HistoryFilter } from '@pi-code/webview/components/history/HistoryFilter
 import { HistoryPagination } from '@pi-code/webview/components/history/HistoryPagination';
 import { HistorySelection } from '@pi-code/webview/components/history/HistorySelection';
 import { Accordion } from '@pi-code/webview/components/shared/Accordion';
-import { ConfirmDialog } from '@pi-code/webview/components/shared/ConfirmDialog';
+import { ConfirmDialog, DELETE_TASK_DESCRIPTION, DELETE_TASK_TITLE } from '@pi-code/webview/components/shared/ConfirmDialog';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 
 import type { Dispatch, FC, SetStateAction } from 'react';
@@ -153,11 +153,11 @@ export const HistoryView: FC<HistoryViewProps> = ({
       {/* Confirmation Dialog */}
       <ConfirmDialog
         isOpen={deleteConfirmPaths !== null}
-        title={deleteConfirmPaths && deleteConfirmPaths.length > 1 ? 'Delete Tasks' : 'Delete Task'}
+        title={deleteConfirmPaths && deleteConfirmPaths.length > 1 ? 'Delete Tasks' : DELETE_TASK_TITLE}
         description={
           deleteConfirmPaths && deleteConfirmPaths.length > 1
             ? `Are you sure you want to delete ${deleteConfirmPaths.length} selected tasks?`
-            : 'Are you sure you want to delete this task?'
+            : DELETE_TASK_DESCRIPTION
         }
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeleteConfirmPaths(null)}

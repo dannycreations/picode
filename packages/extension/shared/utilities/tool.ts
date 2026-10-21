@@ -131,6 +131,11 @@ function toolMeta(toolName?: string): ToolMeta {
   return meta ?? DEFAULT_TOOL_META;
 }
 
+export function getToolCommand(message: ToolChatMessage): string | undefined {
+  const args = message.toolArgs;
+  return args && 'command' in args && typeof args.command === 'string' ? args.command : undefined;
+}
+
 export function getToolFilePaths(message: ToolChatMessage): readonly string[] {
   const resultPaths = (message.files ?? []).map((file) => file.path);
   if (resultPaths.length > 0) return resultPaths;
@@ -144,8 +149,7 @@ export function getToolFilePaths(message: ToolChatMessage): readonly string[] {
 }
 
 function commandSection(message: ToolChatMessage): ToolSection[] {
-  const args = message.toolArgs;
-  const command = args && 'command' in args && typeof args.command === 'string' ? args.command : undefined;
+  const command = getToolCommand(message);
 
   if (command === undefined && message.diff === undefined) return [];
 

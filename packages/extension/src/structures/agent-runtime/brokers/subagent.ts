@@ -12,7 +12,6 @@ export interface LiveSubagent {
 }
 
 interface LiveSubagentEntry extends LiveSubagent {
-  sessionId: string | undefined;
   attach: (session: AgentSession) => void;
 }
 
@@ -44,14 +43,13 @@ export function registerLiveSubagent(name: string, toolCallId: string, task: str
   const ready = new Promise<AgentSession>((resolve) => {
     attach = resolve;
   });
-  liveSubagents.set(toolCallId, { name, toolCallId, task, session: null, sessionId: undefined, ready, attach });
+  liveSubagents.set(toolCallId, { name, toolCallId, task, session: null, ready, attach });
 }
 
 export function attachLiveSubagentSession(toolCallId: string, session: AgentSession): void {
   const entry = liveSubagents.get(toolCallId);
   if (!entry) return;
   entry.session = session;
-  entry.sessionId = session.sessionId;
   entry.attach(session);
   notifySessionsChanged();
 }
@@ -61,7 +59,7 @@ export function getLiveSubagent(toolCallId: string): LiveSubagent | undefined {
 }
 
 function disposeEntry(entry: LiveSubagentEntry): void {
-  if (entry.sessionId) unregisterSubagentSession(entry.sessionId);
+  if (entry.session) unregisterSubagentSession(entry.session.sessionId);
   try {
     entry.session?.dispose();
   } catch (err) {
