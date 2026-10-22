@@ -200,6 +200,30 @@ describe('startApiRequest', () => {
 
     expect(startApiRequest(messages, 'req-1', 5)).toBe(messages);
   });
+
+  it('places the request row ahead of a queued reply', () => {
+    // The reply waits at the bottom of the transcript, so the request of the
+    // turn it triggers lands above it.
+    const messages = [
+      createMessage({ id: 'a1', sender: 'assistant', text: '', toolStatus: 'running' }),
+      createMessage({ id: 'q1', sender: 'queue', text: 'stand by' }),
+    ];
+
+    const result = startApiRequest(messages, 'req-1', 5);
+
+    expect(result.map((m) => m.id)).toEqual(['a1', 'req-1', 'q1']);
+  });
+
+  it('keeps a queued reply when the retry takes over the failed request row', () => {
+    const messages = [
+      createMessage({ id: 'req-0', sender: 'api_request', toolStatus: 'denied' }),
+      createMessage({ id: 'q1', sender: 'queue', text: 'stand by' }),
+    ];
+
+    const result = startApiRequest(messages, 'req-1', 5);
+
+    expect(result.map((m) => m.id)).toEqual(['req-1', 'q1']);
+  });
 });
 
 describe('resolveApproval', () => {

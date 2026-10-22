@@ -10,6 +10,8 @@ import {
   appendOnce,
   deliverQueuedReplies,
   ignoreUnknownSubagent,
+  insertIndexAboveQueue,
+  insertRow,
   patchLastAssistant,
   patchReplyQueue,
   patchRetryDeadline,
@@ -35,7 +37,7 @@ import type {
   WorkspaceFolderItem,
 } from '@pi-code/shared/core/protocol';
 import type { AppSettings } from '@pi-code/shared/core/settings';
-import type { ActiveTaskState, Attachment, ModelThinkingLevel, ToolChatMessage } from '@pi-code/shared/core/types';
+import type { ActiveTaskState, AssistantChatMessage, Attachment, ModelThinkingLevel, ToolChatMessage } from '@pi-code/shared/core/types';
 
 interface WebviewApi extends Omit<InternalWebviewApi<unknown>, 'postMessage'> {
   postMessage(message: WebviewToExtensionMessage): void;
@@ -186,16 +188,13 @@ export const useChatStore = create<ChatState>((set, get) => {
             // joins the transcript as its own row. A payload without an entry
             // (a cancelled run) only refreshes the header.
             messages: compactionEntry
-              ? [
-                  ...task.messages,
-                  {
-                    id: compactionEntry.id,
-                    sender: 'compaction' as const,
-                    text: compactionEntry.summary,
-                    cost: compactionEntry.usage?.cost?.total,
-                    timestamp: Date.now(),
-                  },
-                ]
+              ? insertRow(task.messages, {
+                  id: compactionEntry.id,
+                  sender: 'compaction' as const,
+                  text: compactionEntry.summary,
+                  cost: compactionEntry.usage?.cost?.total,
+                  timestamp: Date.now(),
+                })
               : task.messages,
           })),
         };
@@ -217,13 +216,13 @@ export const useChatStore = create<ChatState>((set, get) => {
     message_start: (msg, scope) => {
       const { timestamp } = msg.payload;
       set((state) =>
-        patchTask(state, scope, (task) => ({
-          ...task,
-          messages: [
-            ...settlePendingTurns(task.messages),
-            { id: `assistant-${timestamp}`, sender: 'assistant', text: '', timestamp, toolStatus: 'running' },
-          ],
-        })),
+        patchTask(state, scope, (task) => {
+          const settled = settlePendingTurns(task.messages);
+          const row: AssistantChatMessage = { id: `assistant-${timestamp}`, sender: 'assistant', text: '', timestamp, toolStatus: 'running' };
+          // The queued replies wait at the bottom of the transcript, so the
+          // turn's own row lands ahead of them.
+          return { ...task, messages: insertRow(settled, row) };
+        }),
       );
     },
     api_request_start: (msg, scope) => {
@@ -359,16 +358,25 @@ export const useChatStore = create<ChatState>((set, get) => {
       const { message } = msg.payload;
       set((state) => ({
         ...patchRunning(state, scope, false),
-        ...patchTask(state, scope, (task) => ({
-          ...task,
-          messages: appendOnce(settlePendingTurns(task.messages, { error: message }), {
-            id: crypto.randomUUID(),
-            sender: 'error',
-            text: message,
-            errorMessage: message,
-            timestamp: Date.now(),
-          }),
-        })),
+        ...patchTask(state, scope, (task) => {
+          const settled = settlePendingTurns(task.messages, { error: message });
+          return {
+            ...task,
+            // The notice belongs to the turn that failed, so it lands ahead of
+            // the replies that are still queued.
+            messages: appendOnce(
+              settled,
+              {
+                id: crypto.randomUUID(),
+                sender: 'error',
+                text: message,
+                errorMessage: message,
+                timestamp: Date.now(),
+              },
+              insertIndexAboveQueue(settled),
+            ),
+          };
+        }),
       }));
     },
     agent_settled: (msg, scope) => {

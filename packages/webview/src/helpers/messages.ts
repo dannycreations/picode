@@ -6,6 +6,17 @@ import type { TodoItem } from '@pi-code/shared/utilities/todo';
 
 const COMMAND_OUTPUT_PREVIEW_LIMIT = 100_000;
 
+export function insertIndexAboveQueue(messages: readonly ChatMessage[]): number {
+  const index = messages.findIndex((message) => message.sender === 'queue');
+  return index === -1 ? messages.length : index;
+}
+
+export function insertRow(messages: readonly ChatMessage[], row: ChatMessage): ChatMessage[] {
+  const next = messages.slice();
+  next.splice(insertIndexAboveQueue(messages), 0, row);
+  return next;
+}
+
 export function appendCommandOutput(current: string | undefined, chunk: string): string {
   const combined = (current ?? '') + chunk;
   return combined.length > COMMAND_OUTPUT_PREVIEW_LIMIT ? combined.slice(-COMMAND_OUTPUT_PREVIEW_LIMIT) : combined;
@@ -240,7 +251,13 @@ export function startApiRequest(messages: ChatMessage[], id: string, timestamp: 
   // end of the transcript.
   const retryIndex = findReplaceableFailedRequest(messages);
 
-  const limit = retryIndex !== undefined ? retryIndex : messages.length;
+  // The request row lands ahead of the queued replies, which wait at the
+  // bottom of the transcript.
+  const queueIndex = insertIndexAboveQueue(messages);
+
+  // A retry drops the failed run it replaces. The replies waiting below it are
+  // still queued, so they stay.
+  const limit = retryIndex !== undefined ? Math.min(retryIndex, queueIndex) : queueIndex;
   const next: ChatMessage[] = [];
   for (let index = 0; index < limit; index++) {
     const message = messages[index];
@@ -264,6 +281,11 @@ export function startApiRequest(messages: ChatMessage[], id: string, timestamp: 
   }
 
   next.push({ id, sender: 'api_request', text: 'API Request', timestamp, toolStatus: 'running' });
+
+  // The queued replies keep their place at the bottom of the transcript.
+  for (let index = Math.max(limit, queueIndex); index < messages.length; index++) {
+    next.push(messages[index]);
+  }
   return next;
 }
 
@@ -309,15 +331,10 @@ export function appendAssistantDelta(messages: ChatMessage[], text: string | und
 }
 
 export function upsertToolRow(messages: ChatMessage[], id: string, patch: Partial<ToolChatMessage>): ChatMessage[] {
-  let existingIndex = -1;
-  let queueIndex = -1;
-  for (let index = 0; index < messages.length; index++) {
-    const message = messages[index];
-    if (existingIndex === -1 && message.id === id) existingIndex = index;
-    if (queueIndex === -1 && message.sender === 'queue') queueIndex = index;
-    // Both places are known, so the rest of the transcript needs no reading.
-    if (existingIndex !== -1 && queueIndex !== -1) break;
-  }
+  const existingIndex = messages.findIndex((message) => message.id === id);
+  // A new tool row lands ahead of the queued replies, so the reply the user
+  // typed while the tool ran still shows below it.
+  const queueIndex = insertIndexAboveQueue(messages);
 
   const createRow = (): ChatMessage => {
     const row: ToolChatMessage = { id, sender: 'tool', text: '', timestamp: Date.now(), ...patch };
@@ -325,15 +342,13 @@ export function upsertToolRow(messages: ChatMessage[], id: string, patch: Partia
   };
 
   const next = messages.slice();
-  // A new tool row lands ahead of the queued replies, so the reply the user
-  // typed while the tool ran still shows below it.
   const inserted = existingIndex === -1;
   if (inserted) {
-    next.splice(queueIndex === -1 ? messages.length : queueIndex, 0, createRow());
+    next.splice(queueIndex, 0, createRow());
   }
 
   // The inserted row pushed the rows from its place onwards one place along.
-  const shifted = inserted && queueIndex !== -1;
+  const shifted = inserted && queueIndex < messages.length;
   for (let index = 0; index < messages.length; index++) {
     const message = messages[index];
 
@@ -433,19 +448,19 @@ function noticeKey(message: ChatMessage): string {
   return errorNotice ?? message.text;
 }
 
-export function appendOnce(messages: ChatMessage[], message: ChatMessage): ChatMessage[] {
-  for (let index = 0; index < messages.length; index++) {
-    if (messages[index].id === message.id) return messages;
+export function appendOnce(messages: ChatMessage[], message: ChatMessage, index: number = messages.length): ChatMessage[] {
+  for (let position = 0; position < messages.length; position++) {
+    if (messages[position].id === message.id) return messages;
   }
 
   // Consecutive identical notices are collapsed into the first one.
-  const last = messages[messages.length - 1];
-  if (last?.sender === message.sender && noticeKey(last) === noticeKey(message)) {
+  const previous = messages[index - 1];
+  if (previous?.sender === message.sender && noticeKey(previous) === noticeKey(message)) {
     return messages;
   }
 
   const next = messages.slice();
-  next.push(message);
+  next.splice(index, 0, message);
   return next;
 }
 

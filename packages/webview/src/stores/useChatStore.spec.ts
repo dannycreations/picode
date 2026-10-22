@@ -238,6 +238,55 @@ describe('api request failure', () => {
   });
 });
 
+describe('queued reply', () => {
+  const queued = [{ id: 'q1', sender: 'queue' as const, text: 'stand by', timestamp: 1 }];
+
+  beforeEach(() => {
+    apply([{ type: 'session_loaded', payload: { id: 'task-1', title: 'Task', messages: [], path: '/tmp/task.json', ...stats(0) } }]);
+  });
+
+  it('keeps the reply below the rows of the turn it interrupted', () => {
+    // The reply was queued while the turn was still running, so the rows that
+    // turn produced afterwards belong above it.
+    apply([
+      { type: 'reply_queue_data', payload: { queue: queued } },
+      { type: 'api_request_start', payload: { id: 'req-1', timestamp: 2 } },
+      { type: 'message_start', payload: { timestamp: 3 } },
+    ]);
+
+    const messages = useChatStore.getState().activeTask?.messages ?? [];
+    expect(messages.map((m) => m.id)).toEqual(['req-1', 'assistant-3', 'q1']);
+  });
+
+  it('shows the delivered reply, its request and its answer in that order', () => {
+    apply([
+      { type: 'reply_queue_data', payload: { queue: queued } },
+      { type: 'reply_queue_delivered', payload: { messages: [{ id: 'q1', sender: 'user', text: 'stand by', timestamp: 1 }] } },
+      { type: 'api_request_start', payload: { id: 'req-1', timestamp: 2 } },
+      { type: 'message_start', payload: { timestamp: 3 } },
+    ]);
+
+    const messages = useChatStore.getState().activeTask?.messages ?? [];
+    expect(messages.map((m) => m.id)).toEqual(['q1', 'req-1', 'assistant-3']);
+  });
+
+  it('reads as reply, request and answer once the interrupted turn has ended', () => {
+    // The reply was queued while a turn was running, so the turn that
+    // interrupted it keeps its own rows above the reply.
+    apply([
+      { type: 'api_request_start', payload: { id: 'req-0', timestamp: 1 } },
+      { type: 'message_start', payload: { timestamp: 2 } },
+      { type: 'reply_queue_data', payload: { queue: queued } },
+      { type: 'reply_queue_delivered', payload: { messages: [{ id: 'q1', sender: 'user', text: 'stand by', timestamp: 1 }] } },
+      { type: 'api_request_start', payload: { id: 'req-1', timestamp: 3 } },
+      { type: 'message_start', payload: { timestamp: 4 } },
+    ]);
+
+    const messages = useChatStore.getState().activeTask?.messages ?? [];
+    expect(messages.map((m) => m.id)).toEqual(['req-0', 'assistant-2', 'q1', 'req-1', 'assistant-4']);
+  });
+});
+
 describe('model catalog refresh', () => {
   // init_data requires a full settings snapshot; the defaults keep it irrelevant here.
   const settings = defaultSettings();

@@ -58,6 +58,9 @@ export function findReplaceableFailedRequest(messages: readonly ChatMessage[]): 
   let chainStart: number | undefined;
   for (let index = messages.length - 1; index >= 0; index--) {
     const message = messages[index];
+    // A queued reply waits at the bottom of the transcript and belongs to no
+    // turn, so it does not end the chain of failed attempts.
+    if (message.sender === 'queue') continue;
     if (message.sender === 'assistant' && !hasVisibleOutput(message)) continue;
     if (message.sender === 'api_request' && message.toolStatus === 'denied') {
       chainStart = index;
