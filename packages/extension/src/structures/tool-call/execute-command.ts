@@ -191,26 +191,23 @@ export const executeCommandTool = defineTool({
         });
       };
 
-      const flushStream = () => {
-        if (streamTimer !== null) {
-          clearTimeout(streamTimer);
-          streamTimer = null;
-        }
-        if (!streamDirty || !onUpdate) return;
-        streamDirty = false;
-
-        const delta = takeDelta();
-        if (delta === undefined) return;
-        sendDelta(delta);
-      };
-
       // Everything that is still waiting goes out, even when nothing arrived
       // since the last flush, so no part of the output is left behind.
-      const drainStream = () => {
+      const drainStream = (): void => {
         if (!onUpdate) return;
         for (let delta = takeDelta(); delta !== undefined; delta = takeDelta()) {
           sendDelta(delta);
         }
+      };
+
+      const flushStream = (): void => {
+        if (streamTimer !== null) {
+          clearTimeout(streamTimer);
+          streamTimer = null;
+        }
+        if (!streamDirty) return;
+        streamDirty = false;
+        drainStream();
       };
 
       const scheduleStream = () => {
@@ -218,32 +215,24 @@ export const executeCommandTool = defineTool({
         streamTimer = setTimeout(flushStream, STREAM_FLUSH_MS);
       };
 
-      const streamUpdate = (text: string) => {
-        if (!text) return;
+      const streamUpdate = (text: string): void => {
+        // Without a listener there is nothing to stream, so the output is not
+        // buffered at all.
+        if (!text || !onUpdate) return;
 
         const cleaned = stripAnsiAndNormalize(text);
         pendingChunks.push(cleaned);
         pendingLength += cleaned.length;
 
         if (pendingLength > retainedBytes) {
-          // The tail is what the user still needs; the older output is already
-          // in the model's copy of the command output.
-          let excess = pendingLength - retainedBytes;
-          while (excess > 0 && pendingStart < pendingChunks.length) {
-            const head = pendingChunks[pendingStart];
-            if (head.length <= excess) {
-              pendingStart++;
-              pendingLength -= head.length;
-              excess -= head.length;
-            } else {
-              pendingChunks[pendingStart] = head.slice(excess);
-              pendingLength -= excess;
-              excess = 0;
-            }
-          }
-          // The chunks that fell out of the window are dropped once they are
-          // the larger half of the list.
-          pendingStart = compactChunks(pendingChunks, pendingStart);
+          // A command that outruns the flush would grow this buffer without
+          // bound, so what is pending goes out right away. Dropping it
+          // instead would leave a hole in the preview: the output that
+          // already went out is older than what is dropped, so the preview
+          // would skip a part of the command's output.
+          streamDirty = false;
+          drainStream();
+          return;
         }
 
         streamDirty = true;

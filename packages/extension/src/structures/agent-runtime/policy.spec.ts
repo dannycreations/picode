@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createPolicyExtension } from '@pi-code/extension/structures/agent-runtime/policy';
-import { coerceSetting, SETTING_KEYS } from '@pi-code/shared/core/settings';
+import { defaultSettings } from '@pi-code/shared/core/settings';
 
 import type { AppSettings } from '@pi-code/shared/core/settings';
 
@@ -26,8 +26,7 @@ vi.mock('@pi-code/extension/structures/agent-runtime/brokers/subagent', async (i
   getSubagentSession: mocks.getSubagentSession,
 }));
 
-// Defaults materialized the same way readAppSettings builds them.
-const DEFAULT_SETTINGS = Object.fromEntries(SETTING_KEYS.map((key) => [key, coerceSetting(key, undefined)])) as AppSettings;
+const DEFAULT_SETTINGS = defaultSettings();
 
 // Replaced wholesale by each scenario; never mutated in place.
 let activeSettings: AppSettings;

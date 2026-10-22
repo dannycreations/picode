@@ -1,10 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { coerceSetting, SETTING_KEYS } from '@pi-code/shared/core/settings';
+import { defaultSettings } from '@pi-code/shared/core/settings';
 import { selectThinkingLevel, setComposerTextarea, useChatStore } from '@pi-code/webview/stores/useChatStore';
 
 import type { ExtensionToWebviewMessage, ModelItem, ModelSelection } from '@pi-code/shared/core/protocol';
-import type { AppSettings } from '@pi-code/shared/core/settings';
 import type { ChatMessage, StatsData } from '@pi-code/shared/core/types';
 
 const stats = (contextTokens: number): StatsData => ({
@@ -241,7 +240,7 @@ describe('api request failure', () => {
 
 describe('model catalog refresh', () => {
   // init_data requires a full settings snapshot; the defaults keep it irrelevant here.
-  const settings = Object.fromEntries(SETTING_KEYS.map((key) => [key, coerceSetting(key, undefined)])) as AppSettings;
+  const settings = defaultSettings();
   const initData = (models: ModelItem[], defaultModel?: ModelSelection): ExtensionToWebviewMessage => ({
     type: 'init_data',
     payload: { models, default_model: defaultModel, settings, commands: [] },

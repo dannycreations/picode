@@ -1,7 +1,7 @@
 import { act, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { coerceSetting, SETTING_KEYS } from '@pi-code/shared/core/settings';
+import { defaultSettings } from '@pi-code/shared/core/settings';
 import { ToolMessage } from '@pi-code/webview/components/chat/messages/ToolMessage';
 import { useChatStore } from '@pi-code/webview/stores/useChatStore';
 
@@ -70,8 +70,7 @@ const writeMessage: ToolChatMessage = {
 // The settings snapshot the store holds is complete, so a test starts from the
 // schema defaults and overrides only the lists it cares about.
 function settingsWith(allowed: string[], denied: string[]): AppSettings {
-  const defaults = Object.fromEntries(SETTING_KEYS.map((key) => [key, coerceSetting(key, undefined)])) as AppSettings;
-  return { ...defaults, allowedWritePaths: allowed, deniedWritePaths: denied };
+  return { ...defaultSettings(), allowedWritePaths: allowed, deniedWritePaths: denied };
 }
 
 describe('ToolMessage auto-approval patterns', () => {

@@ -330,3 +330,7 @@ export function coerceSettings(values: Partial<Record<string, unknown>>): Partia
   }
   return result as Partial<AppSettings>;
 }
+
+export function defaultSettings(): AppSettings {
+  return Object.fromEntries(SETTING_KEYS.map((key) => [key, coerceSetting(key, undefined)])) as AppSettings;
+}

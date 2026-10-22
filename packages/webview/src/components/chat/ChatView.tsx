@@ -376,13 +376,13 @@ export const ChatView: FC = () => {
       scrollToBottom();
       // A question the task is waiting on owns the composer, whichever
       // session happens to be on screen.
-      if (isSubagentView && !findPendingQuestion(useChatStore.getState().activeTask?.messages ?? [])) {
+      if (isSubagentView && !pendingQuestion) {
         handleSendSubagentPrompt(text, attachments);
         return;
       }
       handleSendPrompt(text, attachments);
     },
-    [scrollToBottom, isSubagentView, handleSendPrompt, handleSendSubagentPrompt],
+    [scrollToBottom, isSubagentView, pendingQuestion, handleSendPrompt, handleSendSubagentPrompt],
   );
 
   // Closing a sub-agent session leaves the task that delegated the work on

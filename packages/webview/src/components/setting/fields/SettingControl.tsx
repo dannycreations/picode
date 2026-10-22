@@ -3,7 +3,7 @@ import { getSettingSpec } from '@pi-code/shared/core/settings';
 import { getChildFieldKeys, isFieldVisible, matchesQuery, SETTING_FIELDS } from '@pi-code/webview/components/setting/core/fields';
 import { SettingCheckbox } from '@pi-code/webview/components/setting/fields/SettingCheckbox';
 import { SettingList } from '@pi-code/webview/components/setting/fields/SettingList';
-import { SettingModelSelect } from '@pi-code/webview/components/setting/fields/SettingModelSelect';
+import { buildSelectOptions, SettingModelSelect } from '@pi-code/webview/components/setting/fields/SettingModelSelect';
 import { SettingSlider } from '@pi-code/webview/components/setting/fields/SettingSlider';
 import { useChatStore } from '@pi-code/webview/stores/useChatStore';
 
@@ -79,11 +79,11 @@ export const SettingControl: FC<SettingControlProps> = ({ settingKey, draftSetti
     case 'string': {
       // Empty value means "follow the chat selection"; keep an unknown stored
       // model visible instead of silently showing the default option.
-      const options = [{ value: '', label: 'Default' }, ...models.map((model) => ({ value: formatModelSelection(model), label: model.name }))];
       const selected = typeof value === 'string' ? value : '';
-      if (selected !== '' && !options.some((option) => option.value === selected)) {
-        options.push({ value: selected, label: selected });
-      }
+      const options = buildSelectOptions(
+        models.map((model) => ({ value: formatModelSelection(model), label: model.name })),
+        selected,
+      );
 
       // A model setting owns one string child: the thinking level, rendered at
       // the right of the model dropdown the way the footer pairs them.

@@ -1,13 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { coerceSetting, coerceSettings, getSettingSpec, SETTING_KEYS } from '@pi-code/shared/core/settings';
-
-import type { AppSettings } from '@pi-code/shared/core/settings';
-
-// Materializes defaults through coerceSetting, the same path production reads use.
-function defaultSettings(): AppSettings {
-  return Object.fromEntries(SETTING_KEYS.map((key) => [key, coerceSetting(key, undefined)])) as AppSettings;
-}
+import { coerceSetting, coerceSettings, defaultSettings, getSettingSpec, SETTING_KEYS } from '@pi-code/shared/core/settings';
 
 const DEFAULT_SETTINGS = defaultSettings();
 

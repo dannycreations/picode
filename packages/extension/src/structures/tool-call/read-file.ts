@@ -56,6 +56,10 @@ async function readFileSection(cwd: string, file: FileRequest, limits: OutputLim
   }
 }
 
+function sectionText(section: FileSection): string {
+  return section.hasError ? section.body : `${section.header}\n${section.body}`;
+}
+
 function assembleReadOutput(sections: readonly FileSection[]): {
   text: string;
   files: { path: string; content: string }[];
@@ -63,7 +67,7 @@ function assembleReadOutput(sections: readonly FileSection[]): {
   const text: string[] = [];
   const files: { path: string; content: string }[] = [];
   for (const section of sections) {
-    text.push(section.hasError ? section.body : `${section.header}\n${section.body}`);
+    text.push(sectionText(section));
     files.push({ path: section.path, content: section.body });
   }
   return { text: text.join('\n\n'), files };
@@ -98,15 +102,26 @@ export const readFileTool = defineTool({
       // Split the budget so one large file cannot consume the whole batch.
       const perFileLimits = shareOutputLimits(limits, params.files.length);
 
+      // The progress update carries the files that finished since the last
+      // one. Re-assembling everything that was read so far on every file would
+      // copy the whole result once per file.
+      const reported = new Set<number>();
+
       const sections = await mapConcurrent(
         params.files,
         settings.maxConcurrentFileReads,
         signal,
         (file) => readFileSection(ctx.cwd, file, perFileLimits),
         (partial) => {
-          const done = partial.filter((section): section is FileSection => section !== undefined);
-          const { text, files } = assembleReadOutput(done);
-          onUpdate?.(toolResult(text, { files }));
+          const finished: string[] = [];
+          for (let index = 0; index < partial.length; index++) {
+            const section = partial[index];
+            if (section === undefined || reported.has(index)) continue;
+            reported.add(index);
+            finished.push(sectionText(section));
+          }
+          if (finished.length === 0) return;
+          onUpdate?.(toolResult(finished.join('\n\n')));
         },
       );
 

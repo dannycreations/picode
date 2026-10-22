@@ -1,6 +1,5 @@
-import { Disposable, Uri, workspace } from 'vscode';
+import { Disposable, Uri } from 'vscode';
 
-import { invalidateAppSettings, readAppSettings } from '@pi-code/extension/core/settings';
 import { setApprovalPresenter } from '@pi-code/extension/structures/agent-runtime/brokers/approval';
 import { postToWebview } from '@pi-code/extension/structures/agent-runtime/core/messenger';
 import { setSubagentEventCallback } from '@pi-code/extension/structures/agent-runtime/event';
@@ -8,7 +7,7 @@ import { Runtime } from '@pi-code/extension/structures/agent-runtime/runtime';
 import { dispatch } from '@pi-code/extension/structures/agent-webview/dispatcher';
 import { WorkspaceService } from '@pi-code/extension/structures/agent-webview/workspace';
 import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
-import { COMMAND_IDS, DEFAULT_APP_ID } from '@pi-code/shared/core/constants';
+import { COMMAND_IDS } from '@pi-code/shared/core/constants';
 
 import type { CancellationToken, ExtensionContext, Webview, WebviewView, WebviewViewProvider, WebviewViewResolveContext } from 'vscode';
 import type { MessageHandlerContext } from '@pi-code/extension/structures/agent-webview/dispatcher';
@@ -128,13 +127,6 @@ export class ChatViewProvider implements WebviewViewProvider {
       }),
       Disposable.from({ dispose: disposeApprovalPresenter }),
       Disposable.from({ dispose: disposeSubagentEventCallback }),
-      // Mirror configuration edits made anywhere (settings UI, settings.json,
-      // profile sync) back into the chat view.
-      workspace.onDidChangeConfiguration((event) => {
-        if (!event.affectsConfiguration(DEFAULT_APP_ID)) return;
-        invalidateAppSettings();
-        postToWebview(webview, { type: 'settings_data', payload: { settings: readAppSettings() } });
-      }),
     );
 
     webviewView.onDidDispose(() => {

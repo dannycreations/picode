@@ -10,12 +10,9 @@ import {
   resolvePathAction,
   resolveReadPath,
 } from '@pi-code/extension/structures/agent-runtime/helpers/policy-action';
-import { coerceSetting, SETTING_KEYS } from '@pi-code/shared/core/settings';
+import { defaultSettings } from '@pi-code/shared/core/settings';
 
-import type { AppSettings } from '@pi-code/shared/core/settings';
-
-// Defaults materialized the same way readAppSettings builds them.
-const DEFAULT_SETTINGS = Object.fromEntries(SETTING_KEYS.map((key) => [key, coerceSetting(key, undefined)])) as AppSettings;
+const DEFAULT_SETTINGS = defaultSettings();
 
 afterEach(() => {
   vi.restoreAllMocks();

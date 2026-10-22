@@ -2,6 +2,7 @@ import { cleanupSessionResources, registerSessionResourceCleanup } from '@earend
 import { killTrackedDetachedChildren } from '@earendil-works/pi-coding-agent';
 import { commands, languages, window, workspace } from 'vscode';
 
+import { invalidateAppSettings, readAppSettings } from '@pi-code/extension/core/settings';
 import { mcpGateway, setMcpClientVersion } from '@pi-code/extension/structures/agent-runtime/mcp/manager';
 import { invalidateAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { ChatViewProvider } from '@pi-code/extension/structures/agent-webview/provider';
@@ -10,7 +11,7 @@ import { registerContextCommands } from '@pi-code/extension/structures/context-c
 import { PiCodeActionProvider } from '@pi-code/extension/structures/context-command/provider';
 import { flushDebugLog, installFetchInterceptor } from '@pi-code/extension/utilities/interceptor';
 import { getWorkspaceUri } from '@pi-code/extension/utilities/vscode';
-import { COMMAND_IDS } from '@pi-code/shared/core/constants';
+import { COMMAND_IDS, DEFAULT_APP_ID } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
 
 import type { ExtensionContext } from 'vscode';
@@ -46,6 +47,15 @@ export function activate(context: ExtensionContext): void {
       languages.registerCodeActionsProvider('*', new PiCodeActionProvider(), PiCodeActionProvider.metadata),
       commands.registerCommand(COMMAND_IDS.settingsButtonClicked, () => {
         chatViewProvider.postMessage({ type: 'show_settings' });
+      }),
+      // The settings snapshot is memoized for the whole extension, so an edit
+      // made anywhere (the settings UI, settings.json, profile sync) has to
+      // drop it even when the chat view is closed. The fresh snapshot is
+      // mirrored back into the view so it never shows stale values.
+      workspace.onDidChangeConfiguration((event) => {
+        if (!event.affectsConfiguration(DEFAULT_APP_ID)) return;
+        invalidateAppSettings();
+        chatViewProvider.postMessage({ type: 'settings_data', payload: { settings: readAppSettings() } });
       }),
       // Trust gates which project resources Pi is allowed to load, so the cached
       // resource loaders must be rebuilt once the user grants trust.

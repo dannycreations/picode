@@ -6,6 +6,7 @@ import { findModel, HISTORY_SCOPES } from '@pi-code/shared/core/protocol';
 import { elapsedSeconds, resolveThinkingLevel } from '@pi-code/shared/utilities/common';
 import {
   appendAssistantDelta,
+  appendCommandOutput,
   appendOnce,
   deliverQueuedReplies,
   ignoreUnknownSubagent,
@@ -319,7 +320,7 @@ export const useChatStore = create<ChatState>((set, get) => {
             // A command reports its output in pieces that belong together, so
             // they pile up on the row instead of replacing each other.
             if (target.toolName === 'execute_command') {
-              return { diff: `${target.diff ?? ''}${result}`, subtitle };
+              return { diff: appendCommandOutput(target.diff, result), subtitle };
             }
             // A sub-agent reports its first result only once, so the row's
             // clock starts there rather than at the approval.

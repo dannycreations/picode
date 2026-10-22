@@ -8,9 +8,17 @@ import { useClickOutside } from '@pi-code/webview/hooks/useClickOutside';
 import type { FC } from 'react';
 import type { ModelThinkingLevel } from '@pi-code/shared/core/types';
 
-interface SelectOption {
+export interface SelectOption {
   readonly value: string;
   readonly label: string;
+}
+
+export function buildSelectOptions(entries: readonly SelectOption[], stored: string): SelectOption[] {
+  const options: SelectOption[] = [{ value: '', label: 'Default' }, ...entries];
+  if (stored !== '' && !options.some((option) => option.value === stored)) {
+    options.push({ value: stored, label: stored });
+  }
+  return options;
 }
 
 interface SelectButtonProps {
@@ -84,12 +92,10 @@ export const SettingModelSelect: FC<SettingModelSelectProps> = ({
   // baseline, the same rule the footer uses.
   const showThinking = onChangeThinkingLevel !== undefined && thinkingLevels.length > 1;
 
-  const thinkingOptions: SelectOption[] = [{ value: '', label: 'Default' }, ...thinkingLevels.map((level) => ({ value: level, label: level }))];
-  // A level the selected model no longer offers stays visible instead of the
-  // control silently showing the inherit option while the stored value differs.
-  if (thinkingLevel !== '' && !thinkingOptions.some((option) => option.value === thinkingLevel)) {
-    thinkingOptions.push({ value: thinkingLevel, label: thinkingLevel });
-  }
+  const thinkingOptions = buildSelectOptions(
+    thinkingLevels.map((level) => ({ value: level, label: level })),
+    thinkingLevel,
+  );
 
   return (
     <div className="flex flex-col gap-2">

@@ -4,6 +4,13 @@ import { buildToolSections, GROUP_TOOLS } from '@pi-code/shared/utilities/tool';
 import type { ApiRequestChatMessage, AssistantChatMessage, ChatMessage, ToolChatMessage, ToolSection } from '@pi-code/shared/core/types';
 import type { TodoItem } from '@pi-code/shared/utilities/todo';
 
+const COMMAND_OUTPUT_PREVIEW_LIMIT = 100_000;
+
+export function appendCommandOutput(current: string | undefined, chunk: string): string {
+  const combined = (current ?? '') + chunk;
+  return combined.length > COMMAND_OUTPUT_PREVIEW_LIMIT ? combined.slice(-COMMAND_OUTPUT_PREVIEW_LIMIT) : combined;
+}
+
 function canGroupTool(message: ChatMessage): message is ToolChatMessage {
   if (message.sender !== 'tool' || message.toolName === undefined || !GROUP_TOOLS.has(message.toolName)) {
     return false;

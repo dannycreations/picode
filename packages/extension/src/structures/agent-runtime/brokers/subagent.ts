@@ -37,23 +37,21 @@ export function getSubagentSession(sessionId: string): SubagentSessionInfo | und
 
 type SessionsListener = (toolCallIds: readonly string[]) => void;
 
-const listeners = new Set<SessionsListener>();
+let sessionsListener: SessionsListener | null = null;
 
 export function liveSubagentToolCallIds(): readonly string[] {
   return [...liveSubagents.values()].filter((entry) => entry.session !== null).map((entry) => entry.toolCallId);
 }
 
 export function onSubagentSessionsChanged(listener: SessionsListener): () => void {
-  listeners.add(listener);
+  sessionsListener = listener;
   return () => {
-    listeners.delete(listener);
+    if (sessionsListener === listener) sessionsListener = null;
   };
 }
 
 function notifySessionsChanged(): void {
-  if (listeners.size === 0) return;
-  const toolCallIds = liveSubagentToolCallIds();
-  for (const listener of listeners) listener(toolCallIds);
+  sessionsListener?.(liveSubagentToolCallIds());
 }
 
 export function registerLiveSubagent(name: string, toolCallId: string, task: string): void {
