@@ -162,13 +162,9 @@ interface UseCommandProps extends ComposerProps {
   readonly commands: readonly CommandItem[];
 }
 
-// The token readers each report the whole token, but the hook only wants the
-// text typed after it. Unwrapping once keeps the adapters below to their reader.
-const queryOf = (read: { readonly query: string } | null): string | null => read?.query ?? null;
-
 // These adapters close over nothing, so they are module constants: a new
 // identity per render would rebuild the query memo and the select callback.
-const readCommandQueryAt = (text: string, caret: number): string | null => queryOf(readCommandQuery(text, caret));
+const readCommandQueryAt = (text: string, caret: number): string | null => readCommandQuery(text, caret);
 const applyCommandInsertion = (text: string, _caret: number, command: CommandItem): { readonly text: string; readonly caret: number } =>
   applyCommand(text, command.name);
 
@@ -206,7 +202,7 @@ const useDebouncedSearch = (query: string | null, buildRequest: SearchRequestBui
   }, [query, buildRequest]);
 };
 
-const readMentionQueryAt = (text: string, caret: number): string | null => queryOf(readMentionQuery(text, caret));
+const readMentionQueryAt = (text: string, caret: number): string | null => readMentionQuery(text, caret);
 
 export const useChatMention = ({ value, setValue, textareaRef }: ComposerProps): UseSuggestionReturn<string> => {
   const searchResults = useChatStore((state) => state.searchResults);
@@ -229,7 +225,7 @@ export const useChatMention = ({ value, setValue, textareaRef }: ComposerProps):
   return suggestion;
 };
 
-const readTagQueryAt = (text: string, caret: number): string | null => queryOf(readTagQuery(text, caret));
+const readTagQueryAt = (text: string, caret: number): string | null => readTagQuery(text, caret);
 const applyTagInsertion = (text: string, caret: number, item: CommitTagItem): { readonly text: string; readonly caret: number } =>
   applyTag(text, caret, item.value);
 

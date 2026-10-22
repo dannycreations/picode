@@ -6,6 +6,10 @@ const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 20;
 const ZOOM_STEP = 0.2;
 
+function clampZoom(value: number): number {
+  return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, value));
+}
+
 interface UsePanZoomReturn {
   readonly zoomLevel: number;
   readonly dragPosition: { x: number; y: number };
@@ -25,11 +29,11 @@ export const usePanZoom = (): UsePanZoomReturn => {
   const [isDragging, setIsDragging] = useState(false);
 
   const adjustZoom = useCallback((amount: number): void => {
-    setZoomLevel((prev) => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, prev + amount)));
+    setZoomLevel((prev) => clampZoom(prev + amount));
   }, []);
 
   const setZoom = useCallback((value: number): void => {
-    setZoomLevel(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, value)));
+    setZoomLevel(clampZoom(value));
   }, []);
 
   const resetPan = useCallback((): void => {

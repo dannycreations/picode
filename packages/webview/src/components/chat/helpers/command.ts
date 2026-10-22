@@ -7,11 +7,6 @@ interface CommandToken {
   readonly end: number;
 }
 
-interface CommandQuery {
-  readonly token: CommandToken;
-  readonly query: string;
-}
-
 export function readCommandToken(text: string): CommandToken | null {
   const match = TOKEN_PATTERN.exec(text);
   if (!match) return null;
@@ -19,14 +14,14 @@ export function readCommandToken(text: string): CommandToken | null {
   return { name: match[1], end: match[0].length };
 }
 
-export function readCommandQuery(text: string, caret: number): CommandQuery | null {
+export function readCommandQuery(text: string, caret: number): string | null {
   const token = readCommandToken(text);
   if (!token) return null;
 
   // The caret sits before the slash, or past the token and into the arguments.
   if (caret < 1 || caret > token.end) return null;
 
-  return { token, query: text.slice(1, caret) };
+  return text.slice(1, caret);
 }
 
 function findCommand(commands: readonly CommandItem[], name: string): CommandItem | undefined {
@@ -76,9 +71,7 @@ export function matchCommands(commands: readonly CommandItem[], query: string): 
   }
   scored.sort((a, b) => a.score - b.score || a.command.name.localeCompare(b.command.name));
 
-  const matched: CommandItem[] = [];
-  for (const entry of scored) matched.push(entry.command);
-  return matched;
+  return scored.map((entry) => entry.command);
 }
 
 interface CommandInsertion {

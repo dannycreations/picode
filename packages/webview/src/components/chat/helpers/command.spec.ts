@@ -28,9 +28,9 @@ describe('readCommandToken', () => {
 
 describe('readCommandQuery', () => {
   it('should expose the text typed before the caret', () => {
-    expect(readCommandQuery('/skill:pdf', 4)?.query).toBe('ski');
-    expect(readCommandQuery('/skill:pdf', 10)?.query).toBe('skill:pdf');
-    expect(readCommandQuery('/', 1)?.query).toBe('');
+    expect(readCommandQuery('/skill:pdf', 4)).toBe('ski');
+    expect(readCommandQuery('/skill:pdf', 10)).toBe('skill:pdf');
+    expect(readCommandQuery('/', 1)).toBe('');
   });
 
   it('should close once the caret leaves the token', () => {

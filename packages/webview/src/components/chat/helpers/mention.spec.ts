@@ -4,12 +4,12 @@ import { applyTag, readTagQuery, toCommitTagItem } from '@pi-code/webview/compon
 
 describe('readTagQuery', () => {
   it('reads the query after a # token at the caret', () => {
-    expect(readTagQuery('compare with #4e7c', 18)).toEqual({ query: '4e7c' });
-    expect(readTagQuery('#wor', 4)).toEqual({ query: 'wor' });
+    expect(readTagQuery('compare with #4e7c', 18)).toBe('4e7c');
+    expect(readTagQuery('#wor', 4)).toBe('wor');
   });
 
   it('reads a partially typed token', () => {
-    expect(readTagQuery('fix #work', 7)).toEqual({ query: 'wo' });
+    expect(readTagQuery('fix #work', 7)).toBe('wo');
   });
 
   it('returns null when the caret leaves the token or no # is present', () => {

@@ -81,12 +81,11 @@ export const useChatActions = (): UseChatActionsReturn => {
       // chat bubble or start an agent run. This is parsed from the prompt text
       // itself rather than the fetched command list, so it stays correct before
       // the `init_data` response arrives.
-      switch (parseBuiltinCommand(promptText)) {
+      const builtin = parseBuiltinCommand(promptText);
+      switch (builtin) {
         case 'reload':
-          store.send({ type: 'builtin_command', command: 'reload' });
-          return;
         case 'update':
-          store.send({ type: 'builtin_command', command: 'update' });
+          store.send({ type: 'builtin_command', command: builtin });
           return;
         case 'compact':
           store.compact();

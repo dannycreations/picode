@@ -19,7 +19,7 @@ interface MermaidBlockProps {
   readonly code: string;
 }
 
-export const MermaidBlock: FC<MermaidBlockProps> = ({ code: originalCode }) => {
+export const MermaidBlock: FC<MermaidBlockProps> = ({ code }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [showModal, setShowModal] = useState(false);
   const [modalViewMode, setModalViewMode] = useState<ViewMode>('diagram');
@@ -27,7 +27,7 @@ export const MermaidBlock: FC<MermaidBlockProps> = ({ code: originalCode }) => {
   const [isHovering, setIsHovering] = useState(false);
 
   const { ref: rootRef, hasBeenVisible } = useInViewport<HTMLDivElement>();
-  const { code, svgContent, isLoading, error } = useMermaidRender(originalCode, hasBeenVisible);
+  const { svgContent, isLoading, error } = useMermaidRender(code, hasBeenVisible);
   const { showCopy, copy } = useCopyToClipboard();
 
   const handleCopy = async (e: MouseEvent) => {

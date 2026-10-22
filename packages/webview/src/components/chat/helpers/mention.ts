@@ -5,21 +5,17 @@ import type { CommitItem } from '@pi-code/shared/core/protocol';
 const MENTION_TOKEN_PATTERN = /(?<=^|\s)@([^\s]*)$/;
 const TAG_TOKEN_PATTERN = /(?<=^|\s)#([^\s]*)$/;
 
-interface MentionQuery {
-  readonly query: string;
-}
-
-function readTokenQuery(pattern: RegExp, text: string, caret: number): MentionQuery | null {
+function readTokenQuery(pattern: RegExp, text: string, caret: number): string | null {
   const match = pattern.exec(text.slice(0, caret));
   if (!match) return null;
-  return { query: match[1] };
+  return match[1];
 }
 
-export function readMentionQuery(text: string, caret: number): MentionQuery | null {
+export function readMentionQuery(text: string, caret: number): string | null {
   return readTokenQuery(MENTION_TOKEN_PATTERN, text, caret);
 }
 
-export function readTagQuery(text: string, caret: number): MentionQuery | null {
+export function readTagQuery(text: string, caret: number): string | null {
   return readTokenQuery(TAG_TOKEN_PATTERN, text, caret);
 }
 

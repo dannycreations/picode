@@ -9,7 +9,16 @@ import { buildToolSections } from '@pi-code/shared/utilities/tool';
 
 import type { ImageContent, TextContent, ThinkingContent, ToolCall, Usage } from '@earendil-works/pi-ai';
 import type { AgentSession, SessionEntry, SessionEntryBase, SessionMessageEntry } from '@earendil-works/pi-coding-agent';
-import type { Attachment, ChatMessage, StatsData, TextAttachment, ToolArguments, ToolName, ToolResultDetails } from '@pi-code/shared/core/types';
+import type {
+  Attachment,
+  ChatMessage,
+  StatsData,
+  TextAttachment,
+  ToolArguments,
+  ToolChatMessage,
+  ToolName,
+  ToolResultDetails,
+} from '@pi-code/shared/core/types';
 
 type MessageContentPart = TextContent | ThinkingContent | ToolCall | ImageContent;
 
@@ -205,8 +214,9 @@ function appendAssistantTurn(result: ChatMessage[], id: string, msg: Extract<Ses
 
 function patchToolCall(result: ChatMessage[], msg: Extract<SessionMessage, { role: 'toolResult' }>, timestamp: number): void {
   const index = result.findIndex((r) => r.sender === 'tool' && r.id === msg.toolCallId);
-  const existing = index === -1 ? undefined : result[index];
-  if (existing?.sender !== 'tool') return;
+  if (index === -1) return;
+
+  const existing = result[index] as ToolChatMessage;
 
   const resultText = contentText(msg.content);
   const details = msg.details as ToolResultDetails;

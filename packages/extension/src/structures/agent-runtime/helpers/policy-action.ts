@@ -270,24 +270,13 @@ export function resolvePathAction(
   return decidePathAction(resolveFileLocation(cwd, filePath), allowedPatterns, deniedPatterns);
 }
 
-const loweredPatternCache = new Map<string, string>();
-
-function loweredPattern(pattern: string): string {
-  let lowered = loweredPatternCache.get(pattern);
-  if (lowered === undefined) {
-    lowered = pattern.toLowerCase();
-    setBounded(loweredPatternCache, pattern, lowered, PATTERN_CACHE_LIMIT);
-  }
-  return lowered;
-}
-
 function matchesCommandPattern(pattern: string, command: string, commandLower: string): boolean {
   if (pattern === '*') return true;
   if (isRegexPattern(pattern)) {
     return matchesRegexPattern(regexSource(pattern), command);
   }
 
-  const pLower = loweredPattern(pattern);
+  const pLower = pattern.toLowerCase();
   if (pLower === commandLower) return true;
   if (pLower.includes('*') || pLower.includes('?')) {
     return matchesGlob(pLower, commandLower);

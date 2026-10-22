@@ -7,7 +7,6 @@ import { ensureMermaidInitialized } from '@pi-code/webview/components/chat/markd
 const RENDER_DEBOUNCE_MS = 500;
 
 interface UseMermaidRenderReturn {
-  readonly code: string;
   readonly svgContent: string;
   readonly isLoading: boolean;
   readonly error: string | null;
@@ -53,7 +52,6 @@ export const useMermaidRender = (originalCode: string, enabled: boolean): UseMer
   }, [originalCode, enabled]);
 
   return {
-    code: originalCode,
     svgContent,
     isLoading,
     error,
