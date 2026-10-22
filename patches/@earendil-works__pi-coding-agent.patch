@@ -1,8 +1,8 @@
 diff --git a/dist/core/agent-session.d.ts b/dist/core/agent-session.d.ts
-index 2a947fa..6f9cbab 100644
+index aba2a96..e367378 100644
 --- a/dist/core/agent-session.d.ts
 +++ b/dist/core/agent-session.d.ts
-@@ -544,7 +544,7 @@ export declare class AgentSession {
+@@ -550,7 +550,7 @@ export declare class AgentSession {
       * @throws Error if streaming and no streamingBehavior specified
       * @throws Error if no model selected or no API key available (when not streaming)
       */
@@ -12,10 +12,10 @@ index 2a947fa..6f9cbab 100644
       * Try to execute an extension command. Returns true if command was found and executed.
       */
 diff --git a/dist/core/agent-session.js b/dist/core/agent-session.js
-index c16f5da..b1edb80 100644
+index 8728a3e..15a405b 100644
 --- a/dist/core/agent-session.js
 +++ b/dist/core/agent-session.js
-@@ -1462,10 +1462,11 @@ export class AgentSession {
+@@ -1494,10 +1494,11 @@ export class AgentSession {
          if (!handlerEditedTools)
              result.systemPromptOptions.selectedTools = this.getActiveToolNames();
          const messages = [];
@@ -28,7 +28,7 @@ index c16f5da..b1edb80 100644
              // Normalize images after before_agent_start so extension-driven model selection
              // determines the resize profile used for the request and history.
              const normalized = await this._normalizePromptImages(trigger.images);
-@@ -1603,6 +1604,8 @@ export class AgentSession {
+@@ -1633,6 +1634,8 @@ export class AgentSession {
              this._deferredSettledActions.push(async () => await this.prompt(text, options));
              return;
          }
@@ -37,7 +37,7 @@ index c16f5da..b1edb80 100644
          const expandPromptTemplates = options?.expandPromptTemplates ?? true;
          const preflightResult = options?.preflightResult;
          // Handle extension commands first (execute immediately, even during streaming)
-@@ -1660,7 +1663,10 @@ export class AgentSession {
+@@ -1690,7 +1693,10 @@ export class AgentSession {
              }
              throw new Error(formatNoApiKeyFoundMessage(this.model.provider));
          }
@@ -50,10 +50,10 @@ index c16f5da..b1edb80 100644
      /**
       * Try to execute an extension command. Returns true if command was found and executed.
 diff --git a/dist/index.d.ts b/dist/index.d.ts
-index 4a4e958..0c13b7d 100644
+index 3821d9f..3182088 100644
 --- a/dist/index.d.ts
 +++ b/dist/index.d.ts
-@@ -41,4 +41,10 @@ export { convertToPng } from "./utils/image-convert.ts";
+@@ -42,4 +42,10 @@ export { convertToPng } from "./utils/image-convert.ts";
  export { formatDimensionNote, type ResizedImage, resizeImage } from "./utils/image-resize.ts";
  export { detectSupportedImageMimeTypeFromFile } from "./utils/mime.ts";
  export { getPowerShellConfig, getShellConfig } from "./utils/shell.ts";
@@ -66,10 +66,10 @@ index 4a4e958..0c13b7d 100644
  //# sourceMappingURL=index.d.ts.map
 \ No newline at end of file
 diff --git a/dist/index.js b/dist/index.js
-index c48934f..8d8aa77 100644
+index ab5cfcc..069b6d6 100644
 --- a/dist/index.js
 +++ b/dist/index.js
-@@ -50,4 +50,9 @@ export { formatDimensionNote, resizeImage } from "./utils/image-resize.js";
+@@ -51,4 +51,9 @@ export { formatDimensionNote, resizeImage } from "./utils/image-resize.js";
  export { detectSupportedImageMimeTypeFromFile } from "./utils/mime.js";
  // Shell utilities
  export { getPowerShellConfig, getShellConfig } from "./utils/shell.js";
