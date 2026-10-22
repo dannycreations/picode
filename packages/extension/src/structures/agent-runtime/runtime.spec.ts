@@ -28,7 +28,7 @@ const mocks = vi.hoisted(() => ({
   invalidateAgentResources: vi.fn(),
   applyPersistedModelAndThinking: vi.fn(async () => {}),
   getEnvironmentDetails: vi.fn(async () => ''),
-  expandMentions: vi.fn(async (text: string) => ({ text, mentionContent: undefined as string | undefined })),
+  expandMentions: vi.fn(async (): Promise<string> => ''),
   injectResourceMessages: vi.fn(async () => {}),
   loadSessionTranscript: vi.fn((): { messages: unknown[]; stats: { contextTokens: number } } => ({ messages: [], stats: { contextTokens: 0 } })),
 }));
@@ -194,10 +194,7 @@ describe('Runtime reply queue steering', () => {
     const cwd = 'c:/cwd';
     const msg: QueueChatMessage = { id: 'q1', sender: 'queue', text: '@file x', attachments: [], timestamp: 1 };
 
-    mocks.expandMentions.mockResolvedValueOnce({
-      text: 'text with @file',
-      mentionContent: 'EXPANDED_FILE_CONTENT',
-    });
+    mocks.expandMentions.mockResolvedValueOnce('EXPANDED_FILE_CONTENT');
 
     const result = await runtime['processQueuedReply'](msg, cwd, session);
 
@@ -211,14 +208,14 @@ describe('Runtime reply queue steering', () => {
       }),
     );
     expect(appendMessage).toHaveBeenCalledTimes(1);
-    expect((appendMessage.mock.calls[0] as any[])[0].content).toEqual([{ type: 'text', text: 'text with @file' }]);
+    expect((appendMessage.mock.calls[0] as any[])[0].content).toEqual([{ type: 'text', text: '@file x' }]);
     // The mention is persisted as a hidden custom message and rides in the turn
     // context for the model; no separate mention object is returned.
     expect(session.sessionManager.appendCustomMessageEntry).toHaveBeenCalledWith('mention_content', 'EXPANDED_FILE_CONTENT', false, undefined);
   });
 
   it('keeps a reply queued while the drain is still running', async () => {
-    const gate = deferred<{ text: string; mentionContent: undefined }>();
+    const gate = deferred<string>();
     const appendMessage = vi.fn(() => 'persisted-id');
     const session = makeFakeSession(vi.fn(), appendMessage);
     const runtime = new Runtime(makeFakeWebview());
@@ -228,7 +225,7 @@ describe('Runtime reply queue steering', () => {
 
     const draining = runtime['drainQueuedReplies'](session);
     runtime.replyQueue.add('queued mid-drain');
-    gate.resolve({ text: 'first', mentionContent: undefined });
+    gate.resolve('');
     await draining;
 
     expect(runtime.replyQueue.all().map((m) => m.text)).toEqual(['queued mid-drain']);
@@ -239,9 +236,7 @@ describe('Runtime reply queue steering', () => {
     const session = makeFakeSession(vi.fn(), appendMessage);
     const runtime = new Runtime(makeFakeWebview());
 
-    mocks.expandMentions
-      .mockResolvedValueOnce({ text: 'plain reply expanded', mentionContent: undefined })
-      .mockResolvedValueOnce({ text: 'mention reply expanded', mentionContent: 'FILE_CONTENT' });
+    mocks.expandMentions.mockResolvedValueOnce('').mockResolvedValueOnce('FILE_CONTENT');
 
     runtime.replyQueue.add('plain reply');
     runtime.replyQueue.add('mention reply');

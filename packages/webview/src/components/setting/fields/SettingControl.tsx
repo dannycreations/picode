@@ -7,7 +7,7 @@ import { SettingModelSelect } from '@pi-code/webview/components/setting/fields/S
 import { SettingSlider } from '@pi-code/webview/components/setting/fields/SettingSlider';
 import { useChatStore } from '@pi-code/webview/stores/useChatStore';
 
-import type { FC } from 'react';
+import type { FC, ReactNode } from 'react';
 import type { AppSettings, SettingKey } from '@pi-code/shared/core/settings';
 import type { SettingChangeHandler } from '@pi-code/webview/components/setting/core/types';
 
@@ -27,25 +27,30 @@ export const SettingControl: FC<SettingControlProps> = ({ settingKey, draftSetti
   const chatModel = useChatStore((state) => state.selectedModel);
 
   const currentMatched = parentMatched || (searchQuery.trim() ? matchesQuery(settingKey, searchQuery) : false);
-  const childKeys = getChildFieldKeys(settingKey).filter((childKey) => isFieldVisible(childKey, searchQuery, currentMatched));
-  const children = childKeys.length
-    ? childKeys.map((childKey) => (
-        <SettingControl
-          key={childKey}
-          settingKey={childKey}
-          draftSettings={draftSettings}
-          onChange={onChange}
-          searchQuery={searchQuery}
-          parentMatched={currentMatched}
-        />
-      ))
-    : undefined;
+  const allChildKeys = getChildFieldKeys(settingKey);
+  // Only the boolean and number controls render their children, so the tree is
+  // built where it is shown instead of for every setting.
+  const renderChildren = (): ReactNode => {
+    const childKeys = allChildKeys.filter((childKey) => isFieldVisible(childKey, searchQuery, currentMatched));
+    if (childKeys.length === 0) return undefined;
+
+    return childKeys.map((childKey) => (
+      <SettingControl
+        key={childKey}
+        settingKey={childKey}
+        draftSettings={draftSettings}
+        onChange={onChange}
+        searchQuery={searchQuery}
+        parentMatched={currentMatched}
+      />
+    ));
+  };
 
   switch (spec.type) {
     case 'boolean': {
       return (
         <SettingCheckbox label={field.label} description={spec.description} checked={value === true} onChange={(next) => onChange(settingKey, next)}>
-          {children}
+          {renderChildren()}
         </SettingCheckbox>
       );
     }
@@ -66,7 +71,7 @@ export const SettingControl: FC<SettingControlProps> = ({ settingKey, draftSetti
           scale={spec.scale}
           onChange={(next) => onChange(settingKey, next)}
         >
-          {children}
+          {renderChildren()}
         </SettingSlider>
       );
     }
@@ -82,7 +87,7 @@ export const SettingControl: FC<SettingControlProps> = ({ settingKey, draftSetti
 
       // A model setting owns one string child: the thinking level, rendered at
       // the right of the model dropdown the way the footer pairs them.
-      const thinkingKey = getChildFieldKeys(settingKey).find((key) => getSettingSpec(key).type === 'string');
+      const thinkingKey = allChildKeys.find((key) => getSettingSpec(key).type === 'string');
       const thinkingValue = thinkingKey ? draftSettings[thinkingKey] : '';
       const selectedModel = findModel(models, parseModelSelection(selected) ?? chatModel);
 

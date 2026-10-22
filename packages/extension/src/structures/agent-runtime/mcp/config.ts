@@ -178,7 +178,10 @@ export async function loadMcpConfig(cwd: string, options: LoadMcpConfigOptions):
   const reads = await Promise.all(sources.map((source) => readRawConfig(source.path, source.label)));
   const { config, warnings } = mergeMcpConfigs(reads[0]?.raw, reads[1]?.raw);
 
-  for (const warning of [...reads.flatMap((read) => (read.warning ? [read.warning] : [])), ...warnings]) {
+  for (const read of reads) {
+    if (read.warning) logger.warn(read.warning);
+  }
+  for (const warning of warnings) {
     logger.warn(warning);
   }
   return config;

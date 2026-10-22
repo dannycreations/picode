@@ -92,15 +92,14 @@ export const ChatFooter = memo(
 
     // A selection the catalog does not carry still needs a row, otherwise the
     // footer would show a different model than the chat is running on.
-    const displayModels = useMemo(() => {
+    const { displayModels, selectedModelObj } = useMemo(() => {
       const list = [...models];
-      if (!findModel(models, currentModel)) {
-        list.unshift({ id: currentModel.id, name: currentModel.id, provider: currentModel.provider });
-      }
-      return list;
-    }, [models, currentModel]);
+      const selected = findModel(models, currentModel);
+      if (selected) return { displayModels: list, selectedModelObj: selected };
 
-    const selectedModelObj = findModel(displayModels, currentModel) ?? displayModels[0];
+      const stub = { id: currentModel.id, name: currentModel.id, provider: currentModel.provider };
+      return { displayModels: [stub, ...list], selectedModelObj: stub };
+    }, [models, currentModel]);
 
     // Only surface the control once the model exposes more than its "off" baseline.
     const showThinking = thinkingLevels.length > 1 && currentThinkingLevel !== null;

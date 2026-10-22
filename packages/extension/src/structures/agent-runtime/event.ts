@@ -4,7 +4,7 @@ import { getSubagentSession } from '@pi-code/extension/structures/agent-runtime/
 import { SPAWN_SUBAGENT_TOOL_NAME, takeSubagentUsage } from '@pi-code/extension/structures/agent-runtime/subagent';
 import { logger } from '@pi-code/shared/core/logger';
 import { isSubagentEvent } from '@pi-code/shared/core/protocol';
-import { isWhitespaceCode, resolveContextLimit } from '@pi-code/shared/utilities/common';
+import { resolveContextLimit } from '@pi-code/shared/utilities/common';
 
 import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent';
 import type { ExtensionToWebviewMessage, SubagentEvent } from '@pi-code/shared/core/protocol';
@@ -72,13 +72,8 @@ function latestStep(steps: string | undefined): string | undefined {
     const breakIndex = steps.lastIndexOf('\n', end - 1);
     const start = breakIndex === -1 ? 0 : breakIndex + 1;
 
-    let from = start;
-    while (from < end && isWhitespaceCode(steps.charCodeAt(from))) from++;
-    if (from < end) {
-      let to = end;
-      while (to > from && isWhitespaceCode(steps.charCodeAt(to - 1))) to--;
-      return steps.slice(from, to);
-    }
+    const line = steps.slice(start, end).trim();
+    if (line) return line;
 
     if (breakIndex === -1) return undefined;
     end = breakIndex;

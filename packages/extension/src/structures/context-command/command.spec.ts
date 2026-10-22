@@ -126,7 +126,7 @@ describe('addToContext argument handling', () => {
     mocks.handlers.clear();
     mocks.editor.current = createEditor();
     mocks.resolveSelectionFromDocument.mockReturnValue({ filePath: 'test.ts', selectedText: 'old code', startLine: 1, endLine: 2 });
-    registerContextCommands({ postMessage: mocks.postMessage } as never);
+    registerContextCommands({ postMessage: mocks.postMessage });
   });
 
   it('falls back to the active editor when a menu passes a Uri instead of a selection', async () => {
@@ -161,7 +161,7 @@ describe('runInlineCompletion cancellation', () => {
     mocks.resolveSelectionFromDocument.mockReturnValue({ filePath: 'test.ts', selectedText: 'old code', startLine: 1, endLine: 2 });
     mocks.mapDiagnostics.mockImplementation((diagnostics: readonly unknown[]) => [...diagnostics]);
     mocks.withProgress.mockImplementation(async (_options: unknown, task: ProgressTask) => task({}, createToken().token));
-    registerContextCommands({ postMessage: mocks.postMessage } as never);
+    registerContextCommands({ postMessage: mocks.postMessage });
   });
 
   it('passes an abort signal and applies the generated replacement', async () => {

@@ -229,7 +229,7 @@ function matchesResolvedSegments(pattern: string, forms: PathForms): boolean {
   return false;
 }
 
-export interface FileLocation {
+interface FileLocation {
   readonly filePath: string;
   readonly absoluteFile: string | undefined;
   readonly insideRelative: string | undefined;

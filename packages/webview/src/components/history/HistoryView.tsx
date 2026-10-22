@@ -53,16 +53,17 @@ export const HistoryView: FC<HistoryViewProps> = ({
     setSelectedPaths((prev) => (prev.includes(path) ? prev.filter((p) => p !== path) : [...prev, path]));
   }, []);
 
+  const isAllPageSelected = paginatedItems.length > 0 && paginatedItems.every((item) => selectedPaths.includes(item.path));
+
   const handleSelectAllPage = useCallback(() => {
     const pagePaths = paginatedItems.map((item) => item.path);
-    const allSelected = pagePaths.every((p) => selectedPaths.includes(p));
 
-    if (allSelected) {
+    if (isAllPageSelected) {
       setSelectedPaths((prev) => prev.filter((p) => !pagePaths.includes(p)));
     } else {
       setSelectedPaths((prev) => Array.from(new Set([...prev, ...pagePaths])));
     }
-  }, [paginatedItems, selectedPaths]);
+  }, [paginatedItems, isAllPageSelected]);
 
   const handleDeleteSingle = useCallback((path: string) => {
     setDeleteConfirmPaths([path]);
@@ -79,8 +80,6 @@ export const HistoryView: FC<HistoryViewProps> = ({
     }
     setDeleteConfirmPaths(null);
   }, [deleteConfirmPaths, onDeleteTasks, setSelectedPaths, setIsSelectionMode]);
-
-  const isAllPageSelected = paginatedItems.length > 0 && paginatedItems.every((item) => selectedPaths.includes(item.path));
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden w-full h-full">

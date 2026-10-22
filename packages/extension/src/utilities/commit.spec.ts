@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { matchCommits, parseGitLog, resolveCommitTag, searchCommits } from '@pi-code/extension/structures/chat-command/helpers/git';
+import { matchCommits, parseGitLog, resolveCommitTag, searchCommits } from '@pi-code/extension/utilities/commit';
 import { logger } from '@pi-code/shared/core/logger';
 
 import type { MockInstance } from 'vitest';

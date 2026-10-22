@@ -17,7 +17,7 @@ import {
   refreshModelCatalog,
   streamHistory,
 } from '@pi-code/extension/structures/agent-webview/session';
-import { searchCommits } from '@pi-code/extension/structures/chat-command/helpers/git';
+import { searchCommits } from '@pi-code/extension/utilities/commit';
 import { searchWorkspaceFiles } from '@pi-code/extension/utilities/fs';
 import { getWorkspaceCwd, setSelectedWorkspace } from '@pi-code/extension/utilities/vscode';
 import { ACTIVE_TASK_ID } from '@pi-code/shared/core/constants';

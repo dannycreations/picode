@@ -1,9 +1,10 @@
+import { MODEL_THINKING_LEVELS } from '@earendil-works/pi-ai/providers/model-schema';
 import { getAgentDir, SettingsManager } from '@earendil-works/pi-coding-agent';
 import { ConfigurationTarget, workspace } from 'vscode';
 
 import { isProjectTrusted } from '@pi-code/extension/utilities/vscode';
 import { DEFAULT_APP_ID } from '@pi-code/shared/core/constants';
-import { isThinkingLevel, parseModelSelection } from '@pi-code/shared/core/protocol';
+import { parseModelSelection } from '@pi-code/shared/core/protocol';
 import { coerceSettings, MAX_RETRY_COUNT, SETTING_KEYS } from '@pi-code/shared/core/settings';
 import { BYTES_PER_KILOBYTE } from '@pi-code/shared/utilities/common';
 
@@ -35,7 +36,6 @@ export function readAppSettings(): AppSettings {
   return cachedSettings;
 }
 
-// Every tool result shares one truncation budget derived from the settings snapshot.
 export function readOutputLimits(): OutputLimits {
   const settings = readAppSettings();
   return { maxLines: settings.maxToolOutputLines, maxBytes: settings.maxToolOutputSizeKb * BYTES_PER_KILOBYTE };
@@ -48,10 +48,12 @@ export function applySessionOverrides(session: AgentSession): void {
   session.settingsManager.applyOverrides({ compaction: { enabled: false }, retry: { enabled, maxRetries } });
 }
 
-// An empty string means "not configured", which callers translate into the
-// selection the chat is currently running.
 export function readModelSelection(key: 'commitMessageModel' | 'delegationTaskModel'): ModelSelection | undefined {
   return parseModelSelection(readAppSettings()[key]);
+}
+
+function isThinkingLevel(value: string): value is ModelThinkingLevel {
+  return (MODEL_THINKING_LEVELS as readonly string[]).includes(value);
 }
 
 export function readThinkingLevel(key: 'commitMessageThinkingLevel' | 'delegationTaskThinkingLevel'): ModelThinkingLevel | undefined {
@@ -73,8 +75,6 @@ export async function writeAppSettings(partial: Partial<AppSettings>): Promise<v
   }
 }
 
-// SettingsManager is the only settings state that is genuinely workspace bound,
-// so it is memoized per cwd. Editor settings are read straight from VS Code.
 const settingsManagers = new Map<string, SettingsManager>();
 
 export function getSettingsManager(cwd: string): SettingsManager {
@@ -86,8 +86,6 @@ export function getSettingsManager(cwd: string): SettingsManager {
   return manager;
 }
 
-// Provider and model are always needed together to identify a model
-// unambiguously, so both are read from a single reload of the agent settings.
 export async function getDefaultModelSelection(cwd: string): Promise<Partial<ModelSelection>> {
   const manager = getSettingsManager(cwd);
   await manager.reload();

@@ -29,7 +29,7 @@ export function clearApprovalDuration(toolCallId: string): void {
   approvalDurations.delete(toolCallId);
 }
 
-export function clearAllApprovalDurations(): void {
+function clearAllApprovalDurations(): void {
   approvalDurations.clear();
 }
 

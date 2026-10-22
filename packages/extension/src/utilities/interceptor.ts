@@ -42,10 +42,7 @@ function formatEntry(direction: 'request' | 'response', payload: unknown): strin
 }
 
 function enqueue(text: string): void {
-  writeChain = writeChain
-    .then(() => mkdir(dirname(logPath), { recursive: true }))
-    .then(() => appendFile(logPath, text))
-    .catch((err) => logger.debug('Failed to write debug request log:', err));
+  writeChain = writeChain.then(() => appendFile(logPath, text)).catch((err) => logger.debug('Failed to write debug request log:', err));
 }
 
 // Tracked so `flushDebugLog` can wait for a capture that has not enqueued yet.
@@ -99,6 +96,9 @@ async function interceptedFetch(input: RequestInfo | URL, init?: RequestInit): P
 
 export function installFetchInterceptor(workspaceDir: string): void {
   logPath = join(workspaceDir, 'debug', `requests_${todayStamp()}.txt`);
+  writeChain = mkdir(dirname(logPath), { recursive: true })
+    .then(() => undefined)
+    .catch((err) => logger.debug('Failed to create debug log directory:', err));
   globalThis.fetch = interceptedFetch as typeof globalThis.fetch;
 }
 

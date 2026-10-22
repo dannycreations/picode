@@ -296,7 +296,7 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onRespondTool }) =>
     });
   };
 
-  const hiddenCount = sections.length > 0 ? sections.length - 1 : 0;
+  const hiddenCount = sections.length - 1;
   const hasMore = hiddenCount > 0;
   const approvalIndex = sections.findIndex((s) => s.approvalMessage !== undefined);
   const shouldExpandForApproval = hasMore && approvalIndex > 0;

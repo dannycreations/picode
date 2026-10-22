@@ -126,9 +126,13 @@ export const GROUP_TOOLS: ReadonlySet<ToolName> = new Set(GROUP_TOOL_NAMES);
 
 export const CANCELLABLE_TOOLS: ReadonlySet<ToolName> = new Set(['execute_command', 'spawn_subagent']);
 
-function toolMeta(toolName?: string): ToolMeta {
-  const meta = toolName === undefined ? undefined : TOOL_META[toolName as GroupToolName];
-  return meta ?? DEFAULT_TOOL_META;
+function hasToolMeta(toolName: ToolName): toolName is GroupToolName {
+  return toolName in TOOL_META;
+}
+
+function toolMeta(toolName?: ToolName): ToolMeta {
+  if (toolName === undefined || !hasToolMeta(toolName)) return DEFAULT_TOOL_META;
+  return TOOL_META[toolName];
 }
 
 export function getToolCommand(message: ToolChatMessage): string | undefined {
@@ -258,7 +262,7 @@ export function buildToolSections(message: ChatMessage): ToolSection[] {
   ];
 }
 
-export function getToolHeaderMeta(toolName: string | undefined, status?: ToolStatus, exitCode?: number | null): { title: string; icon: string } {
+export function getToolHeaderMeta(toolName: ToolName | undefined, status?: ToolStatus, exitCode?: number | null): { title: string; icon: string } {
   const meta = toolMeta(toolName);
   // 'denied' carries two meanings: a call the user rejected, and one that ran
   // and failed. Only a call that reached a process records an exit code, so its

@@ -104,7 +104,7 @@ export async function readNumberedText(filePath: string, limits: OutputLimits, o
   const maxLines = hasRanges(ranges) ? ranges.reduce((max, range) => Math.max(max, 1, range.end), 0) : limits.maxLines;
 
   const lines = await readLines(filePath, maxLines);
-  const truncation = truncateHead(numberLines(lines, ranges), limits);
+  const truncation = truncateOutput(numberLines(lines, ranges), { limits });
   return renderTruncatedText(truncation, 'head', options?.hint?.(truncation));
 }
 

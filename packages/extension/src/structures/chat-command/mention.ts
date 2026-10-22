@@ -4,7 +4,7 @@ import { formatThrownValue } from '@earendil-works/pi-ai';
 import { formatPathRelativeToCwdOrAbsolute } from '@earendil-works/pi-coding-agent';
 
 import { readOutputLimits } from '@pi-code/extension/core/settings';
-import { resolveCommitTag } from '@pi-code/extension/structures/chat-command/helpers/git';
+import { resolveCommitTag } from '@pi-code/extension/utilities/commit';
 import { checkReadableFile, walkDirectory } from '@pi-code/extension/utilities/fs';
 import { readNumberedText } from '@pi-code/extension/utilities/truncate';
 import { MENTION_PATTERN, TAG_PATTERN } from '@pi-code/shared/core/constants';
@@ -31,23 +31,14 @@ interface ResolvedMention {
   readonly content: string;
 }
 
-export interface ExpandedMentions {
-  // The prompt with the original `@token` references left intact, ready to be
-  // shown to the user and persisted as the user message.
-  readonly text: string;
-  // The file/folder contents the model should read, delivered separately as a
-  // hidden custom message so it never lands in the displayed transcript.
-  readonly mentionContent: string;
-}
-
-export async function expandMentions(text: string, cwd: string): Promise<ExpandedMentions> {
+export async function expandMentions(text: string, cwd: string): Promise<string> {
   const mentions = [...text.matchAll(MENTION_PATTERN)];
   const tags = [...text.matchAll(TAG_PATTERN)];
-  if (mentions.length === 0 && tags.length === 0) return { text, mentionContent: '' };
+  if (mentions.length === 0 && tags.length === 0) return '';
 
   const limits = readOutputLimits();
   const [mentionBlocks, commitBlocks] = await Promise.all([collectMentionBlocks(mentions, cwd, limits), collectCommitBlocks(tags, cwd, limits)]);
-  return { text, mentionContent: [...mentionBlocks, ...commitBlocks].join('\n\n') };
+  return [...mentionBlocks, ...commitBlocks].join('\n\n');
 }
 
 async function collectMentionBlocks(matches: RegExpMatchArray[], cwd: string, limits: OutputLimits): Promise<string[]> {

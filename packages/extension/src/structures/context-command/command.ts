@@ -34,7 +34,7 @@ function getDiagnosticText(args: unknown[], selection: ResolvedSelection): strin
 }
 
 function registerChatInputCommand(
-  sender: ChatViewProvider,
+  sender: Pick<ChatViewProvider, 'postMessage'>,
   id: string,
   buildPrompt: (selection: ResolvedSelection, args: unknown[]) => string,
 ): Disposable {
@@ -163,7 +163,7 @@ function composePrompt(instruction: string, selection: ResolvedSelection, diagno
   return [instruction, diagnosticText, formatSelectionBlock(selection)].filter(Boolean).join('\n\n');
 }
 
-export function registerContextCommands(sender: ChatViewProvider): Disposable[] {
+export function registerContextCommands(sender: Pick<ChatViewProvider, 'postMessage'>): Disposable[] {
   return [
     registerChatInputCommand(sender, COMMAND_IDS.addToContext, formatSelectionBlock),
     registerChatInputCommand(sender, COMMAND_IDS.addProblemToContext, (selection, args) =>

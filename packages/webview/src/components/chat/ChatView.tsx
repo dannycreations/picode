@@ -21,8 +21,9 @@ import { SEARCH_HIT_ACTIVE_CLASS } from '@pi-code/webview/components/shared/High
 import { Spinner } from '@pi-code/webview/components/shared/Spinner';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { buildChatRenderModel } from '@pi-code/webview/helpers/messages';
+import { findPendingQuestion } from '@pi-code/webview/helpers/questions';
 import { useAutoScroll } from '@pi-code/webview/hooks/useAutoScroll';
-import { selectPendingQuestion, setComposerTextarea, useChatStore } from '@pi-code/webview/stores/useChatStore';
+import { setComposerTextarea, useChatStore } from '@pi-code/webview/stores/useChatStore';
 
 import type { FC } from 'react';
 import type { HistoryItem } from '@pi-code/shared/core/protocol';
@@ -76,7 +77,9 @@ export const ChatView: FC = () => {
   const subagent = useChatStore((state) => state.subagent);
   const isRunning = useChatStore((state) => state.isRunning);
   const isCompacting = useChatStore((state) => state.isCompacting);
-  const pendingQuestion = useChatStore(selectPendingQuestion);
+  // The question the task is waiting on, derived from the transcript the
+  // store already holds for the active task.
+  const pendingQuestion = useMemo(() => findPendingQuestion(activeTask?.messages ?? []), [activeTask]);
 
   // An open sub-agent session takes over the chat view. The task that
   // delegated the work stays behind it and comes back when it closes.
@@ -197,18 +200,6 @@ export const ChatView: FC = () => {
     // the query keeps navigation stable when messages stream in during a search.
   }, [searchQuery]);
 
-  // The row that holds the active match. Resolving it here keeps the scroll
-  // effect below tied to the row rather than to the match counts, which change
-  // on every streamed token.
-  const activeMatchRow = useMemo(() => {
-    if (activeMatch < 0) return -1;
-    for (let index = 0; index < matchCounts.length; index++) {
-      const offset = globalOffsets[index];
-      if (activeMatch >= offset && activeMatch < offset + matchCounts[index]) return index;
-    }
-    return -1;
-  }, [activeMatch, globalOffsets, matchCounts]);
-
   // Per-row search context, built once per search state rather than inside the
   // virtualizer map. A fresh object literal per row would give every visible
   // ChatBody a new identity each render and defeat its memo.
@@ -250,6 +241,15 @@ export const ChatView: FC = () => {
     }
     return contexts;
   }, [isSearching, searchQuery, renderItems, globalOffsets, matchCounts, activeMatch]);
+
+  // The row that holds the active match. The contexts already carry the global
+  // index of the match they hold, so the row falls out of them. Resolving it
+  // here keeps the scroll effect below tied to the row rather than to the match
+  // counts, which change on every streamed token.
+  const activeMatchRow = useMemo(
+    () => (activeMatch < 0 ? -1 : searchContexts.findIndex((context) => context.activeIndex === activeMatch)),
+    [searchContexts, activeMatch],
+  );
 
   const goToMatch = useCallback(
     (direction: 1 | -1) => {
@@ -376,7 +376,7 @@ export const ChatView: FC = () => {
       scrollToBottom();
       // A question the task is waiting on owns the composer, whichever
       // session happens to be on screen.
-      if (isSubagentView && !selectPendingQuestion(useChatStore.getState())) {
+      if (isSubagentView && !findPendingQuestion(useChatStore.getState().activeTask?.messages ?? [])) {
         handleSendSubagentPrompt(text, attachments);
         return;
       }

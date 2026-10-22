@@ -4,7 +4,8 @@ import { ACTIVE_TASK_ID } from '@pi-code/shared/core/constants';
 import { parseBuiltinCommand } from '@pi-code/shared/utilities/commands';
 import { createActiveTask } from '@pi-code/shared/utilities/common';
 import { patchMessage } from '@pi-code/webview/helpers/messages';
-import { selectPendingQuestion, useChatStore } from '@pi-code/webview/stores/useChatStore';
+import { findPendingQuestion } from '@pi-code/webview/helpers/questions';
+import { useChatStore } from '@pi-code/webview/stores/useChatStore';
 
 import type { Attachment, ChatMessage } from '@pi-code/shared/core/types';
 
@@ -23,7 +24,7 @@ function sendablePrompt(text: string, attachments: readonly Attachment[]): strin
   if (trimmed) return trimmed;
   if (attachments.some((attachment) => attachment.kind === 'text')) return '(see attached text)';
   if (attachments.some((attachment) => attachment.kind === 'image')) return '(see attached image)';
-  return attachments.length > 0 ? '' : null;
+  return null;
 }
 
 // The host reads a missing list as none, so it is only sent when there is one.
@@ -67,7 +68,7 @@ export const useChatActions = (): UseChatActionsReturn => {
       const outgoing = outgoingAttachments(attachments);
       const store = useChatStore.getState();
       const { activeTask, isRunning } = store;
-      const pendingQuestion = selectPendingQuestion(store);
+      const pendingQuestion = findPendingQuestion(store.activeTask?.messages ?? []);
 
       // A pending question owns the input box: the reply answers the tool call
       // instead of starting a new turn.

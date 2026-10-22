@@ -23,7 +23,7 @@ function tabHasMatch(tabId: SettingsTabId, searchQuery: string): boolean {
 }
 
 export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
-  const [activeTabId, setActiveTabId] = useState(SETTINGS_TABS[0].id);
+  const [activeTab, setActiveTab] = useState(SETTINGS_TABS[0]);
   const [isDiscardDialogShow, setDiscardDialogShow] = useState(false);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -33,12 +33,12 @@ export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
   const { containerRef, isCollapsed, shouldAnimate } = useResponsive();
 
   useEffect(() => {
-    if (!searchQuery.trim() || tabHasMatch(activeTabId, searchQuery)) return;
+    if (!searchQuery.trim() || tabHasMatch(activeTab.id, searchQuery)) return;
     const firstTabWithMatch = SETTINGS_TABS.find((tab) => tabHasMatch(tab.id, searchQuery));
     if (firstTabWithMatch) {
-      setActiveTabId(firstTabWithMatch.id);
+      setActiveTab(firstTabWithMatch);
     }
-  }, [searchQuery, activeTabId]);
+  }, [searchQuery, activeTab]);
 
   const checkUnsavedChanges = (proceed: () => void) => {
     if (isChangeDetected) {
@@ -48,8 +48,7 @@ export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
     }
   };
 
-  const activeTab = SETTINGS_TABS.find((tab) => tab.id === activeTabId) || SETTINGS_TABS[0];
-  const visibleRootKeys = getRootFieldKeys(activeTabId).filter((key) => isFieldVisible(key, searchQuery));
+  const visibleRootKeys = getRootFieldKeys(activeTab.id).filter((key) => isFieldVisible(key, searchQuery));
 
   return (
     <div ref={containerRef} className="flex flex-col h-full bg-vscode-sideBar-background text-vscode-foreground select-none overflow-hidden">
@@ -126,13 +125,13 @@ export const SettingsView: FC<SettingsViewProps> = ({ settings, onDone }) => {
         >
           {SETTINGS_TABS.map((tab) => {
             const TabIcon = tab.icon;
-            const isActive = tab.id === activeTabId;
+            const isActive = tab.id === activeTab.id;
             const hasMatch = tabHasMatch(tab.id, searchQuery);
             return (
               <Tooltip key={tab.id} content={tab.label} side="right" disabled={!isCollapsed}>
                 <button
                   type="button"
-                  onClick={() => setActiveTabId(tab.id)}
+                  onClick={() => setActiveTab(tab)}
                   className={cn(
                     'whitespace-nowrap overflow-hidden min-w-0 h-12 py-3 box-border flex items-center border-l-2 text-xs w-full border-y-0 border-r-0 transition-colors duration-150',
                     isCollapsed ? 'justify-center px-0' : 'px-4 gap-2 text-left',

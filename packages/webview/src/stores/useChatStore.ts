@@ -18,7 +18,6 @@ import {
   startApiRequest,
   upsertToolRow,
 } from '@pi-code/webview/helpers/messages';
-import { findPendingQuestion } from '@pi-code/webview/helpers/questions';
 
 import type { RefObject } from 'react';
 import type { WebviewApi as InternalWebviewApi } from 'vscode-webview';
@@ -35,7 +34,7 @@ import type {
   WorkspaceFolderItem,
 } from '@pi-code/shared/core/protocol';
 import type { AppSettings } from '@pi-code/shared/core/settings';
-import type { ActiveTaskState, Attachment, ChatMessage, ModelThinkingLevel, ToolChatMessage } from '@pi-code/shared/core/types';
+import type { ActiveTaskState, Attachment, ModelThinkingLevel, ToolChatMessage } from '@pi-code/shared/core/types';
 
 interface WebviewApi extends Omit<InternalWebviewApi<unknown>, 'postMessage'> {
   postMessage(message: WebviewToExtensionMessage): void;
@@ -645,17 +644,6 @@ export const useChatStore = create<ChatState>((set, get) => {
     },
   };
 });
-
-let pendingQuestionSource: readonly ChatMessage[] | undefined;
-let pendingQuestionResult: ChatMessage | undefined;
-
-export const selectPendingQuestion = (state: ChatState): ChatMessage | undefined => {
-  const messages = state.activeTask?.messages;
-  if (messages !== undefined && messages === pendingQuestionSource) return pendingQuestionResult;
-  pendingQuestionSource = messages;
-  pendingQuestionResult = findPendingQuestion(messages ?? []);
-  return pendingQuestionResult;
-};
 
 // The level shown to the user, clamped to what the selected model supports.
 // The stored value is the raw preference, so a catalog refresh never has to

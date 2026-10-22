@@ -264,8 +264,7 @@ export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutco
   const mutating = isMutatingAgent(input.agent);
   let worktree: IsolatedWorktree | null = null;
   let effectiveCwd = input.cwd;
-  let integrated = false;
-  let integrationFailed = false;
+  let integrationAttempted = false;
   let session: AgentSession | undefined;
   let unsubscribe: (() => void) | undefined;
 
@@ -282,7 +281,6 @@ export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutco
 
     input.onProgress?.('');
     if (input.signal?.aborted) {
-      if (worktree) await withWorktreeLock(() => removeWorktreeDirectory(worktree!));
       return cancelled();
     }
 
@@ -293,7 +291,6 @@ export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutco
     if (input.signal?.aborted) {
       // The session never ran, so there is no transcript worth keeping.
       unregisterLiveSubagent(input.toolCallId);
-      if (worktree) await withWorktreeLock(() => removeWorktreeDirectory(worktree!));
       return cancelled();
     }
 
@@ -331,16 +328,11 @@ export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutco
 
       if (worktree && !aborted) {
         const integration = await withWorktreeLock(() => integrateIsolatedWorktree(worktree!));
-        integrated = integration.ok;
+        integrationAttempted = true;
         if (!integration.ok) {
-          integrationFailed = true;
           finalError = finalError ?? integration.reason;
           finalText = finalText ? `${finalText}\n\n${integration.reason}` : integration.reason;
         }
-      }
-
-      if (worktree && aborted) {
-        await withWorktreeLock(() => removeWorktreeDirectory(worktree!));
       }
 
       return {
@@ -361,7 +353,9 @@ export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutco
   } finally {
     // A sub-agent that never got a session has no transcript to open.
     if (!session) unregisterLiveSubagent(input.toolCallId);
-    if (worktree && !integrated && !integrationFailed) {
+    // An integration that ran keeps the worktree, whether it merged the changes
+    // back or failed: a failed merge still holds work worth recovering.
+    if (worktree && !integrationAttempted) {
       await withWorktreeLock(() => removeWorktreeDirectory(worktree!));
     }
     release();

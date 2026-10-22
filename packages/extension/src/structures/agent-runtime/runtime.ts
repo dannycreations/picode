@@ -126,10 +126,10 @@ export class Runtime {
     const { session } = resolved;
 
     try {
-      const expanded = await expandMentions(text, getWorkspaceCwd());
+      const mentionContent = await expandMentions(text, getWorkspaceCwd());
       // A sub-agent takes one message, so the files a mention points at ride
       // along with it instead of travelling as a separate hidden message.
-      const mentioned = expanded.mentionContent ? `${expanded.text}\n\n${expanded.mentionContent}` : expanded.text;
+      const mentioned = mentionContent ? `${text}\n\n${mentionContent}` : text;
       const content = [{ type: 'text' as const, text: withTextAttachments(mentioned, attachments) }, ...parseAttachments(attachments)];
       await session.sendUserMessage(content, { deliverAs: 'steer' });
     } catch (err) {
@@ -147,11 +147,11 @@ export class Runtime {
 
       const skills = services.resourceLoader.getSkills().skills;
       const prompts = services.resourceLoader.getPrompts().prompts;
-      const expanded = await expandMentions(promptText, getWorkspaceCwd());
+      const mentionContent = await expandMentions(promptText, getWorkspaceCwd());
 
-      await injectResourceMessages(session, { skills, prompts }, expanded.text);
+      await injectResourceMessages(session, { skills, prompts }, promptText);
 
-      appendUserTurn(session, expanded, attachments, Date.now());
+      appendUserTurn(session, promptText, mentionContent, attachments, Date.now());
       appendHiddenMessage(session, 'environment_details', envDetails);
 
       if (this.discardIfStale(generation, session)) return;
@@ -207,12 +207,7 @@ export class Runtime {
 
     const { session } = await this.getOrCreateSession(path, cwd);
     const leafId = session.sessionManager.getLeafId();
-    if (!leafId) {
-      this.messenger.postError(new Error('Failed to create a forked session.'));
-      return null;
-    }
-
-    const branchedPath = session.sessionManager.createBranchedSession(leafId);
+    const branchedPath = leafId ? session.sessionManager.createBranchedSession(leafId) : undefined;
     if (!branchedPath) {
       this.messenger.postError(new Error('Failed to create a forked session.'));
       return null;
@@ -437,12 +432,14 @@ export class Runtime {
   }
 
   private handleSessionEvent(event: AgentSessionEvent, session: AgentSession): void {
-    if (event.type === 'agent_settled' && this.session?.sessionFile && this.replyQueue.size > 0) {
-      // The agent stopped but the user queued replies while it ran. Drain
-      // them into a fresh turn instead of discarding them.
-      void this.continueTask(this.session.sessionFile);
-    } else if (event.type === 'agent_settled') {
-      this.replyQueue.clear();
+    if (event.type === 'agent_settled') {
+      if (this.session?.sessionFile && this.replyQueue.size > 0) {
+        // The agent stopped but the user queued replies while it ran. Drain
+        // them into a fresh turn instead of discarding them.
+        void this.continueTask(this.session.sessionFile);
+      } else {
+        this.replyQueue.clear();
+      }
     }
 
     const { message, apiRequestId } = mapEvent(event, session, this.apiRequestId);
@@ -466,8 +463,8 @@ export class Runtime {
 
   private async processQueuedReply(msg: QueueChatMessage, cwd: string, session: AgentSession): Promise<ChatMessage | undefined> {
     try {
-      const expanded = await expandMentions(msg.text, cwd);
-      appendUserTurn(session, expanded, msg.attachments, msg.timestamp);
+      const mentionContent = await expandMentions(msg.text, cwd);
+      appendUserTurn(session, msg.text, mentionContent, msg.attachments, msg.timestamp);
       return { id: msg.id, sender: 'user', text: msg.text, attachments: msg.attachments, timestamp: msg.timestamp };
     } catch (err) {
       logger.error('Failed to process queued reply, keeping it for later:', err);

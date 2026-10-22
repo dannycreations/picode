@@ -3,7 +3,6 @@ import { wrapCodeBlock } from '@pi-code/shared/utilities/markdown';
 
 import type { Message } from '@earendil-works/pi-ai';
 import type { AgentSession, CustomMessage } from '@earendil-works/pi-coding-agent';
-import type { ExpandedMentions } from '@pi-code/extension/structures/chat-command/mention';
 import type { Attachment } from '@pi-code/shared/core/types';
 
 function appendAgentMessage(session: AgentSession, message: Message | CustomMessage): void {
@@ -30,13 +29,14 @@ export function appendHiddenMessage(session: AgentSession, customType: string, c
 
 export function appendUserTurn(
   session: AgentSession,
-  expanded: ExpandedMentions,
+  text: string,
+  mentionContent: string,
   attachments: readonly Attachment[] | undefined,
   timestamp: number,
 ): void {
   appendAgentMessage(session, {
     role: 'user',
-    content: [{ type: 'text', text: expanded.text }, ...parseAttachments(attachments)],
+    content: [{ type: 'text', text }, ...parseAttachments(attachments)],
     timestamp,
   });
 
@@ -46,7 +46,7 @@ export function appendUserTurn(
     }
   }
 
-  if (expanded.mentionContent) {
-    appendHiddenMessage(session, 'mention_content', expanded.mentionContent);
+  if (mentionContent) {
+    appendHiddenMessage(session, 'mention_content', mentionContent);
   }
 }

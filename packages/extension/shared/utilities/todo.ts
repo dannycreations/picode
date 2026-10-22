@@ -25,7 +25,7 @@ export function getVisibleTodos(oldTodos: readonly TodoItem[], newTodos: readonl
   for (const todo of newTodos) {
     if (todo.status !== 'closed' && todo.status !== 'active') continue;
     const previous = previousStatusByContent.get(todo.content);
-    if (previous === undefined || previous !== todo.status) changed.push(todo);
+    if (previous !== todo.status) changed.push(todo);
   }
 
   return changed.length > 0 ? changed : newTodos;

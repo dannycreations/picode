@@ -6,7 +6,7 @@ import { readOutputLimits } from '@pi-code/extension/core/settings';
 import { runFileMutation, toolError } from '@pi-code/extension/structures/tool-call/helpers';
 import { checkReadableFile, writeFileAtomic } from '@pi-code/extension/utilities/fs';
 import { buildFileChangeResult } from '@pi-code/extension/utilities/truncate';
-import { countOccurrences, escapeRegExp, isWhitespaceCode } from '@pi-code/shared/utilities/common';
+import { countOccurrences, escapeRegExp } from '@pi-code/shared/utilities/common';
 
 import type { CustomToolResult } from '@pi-code/extension/types/extension';
 import type { ToolName } from '@pi-code/shared/core/types';
@@ -17,19 +17,10 @@ interface TextToken {
 }
 
 function tokenizeText(text: string): TextToken[] {
-  const tokens: TextToken[] = [];
-  let index = 0;
-
-  while (index < text.length) {
-    const isWhitespace = isWhitespaceCode(text.charCodeAt(index));
-    const start = index;
-    while (index < text.length && isWhitespaceCode(text.charCodeAt(index)) === isWhitespace) {
-      index++;
-    }
-    tokens.push({ text: text.slice(start, index), isWhitespace });
-  }
-
-  return tokens;
+  return (text.match(/\s+|\S+/g) ?? []).map((token) => ({
+    text: token,
+    isWhitespace: /\s/.test(token),
+  }));
 }
 
 function buildWhitespaceTolerantRegex(oldText: string): RegExp {

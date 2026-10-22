@@ -19,17 +19,18 @@ function resolveReasoning(model: Model<Api>, level: ModelThinkingLevel | undefin
   return clamped === 'off' ? undefined : clamped;
 }
 
-async function completePrompt(
+export async function completeAndExtract(
   cwd: string,
   prompt: string,
   signal?: AbortSignal,
-  preferred?: ModelSelection,
+  preferredModel?: ModelSelection,
   preferredThinkingLevel?: ModelThinkingLevel,
 ): Promise<string> {
   const runtime = (await createAgentResources(cwd)).modelRuntime;
   // Reading the default model reloads the agent settings, so only pay for it
   // when the preferred selection does not name a model this runtime knows.
-  const model = resolveModel(runtime, preferred) ?? resolveModel(runtime, await getDefaultModelSelection(cwd)) ?? runtime.getAvailableSnapshot()[0];
+  const model =
+    resolveModel(runtime, preferredModel) ?? resolveModel(runtime, await getDefaultModelSelection(cwd)) ?? runtime.getAvailableSnapshot()[0];
   if (!model) {
     throw new Error('No model configured or available. Please configure your model settings in pi-agent.');
   }
@@ -44,22 +45,12 @@ async function completePrompt(
   logger.debug('Completion response received successfully.');
 
   const primaryText = contentText(response.content).trim();
-  if (primaryText) {
-    return primaryText;
-  }
+  const text = primaryText
+    ? primaryText
+    : response.content
+        .filter((block) => block.type === 'thinking')
+        .map((block) => block.thinking)
+        .join('\n');
 
-  return response.content
-    .filter((block) => block.type === 'thinking')
-    .map((block) => block.thinking)
-    .join('\n');
-}
-
-export async function completeAndExtract(
-  cwd: string,
-  prompt: string,
-  signal?: AbortSignal,
-  preferredModel?: ModelSelection,
-  preferredThinkingLevel?: ModelThinkingLevel,
-): Promise<string> {
-  return extractCodeBlock(await completePrompt(cwd, prompt, signal, preferredModel, preferredThinkingLevel));
+  return extractCodeBlock(text);
 }

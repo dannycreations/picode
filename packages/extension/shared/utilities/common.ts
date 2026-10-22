@@ -42,23 +42,8 @@ export function createActiveTask(id: string, title: string, messages: ChatMessag
   return { id, title, messages, ...EMPTY_STATS };
 }
 
-export function isWhitespaceCode(code: number): boolean {
-  if (code === 0x20) return true;
-  if (code < 0x09) return false;
-  if (code <= 0x0d) return true;
-  if (code === 0xa0 || code === 0x1680) return true;
-  if (code >= 0x2000 && code <= 0x200a) return true;
-  if (code === 0x2028 || code === 0x2029 || code === 0x202f || code === 0x205f) return true;
-  if (code === 0x3000 || code === 0xfeff) return true;
-  return false;
-}
-
 export function hasVisibleText(text: string | undefined): boolean {
-  if (!text) return false;
-  for (let index = 0; index < text.length; index++) {
-    if (!isWhitespaceCode(text.charCodeAt(index))) return true;
-  }
-  return false;
+  return !!text && /\S/.test(text);
 }
 
 export function hasVisibleOutput(message: AssistantChatMessage): boolean {
@@ -66,9 +51,7 @@ export function hasVisibleOutput(message: AssistantChatMessage): boolean {
 }
 
 export function startsWithIgnoringLeadingWhitespace(text: string, prefix: string): boolean {
-  let index = 0;
-  while (index < text.length && isWhitespaceCode(text.charCodeAt(index))) index++;
-  return text.startsWith(prefix, index);
+  return text.trimStart().startsWith(prefix);
 }
 
 export function findReplaceableFailedRequest(messages: readonly ChatMessage[]): number | undefined {

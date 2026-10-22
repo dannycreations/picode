@@ -115,10 +115,10 @@ export function groupToolMessages(messages: ReadonlyArray<ChatMessage>): ChatMes
     const parentIndex = parentIndexByToolCallId.get(m.toolCallId);
     if (parentIndex === undefined) continue;
 
-    const parentMsg = result[parentIndex];
-    if (parentMsg.sender !== 'tool') continue;
+    // The map only ever holds the index of a tool row that carries sections.
+    const parentMsg = result[parentIndex] as ToolChatMessage & { readonly toolSections: readonly ToolSection[] };
 
-    if (m.toolStatus === 'approval' && parentMsg.toolSections) {
+    if (m.toolStatus === 'approval') {
       result[parentIndex] = {
         ...parentMsg,
         toolSections: parentMsg.toolSections.map((section) =>
@@ -217,10 +217,8 @@ export function patchRetryDeadline(messages: ChatMessage[], retryAt: number | un
 }
 
 export function startApiRequest(messages: ChatMessage[], id: string, timestamp: number): ChatMessage[] {
-  for (let index = 0; index < messages.length; index++) {
-    // A request that is already on screen needs no second row.
-    if (messages[index].id === id) return messages;
-  }
+  // A request that is already on screen needs no second row.
+  if (messages.some((message) => message.id === id)) return messages;
 
   // The row that still shows a retry deadline is the last request row.
   let deadlineIndex = -1;
