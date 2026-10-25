@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { recordApprovalDuration } from '@pi-code/extension/structures/agent-runtime/brokers/approval';
-import { convertSessionEntries, loadSubagentTranscript } from '@pi-code/extension/structures/chat-session/session';
+import { convertSessionEntries, loadSessionTranscript, loadSubagentTranscript } from '@pi-code/extension/structures/chat-session/session';
 
 import type { AssistantMessage, ImageContent, ToolResultMessage, UserMessage } from '@earendil-works/pi-ai';
 import type { AgentSession, SessionEntry } from '@earendil-works/pi-coding-agent';
@@ -9,6 +9,18 @@ import type { ChatMessage, ToolChatMessage } from '@pi-code/shared/core/types';
 
 function messageEntry(id: string, message: UserMessage | AssistantMessage | ToolResultMessage): SessionEntry {
   return { id, type: 'message', parentId: null, timestamp: new Date().toISOString(), message };
+}
+
+function compactionEntry(id: string): SessionEntry {
+  return {
+    id,
+    type: 'compaction',
+    parentId: null,
+    timestamp: new Date().toISOString(),
+    summary: 'Earlier work',
+    firstKeptEntryId: id,
+    tokensBefore: 650_000,
+  } as SessionEntry;
 }
 
 function assistantMessage(content: AssistantMessage['content'], overrides: Partial<AssistantMessage> = {}): AssistantMessage {
@@ -182,6 +194,48 @@ describe('convertSessionEntries text attachment rehydration', () => {
     const user = convertSessionEntries(entries).find((m): m is Extract<ChatMessage, { sender: 'user' }> => m.sender === 'user');
 
     expect(user?.attachments).toBeUndefined();
+  });
+});
+
+describe('loadSessionTranscript context size', () => {
+  function measuredAssistant(id: string, totalTokens: number): SessionEntry {
+    return messageEntry(
+      id,
+      assistantMessage([{ type: 'text', text: 'ok' }], {
+        usage: {
+          input: totalTokens,
+          output: 0,
+          cacheRead: 0,
+          cacheWrite: 0,
+          totalTokens,
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+        },
+      }),
+    );
+  }
+
+  it('reports the context of a session that was never compacted', () => {
+    const { stats } = loadSessionTranscript([measuredAssistant('m1', 120_000)], 1_000_000);
+
+    expect(stats.contextTokens).toBe(120_000);
+  });
+
+  it('leaves the context unknown while a compacted session has no measured turn', () => {
+    // The usage the assistant measured before the compaction describes a
+    // context that no longer exists.
+    const entries = [measuredAssistant('m1', 650_000), compactionEntry('c1')];
+
+    const { stats } = loadSessionTranscript(entries, 1_000_000);
+
+    expect(stats.contextTokens).toBeNull();
+  });
+
+  it('reports the context a turn after the compaction measured', () => {
+    const entries = [measuredAssistant('m1', 650_000), compactionEntry('c1'), measuredAssistant('m2', 466_000)];
+
+    const { stats } = loadSessionTranscript(entries, 1_000_000);
+
+    expect(stats.contextTokens).toBe(466_000);
   });
 });
 

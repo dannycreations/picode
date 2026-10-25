@@ -257,14 +257,11 @@ export class Runtime {
       }
 
       try {
-        const compaction = await session.compact();
+        await session.compact();
 
         const { entries, transcript } = this.snapshot(session);
 
-        let stats = createStats(session) ?? transcript.stats;
-        if (typeof compaction?.estimatedTokensAfter === 'number') {
-          stats = { ...stats, contextTokens: compaction.estimatedTokensAfter };
-        }
+        const stats = createStats(session) ?? transcript.stats;
 
         // getBranch() runs oldest to newest, so the entry just written is the last one.
         const compactionEntry = entries.findLast((entry) => entry.type === 'compaction') ?? null;

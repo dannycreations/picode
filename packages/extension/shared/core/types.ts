@@ -16,7 +16,7 @@ export interface StatsData {
   readonly cacheWrites?: number;
   readonly cacheReads?: number;
   readonly totalCost: number;
-  readonly contextTokens: number;
+  readonly contextTokens: number | null;
   readonly contextLimit: number;
 }
 

@@ -307,7 +307,7 @@ export function createStats(session: AgentSession): StatsData | undefined {
       cacheReads: stats.tokens.cacheRead,
       cacheWrites: stats.tokens.cacheWrite,
       totalCost: stats.cost,
-      contextTokens: stats.contextUsage?.tokens ?? 0,
+      contextTokens: stats.contextUsage?.tokens ?? null,
       contextLimit: resolveContextLimit(stats.contextUsage?.contextWindow ?? session.model?.contextWindow),
     };
     statsCache.set(session, { entryCount, modelKey, stats: result });

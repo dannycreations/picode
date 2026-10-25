@@ -139,7 +139,9 @@ export const ChatHeader: FC<ChatHeaderProps> = memo(
   }) => {
     const [isExpanded, setIsExpanded] = useState(false);
 
-    const contextPercentage = Math.min(100, Math.round((contextTokens / contextLimit) * 100));
+    const contextPercentage = contextTokens === null ? null : Math.min(100, Math.round((contextTokens / contextLimit) * 100));
+    const contextShare = contextTokens === null ? '?' : contextTokens.toLocaleString();
+    const contextLabel = contextPercentage === null ? '?' : `${contextPercentage}%`;
 
     const handleContainerClick = (e: MouseEvent) => {
       if (e.target instanceof Element && e.target.closest('[data-todo-list]')) return;
@@ -179,10 +181,10 @@ export const ChatHeader: FC<ChatHeaderProps> = memo(
           {/* Collapsed State Summary */}
           <Accordion open={!isExpanded}>
             <div className="w-full flex items-center justify-between gap-3 mt-1.5" onClick={(e) => e.stopPropagation()}>
-              <Tooltip content={`${contextTokens.toLocaleString()} / ${contextLimit.toLocaleString()}`} side="bottom">
+              <Tooltip content={`${contextShare} / ${contextLimit.toLocaleString()}`} side="bottom">
                 <div className="flex-1 flex items-center gap-2">
-                  <span className="text-muted whitespace-nowrap">Context: {contextPercentage}%</span>
-                  <ContextProgressBar percentage={contextPercentage} />
+                  <span className="text-muted whitespace-nowrap">Context: {contextLabel}</span>
+                  <ContextProgressBar percentage={contextPercentage ?? 0} />
                 </div>
               </Tooltip>
               <div className="flex items-center gap-2">
@@ -207,9 +209,9 @@ export const ChatHeader: FC<ChatHeaderProps> = memo(
                     <td className="align-middle pb-2.5">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-mono text-vscode-foreground whitespace-nowrap">
-                          {contextTokens.toLocaleString()} / {contextLimit.toLocaleString()} ({contextPercentage}%)
+                          {contextShare} / {contextLimit.toLocaleString()} ({contextLabel})
                         </span>
-                        <ContextProgressBar percentage={contextPercentage} />
+                        <ContextProgressBar percentage={contextPercentage ?? 0} />
                         {!isArchived && onCompact && (
                           <Tooltip content="Compact context">
                             <button onClick={onCompact} className="icon-button">

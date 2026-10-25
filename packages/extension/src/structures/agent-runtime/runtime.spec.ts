@@ -509,8 +509,10 @@ describe('Runtime compaction', () => {
     } as unknown as AgentSession & { compact: ReturnType<typeof vi.fn> };
   }
 
-  it('returns the post-compaction estimate and brackets the run with start and end messages', async () => {
+  it('reports the measured context and brackets the run with start and end messages', async () => {
     const webview = makeFakeWebview();
+    // The session estimates the compacted context, but only a request measures
+    // it. The estimate must not reach the header as if it were a measurement.
     const session = makeCompactSession(async () => ({ estimatedTokensAfter: 123 }));
     session.getContextUsage = () => ({ tokens: 900, contextWindow: 1000, percent: 90 });
     mocks.createSession.mockResolvedValue({ session, services: SERVICES });
@@ -530,7 +532,7 @@ describe('Runtime compaction', () => {
         cacheWrites: 0,
         cacheReads: 0,
         totalCost: 0.5,
-        contextTokens: 123,
+        contextTokens: 30,
         contextLimit: 1000,
       },
     });
@@ -538,6 +540,37 @@ describe('Runtime compaction', () => {
     const types = posted(webview).map((message) => message.type);
     expect(types.filter((type) => type === 'compaction_start')).toHaveLength(1);
     expect(types.filter((type) => type === 'compaction_end')).toHaveLength(1);
+  });
+
+  it('leaves the context size unknown when the session cannot measure it', async () => {
+    const webview = makeFakeWebview();
+    const session = makeCompactSession(async () => ({ estimatedTokensAfter: 123 }));
+    // The threshold is read before the compaction, where the context is still
+    // measured. A compacted context has no size until the next request
+    // measures it, and the stats are read after.
+    session.getContextUsage = () => ({ tokens: 900, contextWindow: 1000, percent: 90 });
+    session.getSessionStats = () => ({
+      sessionFile: undefined,
+      sessionId: 'session-1',
+      userMessages: 0,
+      assistantMessages: 0,
+      toolCalls: 0,
+      toolResults: 0,
+      totalMessages: 0,
+      tokens: { input: 10, output: 20, cacheRead: 0, cacheWrite: 0, total: 30 },
+      cost: 0.5,
+      contextUsage: { tokens: null, contextWindow: 1000, percent: null },
+    });
+    mocks.createSession.mockResolvedValue({ session, services: SERVICES });
+    const runtime = new Runtime(webview);
+
+    const result = await runtime.compact(undefined);
+
+    expect(result?.stats.contextTokens).toBeNull();
+    const end = (webview.postMessage as ReturnType<typeof vi.fn>).mock.calls
+      .map((call) => call[0] as { type: string; payload?: { contextTokens?: number | null } })
+      .find((message) => message.type === 'compaction_end');
+    expect(end?.payload?.contextTokens).toBeNull();
   });
 
   it('swallows an aborted compaction instead of posting an error bubble', async () => {

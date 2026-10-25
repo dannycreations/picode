@@ -1,5 +1,5 @@
 import { contentText, uuidv7 } from '@earendil-works/pi-ai';
-import { calculateContextTokens, getLastAssistantUsage } from '@earendil-works/pi-coding-agent';
+import { calculateContextTokens, getLastAssistantUsage, getLatestCompactionEntry } from '@earendil-works/pi-coding-agent';
 
 import { clearApprovalDuration, getApprovalDuration } from '@pi-code/extension/structures/agent-runtime/brokers/approval';
 import { toBase64DataUrl } from '@pi-code/extension/utilities/codec';
@@ -245,7 +245,6 @@ function calculateSessionStats(entries: readonly SessionEntry[], contextLimit: n
   let cacheWrites = 0;
   let cacheReads = 0;
   let totalCost = 0;
-  let contextTokens = 0;
 
   const addUsage = (usage: Usage | undefined): void => {
     if (!usage) return;
@@ -264,24 +263,28 @@ function calculateSessionStats(entries: readonly SessionEntry[], contextLimit: n
     }
   }
 
-  try {
-    const lastUsage = getLastAssistantUsage([...entries]);
-    if (lastUsage) {
-      contextTokens = calculateContextTokens(lastUsage);
-    }
-  } catch (err) {
-    logger.error('Failed to get last assistant usage:', err);
-  }
-
   return {
     tokensIn,
     tokensOut,
     cacheWrites,
     cacheReads,
     totalCost,
-    contextTokens,
+    contextTokens: measureContextTokens(entries),
     contextLimit,
   };
+}
+
+function measureContextTokens(entries: readonly SessionEntry[]): number | null {
+  try {
+    const compaction = getLatestCompactionEntry([...entries]);
+    const compactionIndex = compaction ? entries.findIndex((entry) => entry.id === compaction.id) : -1;
+    const measured = compactionIndex === -1 ? entries : entries.slice(compactionIndex + 1);
+    const usage = getLastAssistantUsage([...measured]);
+    return usage ? calculateContextTokens(usage) : null;
+  } catch (err) {
+    logger.error('Failed to get last assistant usage:', err);
+    return null;
+  }
 }
 
 export function loadSessionTranscript(entries: readonly SessionEntry[], contextLimit: number): { messages: ChatMessage[]; stats: StatsData } {
