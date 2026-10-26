@@ -4,6 +4,11 @@ import type { ParseEntry } from 'shell-quote';
 
 const SEPARATOR_OPS = ['&&', '||', ';', '|', '&'];
 
+export interface CommandSegment {
+  readonly text: string;
+  readonly tokens: readonly string[];
+}
+
 function tokenize(command: string): ParseEntry[] {
   try {
     return parse(command);
@@ -12,14 +17,14 @@ function tokenize(command: string): ParseEntry[] {
   }
 }
 
-function parseCommandLine(command: string): string[] {
+function parseCommandLine(command: string): CommandSegment[] {
   if (!command.trim()) return [];
 
-  const subCommands: string[] = [];
+  const segments: CommandSegment[] = [];
   let current: string[] = [];
   const flush = () => {
     if (current.length > 0) {
-      subCommands.push(current.join(' '));
+      segments.push({ text: current.join(' '), tokens: [...current] });
       current = [];
     }
   };
@@ -40,9 +45,9 @@ function parseCommandLine(command: string): string[] {
     }
   }
   flush();
-  return subCommands;
+  return segments;
 }
 
-export function parseCommand(command: string): string[] {
+export function parseCommand(command: string): CommandSegment[] {
   return command.split(/\r?\n/).flatMap((line) => parseCommandLine(line));
 }

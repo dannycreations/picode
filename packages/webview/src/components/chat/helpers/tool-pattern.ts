@@ -23,7 +23,7 @@ function extractCommandPatterns(command: string): readonly string[] {
 
   let subCommands: string[];
   try {
-    subCommands = parseCommand(command);
+    subCommands = parseCommand(command).map((segment) => segment.text);
   } catch {
     // The host asks the user rather than matching patterns when tokenization
     // fails, so offer the raw command as the single candidate.

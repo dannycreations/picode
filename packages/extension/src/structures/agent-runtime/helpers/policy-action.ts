@@ -6,6 +6,7 @@ import { parseCommand } from '@pi-code/shared/utilities/command';
 import { isWindowsAbsolutePath, normalizeSeparators, setBounded } from '@pi-code/shared/utilities/common';
 
 import type { AppSettings } from '@pi-code/shared/core/settings';
+import type { CommandSegment } from '@pi-code/shared/utilities/command';
 
 export type ApprovalDecision = { action: 'approve' } | { action: 'deny'; reason: string } | { action: 'confirm' };
 
@@ -304,14 +305,40 @@ function getSingleCommandDecision(
 
 const FD_REDIRECT_PATTERN = /\d*>&\d*/g;
 
-function evaluateSubCommand(subCmd: string, allowedPatterns: readonly string[], deniedPatterns: readonly string[]): ApprovalDecision['action'] {
-  const decision = getSingleCommandDecision(subCmd, allowedPatterns, deniedPatterns);
+function matchesDeniedCommandWord(pattern: string, tokens: readonly string[]): boolean {
+  const forms: string[] = [];
+  for (const token of tokens) {
+    const normalized = normalizeSeparators(token);
+    if (!normalized) continue;
+    forms.push(normalized);
+
+    const fileName = normalized.slice(normalized.lastIndexOf('/') + 1);
+    // A glob never crosses a separator, so "*.env" reaches "config/.env" only
+    // through its file name.
+    if (fileName && fileName !== normalized) forms.push(fileName);
+  }
+  return forms.some((form) => matchesCommandPattern(pattern, form, form.toLowerCase()));
+}
+
+function evaluateSubCommand(
+  segment: CommandSegment,
+  allowedPatterns: readonly string[],
+  deniedPatterns: readonly string[],
+): ApprovalDecision['action'] {
+  let decision = getSingleCommandDecision(segment.text, allowedPatterns, deniedPatterns);
+
+  const withoutRedirection = segment.text.replace(FD_REDIRECT_PATTERN, '').trim();
+  if (withoutRedirection !== segment.text) {
+    decision = getSingleCommandDecision(withoutRedirection, allowedPatterns, deniedPatterns);
+  }
   if (decision === 'deny') return decision;
 
-  const withoutRedirection = subCmd.replace(FD_REDIRECT_PATTERN, '').trim();
-  if (withoutRedirection === subCmd) return decision;
-
-  return getSingleCommandDecision(withoutRedirection, allowedPatterns, deniedPatterns);
+  // Denials reach into the words of a command, approvals never do: widening a
+  // denial only blocks more, while widening an approval would run more.
+  if (deniedPatterns.some((pattern) => matchesDeniedCommandWord(pattern, segment.tokens))) {
+    return 'deny';
+  }
+  return decision;
 }
 
 export function resolveCommandAction(
@@ -323,17 +350,17 @@ export function resolveCommandAction(
   if (!approveEnabled) return 'confirm';
   if (containsDangerousSubstitution(command)) return 'confirm';
 
-  let subCommands: string[];
+  let segments: CommandSegment[];
   try {
-    subCommands = parseCommand(command);
+    segments = parseCommand(command);
   } catch {
     return 'confirm';
   }
-  if (subCommands.length === 0) return 'approve';
+  if (segments.length === 0) return 'approve';
 
   let hasConfirm = false;
-  for (const subCmd of subCommands) {
-    const decision = evaluateSubCommand(subCmd, allowedPatterns, deniedPatterns);
+  for (const segment of segments) {
+    const decision = evaluateSubCommand(segment, allowedPatterns, deniedPatterns);
     if (decision === 'deny') return 'deny';
     if (decision === 'confirm') hasConfirm = true;
   }

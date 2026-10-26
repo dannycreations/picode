@@ -210,6 +210,31 @@ describe('resolveCommandAction', () => {
     expect(action).toBe('deny');
   });
 
+  it('should deny a file pattern that only appears as one word of the command', () => {
+    // A redirection keeps *.env from matching the whole sub-command, but the
+    // command still reads .env, so the denial has to reach into its words.
+    expect(resolveCommandAction('cat .env 2>/dev/null', true, ['*'], ['*.env'])).toBe('deny');
+    expect(resolveCommandAction('cat config/.env', true, ['*'], ['*.env'])).toBe('deny');
+    expect(resolveCommandAction('cat .env | head -40', true, ['*'], ['*.env'])).toBe('deny');
+    expect(resolveCommandAction('cat secrets > backup.env', true, ['*'], ['*.env'])).toBe('deny');
+  });
+
+  it('should deny a whole chain when one sub-command touches a denied word', () => {
+    const command = 'ls -la && cat .env 2>/dev/null | head -40; cat .env.example';
+    expect(resolveCommandAction(command, true, ['*'], ['*.env'])).toBe('deny');
+  });
+
+  it('should leave a similarly named file alone when the denied pattern does not cover it', () => {
+    // *.env matches .env, never .env.example, so only the plain confirmation applies.
+    expect(resolveCommandAction('cat .env.example', true, [], ['*.env'])).toBe('confirm');
+    expect(resolveCommandAction('cat .env.example', true, ['*'], ['*.env'])).toBe('approve');
+  });
+
+  it('should never let an approved command hide behind a word that is allowed', () => {
+    // "git" is allowed, but the piped cat has to be confirmed on its own.
+    expect(resolveCommandAction('cat secrets.txt | git', true, ['git'], [])).toBe('confirm');
+  });
+
   it('should auto-approve when command matches allowed patterns', () => {
     const action = resolveCommandAction('npm test', true, ['npm'], []);
     expect(action).toBe('approve');
