@@ -17,11 +17,11 @@
   },
   "homepage": "https://github.com/dannycreations/picode",
   "dependencies": {
-    "@tanstack/react-virtual": "^3.14.23",
+    "@tanstack/react-virtual": "^3.14.24",
     "cn": "^0.5.0",
     "hast-util-to-jsx-runtime": "^2.3.6",
     "katex": "^0.19.1",
-    "lucide-react": "^1.61.0",
+    "lucide-react": "^1.64.0",
     "mermaid-compact": "^0.0.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",

@@ -11,7 +11,7 @@
   "main": "./dist/index.cjs",
   "engines": {
     "node": ">=24.13.3",
-    "vscode": ">=1.140.0"
+    "vscode": ">=1.144.0"
   },
   "capabilities": {
     "virtualWorkspaces": {
@@ -410,15 +410,15 @@
     "@earendil-works/pi-coding-agent": "^1.4.0",
     "@modelcontextprotocol/sdk": "^1.32.2",
     "ignore": "^7.0.14",
-    "minimatch": "^10.2.6",
+    "minimatch": "^11.0.3",
     "shell-quote": "^1.12.0",
     "typebox": "^1.4.3"
   },
   "devDependencies": {
     "@pi-code/webview": "workspace:*",
     "@types/node": "24.13.3",
-    "@types/vscode": "^1.140.0",
-    "@vscode/vsce": "^4.0.0",
+    "@types/vscode": "^1.144.0",
+    "@vscode/vsce": "^4.1.0",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vite": "^8.3.5",
