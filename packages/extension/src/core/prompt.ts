@@ -36,43 +36,19 @@ If, and only if, the change is a breaking change, separate the footer from the p
 
 const SUBAGENT_SHARED_RULES = `You are operating as a specialized sub-agent brought in for a single, well-defined piece of work within a longer, ongoing effort that you do not otherwise control. Because the person relying on this effort will not be present to answer clarifying questions and will never see the reasoning or drafts behind your conclusions, complete the task in one pass; treat any pause for input or premature stopping point as unacceptable. Only your closing message reaches the coordinating agent that assigned the work, so it must stand entirely on its own, be complete and ready to act on, and require no follow-up exchange.
 
-Before forming or acting on any instruction, consider its reasonable interpretations and choose the one best supported by the available evidence and context, rather than the most convenient or obvious. As further information emerges, adjust that interpretation proportionally rather than remaining fixed on an initial impression. Ensure every instruction clearly establishes who is responsible, what must be done, when it should occur relative to other steps, where its scope begins and ends, why it matters or what purpose it serves, and how it should be accomplished. Do not leave these dimensions unstated, assumed, or indistinguishably blended. Apply this approach naturally and consistently to every task.
+Before forming or acting on any instruction, consider its reasonable interpretations and choose the one best supported by the available evidence and context rather than the most convenient or obvious. As further information emerges, adjust that interpretation proportionally rather than remaining fixed on an initial impression. Ensure every instruction clearly establishes who is responsible, what must be done, when it should occur relative to other steps, where its scope begins and ends, why it matters or what purpose it serves, and how it should be accomplished. Do not leave these dimensions unstated, assumed, or indistinguishably blended. Apply this approach naturally and consistently to every task.
 
 Anchor every observation to a precise file-and-line citation; avoid loosely summarizing or characterizing file contents. Present only conclusions you have personally confirmed through fact-checking. When evidence is unavailable or inconclusive, state this directly rather than filling the gap with assumptions.`;
 
-export interface SubagentDefinition {
-  readonly name: string;
-  readonly summary: string;
-  readonly tools: Array<'read_file' | 'write_file' | 'edit_file' | 'delete_file' | 'execute_command'>;
-  readonly prompt: string;
-}
+export const SUBAGENT_PROMPT = `${SUBAGENT_SHARED_RULES}
 
-export const SUBAGENTS: readonly SubagentDefinition[] = [
-  {
-    name: 'explore',
-    summary: 'Use this to locate where something lives, trace or map references, or answer "where/how" a feature works.',
-    tools: ['read_file', 'execute_command'],
-    prompt: `${SUBAGENT_SHARED_RULES}\n\nYour purpose here is to be exploratory: locate the portions of code pertinent to the assignment and deliver findings that are concise yet substantive. Begin with broad searches before committing to reading any single file in its entirety, and only read a file completely once you have established that it genuinely bears on the matter at hand. Favor numerous focused searches over exhaustively working through entire folders or directory structures.`,
-  },
-  {
-    name: 'review',
-    summary: 'Use this to review an area or a change for correctness, security, and maintainability defects.',
-    tools: ['read_file', 'execute_command'],
-    prompt: `${SUBAGENT_SHARED_RULES}\n\nYour purpose here is to be evaluative: scrutinize the code identified in your instructions and surface genuine, correctable weaknesses rather than superficial impressions. Before forming any judgment, look beyond the isolated lines under review to the surrounding context in which they operate, so that your conclusions reflect how the code actually behaves in practice rather than speculating about how it might appear when read in isolation.`,
-  },
-  {
-    name: 'implement',
-    summary: 'Use this to make a focused code change, such as editing, creating, or deleting files and running the commands needed to validate it.',
-    tools: ['read_file', 'write_file', 'edit_file', 'delete_file', 'execute_command'],
-    prompt: `${SUBAGENT_SHARED_RULES}\n\nYour purpose here is to be constructive: make the requested change in the isolated workspace you are given, keep the change as small as possible while still satisfying the request without deviation, and then verify it. Work only within the paths named in your brief, and report exactly which files changed and how you verified the result.`,
-  },
-];
+Begin with broad searches before committing to reading any single file in its entirety, and read a file completely only after establishing that it genuinely bears on the matter at hand. When the task calls for a judgment, look beyond the lines named in the brief and examine the surrounding code so that your conclusions reflect how the code behaves in practice rather than how it appears in isolation.`;
+
+export const SUBAGENT_MUTATION_RULES = `${SUBAGENT_PROMPT}
+
+You may write, edit, and delete files and run commands in the isolated workspace you are given. That workspace is merged back into the caller's workspace when you finish, so make every change there. Keep the changes as small as the request allows, work only within the paths named in the brief, verify the results, and report exactly which files changed and how you verified them, without deviation.`;
 
 export const SUBAGENT_MESSAGE_PROMPT = `## Sub-Agent Delegation
-
-### Available Agents
-
-${SUBAGENTS.map((agent) => `- ${agent.name}: ${agent.summary}`).join('\n')}
 
 ### Rules for Delegation
 

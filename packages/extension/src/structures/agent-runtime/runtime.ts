@@ -89,7 +89,7 @@ export class Runtime {
       type: 'subagent_session_opened',
       payload: {
         toolCallId,
-        task: { id: `subagent-${toolCallId}`, title: subagent.name, messages, ...stats },
+        task: { id: `subagent-${toolCallId}`, title: subagent.description || subagent.task, messages, ...stats },
         isRunning: session.isStreaming,
       },
     });

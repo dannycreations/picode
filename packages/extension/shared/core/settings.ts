@@ -44,7 +44,7 @@ const SETTINGS_SCHEMA = {
   enableSubagentTool: {
     type: 'boolean',
     default: false,
-    description: 'Let the agent hand research to a helper that reads on its own and reports back a short summary.',
+    description: 'Let the agent delegate a self-contained task to a sub-agent that works on its own and reports back.',
   },
   enableAgentRules: {
     type: 'boolean',

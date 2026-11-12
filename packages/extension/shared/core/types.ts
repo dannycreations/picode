@@ -42,7 +42,7 @@ export type ToolArguments =
   // read_file
   | { files: Array<{ path: string; ranges?: Array<LineRange> }> }
   // spawn_subagent
-  | { agent: string; description: string; task: string }
+  | { description: string; task: string; mutate?: boolean }
   // update_todo
   | { todos: Array<TodoItem> }
   // write_file
@@ -140,7 +140,6 @@ export interface ToolChatMessage extends ChatMessageBase {
   readonly diff?: string;
   readonly todos?: TodoItem[];
   readonly errorMessage?: string;
-  readonly subagent?: string;
   readonly subtitle?: string;
   readonly toolCallId?: string;
   readonly exitCode?: number | null;

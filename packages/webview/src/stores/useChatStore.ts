@@ -276,13 +276,12 @@ export const useChatStore = create<ChatState>((set, get) => {
       );
     },
     tool_approval_request: (msg) => {
-      const { id, tool_name, arguments: toolArgs, subagent, toolCallId } = msg.payload;
+      const { id, tool_name, arguments: toolArgs, toolCallId } = msg.payload;
       const patch: Partial<ToolChatMessage> = {
         text: tool_name,
         toolName: tool_name,
         toolArgs,
         toolStatus: 'approval',
-        subagent,
         toolCallId,
         pausedAt: Date.now(),
       };
@@ -307,7 +306,7 @@ export const useChatStore = create<ChatState>((set, get) => {
           // their own.
           ignoreUnknownSubagent(task.messages, subagent, id)
             ? task
-            : applyToolUpsert(task, id, { text: tool_name, toolName: tool_name, toolArgs, toolStatus: 'running', subagent }),
+            : applyToolUpsert(task, id, { text: tool_name, toolName: tool_name, toolArgs, toolStatus: 'running' }),
         ),
       }));
     },

@@ -18,7 +18,7 @@ export function postToWebview(webview: Webview | null, message: ExtensionToWebvi
 interface CoalescedToolUpdate {
   toolName?: string;
   chunks: string[];
-  subagent?: string;
+  subagent?: boolean;
   subtitle?: string;
 }
 

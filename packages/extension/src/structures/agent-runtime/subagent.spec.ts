@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatSubagentStep, lastAssistantText, recordSubagentUsage, takeSubagentUsage } from '@pi-code/extension/structures/agent-runtime/subagent';
+import {
+  formatSubagentStep,
+  lastAssistantText,
+  recordSubagentUsage,
+  subagentTools,
+  takeSubagentUsage,
+} from '@pi-code/extension/structures/agent-runtime/subagent';
 
 import type { AgentSession } from '@earendil-works/pi-coding-agent';
 
@@ -39,6 +45,16 @@ describe('formatSubagentStep', () => {
     expect(formatSubagentStep('read_file', { files: 'src/a.ts' })).toBe('read (no path)');
     expect(formatSubagentStep('read_file', {})).toBe('read (no path)');
     expect(formatSubagentStep('read_file', undefined)).toBe('read (no path)');
+  });
+});
+
+describe('subagent tool selection', () => {
+  it('leaves a read-only sub-agent without any file-writing tool', () => {
+    expect(subagentTools(false)).toEqual(['read_file', 'execute_command']);
+  });
+
+  it('adds the file-writing tools only when mutation is allowed', () => {
+    expect(subagentTools(true)).toEqual(['read_file', 'execute_command', 'write_file', 'edit_file', 'delete_file']);
   });
 });
 

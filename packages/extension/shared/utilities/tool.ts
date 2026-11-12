@@ -171,19 +171,8 @@ function commandSection(message: ToolChatMessage): ToolSection[] {
 
 function subagentSection(message: ToolChatMessage): ToolSection[] {
   const args = message.toolArgs;
-  const agent = args && 'agent' in args && typeof args.agent === 'string' ? args.agent : message.subagent;
   const description = args && 'description' in args && typeof args.description === 'string' ? args.description : undefined;
-  let title: string;
-  if (agent && description) {
-    title = `${agent}: ${description}`;
-  } else if (agent) {
-    title = agent;
-  } else if (description) {
-    title = description;
-  } else {
-    title = 'Sub-agent';
-  }
-  return [{ title, subtitle: message.subtitle, content: message.diff, language: 'text' }];
+  return [{ title: description || 'Sub-agent', subtitle: message.subtitle, content: message.diff, language: 'text' }];
 }
 
 function stringifyArguments(callArguments: unknown): string {

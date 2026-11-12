@@ -2,6 +2,7 @@ import { relative, resolve } from 'node:path';
 import { contentText } from '@earendil-works/pi-ai';
 import { createAgentSessionFromServices, SessionManager } from '@earendil-works/pi-coding-agent';
 
+import { SUBAGENT_MUTATION_RULES, SUBAGENT_PROMPT } from '@pi-code/extension/core/prompt';
 import { applySessionOverrides, readModelSelection, readThinkingLevel } from '@pi-code/extension/core/settings';
 import {
   attachLiveSubagentSession,
@@ -20,11 +21,8 @@ import { elapsedSeconds } from '@pi-code/shared/utilities/common';
 
 import type { Api, Model } from '@earendil-works/pi-ai';
 import type { AgentSession, AgentSessionEvent, ModelRuntime, ToolDefinition } from '@earendil-works/pi-coding-agent';
-import type { SubagentDefinition } from '@pi-code/extension/core/prompt';
 import type { IsolatedWorktree } from '@pi-code/extension/utilities/worktree';
 import type { ToolName } from '@pi-code/shared/core/types';
-
-type SubagentToolName = SubagentDefinition['tools'][number];
 
 const SUBAGENT_TOOLS = {
   read_file: readFileTool,
@@ -32,7 +30,16 @@ const SUBAGENT_TOOLS = {
   edit_file: editFileTool,
   delete_file: deleteFileTool,
   execute_command: executeCommandTool,
-} satisfies Record<SubagentToolName, ToolDefinition>;
+} satisfies Record<string, ToolDefinition>;
+
+type SubagentToolName = keyof typeof SUBAGENT_TOOLS;
+
+const READ_ONLY_TOOLS: readonly SubagentToolName[] = ['read_file', 'execute_command'];
+const MUTATING_TOOLS: readonly SubagentToolName[] = ['write_file', 'edit_file', 'delete_file'];
+
+export function subagentTools(mutate: boolean): readonly SubagentToolName[] {
+  return mutate ? [...READ_ONLY_TOOLS, ...MUTATING_TOOLS] : READ_ONLY_TOOLS;
+}
 
 export interface SubagentUsage {
   readonly turns: number;
@@ -42,7 +49,6 @@ export interface SubagentUsage {
 }
 
 export interface SubagentOutcome {
-  readonly agent: string;
   readonly text: string;
   readonly steps: string;
   readonly usage: SubagentUsage;
@@ -51,7 +57,7 @@ export interface SubagentOutcome {
 }
 
 interface SubagentInput {
-  readonly agent: SubagentDefinition;
+  readonly mutate: boolean;
   readonly task: string;
   readonly cwd: string;
   readonly model?: Model<Api>;
@@ -201,7 +207,7 @@ async function applyDelegationSettings(session: AgentSession, runtime: ModelRunt
 
 async function createChildSession(
   cwd: string,
-  agent: SubagentDefinition,
+  tools: readonly SubagentToolName[],
   inheritedModel: Model<Api> | undefined,
   toolCallId: string,
 ): Promise<AgentSession> {
@@ -215,13 +221,13 @@ async function createChildSession(
     // In memory keeps sub-agent out of the session history: the parent
     // transcript already records the delegation and its result.
     sessionManager: SessionManager.inMemory(cwd),
-    tools: [...agent.tools],
-    customTools: agent.tools.map((tool) => SUBAGENT_TOOLS[tool]),
+    tools: [...tools],
+    customTools: tools.map((tool) => SUBAGENT_TOOLS[tool]),
   });
 
-  // Tag this child session so the shared tool policy can label any
-  // confirmation prompts it raises with the sub-agent name.
-  registerSubagentSession(session.sessionId, agent.name, toolCallId);
+  // Tag this child session so the shared tool policy knows a confirmation
+  // prompt came from a sub-agent.
+  registerSubagentSession(session.sessionId, toolCallId);
 
   // The registry keeps the session reachable after this run ends, so the user
   // can open the sub-agent's own transcript the way they open a task.
@@ -234,10 +240,6 @@ async function createChildSession(
   return session;
 }
 
-function isMutatingAgent(agent: SubagentDefinition): boolean {
-  return agent.tools.some((tool) => tool === 'write_file' || tool === 'edit_file' || tool === 'delete_file');
-}
-
 export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutcome> {
   const release = await acquireSpawnSlot(input.signal);
   const startTime = Date.now();
@@ -245,23 +247,25 @@ export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutco
 
   const steps = (): string => collected.join('\n');
 
-  const cancelled = (): SubagentOutcome => ({
-    agent: input.agent.name,
+  const failure = (error: string): SubagentOutcome => ({
     text: '',
     steps: '',
     usage: emptyUsage(),
-    error: 'Sub-agent was cancelled.',
+    error,
     duration: elapsedSeconds(startTime),
   });
+
+  const cancelled = (): SubagentOutcome => failure('Sub-agent was cancelled.');
 
   const recordStep = (step: string): void => {
     collected.push(step);
     if (collected.length > MAX_SUBAGENT_STEP_HISTORY) collected.shift();
   };
 
-  // Mutating agents work in an isolated copy of the workspace so parallel runs
-  // cannot overwrite each other. Read-only agents keep using the shared cwd.
-  const mutating = isMutatingAgent(input.agent);
+  // A mutating run works in an isolated copy of the workspace so parallel runs
+  // cannot overwrite each other. A read-only run keeps using the shared cwd.
+  const tools = subagentTools(input.mutate);
+  const instructions = input.mutate ? SUBAGENT_MUTATION_RULES : SUBAGENT_PROMPT;
   let worktree: IsolatedWorktree | null = null;
   let effectiveCwd = input.cwd;
   let integrationAttempted = false;
@@ -269,14 +273,16 @@ export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutco
   let unsubscribe: (() => void) | undefined;
 
   try {
-    if (mutating) {
-      worktree = await withWorktreeLock(() => createIsolatedWorktree(input.cwd));
-      if (worktree) {
-        const relativeCwd = relative(worktree.baseRoot, input.cwd);
-        effectiveCwd = relativeCwd && relativeCwd !== '.' && !relativeCwd.startsWith('..') ? resolve(worktree.path, relativeCwd) : worktree.path;
-      } else {
-        logger.warn('Running the mutating sub-agent without isolation because no git worktree could be created.');
+    if (input.mutate) {
+      const isolated = await withWorktreeLock(() => createIsolatedWorktree(input.cwd));
+      // Mutating without isolation would write straight into the caller's
+      // working tree, so refuse rather than promise a merge that cannot happen.
+      if (!isolated) {
+        return failure('The mutating sub-agent needs an isolated git worktree, but none could be created.');
       }
+      worktree = isolated;
+      const relativeCwd = relative(worktree.baseRoot, input.cwd);
+      effectiveCwd = relativeCwd && relativeCwd !== '.' && !relativeCwd.startsWith('..') ? resolve(worktree.path, relativeCwd) : worktree.path;
     }
 
     input.onProgress?.('');
@@ -284,7 +290,7 @@ export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutco
       return cancelled();
     }
 
-    session = await createChildSession(effectiveCwd, input.agent, input.model, input.toolCallId);
+    session = await createChildSession(effectiveCwd, tools, input.model, input.toolCallId);
 
     // createChildSession does not observe the signal, so check it again before
     // starting any model work.
@@ -315,7 +321,7 @@ export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutco
       input.signal?.addEventListener('abort', onAbort, { once: true });
       // The brief is model authored, so prompt template expansion stays off to
       // keep a stray leading slash from loading an unrelated template.
-      await session.prompt(`${input.agent.prompt}\n\n## Task\n\n${input.task.trim()}`, {
+      await session.prompt(`${instructions}\n\n## Task\n\n${input.task.trim()}`, {
         expandPromptTemplates: false,
         source: 'extension',
       });
@@ -336,7 +342,6 @@ export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutco
       }
 
       return {
-        agent: input.agent.name,
         text: finalText,
         steps: steps(),
         usage: collectUsage(session),

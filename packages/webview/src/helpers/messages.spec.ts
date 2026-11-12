@@ -362,13 +362,11 @@ describe('groupToolMessages', () => {
   it('should stack and group consecutive spawn_subagent calls', () => {
     const messages = [
       createToolMessage('s1', 'spawn_subagent', {
-        toolArgs: { agent: 'explore', description: 'find files', task: 'x' },
-        subagent: 'explore',
+        toolArgs: { description: 'find files', task: 'x' },
         diff: '<report-1>',
       }),
       createToolMessage('s2', 'spawn_subagent', {
-        toolArgs: { agent: 'review', description: 'review code', task: 'y' },
-        subagent: 'review',
+        toolArgs: { description: 'review code', task: 'y' },
         diff: '<report-2>',
       }),
     ];
@@ -379,7 +377,7 @@ describe('groupToolMessages', () => {
     expect(asTool(result[0]).toolSections).toEqual([
       {
         id: 's1',
-        title: 'explore: find files',
+        title: 'find files',
         subtitle: undefined,
         content: '<report-1>',
         language: 'text',
@@ -389,7 +387,7 @@ describe('groupToolMessages', () => {
       },
       {
         id: 's2',
-        title: 'review: review code',
+        title: 'review code',
         subtitle: undefined,
         content: '<report-2>',
         language: 'text',
@@ -538,7 +536,7 @@ describe('patchToolRow', () => {
   it('leaves the transcript alone for a sub-agent event with no row of its own', () => {
     const rows = upsertToolRow([], 't1', { text: 'read_file', toolName: 'read_file', toolStatus: 'running' });
 
-    const patched = patchToolRow(rows, 'other', 'explore', () => ({ diff: 'x' }));
+    const patched = patchToolRow(rows, 'other', true, () => ({ diff: 'x' }));
 
     expect(patched).toBe(rows);
   });

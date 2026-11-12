@@ -105,7 +105,7 @@ describe('tool completion', () => {
     apply([
       {
         type: 'tool_execution_start',
-        payload: { id: 't1', tool_name: 'spawn_subagent', arguments: { agent: 'explore', description: 'd', task: 't' } },
+        payload: { id: 't1', tool_name: 'spawn_subagent', arguments: { description: 'd', task: 't' } },
       },
     ]);
     apply([
@@ -419,7 +419,7 @@ describe('appendToInput', () => {
 describe('sub-agent session', () => {
   const subagentTask = {
     id: 'subagent-call-1',
-    title: 'explore',
+    title: 'find the leak',
     messages: [],
     ...stats(0),
   };

@@ -1,8 +1,7 @@
-import { formatThrownValue, StringEnum } from '@earendil-works/pi-ai';
+import { formatThrownValue } from '@earendil-works/pi-ai';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
-import { SUBAGENTS } from '@pi-code/extension/core/prompt';
 import { readOutputLimits } from '@pi-code/extension/core/settings';
 import { registerLiveSubagent } from '@pi-code/extension/structures/agent-runtime/brokers/subagent';
 import { createToolAbort } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
@@ -34,7 +33,7 @@ function formatUsage(usage: SubagentUsage): string {
 
 function wrapReport(outcome: SubagentOutcome, body: readonly string[]): string {
   const state = outcome.error === undefined ? 'completed' : 'error';
-  return [`## Sub-agent ${outcome.agent} (${state})`, '', ...body, '', formatUsage(outcome.usage)].join('\n');
+  return [`## Sub-agent (${state})`, '', ...body, '', formatUsage(outcome.usage)].join('\n');
 }
 
 async function renderOutcome(outcome: SubagentOutcome): Promise<string> {
@@ -47,7 +46,7 @@ async function renderOutcome(outcome: SubagentOutcome): Promise<string> {
   }
 
   const limits = readOutputLimits();
-  const baseHint = `Re-run the "${outcome.agent}" sub-agent with a narrower brief to get the rest.`;
+  const baseHint = 'Re-run the sub-agent with a narrower brief to get the rest.';
   // Truncate once. Whether the report needs a file decides the hint wording, so
   // the text is rendered from this one result rather than truncating again.
   const truncation = truncateOutput(outcome.text, { limits });
@@ -67,24 +66,21 @@ async function renderOutcome(outcome: SubagentOutcome): Promise<string> {
   return wrapReport(outcome, ['### Result', '', text]);
 }
 
-const SUBAGENT_NAMES = SUBAGENTS.map((agent) => agent.name);
-
 export const spawnSubagentTool = defineTool({
   name: SPAWN_SUBAGENT_TOOL_NAME,
   label: 'Spawn Sub-agent',
   description: 'Delegate a self-contained task to a sub-agent that works independently and returns a final report.',
   parameters: Type.Object({
-    agent: StringEnum(SUBAGENT_NAMES, { description: 'Name of the sub-agent to delegate to.' }),
     description: Type.String({ description: 'A 3-5 word description of the delegated task, shown to the user.' }),
-    task: Type.String({ description: 'The complete brief for the sub-agent, including the goal, relevant paths, and what to report back.' }),
+    task: Type.String({
+      description: 'The comprehensive, explicit brief for the sub-agent, including the goal, relevant paths, and what to report back.',
+    }),
+    mutate: Type.Optional(
+      Type.Boolean({ description: 'Set to true to let the sub-agent mutate an isolated copy of the workspace; defaults to false (read-only).' }),
+    ),
   }),
   async execute(toolCallId, params, signal, onUpdate, ctx): Promise<CustomToolResult<SubagentDetails>> {
     const failure = (text: string): CustomToolResult<SubagentDetails> => toolError<SubagentDetails>(text);
-
-    const agent = SUBAGENTS.find((agent) => agent.name === params.agent);
-    if (!agent) {
-      return failure(`Error: unknown sub-agent "${params.agent}". Available sub-agents: ${SUBAGENT_NAMES.join(', ')}.`);
-    }
 
     if (!params.task.trim()) {
       return failure('Error: `task` is required and cannot be empty.');
@@ -94,11 +90,11 @@ export const spawnSubagentTool = defineTool({
 
     // The session is registered before the run starts, so a user who opens the
     // sub-agent while it is still starting finds it instead of an error.
-    registerLiveSubagent(agent.name, toolCallId, params.task);
+    registerLiveSubagent(toolCallId, params.description, params.task);
 
     try {
       const outcome = await spawnSubagent({
-        agent,
+        mutate: params.mutate === true,
         task: params.task,
         cwd: ctx.cwd,
         model: ctx.model,
@@ -107,7 +103,7 @@ export const spawnSubagentTool = defineTool({
         onProgress: onUpdate
           ? (steps) =>
               onUpdate({
-                content: [{ type: 'text', text: `Running the ${agent.name} sub-agent...\n\n${steps}` }],
+                content: [{ type: 'text', text: `Running the sub-agent...\n\n${steps}` }],
                 details: { steps },
               })
           : undefined,
@@ -139,7 +135,7 @@ export const spawnSubagentTool = defineTool({
 
       return failed ? toolError(report, details) : toolResult(report, details);
     } catch (err) {
-      return failure(`Error running the ${agent.name} sub-agent: ${formatThrownValue(err)}`);
+      return failure(`Error running the sub-agent: ${formatThrownValue(err)}`);
     } finally {
       abort.dispose();
     }

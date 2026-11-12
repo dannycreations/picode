@@ -73,7 +73,7 @@ describe('mapEvent', () => {
     });
 
     // 2. With subagent registration
-    registerSubagentSession('test-session-123', 'explore');
+    registerSubagentSession('test-session-123', 'call-1');
     try {
       const result2 = mapEvent(mockEvent, makeSession(), null);
       expect(result2.message?.type).toBe('tool_execution_start');
@@ -81,7 +81,7 @@ describe('mapEvent', () => {
         id: 'call-1',
         tool_name: 'read_file',
         arguments: { path: 'file.ts' },
-        subagent: 'explore',
+        subagent: true,
       });
     } finally {
       unregisterSubagentSession('test-session-123');
@@ -130,7 +130,7 @@ describe('mapEvent', () => {
   });
 
   it('folds recorded sub-agent spend into the settled header exactly once', () => {
-    registerSubagentSession('settle-session', 'scout');
+    registerSubagentSession('settle-session', 'call-1');
     recordSubagentUsage('settle-session', { turns: 2, tokensIn: 10, tokensOut: 20, cost: 0.3 });
     try {
       const first = mapEvent({ type: 'agent_settled' } as any, makeSession({ sessionId: 'settle-session' }), null);
@@ -250,7 +250,7 @@ describe('toSubagentEvent', () => {
     // sub-agent's own session has to show them, so the label cannot travel.
     const message = toSubagentEvent({
       type: 'tool_execution_start',
-      payload: { id: 'call-1', tool_name: 'read_file', arguments: { path: 'a.ts' }, subagent: 'explore' },
+      payload: { id: 'call-1', tool_name: 'read_file', arguments: { path: 'a.ts' }, subagent: true },
     });
 
     expect(message).toEqual({

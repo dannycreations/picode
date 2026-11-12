@@ -9,7 +9,6 @@ interface ApprovalRequest {
   readonly id: string;
   readonly toolName: ToolName;
   readonly args: unknown;
-  readonly subagent?: string;
   readonly toolCallId?: string;
 }
 
@@ -46,13 +45,7 @@ export function setApprovalPresenter(next: ApprovalPresenter): () => void {
   };
 }
 
-export function requestApproval(
-  toolName: ToolName,
-  toolCallId: string | undefined,
-  args: unknown,
-  subagent?: string,
-  parentToolCallId?: string,
-): Promise<boolean> {
+export function requestApproval(toolName: ToolName, toolCallId: string | undefined, args: unknown, parentToolCallId?: string): Promise<boolean> {
   const currentPresenter = presenter;
   if (!currentPresenter) {
     logger.error('Approval requested before an approval presenter was registered. Denying the tool call.');
@@ -65,7 +58,7 @@ export function requestApproval(
   approvals.resolve(id, false);
   return new Promise<boolean>((resolve) => {
     approvals.register(id, resolve);
-    currentPresenter({ id, toolName, args, subagent, toolCallId: parentToolCallId });
+    currentPresenter({ id, toolName, args, toolCallId: parentToolCallId });
   });
 }
 

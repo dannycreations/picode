@@ -176,8 +176,8 @@ function todoListOf(message: ChatMessage): TodoItem[] | undefined {
 
 // Sub-agent events can arrive before the webview has rendered the parent tool
 // row. Callers use this to skip such updates instead of creating orphan rows.
-export function ignoreUnknownSubagent(messages: ReadonlyArray<ChatMessage>, subagent: string | undefined, id: string): boolean {
-  return subagent !== undefined && !messages.some((message) => message.id === id);
+export function ignoreUnknownSubagent(messages: ReadonlyArray<ChatMessage>, subagent: boolean | undefined, id: string): boolean {
+  return subagent === true && !messages.some((message) => message.id === id);
 }
 
 interface RequestSettlePatch {
@@ -369,7 +369,7 @@ export function upsertToolRow(messages: ChatMessage[], id: string, patch: Partia
 export function patchToolRow(
   messages: ChatMessage[],
   id: string,
-  subagent: string | undefined,
+  subagent: boolean | undefined,
   patch: (target: ToolChatMessage) => Partial<ToolChatMessage>,
 ): ChatMessage[] {
   let next: ChatMessage[] | null = null;
@@ -387,7 +387,7 @@ export function patchToolRow(
 
   // A sub-agent event for a row the webview never showed has nothing to
   // update, and creating one would leave an orphan row behind.
-  if (!found && subagent !== undefined) return messages;
+  if (!found && subagent === true) return messages;
   return next ?? messages;
 }
 

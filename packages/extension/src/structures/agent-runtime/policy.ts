@@ -93,9 +93,9 @@ export function createPolicyExtension(): InlineExtension {
           return { block: true, reason: decision.reason };
         }
 
-        const sessionInfo = getSubagentSession(ctx.sessionManager.getSessionId());
+        const parentToolCallId = getSubagentSession(ctx.sessionManager.getSessionId());
         const approvalStart = Date.now();
-        const approved = await requestApproval(toolName, event.toolCallId, event.input, sessionInfo?.name, sessionInfo?.toolCallId);
+        const approved = await requestApproval(toolName, event.toolCallId, event.input, parentToolCallId);
         const approvalDuration = Date.now() - approvalStart;
         if (event.toolCallId) {
           recordApprovalDuration(event.toolCallId, approvalDuration);

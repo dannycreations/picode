@@ -20,10 +20,10 @@ describe('live subagent registry', () => {
   it('knows a sub-agent from the moment its tool call starts', () => {
     // The row the user clicks appears before the sub-agent has a session, so
     // the entry has to exist first or opening it reports a missing session.
-    registerLiveSubagent('explore', 'call-1', 'find the leak');
+    registerLiveSubagent('call-1', 'find files', 'find the leak');
 
     const entry = getLiveSubagent('call-1');
-    expect(entry?.name).toBe('explore');
+    expect(entry?.description).toBe('find files');
     expect(entry?.task).toBe('find the leak');
     expect(entry?.session).toBeNull();
 
@@ -31,7 +31,7 @@ describe('live subagent registry', () => {
   });
 
   it('hands out the session once the sub-agent has one', async () => {
-    registerLiveSubagent('explore', 'call-2', 'find the leak');
+    registerLiveSubagent('call-2', 'find files', 'find the leak');
     const session = fakeSession('sub-2');
 
     const ready = getLiveSubagent('call-2')?.ready;
@@ -44,7 +44,7 @@ describe('live subagent registry', () => {
   });
 
   it('forgets a sub-agent that never became usable', () => {
-    registerLiveSubagent('explore', 'call-3', 'find the leak');
+    registerLiveSubagent('call-3', 'find files', 'find the leak');
 
     unregisterLiveSubagent('call-3');
 
@@ -52,7 +52,7 @@ describe('live subagent registry', () => {
   });
 
   it('drops every sub-agent when the task that owns them ends', () => {
-    registerLiveSubagent('explore', 'call-4', 'find the leak');
+    registerLiveSubagent('call-4', 'find files', 'find the leak');
     attachLiveSubagentSession('call-4', fakeSession('sub-4'));
 
     releaseLiveSubagents();
@@ -63,7 +63,7 @@ describe('live subagent registry', () => {
 
 describe('live subagent sessions', () => {
   it('lists only the calls whose session can still be opened', () => {
-    registerLiveSubagent('explore', 'call-1', 'find the leak');
+    registerLiveSubagent('call-1', 'find files', 'find the leak');
     expect(liveSubagentToolCallIds()).toEqual([]);
 
     attachLiveSubagentSession('call-1', fakeSession('sub-1'));
@@ -76,7 +76,7 @@ describe('live subagent sessions', () => {
     const seen: (readonly string[])[] = [];
     const unsubscribe = onSubagentSessionsChanged((toolCallIds) => seen.push(toolCallIds));
 
-    registerLiveSubagent('explore', 'call-1', 'find the leak');
+    registerLiveSubagent('call-1', 'find files', 'find the leak');
     attachLiveSubagentSession('call-1', fakeSession('sub-1'));
     unregisterLiveSubagent('call-1');
 
@@ -89,7 +89,7 @@ describe('live subagent sessions', () => {
     const unsubscribe = onSubagentSessionsChanged((toolCallIds) => seen.push(toolCallIds));
     unsubscribe();
 
-    registerLiveSubagent('explore', 'call-1', 'find the leak');
+    registerLiveSubagent('call-1', 'find files', 'find the leak');
     attachLiveSubagentSession('call-1', fakeSession('sub-1'));
 
     expect(seen).toEqual([]);

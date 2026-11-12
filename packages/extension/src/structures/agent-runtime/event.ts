@@ -1,6 +1,6 @@
 import { uuidv7 } from '@earendil-works/pi-ai';
 
-import { getSubagentSession } from '@pi-code/extension/structures/agent-runtime/brokers/subagent';
+import { isSubagentSession } from '@pi-code/extension/structures/agent-runtime/brokers/subagent';
 import { SPAWN_SUBAGENT_TOOL_NAME, takeSubagentUsage } from '@pi-code/extension/structures/agent-runtime/subagent';
 import { logger } from '@pi-code/shared/core/logger';
 import { isSubagentEvent } from '@pi-code/shared/core/protocol';
@@ -81,8 +81,8 @@ function latestStep(steps: string | undefined): string | undefined {
   return undefined;
 }
 
-function subagentName(session: AgentSession): string | undefined {
-  return getSubagentSession(session.sessionId)?.name;
+function subagentMarker(session: AgentSession): true | undefined {
+  return isSubagentSession(session.sessionId) ? true : undefined;
 }
 
 interface MappedEvent {
@@ -174,7 +174,7 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
     // Only the tool cases need the owning sub-agent, and a session can emit
     // thousands of streaming deltas per turn, so the lookup stays inside them.
     case 'tool_execution_start': {
-      const subagent = subagentName(session);
+      const subagent = subagentMarker(session);
       return {
         message: {
           type: 'tool_execution_start',
@@ -190,7 +190,7 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
     }
 
     case 'tool_execution_update': {
-      const subagent = subagentName(session);
+      const subagent = subagentMarker(session);
       const result = toolResultText(event.partialResult);
       const steps = (event.partialResult as { details?: { steps?: string } } | undefined)?.details?.steps;
       const subtitle = event.toolName === SPAWN_SUBAGENT_TOOL_NAME ? latestStep(steps) : undefined;
@@ -204,7 +204,7 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
     }
 
     case 'tool_execution_end': {
-      const subagent = subagentName(session);
+      const subagent = subagentMarker(session);
       const toolResult = event.result as { details?: ToolResultDetails } | undefined;
       const details = toolResult?.details;
       return {
@@ -267,7 +267,7 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
   }
 }
 
-function withoutSubagent<T extends { readonly subagent?: string }>(payload: T): Omit<T, 'subagent'> {
+function withoutSubagent<T extends { readonly subagent?: boolean }>(payload: T): Omit<T, 'subagent'> {
   const { subagent: _subagent, ...rest } = payload;
   return rest;
 }

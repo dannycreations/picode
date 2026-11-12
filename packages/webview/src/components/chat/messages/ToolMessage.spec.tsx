@@ -13,7 +13,7 @@ const subagentMessage: ToolChatMessage = {
   sender: 'tool',
   text: 'spawn_subagent',
   toolName: 'spawn_subagent',
-  toolArgs: { agent: 'explore', description: 'find the leak', task: 'find the leak' },
+  toolArgs: { description: 'find the leak', task: 'find the leak' },
   toolStatus: 'running',
   timestamp: 1_700_000_000_000,
 };

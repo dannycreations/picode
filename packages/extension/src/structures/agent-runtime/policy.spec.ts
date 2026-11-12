@@ -120,14 +120,14 @@ describe('createPolicyExtension tool_call gating', () => {
     expect(mocks.requestApproval).not.toHaveBeenCalled();
   });
 
-  it('hands mixed read decisions to the user with the delegating agent labeled', async () => {
-    mocks.getSubagentSession.mockReturnValue({ name: 'scout', toolCallId: 'parent-1' });
+  it('hands mixed read decisions to the user and passes the delegating call id', async () => {
+    mocks.getSubagentSession.mockReturnValue('parent-1');
     const files = [{ path: 'inside.ts' }, { path: '/etc/other.conf' }];
 
     expect(await decide('read_file', { files })).toEqual({ block: false });
 
     expect(mocks.requestApproval).toHaveBeenCalledTimes(1);
-    expect(mocks.requestApproval).toHaveBeenCalledWith('read_file', undefined, { files }, 'scout', 'parent-1');
+    expect(mocks.requestApproval).toHaveBeenCalledWith('read_file', undefined, { files }, 'parent-1');
   });
 
   it('downgrades command approval when the requested cwd leaves the workspace', async () => {
@@ -138,13 +138,7 @@ describe('createPolicyExtension tool_call gating', () => {
 
     expect(await decide('execute_command', { command: 'npm test', cwd: '/outside/project' })).toEqual({ block: false });
     expect(mocks.requestApproval).toHaveBeenCalledTimes(1);
-    expect(mocks.requestApproval).toHaveBeenCalledWith(
-      'execute_command',
-      undefined,
-      { command: 'npm test', cwd: '/outside/project' },
-      undefined,
-      undefined,
-    );
+    expect(mocks.requestApproval).toHaveBeenCalledWith('execute_command', undefined, { command: 'npm test', cwd: '/outside/project' }, undefined);
   });
 
   it('hands newline-chained commands to the human even when every listed prefix is allowed', async () => {
@@ -152,7 +146,7 @@ describe('createPolicyExtension tool_call gating', () => {
 
     expect(await decide('execute_command', { command: 'ls\nrm -rf x' })).toEqual({ block: false });
     expect(mocks.requestApproval).toHaveBeenCalledTimes(1);
-    expect(mocks.requestApproval).toHaveBeenCalledWith('execute_command', undefined, { command: 'ls\nrm -rf x' }, undefined, undefined);
+    expect(mocks.requestApproval).toHaveBeenCalledWith('execute_command', undefined, { command: 'ls\nrm -rf x' }, undefined);
   });
 
   it('keeps yolo from overriding an explicit deny while honoring the respect flag', async () => {
@@ -183,6 +177,6 @@ describe('createPolicyExtension tool_call gating', () => {
   it('asks the human about tools the switch does not know, such as mcp', async () => {
     expect(await decide('mcp', { server: 'fs' })).toEqual({ block: false });
     expect(mocks.requestApproval).toHaveBeenCalledTimes(1);
-    expect(mocks.requestApproval).toHaveBeenCalledWith('mcp', undefined, { server: 'fs' }, undefined, undefined);
+    expect(mocks.requestApproval).toHaveBeenCalledWith('mcp', undefined, { server: 'fs' }, undefined);
   });
 });

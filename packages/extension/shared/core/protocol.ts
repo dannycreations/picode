@@ -134,10 +134,10 @@ export type ExtensionToWebviewMessage =
   | { type: 'api_retry_end' }
   | {
       type: 'tool_approval_request';
-      payload: { id: string; tool_name: ToolName; arguments: ToolArguments; subagent?: string; toolCallId?: string };
+      payload: { id: string; tool_name: ToolName; arguments: ToolArguments; toolCallId?: string };
     }
-  | { type: 'tool_execution_start'; payload: { id: string; tool_name: ToolName; arguments: ToolArguments; subagent?: string } }
-  | { type: 'tool_execution_update'; payload: { id: string; result: string; subagent?: string; subtitle?: string } }
+  | { type: 'tool_execution_start'; payload: { id: string; tool_name: ToolName; arguments: ToolArguments; subagent?: boolean } }
+  | { type: 'tool_execution_update'; payload: { id: string; result: string; subagent?: boolean; subtitle?: string } }
   | {
       type: 'tool_execution_end';
       payload: {
@@ -150,7 +150,7 @@ export type ExtensionToWebviewMessage =
         exit_code?: number | null;
         cancelled?: boolean;
         files?: ReadonlyArray<ReadFileSection>;
-        subagent?: string;
+        subagent?: boolean;
         subtitle?: string;
       };
     }

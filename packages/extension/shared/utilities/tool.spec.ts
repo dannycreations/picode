@@ -60,11 +60,11 @@ describe('buildToolSections subagent', () => {
       toolMessage({
         toolName: 'spawn_subagent',
         toolStatus: 'completed',
-        toolArgs: { agent: 'explore', description: 'find files', task: 'x' },
+        toolArgs: { description: 'find files', task: 'x' },
         subtitle: '5 turns, 74050 in / 14399 out, $0.0000',
       }),
     );
-    expect(section.title).toBe('explore: find files');
+    expect(section.title).toBe('find files');
     expect(section.subtitle).toBe('5 turns, 74050 in / 14399 out, $0.0000');
   });
 });

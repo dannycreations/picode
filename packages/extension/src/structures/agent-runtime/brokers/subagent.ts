@@ -3,8 +3,8 @@ import { logger } from '@pi-code/shared/core/logger';
 import type { AgentSession } from '@earendil-works/pi-coding-agent';
 
 export interface LiveSubagent {
-  readonly name: string;
   readonly toolCallId: string;
+  readonly description: string;
   readonly task: string;
   readonly ready: Promise<AgentSession>;
   session: AgentSession | null;
@@ -16,22 +16,21 @@ interface LiveSubagentEntry extends LiveSubagent {
 
 const liveSubagents = new Map<string, LiveSubagentEntry>();
 
-interface SubagentSessionInfo {
-  readonly name: string;
-  readonly toolCallId?: string;
-}
+const subagentBySession = new Map<string, string>();
 
-const subagentBySession = new Map<string, SubagentSessionInfo>();
-
-export function registerSubagentSession(sessionId: string, name: string, toolCallId?: string): void {
-  subagentBySession.set(sessionId, { name, toolCallId });
+export function registerSubagentSession(sessionId: string, toolCallId: string): void {
+  subagentBySession.set(sessionId, toolCallId);
 }
 
 export function unregisterSubagentSession(sessionId: string): void {
   subagentBySession.delete(sessionId);
 }
 
-export function getSubagentSession(sessionId: string): SubagentSessionInfo | undefined {
+export function isSubagentSession(sessionId: string): boolean {
+  return subagentBySession.has(sessionId);
+}
+
+export function getSubagentSession(sessionId: string): string | undefined {
   return subagentBySession.get(sessionId);
 }
 
@@ -54,12 +53,12 @@ function notifySessionsChanged(): void {
   sessionsListener?.(liveSubagentToolCallIds());
 }
 
-export function registerLiveSubagent(name: string, toolCallId: string, task: string): void {
+export function registerLiveSubagent(toolCallId: string, description: string, task: string): void {
   let attach!: (session: AgentSession) => void;
   const ready = new Promise<AgentSession>((resolve) => {
     attach = resolve;
   });
-  liveSubagents.set(toolCallId, { name, toolCallId, task, session: null, ready, attach });
+  liveSubagents.set(toolCallId, { toolCallId, description, task, session: null, ready, attach });
 }
 
 export function attachLiveSubagentSession(toolCallId: string, session: AgentSession): void {
