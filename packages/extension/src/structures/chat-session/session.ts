@@ -313,7 +313,7 @@ export function loadSubagentTranscript(session: AgentSession, task: string): { m
   for (let index = 0; index < messages.length; index++) {
     const message = messages[index];
     if (message.sender !== 'tool' || finishedToolCalls.has(message.id)) continue;
-    messages[index] = { ...message, toolStatus: 'running' };
+    messages[index] = withToolSections({ ...message, toolStatus: 'running' });
   }
 
   // A response that is still streaming is not in the transcript yet, so its row

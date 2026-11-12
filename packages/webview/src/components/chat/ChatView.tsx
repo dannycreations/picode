@@ -77,15 +77,17 @@ export const ChatView: FC = () => {
   const subagent = useChatStore((state) => state.subagent);
   const isRunning = useChatStore((state) => state.isRunning);
   const isCompacting = useChatStore((state) => state.isCompacting);
-  // The question the task is waiting on, derived from the transcript the
-  // store already holds for the active task.
-  const pendingQuestion = useMemo(() => findPendingQuestion(activeTask?.messages ?? []), [activeTask]);
 
   // An open sub-agent session takes over the chat view. The task that
   // delegated the work stays behind it and comes back when it closes.
   const isSubagentView = view === 'subagent' && subagent !== null;
   const displayedTask = isSubagentView && subagent ? subagent.task : activeTask;
   const displayedIsRunning = isSubagentView && subagent ? subagent.isRunning : isRunning;
+
+  // The question the task on screen is waiting on, derived from the transcript
+  // the store already holds for it. A sub-agent's question has to own the
+  // composer just the same, or typing an answer would be sent as a steer.
+  const pendingQuestion = useMemo(() => findPendingQuestion(displayedTask?.messages ?? []), [displayedTask]);
 
   // Remembers whether the open task was launched from the history list so it
   // returns there on close. Kept separate from the settings flag because
@@ -199,6 +201,14 @@ export const ChatView: FC = () => {
     // totalMatches is derived from searchQuery + renderItems; re-running only on
     // the query keeps navigation stable when messages stream in during a search.
   }, [searchQuery]);
+
+  // Matches that stream in after the query was typed would leave the counter
+  // reading "0/N" and make the first Next skip one, so adopt the first match.
+  // An index the shrinking transcript dropped comes back in range; anything
+  // still valid is left alone so navigation does not jump mid-stream.
+  useEffect(() => {
+    setActiveMatch((prev) => (prev >= 0 && prev < totalMatches ? prev : totalMatches > 0 ? 0 : -1));
+  }, [totalMatches]);
 
   // Per-row search context, built once per search state rather than inside the
   // virtualizer map. A fresh object literal per row would give every visible

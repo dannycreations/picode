@@ -271,7 +271,6 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onRespondTool }) =>
         isRunning,
         isWaiting,
         isDone,
-        subagentDone,
         showTimer: showTimer && !subagentDone,
         canCancel,
         startTs: section.timestamp ?? message.timestamp,

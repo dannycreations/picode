@@ -42,8 +42,6 @@ export async function expandMentions(text: string, cwd: string): Promise<string>
 }
 
 async function collectMentionBlocks(matches: RegExpMatchArray[], cwd: string, limits: OutputLimits): Promise<string[]> {
-  if (matches.length === 0) return [];
-
   const uniqueMentions = [...new Set(matches.map((match) => match[1]))];
   const resolvedMentions = await Promise.all(uniqueMentions.map((raw) => resolveMention(raw, cwd, limits)));
 
@@ -96,19 +94,22 @@ async function listFolderEntries(dir: string, cwd: string): Promise<string> {
   let totalChars = 0;
   let truncated = false;
 
-  for await (const { rel } of walkDirectory(dir, FOLDER_MAX_DEPTH)) {
+  for await (const { rel, entry } of walkDirectory(dir, FOLDER_MAX_DEPTH)) {
+    // A trailing slash is what marks a directory in the rendered tree, and an
+    // empty folder gets no descendant to imply it.
+    const path = entry.isDir ? `${rel}/` : rel;
     if (entryCount >= FOLDER_MAX_FILES) {
       truncated = true;
       break;
     }
 
-    if (totalChars + rel.length > FOLDER_CHAR_CAP) {
+    if (totalChars + path.length > FOLDER_CHAR_CAP) {
       truncated = true;
       break;
     }
 
-    paths.push(rel);
-    totalChars += rel.length;
+    paths.push(path);
+    totalChars += path.length;
     entryCount++;
   }
 

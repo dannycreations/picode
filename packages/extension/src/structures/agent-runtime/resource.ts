@@ -16,13 +16,13 @@ interface CachedResources {
 }
 
 let resourceCache: CachedResources | null = null;
+// Every session keeps the runtime it was built with, so this one outlives
+// resource invalidation: dropping it would leave a live session watching a
+// catalog the rest of the UI no longer refreshes.
 let sharedModelRuntime: ModelRuntime | undefined;
 
 export function invalidateAgentResources(): void {
   resourceCache = null;
-  // The model runtime is captured once and reused across workspaces; drop it
-  // so a trust change or settings rotation rebuilds a current one.
-  sharedModelRuntime = undefined;
 }
 
 type ServicesFactory = typeof createAgentSessionServices;

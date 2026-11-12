@@ -64,11 +64,9 @@ interface SubagentInput {
   readonly signal?: AbortSignal;
   readonly toolCallId: string;
   readonly onProgress?: (steps: string) => void;
-  readonly onEvent?: (event: AgentSessionEvent, session: AgentSession) => void;
 }
 
 export const SPAWN_SUBAGENT_TOOL_NAME = 'spawn_subagent' as ToolName;
-export const SUBAGENT_FORWARDED_EVENTS: ReadonlySet<string> = new Set(['tool_execution_start', 'tool_execution_update', 'tool_execution_end']);
 
 const MAX_CONCURRENT_SUBAGENTS = 3;
 const MAX_SUBAGENT_STEP_HISTORY = 10;
@@ -310,7 +308,6 @@ export async function spawnSubagent(input: SubagentInput): Promise<SubagentOutco
           recordStep(formatSubagentStep(event.toolName as SubagentToolName, event.args));
           input.onProgress?.(steps());
         }
-        input.onEvent?.(event, session!);
       });
     } catch (err) {
       session = undefined;

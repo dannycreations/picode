@@ -2,7 +2,6 @@ import { Disposable, Uri } from 'vscode';
 
 import { setApprovalPresenter } from '@pi-code/extension/structures/agent-runtime/brokers/approval';
 import { postToWebview } from '@pi-code/extension/structures/agent-runtime/core/messenger';
-import { setSubagentEventCallback } from '@pi-code/extension/structures/agent-runtime/event';
 import { Runtime } from '@pi-code/extension/structures/agent-runtime/runtime';
 import { dispatch } from '@pi-code/extension/structures/agent-webview/dispatcher';
 import { WorkspaceService } from '@pi-code/extension/structures/agent-webview/workspace';
@@ -109,12 +108,6 @@ export class ChatViewProvider implements WebviewViewProvider {
       });
     });
 
-    const disposeSubagentEventCallback = setSubagentEventCallback((msg) => {
-      // Route sub-agent events through the agent's WebviewMessenger so they
-      // share the same 16 ms coalescing buffer as the main-agent stream.
-      this.runtime?.postMessage(msg);
-    });
-
     // One context per webview connection: historyEpoch must increase across
     // messages so concurrent history refreshs order themselves, and a
     // select_workspace must rewrite cwd for every later message.
@@ -125,7 +118,6 @@ export class ChatViewProvider implements WebviewViewProvider {
         void dispatch(message, context);
       }),
       Disposable.from({ dispose: disposeApprovalPresenter }),
-      Disposable.from({ dispose: disposeSubagentEventCallback }),
     );
 
     webviewView.onDidDispose(() => {

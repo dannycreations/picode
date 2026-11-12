@@ -10,9 +10,6 @@ import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-
 import type { ExtensionToWebviewMessage, SubagentEvent } from '@pi-code/shared/core/protocol';
 import type { StatsData, ToolName, ToolResultDetails } from '@pi-code/shared/core/types';
 
-type SubagentEventCallback = (event: ExtensionToWebviewMessage) => void;
-let subagentEventCallback: SubagentEventCallback | null = null;
-
 interface SessionStatsEntry {
   readonly entryCount: number;
   readonly modelKey: string;
@@ -20,23 +17,6 @@ interface SessionStatsEntry {
 }
 
 const statsCache = new WeakMap<AgentSession, SessionStatsEntry>();
-
-export function setSubagentEventCallback(callback: SubagentEventCallback): () => void {
-  subagentEventCallback = callback;
-  return () => {
-    if (subagentEventCallback === callback) {
-      subagentEventCallback = null;
-    }
-  };
-}
-
-export function notifySubagentEvent(event: ExtensionToWebviewMessage): void {
-  if (!subagentEventCallback) {
-    logger.warn('Dropping sub-agent progress event; no webview messenger is registered.');
-    return;
-  }
-  subagentEventCallback(event);
-}
 
 interface ToolResultPart {
   readonly type: string;

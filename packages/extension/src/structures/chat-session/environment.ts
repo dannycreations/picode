@@ -113,12 +113,7 @@ export async function walkWorkspace(
       ? await getIgnoredPaths(
           repo,
           entries.map((entry) => entry.uri.fsPath),
-        ).catch((err) => {
-          // Without the ignore list the whole directory is listed, so the
-          // reason has to come from the log.
-          logger.warn('Failed to read the ignored paths; every file under this directory is listed:', err);
-          return null;
-        })
+        )
       : null;
 
     const nextNodes: UriNode[] = [];

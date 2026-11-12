@@ -67,8 +67,12 @@ export const useChatActions = (): UseChatActionsReturn => {
 
       const outgoing = outgoingAttachments(attachments);
       const store = useChatStore.getState();
-      const { activeTask, isRunning } = store;
-      const pendingQuestion = findPendingQuestion(store.activeTask?.messages ?? []);
+      const { activeTask, isRunning, subagent, view } = store;
+      // A pending question owns the input box, whichever session is on screen.
+      // This mirrors ChatView's displayed task so both agree on which question
+      // the composer is answering.
+      const displayedTask = view === 'subagent' && subagent ? subagent.task : activeTask;
+      const pendingQuestion = findPendingQuestion(displayedTask?.messages ?? []);
 
       // A pending question owns the input box: the reply answers the tool call
       // instead of starting a new turn.

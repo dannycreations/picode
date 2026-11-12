@@ -41,6 +41,12 @@ function evaluateToolCall(toolName: ToolName, cwd: string, input: object): Appro
   const settings = readAppSettings();
   const args = input as ToolCallArgs;
 
+  // An empty path is a malformed call, not a deny-list match. Report the real
+  // cause so the model can correct the call.
+  if (!args.path && (toolName === 'write_file' || toolName === 'edit_file' || toolName === 'delete_file')) {
+    return applyYoloDecision(settings, { action: 'deny', reason: 'A file path is required.' });
+  }
+
   let action: ApprovalDecision['action'] = 'confirm';
   let denyReason = '';
 

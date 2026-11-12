@@ -415,8 +415,8 @@ export const useChatStore = create<ChatState>((set, get) => {
       defaultModel = default_model;
       set({
         models,
-        settings: settings ?? null,
-        commands: commands ?? [],
+        settings,
+        commands,
         selectedModel: toSelection(selectedModel),
         selectedThinkingLevel: default_thinking_level ?? null,
         fetchedScopes: new Set<HistoryScope>(['current']),

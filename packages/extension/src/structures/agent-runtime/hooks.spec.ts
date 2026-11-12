@@ -1,11 +1,17 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { initSessionHooks } from '@pi-code/extension/structures/agent-runtime/hooks';
 
 import type { AgentSession } from '@earendil-works/pi-coding-agent';
 
+const mocks = vi.hoisted(() => ({ enableTodoTool: true }));
+
+afterEach(() => {
+  mocks.enableTodoTool = true;
+});
+
 vi.mock('@pi-code/extension/core/settings', () => ({
-  readAppSettings: () => ({ enableTodoTool: false }),
+  readAppSettings: () => ({ enableTodoTool: mocks.enableTodoTool }),
 }));
 
 function makeFakeSession(appendMessage = vi.fn(() => 'persisted-id')): AgentSession {
@@ -176,5 +182,21 @@ describe('initSessionHooks', () => {
     expect(basePrepare).toHaveBeenCalledTimes(1);
     expect(result.context.messages).toHaveLength(2);
     expect(result.context.messages.at(-1)?.content[0].text).toContain('Todo Reminders');
+  });
+
+  it('leaves the context untouched when the todo tool is disabled', async () => {
+    const basePrepare = (turn: { context: { messages: unknown[] } }) => Promise.resolve({ context: { messages: turn.context.messages } });
+    const session = makeFakeSession();
+    (session.agent as { prepareNextTurnWithContext?: unknown }).prepareNextTurnWithContext = basePrepare;
+    mocks.enableTodoTool = false;
+
+    initSessionHooks(session, noopServices);
+
+    const result = (await session.agent.prepareNextTurnWithContext!(
+      { context: { messages: [{ role: 'user', content: 'q' }] } } as never,
+      undefined,
+    )) as { context: { messages: Array<{ content: string }> } };
+
+    expect(result.context.messages).toHaveLength(1);
   });
 });

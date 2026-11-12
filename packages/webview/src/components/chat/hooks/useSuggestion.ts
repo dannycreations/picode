@@ -162,9 +162,6 @@ interface UseCommandProps extends ComposerProps {
   readonly commands: readonly CommandItem[];
 }
 
-// These adapters close over nothing, so they are module constants: a new
-// identity per render would rebuild the query memo and the select callback.
-const readCommandQueryAt = (text: string, caret: number): string | null => readCommandQuery(text, caret);
 const applyCommandInsertion = (text: string, _caret: number, command: CommandItem): { readonly text: string; readonly caret: number } =>
   applyCommand(text, command.name);
 
@@ -175,7 +172,7 @@ export const useChatCommand = ({ commands, value, setValue, textareaRef }: UseCo
     value,
     setValue,
     textareaRef,
-    readQuery: readCommandQueryAt,
+    readQuery: readCommandQuery,
     applyInsertion: applyCommandInsertion,
     resolveItems,
   });
@@ -202,8 +199,6 @@ const useDebouncedSearch = (query: string | null, buildRequest: SearchRequestBui
   }, [query, buildRequest]);
 };
 
-const readMentionQueryAt = (text: string, caret: number): string | null => readMentionQuery(text, caret);
-
 export const useChatMention = ({ value, setValue, textareaRef }: ComposerProps): UseSuggestionReturn<string> => {
   const searchResults = useChatStore((state) => state.searchResults);
 
@@ -215,7 +210,7 @@ export const useChatMention = ({ value, setValue, textareaRef }: ComposerProps):
     value,
     setValue,
     textareaRef,
-    readQuery: readMentionQueryAt,
+    readQuery: readMentionQuery,
     applyInsertion: applyMention,
     resolveItems: resolveResults,
   });
@@ -225,7 +220,6 @@ export const useChatMention = ({ value, setValue, textareaRef }: ComposerProps):
   return suggestion;
 };
 
-const readTagQueryAt = (text: string, caret: number): string | null => readTagQuery(text, caret);
 const applyTagInsertion = (text: string, caret: number, item: CommitTagItem): { readonly text: string; readonly caret: number } =>
   applyTag(text, caret, item.value);
 
@@ -240,7 +234,7 @@ export const useChatTag = ({ value, setValue, textareaRef }: ComposerProps): Use
     value,
     setValue,
     textareaRef,
-    readQuery: readTagQueryAt,
+    readQuery: readTagQuery,
     applyInsertion: applyTagInsertion,
     resolveItems,
   });

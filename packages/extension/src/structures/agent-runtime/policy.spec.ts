@@ -85,9 +85,20 @@ describe('createPolicyExtension tool_call gating', () => {
     // A missing field must fail closed instead of approving nothing.
     expect(await decide('write_file', {})).toEqual({
       block: true,
-      reason: 'Access to write/edit this file path is explicitly denied by settings.',
+      reason: 'A file path is required.',
     });
     expect(await decide('edit_file', {})).toEqual({
+      block: true,
+      reason: 'A file path is required.',
+    });
+    expect(await decide('delete_file', {})).toEqual({
+      block: true,
+      reason: 'A file path is required.',
+    });
+
+    // A path that is present but denied keeps the deny-list reason.
+    activeSettings = { ...DEFAULT_SETTINGS, autoApproveWrite: true, deniedWritePaths: ['**/.env'] };
+    expect(await decide('write_file', { path: '.env' })).toEqual({
       block: true,
       reason: 'Access to write/edit this file path is explicitly denied by settings.',
     });

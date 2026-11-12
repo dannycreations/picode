@@ -296,6 +296,7 @@ describe('loadSubagentTranscript', () => {
 
     const tool = messages.find((m) => m.sender === 'tool');
     expect(tool?.toolStatus).toBe('running');
+    expect(tool?.sender === 'tool' ? tool.toolSections?.[0]?.status : undefined).toBe('running');
   });
 
   it('shows a call whose result arrived as finished', () => {

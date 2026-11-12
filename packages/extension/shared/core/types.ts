@@ -88,7 +88,7 @@ export interface ToolSection {
   readonly timestamp?: number;
   readonly duration?: number;
   readonly exitCode?: number | null;
-  readonly status?: string;
+  readonly status?: ToolStatus;
   readonly approvalMessage?: ChatMessage;
 }
 

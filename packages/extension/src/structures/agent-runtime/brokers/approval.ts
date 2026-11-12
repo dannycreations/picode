@@ -1,5 +1,3 @@
-import { uuidv7 } from '@earendil-works/pi-ai';
-
 import { createRequestRegistry } from '@pi-code/extension/structures/agent-runtime/brokers/registry';
 import { logger } from '@pi-code/shared/core/logger';
 
@@ -45,20 +43,19 @@ export function setApprovalPresenter(next: ApprovalPresenter): () => void {
   };
 }
 
-export function requestApproval(toolName: ToolName, toolCallId: string | undefined, args: unknown, parentToolCallId?: string): Promise<boolean> {
+export function requestApproval(toolName: ToolName, toolCallId: string, args: unknown, parentToolCallId?: string): Promise<boolean> {
   const currentPresenter = presenter;
   if (!currentPresenter) {
     logger.error('Approval requested before an approval presenter was registered. Denying the tool call.');
     return Promise.resolve(false);
   }
 
-  const id = toolCallId || uuidv7();
   // A reused id (a retried tool call) must not orphan the earlier pending
   // approval, which would hang the awaiting tool_call handler forever.
-  approvals.resolve(id, false);
+  approvals.resolve(toolCallId, false);
   return new Promise<boolean>((resolve) => {
-    approvals.register(id, resolve);
-    currentPresenter({ id, toolName, args, toolCallId: parentToolCallId });
+    approvals.register(toolCallId, resolve);
+    currentPresenter({ id: toolCallId, toolName, args, toolCallId: parentToolCallId });
   });
 }
 

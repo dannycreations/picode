@@ -159,19 +159,19 @@ function registerInlineEditCommand(
   });
 }
 
-function composePrompt(instruction: string, selection: ResolvedSelection, diagnosticText: string): string {
-  return [instruction, diagnosticText, formatSelectionBlock(selection)].filter(Boolean).join('\n\n');
+function composePrompt(lead: string, selection: ResolvedSelection): string {
+  return [lead, formatSelectionBlock(selection)].filter(Boolean).join('\n\n');
 }
 
 export function registerContextCommands(sender: Pick<ChatViewProvider, 'postMessage'>): Disposable[] {
   return [
     registerChatInputCommand(sender, COMMAND_IDS.addToContext, formatSelectionBlock),
     registerChatInputCommand(sender, COMMAND_IDS.addProblemToContext, (selection, args) =>
-      composePrompt(getDiagnosticText(args, selection), selection, ''),
+      composePrompt(getDiagnosticText(args, selection), selection),
     ),
-    registerInlineEditCommand(COMMAND_IDS.fillCode, 'Filling code with Pi...', (selection) => composePrompt(FILL_CODE_PROMPT, selection, '')),
+    registerInlineEditCommand(COMMAND_IDS.fillCode, 'Filling code with Pi...', (selection) => composePrompt(FILL_CODE_PROMPT, selection)),
     registerInlineEditCommand(COMMAND_IDS.fixCode, 'Fixing code with Pi...', (selection, diagnosticText) =>
-      composePrompt(FIX_CODE_PROMPT, selection, diagnosticText),
+      composePrompt([FIX_CODE_PROMPT, diagnosticText].filter(Boolean).join('\n\n'), selection),
     ),
   ];
 }

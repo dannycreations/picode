@@ -197,7 +197,7 @@ export class Runtime {
   }
 
   public async fork(path: string | undefined): Promise<{ messages: ChatMessage[]; stats: StatsData } | null> {
-    this.prepareRun();
+    this.apiRequestId = null;
     const cwd = getWorkspaceCwd();
 
     if (!path) {
@@ -221,7 +221,7 @@ export class Runtime {
   }
 
   public async compact(path: string | undefined): Promise<{ messages: ChatMessage[]; stats: StatsData } | null> {
-    this.prepareRun();
+    this.apiRequestId = null;
     const cwd = getWorkspaceCwd();
 
     const { session } = await this.getOrCreateSession(path, cwd);
@@ -331,13 +331,7 @@ export class Runtime {
     this.unsubscribeSubagentSessions = null;
     this.messenger.dispose();
     this.cleanupSession();
-    this.cleanupPending();
     this.replyQueue.clear();
-  }
-
-  private prepareRun(): void {
-    this.cleanupPending();
-    this.apiRequestId = null;
   }
 
   private discardIfStale(generation: number, session: AgentSession): boolean {
@@ -355,7 +349,7 @@ export class Runtime {
     envDetails: string;
     services: AgentSessionServices;
   }> {
-    this.prepareRun();
+    this.apiRequestId = null;
     const cwd = getWorkspaceCwd();
 
     // Skills come from the exact resources the session was built with, so one
@@ -470,6 +464,10 @@ export class Runtime {
   }
 
   private cleanupSession(session: AgentSession | null = this.session): void {
+    // The pending prompts belong to the session being torn down, so they are
+    // settled here rather than when a run is merely prepared.
+    this.cleanupPending();
+
     const unsubscribe = this.unsubscribeSessionEvents;
     this.unsubscribeSessionEvents = null;
 

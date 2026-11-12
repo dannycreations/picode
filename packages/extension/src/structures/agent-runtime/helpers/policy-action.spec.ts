@@ -84,12 +84,14 @@ describe('resolvePathAction', () => {
     expect(action).toBe('confirm');
   });
 
-  it('should ignore denied and allowed list and return confirm when auto-approve is disabled', () => {
-    const actionDenied = resolvePathAction(undefined, 'src/core/agent.ts', false, [], ['src/core/*.ts']);
-    expect(actionDenied).toBe('confirm');
+  it('should deny a denied path even when auto-approve is disabled', () => {
+    const action = resolvePathAction(undefined, 'src/core/agent.ts', false, [], ['src/core/*.ts']);
+    expect(action).toBe('deny');
+  });
 
-    const actionAllowed = resolvePathAction(undefined, 'src/core/agent.ts', false, ['src/core/*.ts'], []);
-    expect(actionAllowed).toBe('confirm');
+  it('should confirm an allowed path when auto-approve is disabled', () => {
+    const action = resolvePathAction(undefined, 'src/core/agent.ts', false, ['src/core/*.ts'], []);
+    expect(action).toBe('confirm');
   });
 
   it('should auto-approve when path matches allowed patterns', () => {
@@ -208,6 +210,15 @@ describe('resolveCommandAction', () => {
   it('should block when command matches denied patterns', () => {
     const action = resolveCommandAction('npm install typescript', true, [], ['npm install']);
     expect(action).toBe('deny');
+  });
+
+  it('should deny a denied command even when auto-approve is disabled', () => {
+    expect(resolveCommandAction('npm install typescript', false, [], ['npm install'])).toBe('deny');
+    expect(resolveCommandAction('cat .env', false, ['*'], ['*.env'])).toBe('deny');
+  });
+
+  it('should let an explicit deny win over a dangerous substitution', () => {
+    expect(resolveCommandAction('rm -rf $(evil)', true, [], ['rm *'])).toBe('deny');
   });
 
   it('should deny a file pattern that only appears as one word of the command', () => {

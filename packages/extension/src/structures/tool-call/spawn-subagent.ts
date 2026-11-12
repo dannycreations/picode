@@ -5,13 +5,7 @@ import { Type } from 'typebox';
 import { readOutputLimits } from '@pi-code/extension/core/settings';
 import { registerLiveSubagent } from '@pi-code/extension/structures/agent-runtime/brokers/subagent';
 import { createToolAbort } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
-import { mapEvent, notifySubagentEvent } from '@pi-code/extension/structures/agent-runtime/event';
-import {
-  recordSubagentUsage,
-  SPAWN_SUBAGENT_TOOL_NAME,
-  spawnSubagent,
-  SUBAGENT_FORWARDED_EVENTS,
-} from '@pi-code/extension/structures/agent-runtime/subagent';
+import { recordSubagentUsage, SPAWN_SUBAGENT_TOOL_NAME, spawnSubagent } from '@pi-code/extension/structures/agent-runtime/subagent';
 import { toolError, toolResult } from '@pi-code/extension/structures/tool-call/helpers';
 import { renderTruncatedText, spillToTempLog, truncateOutput } from '@pi-code/extension/utilities/truncate';
 import { formatCost } from '@pi-code/shared/utilities/common';
@@ -107,14 +101,6 @@ export const spawnSubagentTool = defineTool({
                 details: { steps },
               })
           : undefined,
-        onEvent: (event, subagentSession) => {
-          if (SUBAGENT_FORWARDED_EVENTS.has(event.type)) {
-            const { message } = mapEvent(event, subagentSession, null);
-            if (message) {
-              notifySubagentEvent(message);
-            }
-          }
-        },
       });
 
       // Fold the delegated run's spend into the parent's live header stats.

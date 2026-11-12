@@ -366,7 +366,7 @@ export const executeCommandTool = defineTool({
         const exitInfo = exitCode !== null ? `Exit code: ${exitCode}` : `Killed by signal: ${signalCode ?? 'UNKNOWN'}`;
         // Only the tail of the output is kept once the command outgrows the
         // window, so the raw output starts where the window starts.
-        const rawTailOutput = outputStart === 0 ? output.join('') : output.slice(outputStart).join('');
+        const rawTailOutput = output.slice(outputStart).join('');
         const cleanOutput = cleanCommandOutput(rawTailOutput);
 
         // Truncate once. Whether the tail is truncated decides if the raw output

@@ -266,9 +266,11 @@ export function resolvePathAction(
   allowedPatterns: readonly string[],
   deniedPatterns: readonly string[],
 ): ApprovalDecision['action'] {
-  if (!approveEnabled) return 'confirm';
   if (!filePath || filePath.includes('\0')) return 'deny';
-  return decidePathAction(resolveFileLocation(cwd, filePath), allowedPatterns, deniedPatterns);
+
+  const decision = decidePathAction(resolveFileLocation(cwd, filePath), allowedPatterns, deniedPatterns);
+  if (decision === 'deny') return 'deny';
+  return approveEnabled ? decision : 'confirm';
 }
 
 function matchesCommandPattern(pattern: string, command: string, commandLower: string): boolean {
@@ -325,12 +327,8 @@ function evaluateSubCommand(
   allowedPatterns: readonly string[],
   deniedPatterns: readonly string[],
 ): ApprovalDecision['action'] {
-  let decision = getSingleCommandDecision(segment.text, allowedPatterns, deniedPatterns);
-
   const withoutRedirection = segment.text.replace(FD_REDIRECT_PATTERN, '').trim();
-  if (withoutRedirection !== segment.text) {
-    decision = getSingleCommandDecision(withoutRedirection, allowedPatterns, deniedPatterns);
-  }
+  const decision = getSingleCommandDecision(withoutRedirection, allowedPatterns, deniedPatterns);
   if (decision === 'deny') return decision;
 
   // Denials reach into the words of a command, approvals never do: widening a
@@ -347,16 +345,12 @@ export function resolveCommandAction(
   allowedPatterns: readonly string[],
   deniedPatterns: readonly string[],
 ): ApprovalDecision['action'] {
-  if (!approveEnabled) return 'confirm';
-  if (containsDangerousSubstitution(command)) return 'confirm';
-
   let segments: CommandSegment[];
   try {
     segments = parseCommand(command);
   } catch {
     return 'confirm';
   }
-  if (segments.length === 0) return 'approve';
 
   let hasConfirm = false;
   for (const segment of segments) {
@@ -364,6 +358,10 @@ export function resolveCommandAction(
     if (decision === 'deny') return 'deny';
     if (decision === 'confirm') hasConfirm = true;
   }
+
+  if (!approveEnabled) return 'confirm';
+  if (containsDangerousSubstitution(command)) return 'confirm';
+  if (segments.length === 0) return 'approve';
   return hasConfirm ? 'confirm' : 'approve';
 }
 

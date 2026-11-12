@@ -47,10 +47,8 @@ export function initSessionHooks(session: AgentSession, services: SessionHookSer
 
     const snapshot = await basePrepareContext?.(context, signal);
     const baseContext = snapshot?.context ?? context.context;
-    if (baseContext?.messages) {
-      const settings = readAppSettings();
-      const todoList = settings.enableTodoTool ? getLatestTodoList(context.context.messages) : undefined;
-      const messages = withTodoProgress(baseContext.messages, todoList);
+    if (baseContext?.messages && readAppSettings().enableTodoTool) {
+      const messages = withTodoProgress(baseContext.messages, getLatestTodoList(context.context.messages));
       return { ...(snapshot ?? {}), context: { ...baseContext, messages } };
     }
     return snapshot;

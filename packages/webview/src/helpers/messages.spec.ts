@@ -252,12 +252,28 @@ describe('resolveApproval', () => {
   });
 
   it('marks a rejected tool as denied', () => {
-    const messages = [createToolMessage('t1', 'execute_command', { toolStatus: 'approval', timestamp: 1000, pausedAt: 1000 })];
+    const messages = [
+      createToolMessage('t1', 'read_file', { toolStatus: 'approval', timestamp: 1000, pausedAt: 1000, files: [{ path: 'a.ts', content: 'a' }] }),
+    ];
 
     const result = resolveApproval(messages, 't1', false);
 
     expect(asTool(result[0]).toolStatus).toBe('denied');
     expect(asTool(result[0]).pausedAt).toBeUndefined();
+    expect(asTool(result[0]).toolSections?.[0]?.status).toBe('denied');
+    expect(asTool(result[0]).toolSections?.[0]?.approvalMessage).toBeUndefined();
+  });
+
+  it('rebuilds the sections when an approval is granted', () => {
+    const messages = [
+      createToolMessage('t1', 'read_file', { toolStatus: 'approval', timestamp: 1000, pausedAt: 1000, files: [{ path: 'a.ts', content: 'a' }] }),
+    ];
+
+    const result = resolveApproval(messages, 't1', true);
+
+    expect(asTool(result[0]).toolStatus).toBe('running');
+    expect(asTool(result[0]).toolSections?.[0]?.status).toBe('running');
+    expect(asTool(result[0]).toolSections?.[0]?.approvalMessage).toBeUndefined();
   });
 });
 
@@ -412,6 +428,23 @@ describe('groupToolMessages', () => {
     expect(result[0].id).toBe('p1');
     expect(asTool(result[0]).toolSections?.[0].approvalMessage?.id).toBe('a1');
     expect(result[1].id).toBe('p2');
+  });
+
+  it('should not fold a sub-agent tool call into an unrelated same-tool group', () => {
+    const messages = [
+      createToolMessage('p1', 'spawn_subagent', { toolArgs: { description: 'find files', task: 'x' }, diff: '<report>' }),
+      createToolMessage('r1', 'read_file', { files: [{ path: 'a.ts', content: 'a' }] }),
+      createToolMessage('r2', 'read_file', { toolStatus: 'running', toolCallId: 'p1', files: [{ path: 'b.ts', content: 'b' }] }),
+    ];
+
+    const result = groupToolMessages(messages);
+
+    // The sub-agent's own call is nested under the spawn_subagent row and
+    // dropped from the parent transcript, never appended to a read_file group.
+    expect(result).toHaveLength(2);
+    expect(result[0].id).toBe('p1');
+    expect(result[1].id).toBe('r1');
+    expect(asTool(result[1]).toolSections).toHaveLength(1);
   });
 
   it('should keep a standalone approval with no matching parent as its own row', () => {

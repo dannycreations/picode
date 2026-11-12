@@ -26,14 +26,11 @@ function canGroupTool(message: ChatMessage): message is ToolChatMessage {
   if (message.sender !== 'tool' || message.toolName === undefined || !GROUP_TOOLS.has(message.toolName)) {
     return false;
   }
-  // Sub-agent approvals carry a parent link and are nested under that parent
-  // tool later in this function, so they stay out of the top-level group.
-  // Top-level approvals join their tool group so the approve/deny UI renders
-  // beneath the tool that triggered it instead of as a separate message.
-  if (message.toolStatus === 'approval') {
-    return message.toolCallId === undefined;
-  }
-  return true;
+  // A row that names the tool call it belongs to is nested under that row
+  // below, so it never joins a top-level group. A top-level approval carries
+  // no parent link and still joins its tool group, so the approve/deny UI
+  // renders beneath the tool that triggered it.
+  return message.toolCallId === undefined;
 }
 
 function collectToolSections(messages: ReadonlyArray<ChatMessage>): ToolSection[] {
@@ -290,13 +287,15 @@ export function startApiRequest(messages: ChatMessage[], id: string, timestamp: 
 }
 
 export function resolveApproval(messages: ChatMessage[], msgId: string, approved: boolean): ChatMessage[] {
+  // Resolving an approval changes the status, and patchToolRow rebuilds the
+  // precomputed sections so a stale approve/deny section cannot linger.
   if (!approved) {
-    return patchMessage(messages, msgId, { toolStatus: 'denied', pausedAt: undefined });
+    return patchToolRow(messages, msgId, undefined, () => ({ toolStatus: 'denied', pausedAt: undefined }));
   }
 
   const target = messages.find((message) => message.id === msgId);
   const timestamp = target?.sender === 'tool' && target.pausedAt !== undefined ? target.timestamp + (Date.now() - target.pausedAt) : Date.now();
-  return patchMessage(messages, msgId, { toolStatus: 'running', timestamp, pausedAt: undefined });
+  return patchToolRow(messages, msgId, undefined, () => ({ toolStatus: 'running', timestamp, pausedAt: undefined }));
 }
 
 export function patchLastAssistant(messages: ChatMessage[], patch: (message: AssistantChatMessage) => Partial<AssistantChatMessage>): ChatMessage[] {
@@ -313,21 +312,10 @@ export function patchLastAssistant(messages: ChatMessage[], patch: (message: Ass
 }
 
 export function appendAssistantDelta(messages: ChatMessage[], text: string | undefined, thinking: string | undefined): ChatMessage[] {
-  for (let index = messages.length - 1; index >= 0; index--) {
-    const message = messages[index];
-    if (message.sender !== 'assistant') continue;
-
-    const next: AssistantChatMessage = {
-      ...message,
-      text: text ? message.text + text : message.text,
-      reasoning: thinking ? (message.reasoning ?? '') + thinking : message.reasoning,
-    };
-
-    const copy = messages.slice();
-    copy[index] = next;
-    return copy;
-  }
-  return messages;
+  return patchLastAssistant(messages, (message) => ({
+    text: text ? message.text + text : message.text,
+    reasoning: thinking ? (message.reasoning ?? '') + thinking : message.reasoning,
+  }));
 }
 
 export function upsertToolRow(messages: ChatMessage[], id: string, patch: Partial<ToolChatMessage>): ChatMessage[] {

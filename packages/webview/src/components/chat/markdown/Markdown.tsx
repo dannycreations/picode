@@ -79,7 +79,9 @@ const MarkdownPre: FC<{ children?: ReactNode }> = ({ children }) => {
 
   return (
     <div className="my-4">
-      <CodeBlock source={codeString} language={language} />
+      {/* An empty fence has no element to observe, so mounting the block only
+          once it has content lets the viewport observer attach on first paint. */}
+      {codeString && <CodeBlock source={codeString} language={language} />}
     </div>
   );
 };

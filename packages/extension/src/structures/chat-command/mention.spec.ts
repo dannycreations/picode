@@ -68,6 +68,16 @@ describe('expandMentions', () => {
     expect(mentionContent).not.toContain('export const x = 2');
   });
 
+  it('marks an empty directory in a folder listing', async () => {
+    await write('src/index.ts', 'console.log(1)');
+    await mkdir(join(cwd, 'src/empty'), { recursive: true });
+
+    const mentionContent = await expandMentions('Look at @src', cwd);
+
+    expect(mentionContent).toContain('├─ empty/');
+    expect(mentionContent).toContain('└─ index.ts');
+  });
+
   it('excludes .git internals from a mentioned folder, matching the environment walk', async () => {
     await write('project/src/index.ts', 'console.log(1)');
     await write('project/.git/config', 'core.filemode=true');

@@ -124,8 +124,10 @@ async function runSessionCommand(command: SessionCommand, msg: SessionCommandMes
 
   // Refresh the webview from the in-memory session instead of re-opening and
   // re-parsing the same session file a second time. Both commands rewrite the
-  // session file, so the current list needs refreshing too.
-  postSession(ctx, msg.id || ACTIVE_TASK_ID, msg.title || '', path, details);
+  // session file, so the current list needs refreshing too. A fork adopts the
+  // branched file as the live session, so the task has to point at it.
+  const targetPath = command === 'fork' ? (ctx.runtime.getSessionFile() ?? path) : path;
+  postSession(ctx, msg.id || ACTIVE_TASK_ID, msg.title || '', targetPath, details);
   await postHistory(ctx, 'current');
 
   if (command === 'fork') {
