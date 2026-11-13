@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { defineTool, detectLineEnding, normalizeToLF, restoreLineEndings } from '@earendil-works/pi-coding-agent';
+import { defineTool, normalizeToLF } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 
 import { readOutputLimits } from '@pi-code/extension/core/settings';
@@ -49,6 +49,14 @@ function buildTokenRegex(oldText: string): RegExp {
   }
 
   return new RegExp(tokens.map((token) => escapeRegExp(token.text)).join('\\s+'), 'g');
+}
+
+function detectLineEnding(text: string): string {
+  return text.includes('\r\n') ? '\r\n' : '\n';
+}
+
+function restoreLineEndings(text: string, eol: string): string {
+  return eol === '\n' ? text : text.replace(/\n/g, eol);
 }
 
 type MatchStrategy = 'exact' | 'whitespace' | 'token';
@@ -139,18 +147,14 @@ export const editFileTool = defineTool({
         });
       }
 
-      const originalEol = detectLineEnding(originalContent);
       const searchLF = normalizeToLF(search);
-
       if (searchLF === normalizeToLF(replace)) {
         return toolError('Error: `search` and `replace` are identical; nothing to change.');
       }
 
-      const matchTarget = restoreLineEndings(normalizeToLF(originalContent), originalEol);
-      const oldText = restoreLineEndings(searchLF, originalEol);
-
       const expected = params.expected ?? 1;
-      const outcome = replaceExpected(matchTarget, oldText, replace, expected, path);
+      const oldText = restoreLineEndings(searchLF, detectLineEnding(originalContent));
+      const outcome = replaceExpected(originalContent, oldText, replace, expected, path);
       if (outcome.error !== undefined) {
         return toolError(outcome.error);
       }

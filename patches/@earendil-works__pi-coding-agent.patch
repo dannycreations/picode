@@ -1,21 +1,21 @@
 diff --git a/dist/core/agent-session.d.ts b/dist/core/agent-session.d.ts
-index aba2a96..e367378 100644
+index 8b6a584..bd17122 100644
 --- a/dist/core/agent-session.d.ts
 +++ b/dist/core/agent-session.d.ts
-@@ -550,7 +550,7 @@ export declare class AgentSession {
+@@ -567,7 +567,7 @@ export declare class AgentSession {
       * @throws Error if streaming and no streamingBehavior specified
       * @throws Error if no model selected or no API key available (when not streaming)
       */
 -    prompt(text: string, options?: PromptOptions): Promise<void>;
 +    prompt(text: string | null, options?: PromptOptions): Promise<void>;
      /**
-      * Try to execute an extension command. Returns true if command was found and executed.
-      */
+      * Run input hooks, expand templates, queue while streaming, and validate model and auth.
+      * Returns the run trigger, or undefined when the prompt was handled or queued.
 diff --git a/dist/core/agent-session.js b/dist/core/agent-session.js
-index 8728a3e..15a405b 100644
+index d67feeb..9b2925f 100644
 --- a/dist/core/agent-session.js
 +++ b/dist/core/agent-session.js
-@@ -1494,10 +1494,11 @@ export class AgentSession {
+@@ -1558,10 +1558,11 @@ export class AgentSession {
          if (!handlerEditedTools)
              result.systemPromptOptions.selectedTools = this.getActiveToolNames();
          const messages = [];
@@ -28,29 +28,40 @@ index 8728a3e..15a405b 100644
              // Normalize images after before_agent_start so extension-driven model selection
              // determines the resize profile used for the request and history.
              const normalized = await this._normalizePromptImages(trigger.images);
-@@ -1633,6 +1634,8 @@ export class AgentSession {
-             this._deferredSettledActions.push(async () => await this.prompt(text, options));
-             return;
-         }
-+        const isTriggerTurn = text === null;
-+        if (isTriggerTurn) text = "";
-         const expandPromptTemplates = options?.expandPromptTemplates ?? true;
+@@ -1701,7 +1702,7 @@ export class AgentSession {
          const preflightResult = options?.preflightResult;
          // Handle extension commands first (execute immediately, even during streaming)
-@@ -1690,7 +1693,10 @@ export class AgentSession {
+         // Extension commands manage their own LLM interaction via pi.sendMessage()
+-        if (expandPromptTemplates && text.startsWith("/")) {
++        if (expandPromptTemplates && text !== null && text.startsWith("/")) {
+             const handled = await this._tryExecuteExtensionCommand(text);
+             if (handled) {
+                 // Extension command executed, no prompt to send
+@@ -1732,6 +1733,11 @@ export class AgentSession {
+     async _preparePrompt(text, options) {
+         const expandPromptTemplates = options?.expandPromptTemplates ?? true;
+         const preflightResult = options?.preflightResult;
++        // A null text is a "trigger" run: it starts a turn from the current transcript without
++        // adding a user message, so every other guard below still applies to it.
++        const isTriggerTurn = text === null;
++        if (isTriggerTurn)
++            text = "";
+         // Emit input event for extension interception (before skill/template expansion)
+         const processedInput = await this._runInputHandlers(text, options?.images, options?.source ?? "interactive", this.isStreaming ? options?.streamingBehavior : undefined);
+         if (!processedInput) {
+@@ -1774,7 +1780,9 @@ export class AgentSession {
              }
              throw new Error(formatNoApiKeyFoundMessage(this.model.provider));
          }
--        await this._startRun({ messageType: "user", prompt: expandedText, images: currentImages }, () => preflightResult?.("started"));
-+        const runTrigger = isTriggerTurn
+-        return { messageType: "user", prompt: expandedText, images: currentImages };
++        return isTriggerTurn
 +            ? { messageType: "trigger" }
 +            : { messageType: "user", prompt: expandedText, images: currentImages };
-+        await this._startRun(runTrigger, () => preflightResult?.("started"));
      }
      /**
       * Try to execute an extension command. Returns true if command was found and executed.
 diff --git a/dist/index.d.ts b/dist/index.d.ts
-index 3821d9f..3182088 100644
+index bb8acdb..4d2f023 100644
 --- a/dist/index.d.ts
 +++ b/dist/index.d.ts
 @@ -42,4 +42,10 @@ export { convertToPng } from "./utils/image-convert.ts";
@@ -59,14 +70,14 @@ index 3821d9f..3182088 100644
  export { getPowerShellConfig, getShellConfig } from "./utils/shell.ts";
 +export type { CustomMessage } from "./core/messages.ts";
 +export { stripAnsi } from "./utils/ansi.ts";
-+export { detectLineEnding, normalizeToLF, restoreLineEndings } from "./core/tools/edit-diff.ts";
++export { normalizeToLF } from "./core/tools/edit-diff.ts";
 +export { resolvePath, getCwdRelativePath, formatPathRelativeToCwdOrAbsolute } from "./utils/paths.ts";
 +export { killProcessTree, trackDetachedChildPid, untrackDetachedChildPid, killTrackedDetachedChildren } from "./utils/shell.ts";
 +export { parseCommandArgs, substituteArgs } from "./core/prompt-templates.ts";
  //# sourceMappingURL=index.d.ts.map
 \ No newline at end of file
 diff --git a/dist/index.js b/dist/index.js
-index ab5cfcc..069b6d6 100644
+index ab5cfcc..4a506a7 100644
 --- a/dist/index.js
 +++ b/dist/index.js
 @@ -51,4 +51,9 @@ export { formatDimensionNote, resizeImage } from "./utils/image-resize.js";
@@ -74,7 +85,7 @@ index ab5cfcc..069b6d6 100644
  // Shell utilities
  export { getPowerShellConfig, getShellConfig } from "./utils/shell.js";
 +export { stripAnsi } from "./utils/ansi.js";
-+export { detectLineEnding, normalizeToLF, restoreLineEndings } from "./core/tools/edit-diff.js";
++export { normalizeToLF } from "./core/tools/edit-diff.js";
 +export { resolvePath, getCwdRelativePath, formatPathRelativeToCwdOrAbsolute } from "./utils/paths.js";
 +export { killProcessTree, trackDetachedChildPid, untrackDetachedChildPid, killTrackedDetachedChildren } from "./utils/shell.js";
 +export { parseCommandArgs, substituteArgs } from "./core/prompt-templates.js";

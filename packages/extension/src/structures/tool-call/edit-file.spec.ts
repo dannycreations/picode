@@ -89,6 +89,17 @@ describe('editFileTool', () => {
     expect(result.content[0].text).toContain('CONTENT');
   });
 
+  it('leaves the line endings of untouched lines alone in a mixed-ending file', async () => {
+    stat.mockResolvedValue(READABLE);
+    readFile.mockResolvedValue('alpha\nbeta\r\n');
+
+    const result = await execute({ path: 'mixed.txt', search: 'beta', replace: 'BETA' });
+
+    expect(result.isError).toBeFalsy();
+    expect(result.content[0].text).not.toContain('whitespace-tolerant matching');
+    expect(String(writeFile.mock.calls[0][1])).toBe('alpha\nBETA\r\n');
+  });
+
   it('writes replacement text containing $& literally instead of expanding it', async () => {
     stat.mockResolvedValue(READABLE);
     readFile.mockResolvedValue('keep');
