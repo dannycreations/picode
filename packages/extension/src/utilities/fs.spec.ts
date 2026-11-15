@@ -31,7 +31,7 @@ describe('searchWorkspaceFiles', () => {
     // surface it.
     const results = await searchWorkspaceFiles('packages/extension/shared', cwd);
 
-    expect(results).toContain('packages/extension/shared');
+    expect(results).toContain('packages/extension/shared/');
   });
 
   it('returns nothing when the anchored directory does not exist', async () => {
@@ -70,6 +70,16 @@ describe('searchWorkspaceFiles', () => {
 
     expect(results[0]).toBe('patches');
     expect(results).toContain('context/something/patches');
+  });
+
+  it('marks folders with a trailing slash and files without one', async () => {
+    await write('src/index.ts');
+    await write('src/nested/file.ts');
+
+    const results = await searchWorkspaceFiles('src', cwd);
+
+    expect(results).toContain('src/');
+    expect(results).toContain('src/index.ts');
   });
 
   it('ranks a basename-prefix match above a basename-infix match', async () => {

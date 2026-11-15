@@ -24,19 +24,19 @@ interface MentionInsertion {
   readonly caret: number;
 }
 
-function insertToken(pattern: RegExp, prefix: string, text: string, caret: number, value: string): MentionInsertion {
+function insertToken(pattern: RegExp, prefix: string, text: string, caret: number, value: string, separator = ' '): MentionInsertion {
   const before = text.slice(0, caret);
   const after = text.slice(caret);
   const match = pattern.exec(before);
   if (!match) return { text, caret };
 
   const at = match.index;
-  const newBefore = `${before.slice(0, at)}${prefix}${value} `;
+  const newBefore = `${before.slice(0, at)}${prefix}${value}${separator}`;
   return { text: `${newBefore}${after}`, caret: newBefore.length };
 }
 
 export function applyMention(text: string, caret: number, path: string): MentionInsertion {
-  return insertToken(MENTION_TOKEN_PATTERN, '@', text, caret, path);
+  return insertToken(MENTION_TOKEN_PATTERN, '@', text, caret, path, path.endsWith('/') ? '' : ' ');
 }
 
 export function applyTag(text: string, caret: number, value: string): MentionInsertion {

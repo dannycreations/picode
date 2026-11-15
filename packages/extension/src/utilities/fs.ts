@@ -84,15 +84,19 @@ function rankPath(path: string, needle: string): PathRank {
   };
 }
 
-function rankPaths(paths: readonly string[], needle: string): string[] {
-  const ranked = paths.map((path) => ({ path, rank: rankPath(path, needle) }));
+function rankEntries(entries: readonly DirectoryListing[], needle: string): DirectoryListing[] {
+  const ranked = entries.map((entry) => ({ entry, rank: rankPath(entry.rel, needle) }));
   ranked.sort((a, b) => {
     if (a.rank.baseIndex !== b.rank.baseIndex) return a.rank.baseIndex - b.rank.baseIndex;
     if (a.rank.depth !== b.rank.depth) return a.rank.depth - b.rank.depth;
     if (a.rank.pathLength !== b.rank.pathLength) return a.rank.pathLength - b.rank.pathLength;
-    return pathCollator.compare(a.path, b.path);
+    return pathCollator.compare(a.entry.rel, b.entry.rel);
   });
-  return ranked.map((entry) => entry.path);
+  return ranked.map((entry) => entry.entry);
+}
+
+function toSearchPath(entry: DirectoryListing): string {
+  return entry.isDir ? `${entry.rel}/` : entry.rel;
 }
 
 const MAX_RESULTS = 50;
@@ -142,23 +146,26 @@ export async function searchWorkspaceFiles(query: string, cwd: string): Promise<
   if (getCwdRelativePath(start, cwd) === undefined) return [];
 
   if (needle === '') {
-    const entries: string[] = [];
+    const entries: DirectoryListing[] = [];
     for await (const { rel, entry } of walkDirectory(start, 0, cwd)) {
-      if (entry.isFile || entry.isDir) entries.push(rel);
+      if (entry.isFile || entry.isDir) entries.push({ rel, isFile: entry.isFile, isDir: entry.isDir });
     }
-    return entries.sort((a, b) => pathCollator.compare(a, b)).slice(0, MAX_RESULTS);
+    return entries
+      .sort((a, b) => pathCollator.compare(a.rel, b.rel))
+      .slice(0, MAX_RESULTS)
+      .map(toSearchPath);
   }
 
-  const matches: string[] = [];
+  const matches: DirectoryListing[] = [];
   const listing = await listSearchableDirectory(start, cwd);
   for (let index = 0; index < listing.length; index++) {
     const entry = listing[index];
     if (!entry.isFile && !entry.isDir) continue;
     if (!containsIgnoreCase(entry.rel, needle)) continue;
-    matches.push(entry.rel);
+    matches.push(entry);
   }
 
-  return rankPaths(matches, needle).slice(0, MAX_RESULTS);
+  return rankEntries(matches, needle).slice(0, MAX_RESULTS).map(toSearchPath);
 }
 
 const MEGABYTE = 1024 * 1024;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { applyTag, readTagQuery, toCommitTagItem } from '@pi-code/webview/components/chat/helpers/mention';
+import { applyMention, applyTag, readTagQuery, toCommitTagItem } from '@pi-code/webview/components/chat/helpers/mention';
 
 describe('readTagQuery', () => {
   it('reads the query after a # token at the caret', () => {
@@ -29,6 +29,22 @@ describe('applyTag', () => {
 
   it('leaves text without an active token untouched', () => {
     expect(applyTag('plain text', 5, 'working')).toEqual({ text: 'plain text', caret: 5 });
+  });
+});
+
+describe('applyMention', () => {
+  it('finishes a file mention with a space', () => {
+    expect(applyMention('check @ind', 10, 'src/index.ts')).toEqual({
+      text: 'check @src/index.ts ',
+      caret: 'check @src/index.ts '.length,
+    });
+  });
+
+  it('keeps a folder token open for the next path segment', () => {
+    expect(applyMention('check @sr', 9, 'src/')).toEqual({
+      text: 'check @src/',
+      caret: 'check @src/'.length,
+    });
   });
 });
 
