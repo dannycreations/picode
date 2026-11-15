@@ -587,7 +587,7 @@ export const ChatView: FC = () => {
         isCompacting={isCompacting}
         onScrollToBottom={scrollToBottom}
         onCancelTask={isSubagentView ? handleCancelSubagent : handleCancelTask}
-        onCloseTask={isSubagentView ? handleCloseSubagent : handleCloseTaskReturn}
+        onCloseTask={isSubagentReadOnly ? undefined : isSubagentView ? handleCloseSubagent : handleCloseTaskReturn}
         onContinueTask={isSubagentView ? undefined : handleContinueTask}
         closeLabel={isSubagentView ? 'Close' : undefined}
         cancelLabel={isSubagentView ? 'Cancel Sub-agent' : undefined}

@@ -13,7 +13,7 @@ interface ChatActionProps {
   readonly isAwaitingApproval: boolean;
   readonly onScrollToBottom: () => void;
   readonly onCancelTask: () => void;
-  readonly onCloseTask: () => void;
+  readonly onCloseTask?: () => void;
   readonly onContinueTask?: () => void;
   readonly closeLabel?: string;
   readonly cancelLabel?: string;
@@ -38,7 +38,11 @@ export const ChatAction: FC<ChatActionProps> = memo(
     if (isArchived) return null;
 
     const showCancel = isRunning || isCompacting;
-    const showActionButtons = hasTask && (showScrollToBottom || showCancel || !isAwaitingApproval);
+    const showContinue = onContinueTask !== undefined;
+    const showClose = onCloseTask !== undefined;
+    // The bar only appears when it has something to offer: a way back to the
+    // bottom, a way to stop the run, or the actions of a settled task.
+    const showActionButtons = hasTask && (showScrollToBottom || showCancel || (!isAwaitingApproval && (showContinue || showClose)));
 
     if (!showActionButtons) return null;
 
@@ -57,14 +61,16 @@ export const ChatAction: FC<ChatActionProps> = memo(
           </button>
         ) : (
           <>
-            {onContinueTask && (
+            {showContinue && (
               <button onClick={onContinueTask} className="action-button flex-1">
                 Continue
               </button>
             )}
-            <button onClick={onCloseTask} className="action-button action-button-secondary flex-1">
-              {closeLabel ?? 'New Task'}
-            </button>
+            {showClose && (
+              <button onClick={onCloseTask} className="action-button action-button-secondary flex-1">
+                {closeLabel ?? 'New Task'}
+              </button>
+            )}
           </>
         )}
       </div>
