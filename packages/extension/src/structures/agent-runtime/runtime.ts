@@ -125,6 +125,14 @@ export class Runtime {
 
     const { session } = resolved;
 
+    // A sub-agent runs once and reports back to the task that delegated the
+    // work. After it settles, the session stays available to read, but a new
+    // turn would run outside the tool call that spawned it.
+    if (!session.isStreaming) {
+      logger.warn(`Ignored a message for sub-agent ${toolCallId}: its run has already finished.`);
+      return;
+    }
+
     try {
       const mentionContent = await expandMentions(text, getWorkspaceCwd());
       // A sub-agent takes one message, so the files a mention points at ride

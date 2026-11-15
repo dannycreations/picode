@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { attachLiveSubagentSession, registerLiveSubagent, releaseLiveSubagents } from '@pi-code/extension/structures/agent-runtime/brokers/subagent';
 import { Runtime } from '@pi-code/extension/structures/agent-runtime/runtime';
 import { logger } from '@pi-code/shared/core/logger';
 
@@ -848,6 +849,42 @@ describe('Runtime compaction before turns', () => {
 
     expect(result).toBeNull();
     expect(posted(webview)).toContainEqual({ type: 'agent_error', payload: { message: expect.stringContaining('forked session') } });
+  });
+});
+
+describe('Runtime sub-agent messages', () => {
+  afterEach(() => {
+    releaseLiveSubagents();
+  });
+
+  function attachSession(toolCallId: string, isStreaming: boolean) {
+    const session = {
+      sessionId: `sub-${toolCallId}`,
+      isStreaming,
+      sendUserMessage: vi.fn(async () => {}),
+      dispose: vi.fn(),
+    };
+    registerLiveSubagent(toolCallId, 'find files', 'find the leak');
+    attachLiveSubagentSession(toolCallId, session as unknown as AgentSession);
+    return session;
+  }
+
+  it('steers a message into a sub-agent that is still running', async () => {
+    const session = attachSession('call-running', true);
+    const runtime = new Runtime(makeFakeWebview());
+
+    await runtime.sendSubagentMessage('call-running', 'check the logs');
+
+    expect(session.sendUserMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not start a new turn for a sub-agent that has finished', async () => {
+    const session = attachSession('call-finished', false);
+    const runtime = new Runtime(makeFakeWebview());
+
+    await runtime.sendSubagentMessage('call-finished', 'do more work');
+
+    expect(session.sendUserMessage).not.toHaveBeenCalled();
   });
 });
 

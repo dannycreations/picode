@@ -83,6 +83,9 @@ export const ChatView: FC = () => {
   const isSubagentView = view === 'subagent' && subagent !== null;
   const displayedTask = isSubagentView && subagent ? subagent.task : activeTask;
   const displayedIsRunning = isSubagentView && subagent ? subagent.isRunning : isRunning;
+  // A sub-agent reports back once. After it settles its transcript stays
+  // readable, but nothing more can be sent to it.
+  const isSubagentReadOnly = isSubagentView && !displayedIsRunning;
 
   // The question the task on screen is waiting on, derived from the transcript
   // the store already holds for it. A sub-agent's question has to own the
@@ -452,6 +455,7 @@ export const ChatView: FC = () => {
   // A pending question keeps the composer usable so the user can answer with
   // free text instead of picking one of the suggestions.
   const isInputDisabled = !pendingQuestion && hasApproval;
+  const isComposerHidden = displayedTask?.isArchived === true || isSubagentReadOnly;
 
   return (
     <div className="view-container">
@@ -591,7 +595,7 @@ export const ChatView: FC = () => {
       />
 
       {/* Input Area */}
-      {!displayedTask?.isArchived && (
+      {!isComposerHidden && (
         <ChatInput
           textareaRef={textareaRef}
           onSend={handleSend}
@@ -610,7 +614,7 @@ export const ChatView: FC = () => {
       )}
 
       {/* Footer */}
-      {!displayedTask?.isArchived && (
+      {!isComposerHidden && (
         <ChatFooter
           currentModel={selectedModel}
           onChangeModel={setSelectedModel}

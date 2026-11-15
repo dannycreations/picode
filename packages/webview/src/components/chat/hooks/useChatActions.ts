@@ -122,16 +122,15 @@ export const useChatActions = (): UseChatActionsReturn => {
     [handleAnswerQuestion],
   );
 
-  // A reply to an open sub-agent goes to that sub-agent, not to the task that
-  // delegated the work. The host decides whether it joins the running turn or
-  // starts a new one.
+  // A reply to an open sub-agent steers its running turn instead of starting
+  // a new one, and a settled sub-agent accepts no further messages.
   const handleSendSubagentPrompt = useCallback((text: string, attachments: Attachment[]): void => {
     const promptText = sendablePrompt(text, attachments);
     if (promptText === null) return;
 
     const store = useChatStore.getState();
     const subagent = store.subagent;
-    if (!subagent) return;
+    if (!subagent?.isRunning) return;
 
     const userMsg = buildUserMessage(promptText, attachments);
     store.setSubagent({ ...subagent, task: { ...subagent.task, messages: [...subagent.task.messages, userMsg] } });
