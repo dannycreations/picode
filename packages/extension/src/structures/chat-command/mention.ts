@@ -9,6 +9,7 @@ import { checkReadableFile, walkDirectory } from '@pi-code/extension/utilities/f
 import { readNumberedText } from '@pi-code/extension/utilities/truncate';
 import { MENTION_PATTERN, TAG_PATTERN } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
+import { normalizeSeparators } from '@pi-code/shared/utilities/common';
 import { buildFileTree, renderFileTree } from '@pi-code/shared/utilities/tree';
 
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
@@ -50,7 +51,7 @@ async function collectMentionBlocks(matches: RegExpMatchArray[], cwd: string, li
   for (const [index, mention] of resolvedMentions.entries()) {
     if (mention === null) continue;
     const noun = mention.kind === 'folder' ? 'Folder' : 'File';
-    blocks.push([`## ${noun} Mention: @${uniqueMentions[index]}`, '', `Location: ${mention.location}`, '', mention.content].join('\n'));
+    blocks.push([`## ${noun} Mention: ${uniqueMentions[index]}`, '', `Location: ${mention.location}`, '', mention.content].join('\n'));
   }
   return blocks;
 }
@@ -63,7 +64,7 @@ async function collectCommitBlocks(tags: RegExpMatchArray[], cwd: string, limits
 
 async function resolveMention(raw: string, cwd: string, limits: OutputLimits): Promise<ResolvedMention | null> {
   const target = resolve(cwd, raw);
-  const location = formatPathRelativeToCwdOrAbsolute(target, cwd);
+  const location = normalizeSeparators(target);
 
   let info;
   try {

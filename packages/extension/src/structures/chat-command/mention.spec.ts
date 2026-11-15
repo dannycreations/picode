@@ -52,9 +52,9 @@ describe('expandMentions', () => {
     const mentionContent = await expandMentions('Review @secret.txt and @readme.md', cwd);
 
     // The file bodies go to the hidden channel the model reads instead.
-    expect(mentionContent).toContain('## File Mention: @secret.txt');
+    expect(mentionContent).toContain('## File Mention: secret.txt');
     expect(mentionContent).toContain('hidden treasure');
-    expect(mentionContent).toContain('## File Mention: @readme.md');
+    expect(mentionContent).toContain('## File Mention: readme.md');
     expect(mentionContent).toContain('project docs');
   });
 
@@ -64,7 +64,7 @@ describe('expandMentions', () => {
 
     const mentionContent = await expandMentions('Look at @src', cwd);
 
-    expect(mentionContent).toContain('## Folder Mention: @src');
+    expect(mentionContent).toContain('## Folder Mention: src');
     expect(mentionContent).toContain('├─ index.ts');
     expect(mentionContent).toContain('└─ util.ts');
     // File contents are not inlined; only the entry names are listed as a tree.
@@ -88,14 +88,14 @@ describe('expandMentions', () => {
 
     const mentionContent = await expandMentions('Look at @project', cwd);
 
-    expect(mentionContent).toContain('## Folder Mention: @project');
+    expect(mentionContent).toContain('## Folder Mention: project');
     expect(mentionContent).toContain('└─ index.ts');
     // The .git directory must stay out of the listing entirely.
     expect(mentionContent).not.toContain('.git');
     expect(mentionContent).not.toContain('core.filemode=true');
   });
 
-  it('names the resolved location of each mention next to its block', async () => {
+  it('names the full resolved location of each mention next to its block', async () => {
     await write('src/index.ts', 'console.log(1)');
     await writeFile(join(outside, 'notes.md'), 'outside notes');
 
@@ -103,9 +103,8 @@ describe('expandMentions', () => {
     const folderContent = await expandMentions('@src', cwd);
     const outsideContent = await expandMentions(`@${join(outside, 'notes.md')}`, cwd);
 
-    expect(fileContent).toContain('Location: src/index.ts');
-    expect(folderContent).toContain('Location: src');
-    // A target outside the workspace cannot be relative, so it stays absolute.
+    expect(fileContent).toContain(`Location: ${join(cwd, 'src/index.ts').split('\\').join('/')}`);
+    expect(folderContent).toContain(`Location: ${join(cwd, 'src').split('\\').join('/')}`);
     expect(outsideContent).toContain(`Location: ${join(outside, 'notes.md').split('\\').join('/')}`);
   });
 
@@ -114,7 +113,7 @@ describe('expandMentions', () => {
 
     const mentionContent = await expandMentions('@dup.ts then @dup.ts', cwd);
 
-    expect(mentionContent.match(/## File Mention: @dup\.ts/g)).toHaveLength(1);
+    expect(mentionContent.match(/## File Mention: dup\.ts/g)).toHaveLength(1);
   });
 
   it('leaves ordinary #words such as issue references and headings untouched', async () => {
@@ -138,7 +137,7 @@ describe('expandMentions', () => {
 
     const mentionContent = await expandMentions('compare @secret.txt with #abc1234', cwd);
 
-    const fileAt = mentionContent.indexOf('## File Mention: @secret.txt');
+    const fileAt = mentionContent.indexOf('## File Mention: secret.txt');
     const commitAt = mentionContent.indexOf('COMMIT BLOCK');
     expect(fileAt).toBeGreaterThanOrEqual(0);
     expect(commitAt).toBeGreaterThan(fileAt);
