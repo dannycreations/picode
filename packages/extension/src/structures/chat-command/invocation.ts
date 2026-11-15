@@ -48,18 +48,13 @@ export function matchPromptInvocation(text: string, prompts: readonly PromptTemp
 
 export function buildSkillBlock(name: string, filePath: string, content: string): string {
   const baseDir = dirname(filePath);
-  return [
-    `## Skill: ${name}`,
-    '',
-    `Location: \`${filePath}\``,
-    `References are relative to ${baseDir}.`,
-    '',
-    wrapCodeBlock(content, 'markdown'),
-  ].join('\n');
+  return [`## Skill: /${name}`, '', `Location: ${filePath}`, `References are relative to ${baseDir}.`, '', wrapCodeBlock(content, 'markdown')].join(
+    '\n',
+  );
 }
 
 export function buildPromptBlock(prompt: PromptTemplate, content: string): string {
-  return [`## Prompt: ${prompt.name}`, '', `Location: \`${prompt.filePath}\``, '', wrapCodeBlock(content, 'markdown')].join('\n');
+  return [`## Prompt: /${prompt.name}`, '', `Location: ${prompt.filePath}`, '', wrapCodeBlock(content, 'markdown')].join('\n');
 }
 
 interface RuntimeResources {

@@ -28,6 +28,7 @@ async function readFileText(path: string, limits: OutputLimits): Promise<string>
 
 interface ResolvedMention {
   readonly kind: 'file' | 'folder';
+  readonly location: string;
   readonly content: string;
 }
 
@@ -49,7 +50,7 @@ async function collectMentionBlocks(matches: RegExpMatchArray[], cwd: string, li
   for (const [index, mention] of resolvedMentions.entries()) {
     if (mention === null) continue;
     const noun = mention.kind === 'folder' ? 'Folder' : 'File';
-    blocks.push([`## ${noun} Content: ${uniqueMentions[index]}`, '', mention.content].join('\n'));
+    blocks.push([`## ${noun} Mention: @${uniqueMentions[index]}`, '', `Location: ${mention.location}`, '', mention.content].join('\n'));
   }
   return blocks;
 }
@@ -62,6 +63,7 @@ async function collectCommitBlocks(tags: RegExpMatchArray[], cwd: string, limits
 
 async function resolveMention(raw: string, cwd: string, limits: OutputLimits): Promise<ResolvedMention | null> {
   const target = resolve(cwd, raw);
+  const location = formatPathRelativeToCwdOrAbsolute(target, cwd);
 
   let info;
   try {
@@ -73,16 +75,16 @@ async function resolveMention(raw: string, cwd: string, limits: OutputLimits): P
 
   if (info.isDirectory()) {
     try {
-      return { kind: 'folder', content: await listFolderEntries(target, cwd) };
+      return { kind: 'folder', location, content: await listFolderEntries(target, cwd) };
     } catch (err) {
-      return { kind: 'folder', content: `Error reading folder ${target}: ${formatThrownValue(err)}` };
+      return { kind: 'folder', location, content: `Error reading folder ${location}: ${formatThrownValue(err)}` };
     }
   }
   if (info.isFile()) {
     try {
-      return { kind: 'file', content: await readFileText(target, limits) };
+      return { kind: 'file', location, content: await readFileText(target, limits) };
     } catch (err) {
-      return { kind: 'file', content: formatThrownValue(err) };
+      return { kind: 'file', location, content: formatThrownValue(err) };
     }
   }
   return null;

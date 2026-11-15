@@ -18,14 +18,18 @@ vi.mock('@pi-code/extension/utilities/commit', () => ({ resolveCommitTag: vi.fn(
 const resolveCommitTagMock = vi.mocked(resolveCommitTag);
 
 let cwd: string;
+// A directory outside the workspace, for mentions that cannot be relative.
+let outside: string;
 
 beforeEach(async () => {
   cwd = await mkdtemp(join(tmpdir(), 'pi-mention-'));
+  outside = await mkdtemp(join(tmpdir(), 'pi-mention-outside-'));
   resolveCommitTagMock.mockReset().mockResolvedValue(null);
 });
 
 afterEach(async () => {
   await rm(cwd, { recursive: true, force: true });
+  await rm(outside, { recursive: true, force: true });
 });
 
 async function write(rel: string, content: string): Promise<void> {
@@ -48,9 +52,9 @@ describe('expandMentions', () => {
     const mentionContent = await expandMentions('Review @secret.txt and @readme.md', cwd);
 
     // The file bodies go to the hidden channel the model reads instead.
-    expect(mentionContent).toContain('## File Content: secret.txt');
+    expect(mentionContent).toContain('## File Mention: @secret.txt');
     expect(mentionContent).toContain('hidden treasure');
-    expect(mentionContent).toContain('## File Content: readme.md');
+    expect(mentionContent).toContain('## File Mention: @readme.md');
     expect(mentionContent).toContain('project docs');
   });
 
@@ -60,7 +64,7 @@ describe('expandMentions', () => {
 
     const mentionContent = await expandMentions('Look at @src', cwd);
 
-    expect(mentionContent).toContain('## Folder Content: src');
+    expect(mentionContent).toContain('## Folder Mention: @src');
     expect(mentionContent).toContain('├─ index.ts');
     expect(mentionContent).toContain('└─ util.ts');
     // File contents are not inlined; only the entry names are listed as a tree.
@@ -84,11 +88,25 @@ describe('expandMentions', () => {
 
     const mentionContent = await expandMentions('Look at @project', cwd);
 
-    expect(mentionContent).toContain('## Folder Content: project');
+    expect(mentionContent).toContain('## Folder Mention: @project');
     expect(mentionContent).toContain('└─ index.ts');
     // The .git directory must stay out of the listing entirely.
     expect(mentionContent).not.toContain('.git');
     expect(mentionContent).not.toContain('core.filemode=true');
+  });
+
+  it('names the resolved location of each mention next to its block', async () => {
+    await write('src/index.ts', 'console.log(1)');
+    await writeFile(join(outside, 'notes.md'), 'outside notes');
+
+    const fileContent = await expandMentions('@src/index.ts', cwd);
+    const folderContent = await expandMentions('@src', cwd);
+    const outsideContent = await expandMentions(`@${join(outside, 'notes.md')}`, cwd);
+
+    expect(fileContent).toContain('Location: src/index.ts');
+    expect(folderContent).toContain('Location: src');
+    // A target outside the workspace cannot be relative, so it stays absolute.
+    expect(outsideContent).toContain(`Location: ${join(outside, 'notes.md').split('\\').join('/')}`);
   });
 
   it('deduplicates repeated mentions into a single block', async () => {
@@ -96,7 +114,7 @@ describe('expandMentions', () => {
 
     const mentionContent = await expandMentions('@dup.ts then @dup.ts', cwd);
 
-    expect(mentionContent.match(/## File Content: dup\.ts/g)).toHaveLength(1);
+    expect(mentionContent.match(/## File Mention: @dup\.ts/g)).toHaveLength(1);
   });
 
   it('leaves ordinary #words such as issue references and headings untouched', async () => {
@@ -120,7 +138,7 @@ describe('expandMentions', () => {
 
     const mentionContent = await expandMentions('compare @secret.txt with #abc1234', cwd);
 
-    const fileAt = mentionContent.indexOf('## File Content: secret.txt');
+    const fileAt = mentionContent.indexOf('## File Mention: @secret.txt');
     const commitAt = mentionContent.indexOf('COMMIT BLOCK');
     expect(fileAt).toBeGreaterThanOrEqual(0);
     expect(commitAt).toBeGreaterThan(fileAt);

@@ -418,7 +418,7 @@
     "@pi-code/webview": "workspace:*",
     "@types/node": "24.13.3",
     "@types/vscode": "^1.146.0",
-    "@vscode/vsce": "^4.1.0",
+    "@vscode/vsce": "^4.1.1",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vite": "^8.3.8",

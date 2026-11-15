@@ -81,7 +81,7 @@ describe('buildSkillBlock', () => {
   it('renders name, path, and body as markdown', () => {
     const block = buildSkillBlock('review', '/proj/skills/review/SKILL.md', 'Read the diff.');
     expect(block).toBe(
-      '## Skill: review\n\nLocation: `/proj/skills/review/SKILL.md`\nReferences are relative to /proj/skills/review.\n\n```markdown\nRead the diff.\n```',
+      '## Skill: /review\n\nLocation: /proj/skills/review/SKILL.md\nReferences are relative to /proj/skills/review.\n\n```markdown\nRead the diff.\n```',
     );
   });
 });
@@ -89,7 +89,7 @@ describe('buildSkillBlock', () => {
 describe('buildPromptBlock', () => {
   it('renders name, location, and content as markdown', () => {
     const block = buildPromptBlock({ name: 'review', filePath: '/proj/prompts/review.md' } as PromptTemplate, 'Check the diff.\n');
-    expect(block).toBe('## Prompt: review\n\nLocation: `/proj/prompts/review.md`\n\n```markdown\nCheck the diff.\n```');
+    expect(block).toBe('## Prompt: /review\n\nLocation: /proj/prompts/review.md\n\n```markdown\nCheck the diff.\n```');
   });
 });
 
@@ -114,7 +114,7 @@ describe('injectResourceMessages', () => {
       );
 
       expect(appendCustomMessageEntry).toHaveBeenCalledTimes(1);
-      expect(appendCustomMessageEntry).toHaveBeenCalledWith('skill_content', expect.stringContaining('## Skill: review'), false, undefined);
+      expect(appendCustomMessageEntry).toHaveBeenCalledWith('skill_content', expect.stringContaining('## Skill: /review'), false, undefined);
     } finally {
       try {
         unlinkSync(file);
@@ -143,7 +143,7 @@ describe('injectResourceMessages', () => {
     await injectResourceMessages(session, resourcesWith([], prompts), '/prompt:notes about today');
 
     expect(appendCustomMessageEntry).toHaveBeenCalledTimes(1);
-    expect(appendCustomMessageEntry).toHaveBeenCalledWith('prompt_content', expect.stringContaining('## Prompt: notes'), false, undefined);
+    expect(appendCustomMessageEntry).toHaveBeenCalledWith('prompt_content', expect.stringContaining('## Prompt: /notes'), false, undefined);
   });
 
   it('substitutes arguments into placeholders like pi-agent does', async () => {
@@ -155,7 +155,7 @@ describe('injectResourceMessages', () => {
     expect(appendCustomMessageEntry).toHaveBeenCalledTimes(1);
     expect(appendCustomMessageEntry).toHaveBeenCalledWith(
       'prompt_content',
-      '## Prompt: notes\n\nLocation: `/p/notes.md`\n\n```markdown\nTopic: web cache\nAll: web cache one two\n```',
+      '## Prompt: /notes\n\nLocation: /p/notes.md\n\n```markdown\nTopic: web cache\nAll: web cache one two\n```',
       false,
       undefined,
     );
