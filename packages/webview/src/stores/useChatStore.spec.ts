@@ -451,6 +451,14 @@ describe('sub-agent session', () => {
     expect(useChatStore.getState().activeTask?.messages).toEqual([]);
   });
 
+  it('switches the open sub-agent to read-only as soon as its run settles', () => {
+    apply([{ type: 'subagent_event', payload: { toolCallId: 'call-1', event: { type: 'agent_settled', payload: stats(1234) } } }]);
+
+    const open = useChatStore.getState().subagent;
+    expect(open?.isRunning).toBe(false);
+    expect(open?.task.contextTokens).toBe(1234);
+  });
+
   it('drops an event for a sub-agent that is no longer on screen', () => {
     apply([{ type: 'subagent_event', payload: { toolCallId: 'other', event: { type: 'message_start', payload: { timestamp: 6 } } } }]);
 

@@ -78,23 +78,32 @@ interface SubagentView {
   readonly isRunning: boolean;
 }
 
-// Applies a change to the transcript the scope points at; events arriving for
-// a scope with nothing open are dropped.
-function patchTask(state: ChatState, scope: TaskScope, patch: (task: ActiveTaskState) => ActiveTaskState): Partial<ChatState> {
-  if (scope === 'subagent') {
-    if (!state.subagent) return {};
-    return { subagent: { ...state.subagent, task: patch(state.subagent.task) } };
-  }
-  if (!state.activeTask) return {};
-  return { activeTask: patch(state.activeTask) };
+interface ScopePatch {
+  readonly running?: boolean;
+  readonly task?: (task: ActiveTaskState) => ActiveTaskState;
 }
 
-function patchRunning(state: ChatState, scope: TaskScope, running: boolean): Partial<ChatState> {
+function patchScope(state: ChatState, scope: TaskScope, patch: ScopePatch): Partial<ChatState> {
   if (scope === 'subagent') {
-    if (!state.subagent) return {};
-    return { subagent: { ...state.subagent, isRunning: running } };
+    const open = state.subagent;
+    if (!open) return {};
+    return {
+      subagent: {
+        ...open,
+        isRunning: patch.running ?? open.isRunning,
+        task: patch.task ? patch.task(open.task) : open.task,
+      },
+    };
   }
-  return { isRunning: running };
+  if (!state.activeTask) return {};
+  return {
+    ...(patch.running === undefined ? {} : { isRunning: patch.running }),
+    ...(patch.task ? { activeTask: patch.task(state.activeTask) } : {}),
+  };
+}
+
+function patchTask(state: ChatState, scope: TaskScope, patch: (task: ActiveTaskState) => ActiveTaskState): Partial<ChatState> {
+  return patchScope(state, scope, { task: patch });
 }
 
 // Approval and start events create or refresh one tool row, settling any turns
@@ -208,10 +217,7 @@ export const useChatStore = create<ChatState>((set, get) => {
     },
     agent_start: (msg, scope) => {
       const { path, stats } = msg.payload;
-      set((state) => ({
-        ...patchRunning(state, scope, true),
-        ...patchTask(state, scope, (task) => ({ ...task, path: path ?? task.path, ...stats })),
-      }));
+      set((state) => patchScope(state, scope, { running: true, task: (task) => ({ ...task, path: path ?? task.path, ...stats }) }));
     },
     message_start: (msg, scope) => {
       const { timestamp } = msg.payload;
@@ -298,17 +304,18 @@ export const useChatStore = create<ChatState>((set, get) => {
     },
     tool_execution_start: (msg, scope) => {
       const { id, tool_name, arguments: toolArgs, subagent } = msg.payload;
-      set((state) => ({
-        ...patchRunning(state, scope, true),
-        ...patchTask(state, scope, (task) =>
-          // A sub-agent's own tool calls belong to the row the parent
-          // sub-agent call already opened, so they never create a row of
-          // their own.
-          ignoreUnknownSubagent(task.messages, subagent, id)
-            ? task
-            : applyToolUpsert(task, id, { text: tool_name, toolName: tool_name, toolArgs, toolStatus: 'running' }),
-        ),
-      }));
+      set((state) =>
+        patchScope(state, scope, {
+          running: true,
+          task: (task) =>
+            // A sub-agent's own tool calls belong to the row the parent
+            // sub-agent call already opened, so they never create a row of
+            // their own.
+            ignoreUnknownSubagent(task.messages, subagent, id)
+              ? task
+              : applyToolUpsert(task, id, { text: tool_name, toolName: tool_name, toolArgs, toolStatus: 'running' }),
+        }),
+      );
     },
     tool_execution_update: (msg, scope) => {
       const { id, result, subagent, subtitle } = msg.payload;
@@ -355,34 +362,38 @@ export const useChatStore = create<ChatState>((set, get) => {
     },
     agent_error: (msg, scope) => {
       const { message } = msg.payload;
-      set((state) => ({
-        ...patchRunning(state, scope, false),
-        ...patchTask(state, scope, (task) => {
-          const settled = settlePendingTurns(task.messages, { error: message });
-          return {
-            ...task,
-            // The notice belongs to the turn that failed, so it lands ahead of
-            // the replies that are still queued.
-            messages: appendOnce(
-              settled,
-              {
-                id: crypto.randomUUID(),
-                sender: 'error',
-                text: message,
-                errorMessage: message,
-                timestamp: Date.now(),
-              },
-              insertIndexAboveQueue(settled),
-            ),
-          };
+      set((state) =>
+        patchScope(state, scope, {
+          running: false,
+          task: (task) => {
+            const settled = settlePendingTurns(task.messages, { error: message });
+            return {
+              ...task,
+              // The notice belongs to the turn that failed, so it lands ahead of
+              // the replies that are still queued.
+              messages: appendOnce(
+                settled,
+                {
+                  id: crypto.randomUUID(),
+                  sender: 'error',
+                  text: message,
+                  errorMessage: message,
+                  timestamp: Date.now(),
+                },
+                insertIndexAboveQueue(settled),
+              ),
+            };
+          },
         }),
-      }));
+      );
     },
     agent_settled: (msg, scope) => {
-      set((state) => ({
-        ...patchRunning(state, scope, false),
-        ...patchTask(state, scope, (task) => ({ ...task, messages: settlePendingTurns(task.messages), ...msg.payload })),
-      }));
+      set((state) =>
+        patchScope(state, scope, {
+          running: false,
+          task: (task) => ({ ...task, messages: settlePendingTurns(task.messages), ...msg.payload }),
+        }),
+      );
     },
     archive_result: (msg) => {
       const { id, path, archived, title } = msg.payload;
