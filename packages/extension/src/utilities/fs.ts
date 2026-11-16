@@ -72,10 +72,7 @@ function rankPath(path: string, needle: string): PathRank {
   const base = separator === -1 ? path : path.slice(separator + 1);
   const baseIndex = base.toLowerCase().indexOf(needle);
 
-  let depth = 0;
-  for (let index = 0; index < path.length; index++) {
-    if (path.charCodeAt(index) === 47) depth++;
-  }
+  const depth = path.split('/').length - 1;
 
   return {
     baseIndex: baseIndex < 0 ? Number.MAX_SAFE_INTEGER : baseIndex,

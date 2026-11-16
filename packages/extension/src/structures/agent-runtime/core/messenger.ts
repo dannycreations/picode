@@ -16,8 +16,8 @@ export function postToWebview(webview: Webview | null, message: ExtensionToWebvi
 }
 
 interface CoalescedToolUpdate {
-  toolName?: string;
   chunks: string[];
+  toolName?: string;
   subagent?: boolean;
   subtitle?: string;
 }
@@ -64,7 +64,7 @@ export class Messenger {
     // Sub-agent events arrive through this same messenger; their start/update/
     // end events mirror the main-agent tool lifecycle below.
     if (event.type === 'tool_execution_start') {
-      const entry = buffer.toolUpdates.get(event.payload.id) ?? { chunks: [], subagent: undefined, subtitle: undefined };
+      const entry = buffer.toolUpdates.get(event.payload.id) ?? { chunks: [] };
       entry.toolName = event.payload.tool_name;
       buffer.toolUpdates.set(event.payload.id, entry);
       this.send(scope, event);
@@ -73,7 +73,7 @@ export class Messenger {
 
     if (event.type === 'tool_execution_update') {
       const { id, result, subagent, subtitle } = event.payload;
-      const entry = buffer.toolUpdates.get(id) ?? { toolName: undefined, chunks: [], subagent: undefined, subtitle: undefined };
+      const entry = buffer.toolUpdates.get(id) ?? { chunks: [] };
       // A command reports its output in pieces that belong together, so they
       // pile up; every other tool reports one result that replaces the last.
       if (entry.toolName === 'execute_command') {

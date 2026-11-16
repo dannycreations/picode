@@ -10,7 +10,7 @@ import {
 import { Messenger } from '@pi-code/extension/structures/agent-runtime/core/messenger';
 import { ReplyQueue } from '@pi-code/extension/structures/agent-runtime/core/reply-queue';
 import { createStats, mapEvent, toSubagentEvent } from '@pi-code/extension/structures/agent-runtime/event';
-import { appendHiddenMessage, appendUserTurn } from '@pi-code/extension/structures/agent-runtime/helpers/agent-message';
+import { appendHiddenMessage, appendUserTurn, textAttachmentBlocks } from '@pi-code/extension/structures/agent-runtime/helpers/agent-message';
 import { applyPersistedModelAndThinking } from '@pi-code/extension/structures/agent-runtime/helpers/model-selection';
 import { initSessionHooks } from '@pi-code/extension/structures/agent-runtime/hooks';
 import { createAgentResources, invalidateAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
@@ -24,13 +24,12 @@ import { parseAttachments } from '@pi-code/extension/utilities/codec';
 import { getWorkspaceCwd } from '@pi-code/extension/utilities/vscode';
 import { logger } from '@pi-code/shared/core/logger';
 import { resolveContextLimit } from '@pi-code/shared/utilities/common';
-import { wrapCodeBlock } from '@pi-code/shared/utilities/markdown';
 
 import type { AgentSession, AgentSessionEvent, AgentSessionServices, SessionEntry } from '@earendil-works/pi-coding-agent';
 import type { Webview } from 'vscode';
 import type { LiveSubagent } from '@pi-code/extension/structures/agent-runtime/brokers/subagent';
 import type { ExtensionToWebviewMessage } from '@pi-code/shared/core/protocol';
-import type { Attachment, ChatMessage, QueueChatMessage, StatsData, TextAttachment } from '@pi-code/shared/core/types';
+import type { Attachment, ChatMessage, QueueChatMessage, StatsData } from '@pi-code/shared/core/types';
 
 export class Runtime {
   private taskGeneration = 0;
@@ -509,9 +508,7 @@ export class Runtime {
 }
 
 function withTextAttachments(text: string, attachments: readonly Attachment[] | undefined): string {
-  const blocks = (attachments ?? [])
-    .filter((attachment): attachment is TextAttachment => attachment.kind === 'text')
-    .map((attachment) => wrapCodeBlock(attachment.content, attachment.language));
+  const blocks = textAttachmentBlocks(attachments);
   if (blocks.length === 0) return text;
   return [text, ...blocks].join('\n\n');
 }

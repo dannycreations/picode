@@ -273,31 +273,16 @@ export function getFirstDiffLine(diff?: string): number | undefined {
   return lineNum > 0 ? lineNum : undefined;
 }
 
-const CHAR_PLUS = 43;
-const CHAR_MINUS = 45;
-const CHAR_SPACE = 32;
-
-function isDiffFileMarker(diff: string, lineStart: number): boolean {
-  const sign = diff.charCodeAt(lineStart);
-  return diff.charCodeAt(lineStart + 1) === sign && diff.charCodeAt(lineStart + 2) === sign && diff.charCodeAt(lineStart + 3) === CHAR_SPACE;
-}
-
 export function getDiffStat(diff?: string): DiffStat | undefined {
   if (!diff) return undefined;
 
   let added = 0;
   let removed = 0;
 
-  let lineStart = 0;
-  while (lineStart <= diff.length) {
-    const lineEnd = diff.indexOf('\n', lineStart);
-    const sign = diff.charCodeAt(lineStart);
-    if ((sign === CHAR_PLUS || sign === CHAR_MINUS) && !isDiffFileMarker(diff, lineStart)) {
-      if (sign === CHAR_PLUS) added++;
-      else removed++;
-    }
-    if (lineEnd === -1) break;
-    lineStart = lineEnd + 1;
+  for (const line of diff.split('\n')) {
+    if (line.startsWith('+++ ') || line.startsWith('--- ')) continue;
+    if (line.startsWith('+')) added++;
+    else if (line.startsWith('-')) removed++;
   }
 
   if (added === 0 && removed === 0) return undefined;

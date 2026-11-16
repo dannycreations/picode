@@ -23,8 +23,7 @@ export const writeFileTool = defineTool({
     const result = await runFileMutation(ctx.cwd, params.path, 'writing to file', signal, async (resolvedPath) => {
       const finalContent = stripCodeBlock(params.content);
 
-      // Only build a diff from the prior content when the file is small enough
-      // to load safely; large files are written without a diff.
+      // Read the prior content when available so the result can show a diff.
       let oldContent = '';
       if ((await checkReadableFile(resolvedPath)).ok) {
         try {

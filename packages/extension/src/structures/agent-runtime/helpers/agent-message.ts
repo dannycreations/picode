@@ -3,7 +3,7 @@ import { wrapCodeBlock } from '@pi-code/shared/utilities/markdown';
 
 import type { Message } from '@earendil-works/pi-ai';
 import type { AgentSession, CustomMessage } from '@earendil-works/pi-coding-agent';
-import type { Attachment } from '@pi-code/shared/core/types';
+import type { Attachment, TextAttachment } from '@pi-code/shared/core/types';
 
 function appendAgentMessage(session: AgentSession, message: Message | CustomMessage): void {
   session.agent.state.messages.push(message);
@@ -27,6 +27,12 @@ export function appendHiddenMessage(session: AgentSession, customType: string, c
   });
 }
 
+export function textAttachmentBlocks(attachments: readonly Attachment[] | undefined): string[] {
+  return (attachments ?? [])
+    .filter((attachment): attachment is TextAttachment => attachment.kind === 'text')
+    .map((attachment) => wrapCodeBlock(attachment.content, attachment.language));
+}
+
 export function appendUserTurn(
   session: AgentSession,
   text: string,
@@ -40,10 +46,8 @@ export function appendUserTurn(
     timestamp,
   });
 
-  for (const attachment of attachments ?? []) {
-    if (attachment.kind === 'text') {
-      appendHiddenMessage(session, 'text_attachment', wrapCodeBlock(attachment.content, attachment.language));
-    }
+  for (const block of textAttachmentBlocks(attachments)) {
+    appendHiddenMessage(session, 'text_attachment', block);
   }
 
   if (mentionContent) {

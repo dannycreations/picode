@@ -432,19 +432,19 @@ export const executeCommandTool = defineTool({
               return;
             }
             let resolved = false;
-            const finish = () => {
+            const settleKill = () => {
               if (resolved) return;
               resolved = true;
               clearTimeout(fallback);
               resolve();
             };
-            const fallback = setTimeout(finish, 5000);
+            const fallback = setTimeout(settleKill, 5000);
             child.once('error', (err) => {
               logger.warn('taskkill failed:', err);
-              finish();
+              settleKill();
             });
-            child.once('exit', finish);
-            child.once('close', finish);
+            child.once('exit', settleKill);
+            child.once('close', settleKill);
             return;
           }
           try {
