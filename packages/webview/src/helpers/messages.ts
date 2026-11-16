@@ -231,6 +231,14 @@ export function patchRetryDeadline(messages: ChatMessage[], retryAt: number | un
   return messages;
 }
 
+function replacedRequestChainId(messages: readonly ChatMessage[], from: number, to: number): string | undefined {
+  for (let index = to - 1; index >= from; index--) {
+    const message = messages[index];
+    if (message.sender === 'api_request') return message.requestChainId ?? message.id;
+  }
+  return undefined;
+}
+
 export function startApiRequest(messages: ChatMessage[], id: string, timestamp: number): ChatMessage[] {
   // A request that is already on screen needs no second row.
   if (messages.some((message) => message.id === id)) return messages;
@@ -255,6 +263,7 @@ export function startApiRequest(messages: ChatMessage[], id: string, timestamp: 
   // A retry drops the failed run it replaces. The replies waiting below it are
   // still queued, so they stay.
   const limit = retryIndex !== undefined ? Math.min(retryIndex, queueIndex) : queueIndex;
+  const requestChainId = retryIndex !== undefined ? replacedRequestChainId(messages, retryIndex, queueIndex) : undefined;
   const next: ChatMessage[] = [];
   for (let index = 0; index < limit; index++) {
     const message = messages[index];
@@ -277,7 +286,7 @@ export function startApiRequest(messages: ChatMessage[], id: string, timestamp: 
     next.push(updated);
   }
 
-  next.push({ id, sender: 'api_request', text: 'API Request', timestamp, toolStatus: 'running' });
+  next.push({ id, sender: 'api_request', text: 'API Request', timestamp, toolStatus: 'running', requestChainId: requestChainId ?? id });
 
   // The queued replies keep their place at the bottom of the transcript.
   for (let index = Math.max(limit, queueIndex); index < messages.length; index++) {

@@ -15,7 +15,7 @@ import {
   upsertToolRow,
 } from '@pi-code/webview/helpers/messages';
 
-import type { ChatMessage, ToolChatMessage, ToolName } from '@pi-code/shared/core/types';
+import type { ApiRequestChatMessage, ChatMessage, ToolChatMessage, ToolName } from '@pi-code/shared/core/types';
 import type { TodoItem } from '@pi-code/shared/utilities/todo';
 
 const SENDERS = ['user', 'assistant', 'tool', 'error', 'checkpoint', 'api_request'] as const;
@@ -185,6 +185,16 @@ describe('startApiRequest', () => {
     const result = startApiRequest(messages, 'req-1', 5);
 
     expect(result.map((m) => m.id)).toEqual(['u1', 'req-1']);
+  });
+
+  it('keeps the logical row identity when a retry replaces the failed row', () => {
+    const first = startApiRequest([], 'req-0', 1);
+    expect(first[0]).toMatchObject({ id: 'req-0', requestChainId: 'req-0' });
+
+    const failed = [{ ...(first[0] as ApiRequestChatMessage), toolStatus: 'denied' as const, errorMessage: 'overloaded' }];
+    const retried = startApiRequest(failed, 'req-1', 2);
+
+    expect(retried).toMatchObject([{ id: 'req-1', requestChainId: 'req-0' }]);
   });
 
   it('drops the retry deadline a waiting request left behind', () => {

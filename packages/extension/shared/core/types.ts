@@ -104,6 +104,7 @@ export interface ApiRequestChatMessage extends ChatMessageBase {
   readonly errorMessage?: string;
   readonly cost?: number;
   readonly retryAt?: number;
+  readonly requestChainId?: string;
 }
 
 export interface AssistantChatMessage extends ChatMessageBase {

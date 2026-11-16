@@ -528,9 +528,12 @@ export const ChatView: FC = () => {
           <div ref={contentRef} style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
             {virtualizer.getVirtualItems().map((item) => {
               const message = renderItems[item.index];
+              // A retry replaces its failed row, so the logical row keeps the
+              // key of the first attempt and the row's expanded state survives.
+              const rowKey = message.sender === 'api_request' ? (message.requestChainId ?? message.id) : message.id;
               return (
                 <div
-                  key={item.key}
+                  key={rowKey}
                   data-index={item.index}
                   ref={virtualizer.measureElement}
                   style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${item.start}px)` }}
