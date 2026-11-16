@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { act, render, screen } from '@testing-library/react';
+import { createElement } from 'react';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
   AT_BOTTOM_THRESHOLD_PX,
@@ -9,6 +11,7 @@ import {
   resolveFollowState,
   resolveScrollGesture,
   resolveScrollTarget,
+  useAutoScroll,
 } from '@pi-code/webview/hooks/useAutoScroll';
 
 import type { ScrollDirection, ScrollMetrics } from '@pi-code/webview/hooks/useAutoScroll';
@@ -100,5 +103,46 @@ describe('resolveScrollTarget', () => {
   it('should follow the last gesture while mid-conversation', () => {
     expect(target(false, false, false, 'up')).toBe('top');
     expect(target(false, false, false, 'down')).toBe('bottom');
+  });
+});
+
+describe('useAutoScroll initial mount', () => {
+  beforeAll(() => {
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe(): void {}
+        unobserve(): void {}
+        disconnect(): void {}
+      },
+    );
+  });
+
+  afterAll(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('scrolls to the bottom when the viewport mounts without a reset-key change', async () => {
+    function Harness({ show }: { show: boolean }) {
+      const { scrollRef, contentRef } = useAutoScroll('task-1');
+      return createElement(
+        'div',
+        null,
+        show ? createElement('div', { ref: scrollRef, 'data-testid': 'scroller' }, createElement('div', { ref: contentRef })) : null,
+      );
+    }
+
+    const view = render(createElement(Harness, { show: false }));
+    view.rerender(createElement(Harness, { show: true }));
+
+    const scroller = screen.getByTestId('scroller');
+    Object.defineProperty(scroller, 'scrollHeight', { value: 1000, configurable: true });
+    Object.defineProperty(scroller, 'clientHeight', { value: 500, configurable: true });
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    });
+
+    expect(scroller.scrollTop).toBe(1000);
   });
 });

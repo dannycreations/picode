@@ -96,6 +96,10 @@ export const useAutoScroll = (resetKey?: unknown): UseAutoScrollReturn => {
   // single scrollTop write instead of one write per callback.
   const pendingFollowWriteRafRef = useRef<number | null>(null);
 
+  // The content ref attaches before the scroll container's ref, so the first
+  // scroll of a freshly mounted chat has to wait a frame to be effective.
+  const initialScrollRafRef = useRef<number | null>(null);
+
   // Timestamp of the last real, physical user input aimed at scrolling.
   const lastUserIntentAtRef = useRef(0);
 
@@ -208,6 +212,10 @@ export const useAutoScroll = (resetKey?: unknown): UseAutoScrollReturn => {
     (node) => {
       observerRef.current?.disconnect();
       observerRef.current = null;
+      if (initialScrollRafRef.current !== null) {
+        cancelAnimationFrame(initialScrollRafRef.current);
+        initialScrollRafRef.current = null;
+      }
       if (!node) return;
 
       const observer = new ResizeObserver(() => {
@@ -227,7 +235,14 @@ export const useAutoScroll = (resetKey?: unknown): UseAutoScrollReturn => {
 
       observer.observe(node);
       observerRef.current = observer;
-      scrollToBottom();
+
+      // refs are attached child-first, so scrollRef is still null here.
+      // Deferring one frame makes this work even when resetKey is unchanged
+      // (e.g. reopening the same task from the history view).
+      initialScrollRafRef.current = requestAnimationFrame(() => {
+        initialScrollRafRef.current = null;
+        scrollToBottom();
+      });
     },
     [scrollToBottom, writeScrollTop],
   );
@@ -240,6 +255,7 @@ export const useAutoScroll = (resetKey?: unknown): UseAutoScrollReturn => {
     return () => {
       if (clearProgrammaticFlagRafRef.current !== null) cancelAnimationFrame(clearProgrammaticFlagRafRef.current);
       if (pendingFollowWriteRafRef.current !== null) cancelAnimationFrame(pendingFollowWriteRafRef.current);
+      if (initialScrollRafRef.current !== null) cancelAnimationFrame(initialScrollRafRef.current);
     };
   }, []);
 
