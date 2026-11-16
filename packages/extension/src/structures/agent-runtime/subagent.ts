@@ -17,7 +17,7 @@ import { readFileTool } from '@pi-code/extension/structures/tool-call/read-file'
 import { writeFileTool } from '@pi-code/extension/structures/tool-call/write-file';
 import { createIsolatedWorktree, integrateIsolatedWorktree, removeWorktreeDirectory, withWorktreeLock } from '@pi-code/extension/utilities/worktree';
 import { logger } from '@pi-code/shared/core/logger';
-import { elapsedSeconds } from '@pi-code/shared/utilities/common';
+import { elapsedSeconds, standardizePath } from '@pi-code/shared/utilities/common';
 
 import type { Api, Model } from '@earendil-works/pi-ai';
 import type { AgentSession, AgentSessionEvent, ModelRuntime, ToolDefinition } from '@earendil-works/pi-coding-agent';
@@ -129,11 +129,11 @@ export function formatSubagentStep(toolName: SubagentToolName, args: unknown): s
     const paths = files
       .map((file) => (file as { path?: unknown })?.path)
       .filter((path): path is string => typeof path === 'string' && path.length > 0);
-    return `read ${preview(paths.join(', ')) || '(no path)'}`;
+    return `read ${preview(paths.map(standardizePath).join(', ')) || '(no path)'}`;
   }
 
   if (toolName === 'write_file' || toolName === 'edit_file' || toolName === 'delete_file') {
-    return `${toolName.replace('_file', '')} ${preview(values.path ?? '') || '(no path)'}`;
+    return `${toolName.replace('_file', '')} ${preview(standardizePath(values.path ?? '')) || '(no path)'}`;
   }
 
   return `execute ${preview(values.command ?? '')}`;

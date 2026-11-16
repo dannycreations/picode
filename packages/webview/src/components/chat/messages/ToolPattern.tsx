@@ -2,6 +2,7 @@ import { cn } from 'cn';
 import { Check, CheckCheck, ChevronUp, X } from 'lucide-react';
 import { useState } from 'react';
 
+import { standardizePath } from '@pi-code/shared/utilities/common';
 import { Accordion } from '@pi-code/webview/components/shared/Accordion';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 
@@ -42,8 +43,8 @@ export const ToolPattern = ({ patterns, allowedPatterns, deniedPatterns, onToggl
             return (
               <div key={pattern} className="flex items-center gap-2">
                 <span className="flex-1 min-w-0 font-mono text-xs text-vscode-foreground px-1.5 py-1.5">
-                  <Tooltip content={pattern}>
-                    <span className="inline-block max-w-full truncate">{pattern}</span>
+                  <Tooltip content={standardizePath(pattern)}>
+                    <span className="inline-block max-w-full truncate">{standardizePath(pattern)}</span>
                   </Tooltip>
                 </span>
                 <div className="flex items-center gap-1">

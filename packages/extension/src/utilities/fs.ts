@@ -6,7 +6,7 @@ import { createInterface } from 'node:readline';
 import { formatPathRelativeToCwdOrAbsolute, getCwdRelativePath } from '@earendil-works/pi-coding-agent';
 
 import { logger } from '@pi-code/shared/core/logger';
-import { containsIgnoreCase, pathCollator, setBounded } from '@pi-code/shared/utilities/common';
+import { containsIgnoreCase, pathCollator, setBounded, standardizePath } from '@pi-code/shared/utilities/common';
 
 import type { LineRange } from '@pi-code/shared/core/types';
 
@@ -47,7 +47,7 @@ export async function* walkDirectory(start: string, maxDepth: number, root: stri
 
     for (const child of children) {
       const abs = resolve(dir, child.name);
-      yield { abs, rel: formatPathRelativeToCwdOrAbsolute(abs, root), entry: child };
+      yield { abs, rel: standardizePath(formatPathRelativeToCwdOrAbsolute(abs, root)), entry: child };
       if (child.isDir && depth < maxDepth && !child.isSymlink) {
         yield* walk(abs, depth + 1);
       }
@@ -174,24 +174,24 @@ export async function checkReadableFile(path: string): Promise<ReadableFileCheck
   try {
     const fileStat = await stat(path);
     if (!fileStat.isFile()) {
-      return { ok: false, missing: false, body: `Error: "${path}" is not a regular file.` };
+      return { ok: false, missing: false, body: `Error: "${standardizePath(path)}" is not a regular file.` };
     }
     if (fileStat.size > MAX_FILE_SIZE_BYTES) {
       return {
         ok: false,
         missing: false,
-        body: `Error: ${path} exceeds the ${MAX_FILE_SIZE_BYTES / MEGABYTE} MB size limit (${(fileStat.size / MEGABYTE).toFixed(2)} MB).`,
+        body: `Error: ${standardizePath(path)} exceeds the ${MAX_FILE_SIZE_BYTES / MEGABYTE} MB size limit (${(fileStat.size / MEGABYTE).toFixed(2)} MB).`,
       };
     }
     if (await isBinaryFile(path)) {
-      return { ok: false, missing: false, body: `Error: ${path} is binary and cannot be read as text.` };
+      return { ok: false, missing: false, body: `Error: ${standardizePath(path)} is binary and cannot be read as text.` };
     }
     return { ok: true };
   } catch (err) {
     // A missing file is an expected, non-error outcome for callers that probe
     // existence, so report it as not-found instead of throwing.
     if (isEnoent(err)) {
-      return { ok: false, missing: true, body: `Error: "${path}" does not exist.` };
+      return { ok: false, missing: true, body: `Error: "${standardizePath(path)}" does not exist.` };
     }
     throw err;
   }
@@ -240,7 +240,7 @@ export async function readLines(filePath: string, maxLines: number): Promise<str
       }
     }
   } catch (err) {
-    throw new Error(`Failed to read lines from "${filePath}": ${err instanceof Error ? err.message : String(err)}`);
+    throw new Error(`Failed to read lines from "${standardizePath(filePath)}": ${err instanceof Error ? err.message : String(err)}`);
   }
   return lines;
 }

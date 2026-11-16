@@ -2,7 +2,7 @@ import { cn } from 'cn';
 import { Play, Square, X } from 'lucide-react';
 import { Fragment, memo, useCallback, useMemo, useState } from 'react';
 
-import { hasVisibleText, relativeToWorkspace } from '@pi-code/shared/utilities/common';
+import { hasVisibleText, relativeToWorkspace, standardizePath } from '@pi-code/shared/utilities/common';
 import { buildToolSections, CANCELLABLE_TOOLS, getDiffStat, getFirstDiffLine, getToolHeaderMeta } from '@pi-code/shared/utilities/tool';
 import { CodeBlock } from '@pi-code/webview/components/chat/CodeBlock';
 import { getToolPatternConfig } from '@pi-code/webview/components/chat/helpers/tool-pattern';
@@ -129,7 +129,7 @@ const ToolSection: FC<ToolSectionProps> = memo(
             <div className="w-3.5 h-3.5 shrink-0" />
           )}
           <div className="min-w-0 flex-1">
-            <Tooltip content={openPath ?? title}>
+            <Tooltip content={openPath ? standardizePath(openPath) : title}>
               {hasContent ? (
                 <button
                   type="button"
@@ -249,7 +249,7 @@ export const ToolMessage: FC<ToolMessageProps> = ({ message, onRespondTool }) =>
     const isDeleted = message.toolName === 'delete_file';
 
     return sections.map((section) => {
-      const normalizedTitle = relativeToWorkspace(section.title, activeWorkspace);
+      const normalizedTitle = standardizePath(relativeToWorkspace(section.openPath ?? section.title, activeWorkspace));
       const titledSection: ToolSection = normalizedTitle === section.title ? section : { ...section, title: normalizedTitle };
 
       const sectionStatus = titledSection.status ?? message.toolStatus;

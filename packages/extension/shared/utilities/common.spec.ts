@@ -14,6 +14,7 @@ import {
   resolveContextLimit,
   resolveThinkingLevel,
   splitOnOccurrences,
+  standardizePath,
   startsWithIgnoringLeadingWhitespace,
 } from '@pi-code/shared/utilities/common';
 import { wrapCodeBlock } from '@pi-code/shared/utilities/markdown';
@@ -215,6 +216,21 @@ describe('relativeToWorkspace', () => {
 
   it('leaves paths outside the workspace untouched', () => {
     expect(relativeToWorkspace('c:/abc/other/file.ts', 'c:/abc/def')).toBe('c:/abc/other/file.ts');
+  });
+});
+
+describe('standardizePath', () => {
+  it('leaves a POSIX path unchanged', () => {
+    expect(standardizePath('/skills/review/SKILL.md')).toBe('/skills/review/SKILL.md');
+  });
+
+  it('normalizes backslashes to forward slashes', () => {
+    expect(standardizePath('c:\\skills\\review\\SKILL.md')).toBe('/c/skills/review/SKILL.md');
+  });
+
+  it('uses the /c/ style for a consistent Windows drive prefix', () => {
+    expect(standardizePath('c:/skills/review/SKILL.md')).toBe('/c/skills/review/SKILL.md');
+    expect(standardizePath('C:/skills/review/SKILL.md')).toBe('/c/skills/review/SKILL.md');
   });
 });
 

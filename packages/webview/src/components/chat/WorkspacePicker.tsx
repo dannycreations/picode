@@ -1,6 +1,7 @@
 import { ChevronDown } from 'lucide-react';
 import { useRef, useState } from 'react';
 
+import { standardizePath } from '@pi-code/shared/utilities/common';
 import { DropdownMenu, DropdownMenuItem } from '@pi-code/webview/components/shared/DropdownMenu';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 import { useClickOutside } from '@pi-code/webview/hooks/useClickOutside';
@@ -23,12 +24,12 @@ export const WorkspacePicker: FC = () => {
 
   return (
     <div className="relative" ref={pickerRef}>
-      <Tooltip content={activeFolder?.path} side="bottom">
+      <Tooltip content={activeFolder ? standardizePath(activeFolder.path) : undefined} side="bottom">
         <button
           onClick={() => setOpen(!open)}
           className="max-w-[180px] px-2 py-1 rounded flex items-center gap-1 text-xs text-vscode-descriptionForeground hover:text-vscode-foreground hover:bg-vscode-list-hoverBackground cursor-pointer"
         >
-          <span className="truncate leading-none">{activeFolder?.name ?? activeWorkspace}</span>
+          <span className="truncate leading-none">{activeFolder?.name ?? standardizePath(activeWorkspace)}</span>
           <ChevronDown size={10} className="shrink-0" />
         </button>
       </Tooltip>

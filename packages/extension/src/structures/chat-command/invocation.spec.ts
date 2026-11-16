@@ -84,6 +84,11 @@ describe('buildSkillBlock', () => {
       '## Skill: review\n\nLocation: /proj/skills/review/SKILL.md\nReferences are relative to /proj/skills/review.\n\n```markdown\nRead the diff.\n```',
     );
   });
+
+  it('standardizes separators and drive prefix in the location', () => {
+    const block = buildSkillBlock('review', 'c:\\proj\\skills\\review\\SKILL.md', 'Read the diff.');
+    expect(block).toContain('Location: /c/proj/skills/review/SKILL.md');
+  });
 });
 
 describe('buildPromptBlock', () => {

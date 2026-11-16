@@ -6,7 +6,7 @@ import { readOutputLimits } from '@pi-code/extension/core/settings';
 import { runFileMutation, toolError } from '@pi-code/extension/structures/tool-call/helpers';
 import { checkReadableFile, writeFileAtomic } from '@pi-code/extension/utilities/fs';
 import { buildFileChangeResult } from '@pi-code/extension/utilities/truncate';
-import { countOccurrences, escapeRegExp } from '@pi-code/shared/utilities/common';
+import { countOccurrences, escapeRegExp, standardizePath } from '@pi-code/shared/utilities/common';
 
 import type { AgentToolResult } from '@earendil-works/pi-coding-agent';
 import type { ToolName } from '@pi-code/shared/core/types';
@@ -90,7 +90,7 @@ function replaceExpected(original: string, oldText: string, newText: string, exp
 
   return {
     error:
-      `Error: matched ${exact} occurrence(s) of \`search\` in ${filePath}, but \`expected\` is ${expected}.\n` +
+      `Error: matched ${exact} occurrence(s) of \`search\` in ${standardizePath(filePath)}, but \`expected\` is ${expected}.\n` +
       `Exact: ${exact}, whitespace-tolerant: ${whitespace}, token-based: ${token}.\n\n` +
       `Verify \`search\` matches the target exactly as-is, including whitespace and line endings.`,
   };
@@ -126,7 +126,7 @@ export const editFileTool = defineTool({
       const check = await checkReadableFile(resolvedPath);
       if (check.ok) {
         if (search === '') {
-          return toolError(`Error: \`path\` already exists: ${path}. Use a non-empty \`search\` to modify it.`);
+          return toolError(`Error: \`path\` already exists: ${standardizePath(path)}. Use a non-empty \`search\` to modify it.`);
         }
         originalContent = await readFile(resolvedPath, 'utf8');
       } else if (search !== '' || !check.missing) {
@@ -142,8 +142,8 @@ export const editFileTool = defineTool({
           limits: readOutputLimits(),
           oldContent: '',
           newContent: replace,
-          successMessage: `Created ${path}`,
-          hint: `File created; read "${path}" to verify the contents.`,
+          successMessage: `Created ${standardizePath(path)}`,
+          hint: `File created; read "${standardizePath(path)}" to verify the contents.`,
         });
       }
 
@@ -165,8 +165,8 @@ export const editFileTool = defineTool({
         limits: readOutputLimits(),
         oldContent: originalContent,
         newContent: outcome.content,
-        successMessage: `Updated ${path}`,
-        hint: `Edit applied; read "${path}" to verify the remaining changes.`,
+        successMessage: `Updated ${standardizePath(path)}`,
+        hint: `Edit applied; read "${standardizePath(path)}" to verify the remaining changes.`,
       });
 
       return outcome.strategy === 'exact' ? result : withMatchNote(result, outcome.strategy, outcome.matched);

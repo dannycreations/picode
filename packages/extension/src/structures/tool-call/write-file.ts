@@ -7,6 +7,7 @@ import { runFileMutation } from '@pi-code/extension/structures/tool-call/helpers
 import { checkReadableFile, writeFileAtomic } from '@pi-code/extension/utilities/fs';
 import { buildFileChangeResult } from '@pi-code/extension/utilities/truncate';
 import { logger } from '@pi-code/shared/core/logger';
+import { standardizePath } from '@pi-code/shared/utilities/common';
 import { stripCodeBlock } from '@pi-code/shared/utilities/markdown';
 
 import type { ToolName } from '@pi-code/shared/core/types';
@@ -30,7 +31,7 @@ export const writeFileTool = defineTool({
           oldContent = await readFile(resolvedPath, 'utf8');
         } catch (err) {
           // A failed read is non-fatal: we still write the file, just without a diff.
-          logger.warn(`Could not read prior content of ${resolvedPath}; writing without a diff.`, err);
+          logger.warn(`Could not read prior content of ${standardizePath(resolvedPath)}; writing without a diff.`, err);
         }
       }
 
@@ -40,8 +41,8 @@ export const writeFileTool = defineTool({
         limits: readOutputLimits(),
         oldContent,
         newContent: finalContent,
-        successMessage: `Wrote ${params.path}`,
-        hint: `Write applied; read "${params.path}" to verify the remaining changes.`,
+        successMessage: `Wrote ${standardizePath(params.path)}`,
+        hint: `Write applied; read "${standardizePath(params.path)}" to verify the remaining changes.`,
       });
     });
     onUpdate?.(result);

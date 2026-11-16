@@ -5,6 +5,7 @@ import { Type } from 'typebox';
 
 import { runFileMutation, toolError, toolResult } from '@pi-code/extension/structures/tool-call/helpers';
 import { isEnoent } from '@pi-code/extension/utilities/fs';
+import { standardizePath } from '@pi-code/shared/utilities/common';
 
 import type { Stats } from 'node:fs';
 import type { ToolName } from '@pi-code/shared/core/types';
@@ -20,7 +21,7 @@ export const deleteFileTool = defineTool({
     const workspaceRoot = resolve(ctx.cwd);
     const result = await runFileMutation(ctx.cwd, params.path, 'deleting file', signal, async (resolvedPath) => {
       if (getCwdRelativePath(workspaceRoot, resolvedPath) !== undefined) {
-        return toolError(`Error: refusing to delete "${params.path}" because it contains the workspace root.`);
+        return toolError(`Error: refusing to delete "${standardizePath(params.path)}" because it contains the workspace root.`);
       }
 
       let stats: Stats;
@@ -28,18 +29,18 @@ export const deleteFileTool = defineTool({
         stats = await stat(resolvedPath);
       } catch (err) {
         if (isEnoent(err)) {
-          return toolError(`Error: \`path\` does not exist: ${params.path}`);
+          return toolError(`Error: \`path\` does not exist: ${standardizePath(params.path)}`);
         }
         throw err;
       }
 
       if (stats.isDirectory()) {
         await rm(resolvedPath, { recursive: true, force: true });
-        return toolResult(`Deleted directory: ${params.path}`);
+        return toolResult(`Deleted directory: ${standardizePath(params.path)}`);
       }
 
       await unlink(resolvedPath);
-      return toolResult(`Deleted file: ${params.path}`);
+      return toolResult(`Deleted file: ${standardizePath(params.path)}`);
     });
     onUpdate?.(result);
     return result;

@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { getGitRoot } from '@pi-code/extension/utilities/git';
 import { createIsolatedWorktree, integrateIsolatedWorktree, removeWorktreeDirectory, withWorktreeLock } from '@pi-code/extension/utilities/worktree';
 import { logger } from '@pi-code/shared/core/logger';
+import { standardizePath } from '@pi-code/shared/utilities/common';
 
 import type { IsolatedWorktree } from '@pi-code/extension/utilities/worktree';
 
@@ -251,7 +252,7 @@ describe('integrateIsolatedWorktree', () => {
 
     expect(result.ok).toBe(false);
     const reason = 'reason' in result ? result.reason : '';
-    expect(reason).toContain(worktree.path);
+    expect(reason).toContain(standardizePath(worktree.path));
     expect(reason).toContain('Could not apply the isolated changes back to the workspace');
     // The isolated copy survives so the agent's work is not thrown away.
     expect(await exists(worktree.path)).toBe(true);

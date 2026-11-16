@@ -19,6 +19,7 @@ import { readAppSettings, readOutputLimits } from '@pi-code/extension/core/setti
 import { createToolAbort } from '@pi-code/extension/structures/agent-runtime/brokers/tool-call';
 import { renderTruncatedText, spillToTempLog, tempLogPath, truncateOutput } from '@pi-code/extension/utilities/truncate';
 import { logger } from '@pi-code/shared/core/logger';
+import { standardizePath } from '@pi-code/shared/utilities/common';
 
 import type { AgentToolResult } from '@earendil-works/pi-coding-agent';
 import type { SpawnOptions } from 'node:child_process';
@@ -384,7 +385,7 @@ export const executeCommandTool = defineTool({
 
         // Instruct the agent to inspect the temp file instead of re-running the command.
         const resolution = tempFilePath
-          ? `Full raw output saved to: "${tempFilePath}".\nRead this file with a search or pager (findstr, grep, head, tail) to inspect the rest.`
+          ? `Full raw output saved to: "${standardizePath(tempFilePath)}".\nRead this file with a search or pager (findstr, grep, head, tail) to inspect the rest.`
           : `Re-run with a search or pager (findstr, grep, head, tail) to inspect the rest.`;
 
         let modelText = renderTruncatedText(truncation, 'tail', resolution);

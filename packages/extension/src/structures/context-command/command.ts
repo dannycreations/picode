@@ -7,6 +7,7 @@ import { isResolvedSelection, isUri, mapDiagnostics, resolveSelectionFromDocumen
 import { getWorkspaceCwd, reportError, toRelativePath } from '@pi-code/extension/utilities/vscode';
 import { COMMAND_IDS } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
+import { standardizePath } from '@pi-code/shared/utilities/common';
 import { wrapCodeBlock } from '@pi-code/shared/utilities/markdown';
 
 import type { Diagnostic, Disposable, Uri } from 'vscode';
@@ -24,7 +25,7 @@ function resolveSelection(args: unknown[]): ResolvedSelection | null {
 }
 
 function formatSelectionBlock(selection: ResolvedSelection): string {
-  return `${selection.filePath}:${selection.startLine}-${selection.endLine}\n${wrapCodeBlock(selection.selectedText)}\n\n`;
+  return `${standardizePath(selection.filePath)}:${selection.startLine}-${selection.endLine}\n${wrapCodeBlock(selection.selectedText)}\n\n`;
 }
 
 function getDiagnosticText(args: unknown[], selection: ResolvedSelection): string {
@@ -76,7 +77,7 @@ function isDirectory(fsPath: string): boolean {
 }
 
 function buildMention(uri: Uri): string {
-  const relative = toRelativePath(uri);
+  const relative = standardizePath(toRelativePath(uri));
   return `@${uri.scheme === 'file' && isDirectory(uri.fsPath) && !relative.endsWith('/') ? `${relative}/` : relative}`;
 }
 

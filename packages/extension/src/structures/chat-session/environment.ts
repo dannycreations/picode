@@ -8,7 +8,7 @@ import { excludeVcsEntries } from '@pi-code/extension/utilities/fs';
 import { getGitRepository, getIgnoredPaths } from '@pi-code/extension/utilities/git';
 import { toRelativePath, toWorkspaceRelativePath } from '@pi-code/extension/utilities/vscode';
 import { logger } from '@pi-code/shared/core/logger';
-import { normalizeSeparators, pathCollator } from '@pi-code/shared/utilities/common';
+import { pathCollator, standardizePath } from '@pi-code/shared/utilities/common';
 import { wrapCodeBlock } from '@pi-code/shared/utilities/markdown';
 import { buildFileTree, renderFileTree } from '@pi-code/shared/utilities/tree';
 
@@ -157,7 +157,7 @@ export async function walkWorkspace(
 async function getGitStatusLines(repo: Repository | null): Promise<string[]> {
   if (!repo) return [];
 
-  const describe = (change: Change, label: string): string => `${label} ${toRelativePath(change.uri)}`;
+  const describe = (change: Change, label: string): string => `${label} ${standardizePath(toRelativePath(change.uri))}`;
 
   return [
     ...repo.state.indexChanges.map((c) => describe(c, 'staged   ')),
@@ -173,7 +173,7 @@ function appendPathSection(details: string, title: string, noun: string, paths: 
   let section = `\n\n### ${title}\n\n`;
   section += paths
     .slice(0, limit)
-    .map((path) => `- ${path}`)
+    .map((path) => `- ${standardizePath(path)}`)
     .join('\n');
   if (paths.length > limit) {
     section += `\n*(Truncated. Showing first ${limit} of ${paths.length} ${noun})*`;
@@ -243,7 +243,7 @@ export async function getEnvironmentDetails(cwd: string, includeFileDetails = fa
   }
 
   if (workspaceFilesEnabled) {
-    details += `\n\n### Workspace Files (${normalizeSeparators(cwd)})\n\n`;
+    details += `\n\n### Workspace Files (${standardizePath(cwd)})\n\n`;
     details += renderFileTree(buildFileTree(listing.paths), basename(cwd));
     if (listing.hitLimit) {
       details += '\n\n*(File list truncated. Use `execute_command` to list files in specific subdirectories if you need to explore further.)*';

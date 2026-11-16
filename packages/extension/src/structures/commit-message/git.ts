@@ -5,6 +5,7 @@ import { Uri, workspace } from 'vscode';
 import { isBinaryFile } from '@pi-code/extension/utilities/fs';
 import { GIT_STATUS_UNTRACKED } from '@pi-code/extension/utilities/git';
 import { toRelativePath } from '@pi-code/extension/utilities/vscode';
+import { standardizePath } from '@pi-code/shared/utilities/common';
 
 import type { Change, Repository } from '@pi-code/extension/types/git';
 
@@ -38,7 +39,7 @@ export async function getGitChanges(repo: Repository): Promise<{ changes: Resolv
 
 async function buildUntrackedPatch(file: ResolvedGitChange): Promise<string> {
   if (await isBinaryFile(file.absolutePath)) {
-    return `\nBinary file ${file.relativePath} is untracked\n`;
+    return `\nBinary file ${standardizePath(file.relativePath)} is untracked\n`;
   }
 
   const bytes = await workspace.fs.readFile(Uri.file(file.absolutePath));
@@ -61,7 +62,7 @@ export async function getGitDiffContext(repo: Repository, changes: ResolvedGitCh
   if (untracked.length > 0) {
     const patches = await Promise.all(
       untracked.map((file) =>
-        buildUntrackedPatch(file).catch((err) => `\nError reading untracked file ${file.relativePath}: ${formatThrownValue(err)}\n`),
+        buildUntrackedPatch(file).catch((err) => `\nError reading untracked file ${standardizePath(file.relativePath)}: ${formatThrownValue(err)}\n`),
       ),
     );
     diffContext += patches.join('');

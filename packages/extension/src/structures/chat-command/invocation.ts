@@ -4,6 +4,7 @@ import { parseCommandArgs, stripFrontmatter, substituteArgs } from '@earendil-wo
 
 import { appendHiddenMessage } from '@pi-code/extension/structures/agent-runtime/helpers/agent-message';
 import { logger } from '@pi-code/shared/core/logger';
+import { standardizePath } from '@pi-code/shared/utilities/common';
 import { wrapCodeBlock } from '@pi-code/shared/utilities/markdown';
 
 import type { AgentSession, PromptTemplate, Skill } from '@earendil-works/pi-coding-agent';
@@ -48,13 +49,18 @@ export function matchPromptInvocation(text: string, prompts: readonly PromptTemp
 
 export function buildSkillBlock(name: string, filePath: string, content: string): string {
   const baseDir = dirname(filePath);
-  return [`## Skill: ${name}`, '', `Location: ${filePath}`, `References are relative to ${baseDir}.`, '', wrapCodeBlock(content, 'markdown')].join(
-    '\n',
-  );
+  return [
+    `## Skill: ${name}`,
+    '',
+    `Location: ${standardizePath(filePath)}`,
+    `References are relative to ${standardizePath(baseDir)}.`,
+    '',
+    wrapCodeBlock(content, 'markdown'),
+  ].join('\n');
 }
 
 export function buildPromptBlock(prompt: PromptTemplate, content: string): string {
-  return [`## Prompt: ${prompt.name}`, '', `Location: ${prompt.filePath}`, '', wrapCodeBlock(content, 'markdown')].join('\n');
+  return [`## Prompt: ${prompt.name}`, '', `Location: ${standardizePath(prompt.filePath)}`, '', wrapCodeBlock(content, 'markdown')].join('\n');
 }
 
 interface RuntimeResources {

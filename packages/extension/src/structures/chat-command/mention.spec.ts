@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { expandMentions } from '@pi-code/extension/structures/chat-command/mention';
 import { resolveCommitTag } from '@pi-code/extension/utilities/commit';
+import { standardizePath } from '@pi-code/shared/utilities/common';
 
 // expandMentions reads its truncation budget from app settings, which depend on
 // the VS Code API. Stub just that one function so the logic can run in isolation.
@@ -103,9 +104,9 @@ describe('expandMentions', () => {
     const folderContent = await expandMentions('@src', cwd);
     const outsideContent = await expandMentions(`@${join(outside, 'notes.md')}`, cwd);
 
-    expect(fileContent).toContain(`Location: ${join(cwd, 'src/index.ts').split('\\').join('/')}`);
-    expect(folderContent).toContain(`Location: ${join(cwd, 'src').split('\\').join('/')}`);
-    expect(outsideContent).toContain(`Location: ${join(outside, 'notes.md').split('\\').join('/')}`);
+    expect(fileContent).toContain(`Location: ${standardizePath(join(cwd, 'src/index.ts'))}`);
+    expect(folderContent).toContain(`Location: ${standardizePath(join(cwd, 'src'))}`);
+    expect(outsideContent).toContain(`Location: ${standardizePath(join(outside, 'notes.md'))}`);
   });
 
   it('deduplicates repeated mentions into a single block', async () => {

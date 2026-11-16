@@ -4,6 +4,7 @@ import { join } from 'node:path';
 
 import { execGit, getGitRoot } from '@pi-code/extension/utilities/git';
 import { logger } from '@pi-code/shared/core/logger';
+import { standardizePath } from '@pi-code/shared/utilities/common';
 
 // A worktree carries binary patches, so it needs more room and more time than
 // the read-only git commands.
@@ -141,7 +142,7 @@ export async function integrateIsolatedWorktree(worktree: IsolatedWorktree): Pro
     await rm(patchPath, { force: true }).catch(() => undefined);
     return { ok: true };
   } catch (err) {
-    const reason = `Could not apply the isolated changes back to the workspace: ${String(err)}. The changes remain in ${worktree.path} and the patch is at ${patchPath}.`;
+    const reason = `Could not apply the isolated changes back to the workspace: ${String(err)}. The changes remain in ${standardizePath(worktree.path)} and the patch is at ${standardizePath(patchPath)}.`;
     logger.error(reason);
     return { ok: false, reason };
   }

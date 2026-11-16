@@ -11,6 +11,11 @@ export function normalizeSeparators(path: string): string {
   return path.includes('\\') ? path.replace(/\\/g, '/') : path;
 }
 
+export function standardizePath(path: string): string {
+  const normalized = normalizeSeparators(path);
+  return normalized.replace(/^([a-z]):\//i, (_, drive: string) => `/${drive.toLowerCase()}/`);
+}
+
 export function isWindowsAbsolutePath(path: string): boolean {
   return /^[a-z]:\//i.test(path);
 }

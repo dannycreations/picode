@@ -169,7 +169,7 @@ describe('composeSystemPrompt', () => {
         '### Available Skills',
         '',
         '- **review**: desc-review',
-        '  Location: `/skills/review/SKILL.md`',
+        '  Location: /skills/review/SKILL.md',
       ].join('\n'),
     );
     expect(composeSystemContext({ cwd: '/w', selectedTools: ['execute_command'], skills })).toBe('');
@@ -187,7 +187,7 @@ describe('composeSystemPrompt', () => {
     const prompt = composeSystemContext({ cwd: '/w', selectedTools: ['read_file'], skills: [broken, manual] });
 
     expect(prompt).toContain('- **broken**: a & b <c>');
-    expect(prompt).toContain('Location: `/skills/broken/SKILL.md`');
+    expect(prompt).toContain('Location: /skills/broken/SKILL.md');
     expect(prompt).not.toContain('- **manual**:');
   });
 });

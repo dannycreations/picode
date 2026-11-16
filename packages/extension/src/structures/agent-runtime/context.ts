@@ -4,6 +4,7 @@ import { CONFIG_DIR_NAME, getAgentDir, loadProjectContextFiles } from '@earendil
 
 import { SUBAGENT_MESSAGE_PROMPT } from '@pi-code/extension/core/prompt';
 import { getActiveMcpConfig } from '@pi-code/extension/structures/agent-runtime/mcp/config';
+import { standardizePath } from '@pi-code/shared/utilities/common';
 import { wrapCodeBlock } from '@pi-code/shared/utilities/markdown';
 
 import type {
@@ -114,7 +115,7 @@ function renderSkills(selectedTools: readonly string[] | undefined, skills: read
     "Use the read tool to load a skill's file when the task matches its description.",
     'When a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.',
   ];
-  const entries = visible.map((skill) => `- **${skill.name}**: ${skill.description}\n  Location: \`${skill.filePath}\``);
+  const entries = visible.map((skill) => `- **${skill.name}**: ${skill.description}\n  Location: ${standardizePath(skill.filePath)}`);
   return [...intro, '', '### Available Skills', '', ...entries].join('\n');
 }
 
@@ -142,7 +143,7 @@ function renderSubagentGuidance(selectedTools: readonly string[] | undefined): s
 function renderProjectContext(contextFiles: ReadonlyArray<{ path: string; content: string }> | undefined): string {
   const files = contextFiles ?? [];
   if (files.length === 0) return '';
-  const sections = files.map((file) => [`### ${file.path}`, '', wrapCodeBlock(file.content, 'markdown')].join('\n'));
+  const sections = files.map((file) => [`### ${standardizePath(file.path)}`, '', wrapCodeBlock(file.content, 'markdown')].join('\n'));
   return ['## Project Context', 'Project-specific instructions and guidelines:', ...sections].join('\n\n');
 }
 

@@ -8,7 +8,7 @@ import { createToolAbort } from '@pi-code/extension/structures/agent-runtime/bro
 import { recordSubagentUsage, SPAWN_SUBAGENT_TOOL_NAME, spawnSubagent } from '@pi-code/extension/structures/agent-runtime/subagent';
 import { toolError, toolResult } from '@pi-code/extension/structures/tool-call/helpers';
 import { renderTruncatedText, spillToTempLog, truncateOutput } from '@pi-code/extension/utilities/truncate';
-import { formatCost } from '@pi-code/shared/utilities/common';
+import { formatCost, standardizePath } from '@pi-code/shared/utilities/common';
 
 import type { AgentToolResult } from '@earendil-works/pi-coding-agent';
 import type { SubagentOutcome, SubagentUsage } from '@pi-code/extension/structures/agent-runtime/subagent';
@@ -51,13 +51,13 @@ async function renderOutcome(outcome: SubagentOutcome): Promise<string> {
     const tempFilePath = await spillToTempLog('subagent', outcome.text);
 
     const resolution = tempFilePath
-      ? `Full output saved to: "${tempFilePath}". Read this file with \`read_file\` to inspect the rest.`
+      ? `Full output saved to: "${standardizePath(tempFilePath)}". Read this file with \`read_file\` to inspect the rest.`
       : `Re-run with a narrower brief to inspect the rest.`;
     hint = `${resolution}\n${baseHint}`;
   }
 
   const text = renderTruncatedText(truncation, 'head', hint);
-  return wrapReport(outcome, ['### Result', '', text]);
+  return wrapReport(outcome, [text]);
 }
 
 export const spawnSubagentTool = defineTool({

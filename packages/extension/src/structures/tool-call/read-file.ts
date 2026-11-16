@@ -7,6 +7,7 @@ import { toolError, toolErrorFrom, toolResult } from '@pi-code/extension/structu
 import { mapConcurrent } from '@pi-code/extension/utilities/concurrency';
 import { checkReadableFile, hasRanges, parseNumberedLine } from '@pi-code/extension/utilities/fs';
 import { readNumberedText, shareOutputLimits } from '@pi-code/extension/utilities/truncate';
+import { standardizePath } from '@pi-code/shared/utilities/common';
 
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
 import type { LineRange, ToolName } from '@pi-code/shared/core/types';
@@ -39,20 +40,21 @@ async function readFileSection(cwd: string, file: FileRequest, limits: OutputLim
     }
 
     const ranges = file.ranges;
-    const header = hasRanges(ranges) ? `File: ${file.path} (Ranges: ${JSON.stringify(ranges)})` : `File: ${file.path}`;
+    const displayPath = standardizePath(file.path);
+    const header = hasRanges(ranges) ? `File: ${displayPath} (Ranges: ${JSON.stringify(ranges)})` : `File: ${displayPath}`;
 
     const numbered = await readNumberedText(resolvedPath, limits, {
       ranges,
       hint: (truncation) => {
         const next = nextLineAfter(truncation.content);
         return next === undefined
-          ? `Use \`ranges\` on "${file.path}" to read a narrower slice.`
-          : `Use \`ranges\` starting at line ${next} on "${file.path}" to continue.`;
+          ? `Use \`ranges\` on "${displayPath}" to read a narrower slice.`
+          : `Use \`ranges\` starting at line ${next} on "${displayPath}" to continue.`;
       },
     });
     return { path: file.path, header, body: numbered, hasError: false };
   } catch (err) {
-    return { path: file.path, header: '', body: `Error reading file ${file.path}: ${formatThrownValue(err)}`, hasError: true };
+    return { path: file.path, header: '', body: `Error reading file ${standardizePath(file.path)}: ${formatThrownValue(err)}`, hasError: true };
   }
 }
 

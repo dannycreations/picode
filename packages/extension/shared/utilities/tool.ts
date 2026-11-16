@@ -1,3 +1,5 @@
+import { standardizePath } from '@pi-code/shared/utilities/common';
+
 import type { ChatMessage, ToolChatMessage, ToolName, ToolSection, ToolStatus } from '@pi-code/shared/core/types';
 
 interface ToolMeta {
@@ -193,7 +195,7 @@ function mcpSection(message: ToolChatMessage): ToolSection[] {
 function fileToolSections(message: ToolChatMessage): ToolSection[] {
   if (message.files && message.files.length > 0) {
     return message.files.map((file) => ({
-      title: file.path,
+      title: standardizePath(file.path),
       content: file.content,
       language: toolMeta(message.toolName).language,
       openPath: file.path,
@@ -202,7 +204,7 @@ function fileToolSections(message: ToolChatMessage): ToolSection[] {
 
   const [path] = getToolFilePaths(message);
   if (path || message.diff) {
-    return [{ title: path ?? 'File', content: message.diff, language: toolMeta(message.toolName).language, openPath: path }];
+    return [{ title: path ? standardizePath(path) : 'File', content: message.diff, language: toolMeta(message.toolName).language, openPath: path }];
   }
 
   return [];

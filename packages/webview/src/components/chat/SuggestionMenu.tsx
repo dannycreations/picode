@@ -1,6 +1,7 @@
 import { cn } from 'cn';
 import { useEffect, useRef } from 'react';
 
+import { standardizePath } from '@pi-code/shared/utilities/common';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 
 import type { ReactElement, ReactNode } from 'react';
@@ -132,7 +133,7 @@ export const MentionMenu = ({ items, selectedIndex, onSelect, onHover }: Mention
     selectedIndex={selectedIndex}
     onSelect={onSelect}
     onHover={onHover}
-    renderItem={(path) => <span className={cn('truncate font-mono text-xs')}>{path}</span>}
+    renderItem={(path) => <span className={cn('truncate font-mono text-xs')}>{standardizePath(path)}</span>}
   />
 );
 
