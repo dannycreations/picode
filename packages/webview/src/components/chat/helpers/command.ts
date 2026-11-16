@@ -24,10 +24,6 @@ export function readCommandQuery(text: string, caret: number): string | null {
   return text.slice(1, caret);
 }
 
-function findCommand(commands: readonly CommandItem[], name: string): CommandItem | undefined {
-  return commands.find((command) => command.name === name);
-}
-
 function isSubsequence(haystack: string, needle: string): boolean {
   let cursor = 0;
   for (const char of haystack) {
@@ -101,7 +97,7 @@ interface CommandSegments {
 
 export function splitCommand(text: string, commands: readonly CommandItem[]): CommandSegments | null {
   const token = readCommandToken(text);
-  if (!token || !findCommand(commands, token.name)) return null;
+  if (!token || !commands.some((command) => command.name === token.name)) return null;
 
   return { command: text.slice(0, token.end), rest: text.slice(token.end) };
 }

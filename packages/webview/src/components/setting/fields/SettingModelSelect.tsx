@@ -8,7 +8,7 @@ import { useClickOutside } from '@pi-code/webview/hooks/useClickOutside';
 import type { FC } from 'react';
 import type { ModelThinkingLevel } from '@pi-code/shared/core/types';
 
-export interface SelectOption {
+interface SelectOption {
   readonly value: string;
   readonly label: string;
 }

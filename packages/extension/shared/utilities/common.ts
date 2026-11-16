@@ -85,9 +85,6 @@ export function resolveContextLimit(contextWindow: number | undefined): number {
   return contextWindow ?? DEFAULT_CONTEXT_LIMIT;
 }
 
-const LITERAL_PATTERN_CACHE_LIMIT = 256;
-const literalPatterns = new Map<string, RegExp>();
-
 export function setBounded<K, V>(cache: Map<K, V>, key: K, value: V, limit: number): void {
   if (cache.size >= limit) {
     const oldest = cache.keys().next();
@@ -96,24 +93,10 @@ export function setBounded<K, V>(cache: Map<K, V>, key: K, value: V, limit: numb
   cache.set(key, value);
 }
 
-function literalPattern(needle: string, flags: 'g' | 'gi' | 'i'): RegExp {
-  const key = `${flags}:${needle}`;
-  const cached = literalPatterns.get(key);
-  if (cached) return cached;
-
-  const pattern = new RegExp(escapeRegExp(needle), flags);
-  setBounded(literalPatterns, key, pattern, LITERAL_PATTERN_CACHE_LIMIT);
-  return pattern;
-}
-
 function scanOccurrences(haystack: string, needle: string, caseSensitive: boolean, visit: (index: number) => void): void {
   if (needle === '') return;
 
-  const pattern = literalPattern(needle, caseSensitive ? 'g' : 'gi');
-  // The shared pattern carries its own scan position, so it is rewound before
-  // every scan. The needle is never empty, so every match advances.
-  pattern.lastIndex = 0;
-
+  const pattern = new RegExp(escapeRegExp(needle), caseSensitive ? 'g' : 'gi');
   let match = pattern.exec(haystack);
   while (match !== null) {
     visit(match.index);
@@ -138,7 +121,7 @@ export function countOccurrences(haystack: string, needle: string, caseSensitive
 export function containsIgnoreCase(haystack: string, needle: string): boolean {
   if (needle === '') return true;
 
-  return literalPattern(needle, 'i').test(haystack);
+  return new RegExp(escapeRegExp(needle), 'i').test(haystack);
 }
 
 export interface OccurrenceSegment {
