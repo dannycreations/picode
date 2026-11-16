@@ -3,12 +3,13 @@ import { cn } from 'cn';
 import { Pi } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { countOccurrences } from '@pi-code/shared/utilities/common';
 import { ChatAction } from '@pi-code/webview/components/chat/ChatAction';
 import { ChatBody } from '@pi-code/webview/components/chat/ChatBody';
 import { ChatFooter } from '@pi-code/webview/components/chat/ChatFooter';
 import { ChatHeader, ChatSearchBar } from '@pi-code/webview/components/chat/ChatHeader';
 import { ChatInput } from '@pi-code/webview/components/chat/ChatInput';
-import { countMessageMatches } from '@pi-code/webview/components/chat/helpers/search';
+import { getMessageSearchText } from '@pi-code/webview/components/chat/helpers/search';
 import { useChatActions } from '@pi-code/webview/components/chat/hooks/useChatActions';
 import { useChatConfig } from '@pi-code/webview/components/chat/hooks/useChatConfig';
 import { WorkspacePicker } from '@pi-code/webview/components/chat/WorkspacePicker';
@@ -184,7 +185,7 @@ export const ChatView: FC = () => {
   const [activeMatch, setActiveMatch] = useState(-1);
 
   const matchCounts = useMemo(
-    () => (searchQuery ? renderItems.map((message) => countMessageMatches(message, searchQuery)) : []),
+    () => (searchQuery ? renderItems.map((message) => countOccurrences(getMessageSearchText(message), searchQuery)) : []),
     [renderItems, searchQuery],
   );
   const totalMatches = useMemo(() => matchCounts.reduce((sum, count) => sum + count, 0), [matchCounts]);

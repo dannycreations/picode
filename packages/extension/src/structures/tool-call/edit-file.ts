@@ -8,7 +8,7 @@ import { checkReadableFile, writeFileAtomic } from '@pi-code/extension/utilities
 import { buildFileChangeResult } from '@pi-code/extension/utilities/truncate';
 import { countOccurrences, escapeRegExp } from '@pi-code/shared/utilities/common';
 
-import type { CustomToolResult } from '@pi-code/extension/types/extension';
+import type { AgentToolResult } from '@earendil-works/pi-coding-agent';
 import type { ToolName } from '@pi-code/shared/core/types';
 
 interface TextToken {
@@ -97,10 +97,10 @@ function replaceExpected(original: string, oldText: string, newText: string, exp
 }
 
 function withMatchNote(
-  result: CustomToolResult<{ diff: string }>,
+  result: AgentToolResult<{ diff: string }>,
   strategy: Exclude<MatchStrategy, 'exact'>,
   matched: number,
-): CustomToolResult<{ diff: string }> {
+): AgentToolResult<{ diff: string }> {
   const mode = strategy === 'whitespace' ? 'whitespace-tolerant matching' : 'token-based matching';
   const note = `Note: matched ${matched} occurrence(s) using ${mode}; the file text differed from \`search\` in whitespace.`;
   return {

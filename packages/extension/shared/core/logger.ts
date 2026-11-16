@@ -7,7 +7,7 @@ export interface LoggerSink {
   readonly debug: (message: string, ...args: unknown[]) => void;
   readonly info: (message: string, ...args: unknown[]) => void;
   readonly warn: (message: string, ...args: unknown[]) => void;
-  readonly error: (message: string | Error, ...args: unknown[]) => void;
+  readonly error: (message: string, ...args: unknown[]) => void;
 }
 
 const LEVEL_WEIGHT: Record<LevelSetting, number> = {
@@ -51,12 +51,6 @@ function forward(key: LogLevelName, args: unknown[]): void {
   // The logger sits on the error path; a failing or partial sink must not
   // escalate into the operation that called it.
   try {
-    // Only the error sink renders an Error, so that is the only path that hands
-    // one over instead of its formatted text.
-    if (key === 'error' && head instanceof Error) {
-      sink.error(head, ...rest);
-      return;
-    }
     sink[key](String(head), ...rest);
   } catch {
     // Swallow sink failures; logging must never throw.

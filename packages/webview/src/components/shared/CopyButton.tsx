@@ -1,6 +1,5 @@
 import { cn } from 'cn';
 import { Check, Copy } from 'lucide-react';
-import { forwardRef } from 'react';
 
 import { useCopyToClipboard } from '@pi-code/webview/hooks/useCopyToClipboard';
 
@@ -11,12 +10,10 @@ interface CopyButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 
   readonly size?: number;
 }
 
-export const CopyButton = forwardRef<HTMLButtonElement, CopyButtonProps>(({ text, className, size = 14, onClick, ...rest }, ref) => {
+export function CopyButton({ text, className, size = 14, onClick, ...rest }: CopyButtonProps) {
   const { showCopy, copy } = useCopyToClipboard();
-
   return (
     <button
-      ref={ref}
       type="button"
       className={cn('icon-button', className)}
       onClick={(e) => {
@@ -28,4 +25,4 @@ export const CopyButton = forwardRef<HTMLButtonElement, CopyButtonProps>(({ text
       {showCopy ? <Check size={size} /> : <Copy size={size} />}
     </button>
   );
-});
+}

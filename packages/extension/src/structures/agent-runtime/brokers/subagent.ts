@@ -6,12 +6,12 @@ export interface LiveSubagent {
   readonly toolCallId: string;
   readonly description: string;
   readonly task: string;
-  readonly ready: Promise<AgentSession>;
+  readonly ready: Promise<AgentSession | null>;
   session: AgentSession | null;
 }
 
 interface LiveSubagentEntry extends LiveSubagent {
-  attach: (session: AgentSession) => void;
+  readonly attach: (session: AgentSession | null) => void;
 }
 
 const liveSubagents = new Map<string, LiveSubagentEntry>();
@@ -54,8 +54,8 @@ function notifySessionsChanged(): void {
 }
 
 export function registerLiveSubagent(toolCallId: string, description: string, task: string): void {
-  let attach!: (session: AgentSession) => void;
-  const ready = new Promise<AgentSession>((resolve) => {
+  let attach!: (session: AgentSession | null) => void;
+  const ready = new Promise<AgentSession | null>((resolve) => {
     attach = resolve;
   });
   liveSubagents.set(toolCallId, { toolCallId, description, task, session: null, ready, attach });
@@ -74,6 +74,9 @@ export function getLiveSubagent(toolCallId: string): LiveSubagent | undefined {
 }
 
 function disposeEntry(entry: LiveSubagentEntry): void {
+  // Settle a still-pending `ready` so anyone waiting on a sub-agent that was
+  // torn down mid-start does not hang.
+  entry.attach(null);
   if (entry.session) unregisterSubagentSession(entry.session.sessionId);
   try {
     entry.session?.dispose();

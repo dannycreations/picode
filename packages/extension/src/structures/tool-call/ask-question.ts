@@ -4,10 +4,10 @@ import { Type } from 'typebox';
 import { askQuestion } from '@pi-code/extension/structures/agent-runtime/brokers/question';
 import { toolError, toolErrorFrom, toolResult } from '@pi-code/extension/structures/tool-call/helpers';
 
-import type { CustomToolResult } from '@pi-code/extension/types/extension';
+import type { AgentToolResult } from '@earendil-works/pi-coding-agent';
 import type { ToolName } from '@pi-code/shared/core/types';
 
-async function askUser(question: string, toolCallId: string, signal: AbortSignal | undefined): Promise<CustomToolResult> {
+async function askUser(question: string, toolCallId: string, signal: AbortSignal | undefined): Promise<AgentToolResult> {
   // The chat view renders the question straight from the tool call
   // arguments, so an empty question would surface as an empty card.
   if (!question.trim()) {
@@ -34,10 +34,10 @@ export const askQuestionTool = defineTool({
       description: '2-4 answer options, ordered from most to least likely.',
     }),
   }),
-  async execute(toolCallId, params, signal, onUpdate, _ctx): Promise<CustomToolResult> {
+  async execute(toolCallId, params, signal, onUpdate, _ctx): Promise<AgentToolResult> {
     // Every outcome, including a thrown one, resolves to a single result that
     // is reported and returned once.
-    let result: CustomToolResult;
+    let result: AgentToolResult;
     try {
       result = await askUser(params.question, toolCallId, signal);
     } catch (err) {

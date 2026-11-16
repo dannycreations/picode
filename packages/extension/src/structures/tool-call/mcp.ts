@@ -7,7 +7,7 @@ import { mcpGateway } from '@pi-code/extension/structures/agent-runtime/mcp/mana
 import { toolError, toolErrorFrom, toolResult } from '@pi-code/extension/structures/tool-call/helpers';
 import { truncateAndRender } from '@pi-code/extension/utilities/truncate';
 
-import type { CustomToolResult } from '@pi-code/extension/types/extension';
+import type { AgentToolResult } from '@earendil-works/pi-coding-agent';
 import type { ToolName } from '@pi-code/shared/core/types';
 
 interface McpDetails {
@@ -28,7 +28,7 @@ export const mcpTool = defineTool({
       }),
     ),
   }),
-  async execute(_toolCallId, params, signal, onUpdate, ctx): Promise<CustomToolResult<McpDetails>> {
+  async execute(_toolCallId, params, signal, onUpdate, ctx): Promise<AgentToolResult<McpDetails>> {
     try {
       const config = getActiveMcpConfig();
 

@@ -1,5 +1,5 @@
 import { parseCommand } from '@pi-code/shared/utilities/command';
-import { normalizeSeparators, setBounded } from '@pi-code/shared/utilities/common';
+import { normalizeSeparators } from '@pi-code/shared/utilities/common';
 import { getToolCommand, getToolFilePaths } from '@pi-code/shared/utilities/tool';
 
 import type { AppSettings, SettingKey } from '@pi-code/shared/core/settings';
@@ -12,14 +12,8 @@ const PATH_TOOL_KEYS: Readonly<Record<string, { readonly allow: SettingKey; read
   delete_file: { allow: 'allowedDeletePaths', deny: 'deniedDeletePaths' },
 };
 
-const COMMAND_PATTERN_CACHE_LIMIT = 256;
-const commandPatterns = new Map<string, readonly string[]>();
-
 function extractCommandPatterns(command: string): readonly string[] {
   if (!command || !command.trim()) return [];
-
-  const cached = commandPatterns.get(command);
-  if (cached) return cached;
 
   let subCommands: string[];
   try {
@@ -32,10 +26,7 @@ function extractCommandPatterns(command: string): readonly string[] {
 
   // Each sub-command and its base command, so the user can allow this one call
   // or every call to the same tool.
-  const patterns = collectUnique(subCommands.map((sub) => [sub, sub.split(/\s+/)[0]]));
-
-  setBounded(commandPatterns, command, patterns, COMMAND_PATTERN_CACHE_LIMIT);
-  return patterns;
+  return collectUnique(subCommands.map((sub) => [sub, sub.split(/\s+/)[0]]));
 }
 
 function collectUnique(groups: ReadonlyArray<readonly string[]>): string[] {

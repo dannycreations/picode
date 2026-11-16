@@ -43,12 +43,14 @@ describe('live subagent registry', () => {
     releaseLiveSubagents();
   });
 
-  it('forgets a sub-agent that never became usable', () => {
+  it('forgets a sub-agent that never became usable', async () => {
     registerLiveSubagent('call-3', 'find files', 'find the leak');
+    const ready = getLiveSubagent('call-3')?.ready;
 
     unregisterLiveSubagent('call-3');
 
     expect(getLiveSubagent('call-3')).toBeUndefined();
+    expect(await ready).toBeNull();
   });
 
   it('drops every sub-agent when the task that owns them ends', () => {

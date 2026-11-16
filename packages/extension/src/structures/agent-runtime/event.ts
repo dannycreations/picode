@@ -44,23 +44,6 @@ export function toolResultText(result: unknown): string {
   }
 }
 
-function latestStep(steps: string | undefined): string | undefined {
-  if (!steps) return undefined;
-
-  let end = steps.length;
-  while (end > 0) {
-    const breakIndex = steps.lastIndexOf('\n', end - 1);
-    const start = breakIndex === -1 ? 0 : breakIndex + 1;
-
-    const line = steps.slice(start, end).trim();
-    if (line) return line;
-
-    if (breakIndex === -1) return undefined;
-    end = breakIndex;
-  }
-  return undefined;
-}
-
 function subagentMarker(session: AgentSession): true | undefined {
   return isSubagentSession(session.sessionId) ? true : undefined;
 }
@@ -173,7 +156,14 @@ export function mapEvent(event: AgentSessionEvent, session: AgentSession, apiReq
       const subagent = subagentMarker(session);
       const result = toolResultText(event.partialResult);
       const steps = (event.partialResult as { details?: { steps?: string } } | undefined)?.details?.steps;
-      const subtitle = event.toolName === SPAWN_SUBAGENT_TOOL_NAME ? latestStep(steps) : undefined;
+      const subtitle =
+        event.toolName === SPAWN_SUBAGENT_TOOL_NAME
+          ? steps
+              ?.split('\n')
+              .map((line) => line.trim())
+              .filter(Boolean)
+              .pop()
+          : undefined;
       return {
         message: {
           type: 'tool_execution_update',

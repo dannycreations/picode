@@ -103,7 +103,9 @@ export class Runtime {
     }
 
     // A sub-agent that is still starting has no session yet. Waiting for it is
-    // better than telling the user there is nothing to open.
+    // better than telling the user there is nothing to open. The promise also
+    // settles with null if the sub-agent is torn down before it starts; the
+    // timeout still guards against a creation that stalls indefinitely.
     const session = subagent.session ?? (await withTimeout(subagent.ready, SUBAGENT_READY_TIMEOUT_MS));
     if (!session) {
       this.messenger.postError(new Error('The sub-agent session is not ready yet.'));

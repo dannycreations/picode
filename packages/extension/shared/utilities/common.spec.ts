@@ -232,9 +232,8 @@ describe('findOccurrences', () => {
     expect(findOccurrences('Foo bar FOO', 'foo', true)).toEqual([]);
   });
 
-  it('reuses the compiled pattern across calls', () => {
-    // The pattern is cached, so a second scan must not pick up the position
-    // the first one stopped at.
+  it('returns the same positions on repeated calls', () => {
+    // A global regex reused across calls would resume at its previous lastIndex.
     expect(findOccurrences('cat cat', 'cat')).toEqual([0, 4]);
     expect(findOccurrences('cat cat', 'cat')).toEqual([0, 4]);
   });

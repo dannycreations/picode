@@ -26,19 +26,8 @@ const DEFAULT_TOOL_META: ToolMeta = {
 };
 
 // Tools whose result messages render as expandable sections in the webview.
-const GROUP_TOOL_NAMES = [
-  'execute_command',
-  'read_file',
-  'write_file',
-  'edit_file',
-  'delete_file',
-  'spawn_subagent',
-  'mcp',
-] as const satisfies readonly ToolName[];
-
-type GroupToolName = (typeof GROUP_TOOL_NAMES)[number];
-
-const TOOL_META: Readonly<Record<GroupToolName, ToolMeta>> = {
+// Each key here is both a valid tool name and a groupable tool.
+const TOOL_META = {
   execute_command: {
     ...DEFAULT_TOOL_META,
     fileIcon: 'terminal',
@@ -120,9 +109,11 @@ const TOOL_META: Readonly<Record<GroupToolName, ToolMeta>> = {
       done: 'Called MCP',
     },
   },
-};
+} satisfies Partial<Record<ToolName, ToolMeta>>;
 
-export const GROUP_TOOLS: ReadonlySet<ToolName> = new Set(GROUP_TOOL_NAMES);
+type GroupToolName = keyof typeof TOOL_META;
+
+export const GROUP_TOOLS: ReadonlySet<ToolName> = new Set(Object.keys(TOOL_META) as GroupToolName[]);
 
 export const CANCELLABLE_TOOLS: ReadonlySet<ToolName> = new Set(['execute_command', 'spawn_subagent']);
 

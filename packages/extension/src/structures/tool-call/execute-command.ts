@@ -20,10 +20,10 @@ import { createToolAbort } from '@pi-code/extension/structures/agent-runtime/bro
 import { renderTruncatedText, spillToTempLog, tempLogPath, truncateOutput } from '@pi-code/extension/utilities/truncate';
 import { logger } from '@pi-code/shared/core/logger';
 
+import type { AgentToolResult } from '@earendil-works/pi-coding-agent';
 import type { SpawnOptions } from 'node:child_process';
 import type { WriteStream } from 'node:fs';
 import type { Readable } from 'node:stream';
-import type { CustomToolResult } from '@pi-code/extension/types/extension';
 import type { ToolName } from '@pi-code/shared/core/types';
 
 function stripAnsiAndNormalize(raw: string): string {
@@ -94,7 +94,7 @@ function collapseCarriageReturns(line: string): string {
   return line.slice(last + 1, end);
 }
 
-type ExecuteCommandReturn = CustomToolResult<{
+type ExecuteCommandReturn = AgentToolResult<{
   readonly exitCode: number | null;
   readonly signalCode: string | null;
   readonly output: string;

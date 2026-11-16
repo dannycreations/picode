@@ -117,7 +117,7 @@ export class ChatViewProvider implements WebviewViewProvider {
       webview.onDidReceiveMessage((message: WebviewToExtensionMessage) => {
         void dispatch(message, context);
       }),
-      Disposable.from({ dispose: disposeApprovalPresenter }),
+      { dispose: disposeApprovalPresenter },
     );
 
     webviewView.onDidDispose(() => {

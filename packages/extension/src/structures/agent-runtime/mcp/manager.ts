@@ -72,11 +72,7 @@ async function connectMcpServer(server: McpServerConfig, cwd: string): Promise<M
     close: () => client.close(),
 
     onClose: (listener) => {
-      const previous = client.onclose;
-      client.onclose = () => {
-        previous?.();
-        listener();
-      };
+      client.onclose = listener;
     },
   };
 }

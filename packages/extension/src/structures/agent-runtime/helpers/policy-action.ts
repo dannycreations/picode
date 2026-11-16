@@ -27,8 +27,6 @@ const DANGEROUS_PATTERNS: readonly RegExp[] = [
   /\$\(/,
   // Backtick command substitution.
   /`/,
-  // Here-string command substitutions.
-  /<<<\s*(?:\$\(|`)/,
   // Zsh process substitution.
   /=\([^)]+\)/,
   // Bash and zsh process substitution.

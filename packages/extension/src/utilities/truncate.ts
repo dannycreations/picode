@@ -8,8 +8,7 @@ import { hasRanges, numberLines, readLines } from '@pi-code/extension/utilities/
 import { logger } from '@pi-code/shared/core/logger';
 import { BYTES_PER_KILOBYTE } from '@pi-code/shared/utilities/common';
 
-import type { TruncationResult } from '@earendil-works/pi-coding-agent';
-import type { CustomToolResult } from '@pi-code/extension/types/extension';
+import type { AgentToolResult, TruncationResult } from '@earendil-works/pi-coding-agent';
 import type { LineRange } from '@pi-code/shared/core/types';
 
 export function tempLogPath(kind: string): string {
@@ -116,7 +115,7 @@ interface FileChangeResultOptions {
   readonly hint: string;
 }
 
-export function buildFileChangeResult(opts: FileChangeResultOptions): CustomToolResult<{ diff: string }> {
+export function buildFileChangeResult(opts: FileChangeResultOptions): AgentToolResult<{ diff: string }> {
   const diffResult = generateDiffString(opts.oldContent, opts.newContent);
 
   return {

@@ -10,8 +10,8 @@ import { toolError, toolResult } from '@pi-code/extension/structures/tool-call/h
 import { renderTruncatedText, spillToTempLog, truncateOutput } from '@pi-code/extension/utilities/truncate';
 import { formatCost } from '@pi-code/shared/utilities/common';
 
+import type { AgentToolResult } from '@earendil-works/pi-coding-agent';
 import type { SubagentOutcome, SubagentUsage } from '@pi-code/extension/structures/agent-runtime/subagent';
-import type { CustomToolResult } from '@pi-code/extension/types/extension';
 
 interface SubagentDetails {
   readonly steps?: string;
@@ -73,8 +73,8 @@ export const spawnSubagentTool = defineTool({
       Type.Boolean({ description: 'Set to true to let the sub-agent mutate an isolated copy of the workspace; defaults to false (read-only).' }),
     ),
   }),
-  async execute(toolCallId, params, signal, onUpdate, ctx): Promise<CustomToolResult<SubagentDetails>> {
-    const failure = (text: string): CustomToolResult<SubagentDetails> => toolError<SubagentDetails>(text);
+  async execute(toolCallId, params, signal, onUpdate, ctx): Promise<AgentToolResult<SubagentDetails>> {
+    const failure = (text: string): AgentToolResult<SubagentDetails> => toolError<SubagentDetails>(text);
 
     if (!params.task.trim()) {
       return failure('Error: `task` is required and cannot be empty.');
