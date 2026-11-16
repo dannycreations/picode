@@ -131,9 +131,8 @@ export const ChatView: FC = () => {
     handleDeleteActiveTask,
   } = useChatActions();
 
-  const { scrollRef, contentRef, showScrollToBottom, handleScroll, scrollToBottom, onWheel, onPointerDown, onPointerUp, onKeyDown } = useAutoScroll(
-    displayedTask?.id,
-  );
+  const { scrollRef, contentRef, scrollTarget, handleScroll, scrollTo, scrollToBottom, onWheel, onPointerDown, onPointerUp, onKeyDown } =
+    useAutoScroll(displayedTask?.id);
 
   // Closing a task opened from the history list must return to that list (with
   // its scope and cached data intact), not the recent tasks screen.
@@ -586,10 +585,11 @@ export const ChatView: FC = () => {
       <ChatAction
         hasTask={displayedTask !== null}
         isArchived={displayedTask?.isArchived === true}
-        showScrollToBottom={showScrollToBottom}
+        isComposerHidden={isComposerHidden}
+        scrollTarget={scrollTarget}
         isRunning={displayedIsRunning}
         isCompacting={isCompacting}
-        onScrollToBottom={scrollToBottom}
+        onScrollTo={scrollTo}
         onCancelTask={isSubagentView ? handleCancelSubagent : handleCancelTask}
         onCloseTask={isSubagentReadOnly ? undefined : isSubagentView ? handleCloseSubagent : handleCloseTaskReturn}
         onContinueTask={isSubagentView ? undefined : handleContinueTask}

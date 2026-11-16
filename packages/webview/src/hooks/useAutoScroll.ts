@@ -8,7 +8,11 @@ export interface ScrollMetrics {
   readonly clientHeight: number;
 }
 
-// Distance from the bottom that still counts as following the conversation.
+export type ScrollDirection = 'up' | 'down';
+export type ScrollTarget = 'top' | 'bottom';
+
+// Distance from an edge that still counts as being at that edge.
+export const AT_TOP_THRESHOLD_PX = 32;
 export const AT_BOTTOM_THRESHOLD_PX = 32;
 
 // How long after a real user gesture (wheel/touch/pointer/key) we still
@@ -20,8 +24,17 @@ const USER_INTENT_WINDOW_MS = 400;
 // A press that moves less than this (in px) is a tap, not a scroll gesture.
 const TAP_MOVE_THRESHOLD_PX = 4;
 
+// Dragging the native scrollbar thumb emits scroll events but no pointer /
+// wheel / key events on the container, so a non-trivial scrollTop delta is
+// itself enough to identify a genuine scroll gesture.
+export const MIN_GESTURE_DELTA_PX = 4;
+
 export function isAtBottom(metrics: ScrollMetrics): boolean {
   return metrics.scrollHeight - metrics.scrollTop - metrics.clientHeight <= AT_BOTTOM_THRESHOLD_PX;
+}
+
+export function isAtTop(metrics: ScrollMetrics): boolean {
+  return metrics.scrollTop <= AT_TOP_THRESHOLD_PX;
 }
 
 export function resolveFollowState(params: { atBottom: boolean; scrolledUp: boolean; isFollowing: boolean }): boolean {
@@ -30,11 +43,34 @@ export function resolveFollowState(params: { atBottom: boolean; scrolledUp: bool
   return !params.scrolledUp;
 }
 
+// Returns the direction of a genuine scroll, or null for noise (a layout
+// shift) that must not release follow or move the "scroll to ..." button.
+export function resolveScrollGesture(params: { delta: number; hasRecentUserIntent: boolean }): ScrollDirection | null {
+  if (params.delta === 0) return null;
+  if (!params.hasRecentUserIntent && Math.abs(params.delta) < MIN_GESTURE_DELTA_PX) return null;
+  return params.delta < 0 ? 'up' : 'down';
+}
+
+// A single "scroll to ..." button follows the direction of the last scroll:
+// it offers the opposite edge once an edge is reached, and hides entirely at
+// the bottom where there is nothing left to jump to.
+export function resolveScrollTarget(params: {
+  atBottom: boolean;
+  atTop: boolean;
+  isFollowing: boolean;
+  lastDirection: ScrollDirection;
+}): ScrollTarget | null {
+  if (params.atBottom || params.isFollowing) return null;
+  if (params.atTop) return 'bottom';
+  return params.lastDirection === 'up' ? 'top' : 'bottom';
+}
+
 interface UseAutoScrollReturn {
   readonly scrollRef: RefObject<HTMLDivElement | null>;
   readonly contentRef: RefCallback<HTMLDivElement>;
-  readonly showScrollToBottom: boolean;
+  readonly scrollTarget: ScrollTarget | null;
   readonly handleScroll: () => void;
+  readonly scrollTo: (target: ScrollTarget) => void;
   readonly scrollToBottom: () => void;
   readonly onWheel: () => void;
   readonly onPointerDown: (event: PointerEvent<HTMLDivElement>) => void;
@@ -66,7 +102,11 @@ export const useAutoScroll = (resetKey?: unknown): UseAutoScrollReturn => {
   // Press start position, used to tell a tap (click) from a drag (scroll).
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
 
-  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  // Direction of the most recent genuine scroll gesture. Drives which edge
+  // the "scroll to ..." button offers while the user is mid-conversation.
+  const lastDirectionRef = useRef<ScrollDirection>('down');
+
+  const [scrollTarget, setScrollTarget] = useState<ScrollTarget | null>(null);
 
   const markUserIntent = useCallback((): void => {
     lastUserIntentAtRef.current = Date.now();
@@ -115,15 +155,24 @@ export const useAutoScroll = (resetKey?: unknown): UseAutoScrollReturn => {
     });
   }, []);
 
-  const scrollToBottom = useCallback((): void => {
-    isFollowingRef.current = true;
-    setShowScrollToBottom(false);
+  const scrollTo = useCallback(
+    (target: ScrollTarget): void => {
+      const scroller = scrollRef.current;
+      if (target === 'bottom') {
+        isFollowingRef.current = true;
+        setScrollTarget(null);
+        if (scroller) writeScrollTop(scroller, scroller.scrollHeight);
+      } else {
+        isFollowingRef.current = false;
+        lastDirectionRef.current = 'up';
+        setScrollTarget('bottom');
+        if (scroller) writeScrollTop(scroller, 0);
+      }
+    },
+    [writeScrollTop],
+  );
 
-    const scroller = scrollRef.current;
-    if (!scroller) return;
-
-    writeScrollTop(scroller, scroller.scrollHeight);
-  }, [writeScrollTop]);
+  const scrollToBottom = useCallback((): void => scrollTo('bottom'), [scrollTo]);
 
   const handleScroll = useCallback((): void => {
     const scroller = scrollRef.current;
@@ -135,21 +184,24 @@ export const useAutoScroll = (resetKey?: unknown): UseAutoScrollReturn => {
     }
 
     const atBottom = isAtBottom(scroller);
+    const atTop = isAtTop(scroller);
 
-    // Only a scrollTop decrease that happened shortly after a real user
-    // gesture counts as "the user scrolled up". Anything else — scroll
-    // anchoring kicking in because content above the fold resized,
-    // sub-pixel jitter from fast re-renders, etc. — is ignored.
+    // A gesture is either a recorded pointer/wheel/key input within the
+    // intent window, or a scrollTop delta large enough to only come from a
+    // user dragging the native scrollbar. Sub-pixel layout jitter is ignored.
     const hasRecentUserIntent = Date.now() - lastUserIntentAtRef.current < USER_INTENT_WINDOW_MS;
-    const scrolledUp = hasRecentUserIntent && scroller.scrollTop < lastScrollTopRef.current;
+    const delta = scroller.scrollTop - lastScrollTopRef.current;
+    const gesture = resolveScrollGesture({ delta, hasRecentUserIntent });
 
-    const isFollowing = resolveFollowState({ atBottom, scrolledUp, isFollowing: isFollowingRef.current });
+    if (gesture) {
+      lastUserIntentAtRef.current = Date.now();
+      lastDirectionRef.current = gesture;
+    }
 
+    isFollowingRef.current = resolveFollowState({ atBottom, scrolledUp: gesture === 'up', isFollowing: isFollowingRef.current });
     lastScrollTopRef.current = scroller.scrollTop;
 
-    if (isFollowing === isFollowingRef.current) return;
-    isFollowingRef.current = isFollowing;
-    setShowScrollToBottom(!isFollowing);
+    setScrollTarget(resolveScrollTarget({ atBottom, atTop, isFollowing: isFollowingRef.current, lastDirection: lastDirectionRef.current }));
   }, []);
 
   const contentRef = useCallback<RefCallback<HTMLDivElement>>(
@@ -194,8 +246,9 @@ export const useAutoScroll = (resetKey?: unknown): UseAutoScrollReturn => {
   return {
     scrollRef,
     contentRef,
-    showScrollToBottom,
+    scrollTarget,
     handleScroll,
+    scrollTo,
     scrollToBottom,
     onWheel: markUserIntent,
     onPointerDown,

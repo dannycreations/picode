@@ -3,15 +3,17 @@ import { memo } from 'react';
 import { Tooltip } from '@pi-code/webview/components/shared/Tooltip';
 
 import type { FC } from 'react';
+import type { ScrollTarget } from '@pi-code/webview/hooks/useAutoScroll';
 
 interface ChatActionProps {
   readonly hasTask: boolean;
   readonly isArchived: boolean;
-  readonly showScrollToBottom: boolean;
+  readonly isComposerHidden: boolean;
+  readonly scrollTarget: ScrollTarget | null;
   readonly isRunning: boolean;
   readonly isCompacting: boolean;
   readonly isAwaitingApproval: boolean;
-  readonly onScrollToBottom: () => void;
+  readonly onScrollTo: (target: ScrollTarget) => void;
   readonly onCancelTask: () => void;
   readonly onCloseTask?: () => void;
   readonly onContinueTask?: () => void;
@@ -23,35 +25,38 @@ export const ChatAction: FC<ChatActionProps> = memo(
   ({
     hasTask,
     isArchived,
-    showScrollToBottom,
+    isComposerHidden,
+    scrollTarget,
     isRunning,
     isCompacting,
     isAwaitingApproval,
-    onScrollToBottom,
+    onScrollTo,
     onCancelTask,
     onCloseTask,
     onContinueTask,
     closeLabel,
     cancelLabel = 'Cancel Task',
   }) => {
-    // Archived tasks are read-only, so their action bar is hidden entirely.
-    if (isArchived) return null;
-
-    const showCancel = isRunning || isCompacting;
-    const showContinue = onContinueTask !== undefined;
-    const showClose = onCloseTask !== undefined;
+    // Archived tasks are read-only: navigation stays available, but mutating
+    // actions (cancel / continue / close) are suppressed.
+    const showCancel = !isArchived && (isRunning || isCompacting);
+    const showContinue = !isArchived && onContinueTask !== undefined;
+    const showClose = !isArchived && onCloseTask !== undefined;
     // The bar only appears when it has something to offer: a way back to the
-    // bottom, a way to stop the run, or the actions of a settled task.
-    const showActionButtons = hasTask && (showScrollToBottom || showCancel || (!isAwaitingApproval && (showContinue || showClose)));
+    // top/bottom, a way to stop the run, or the actions of a settled task.
+    const showActionButtons = hasTask && (scrollTarget !== null || showCancel || (!isAwaitingApproval && (showContinue || showClose)));
 
     if (!showActionButtons) return null;
 
     return (
-      <div className="flex gap-2 px-3.5 pt-2 shrink-0">
-        {showScrollToBottom ? (
-          <Tooltip content="Scroll to bottom of chat">
-            <button onClick={onScrollToBottom} className="action-button w-full">
-              <span className="codicon codicon-chevron-down mr-1" style={{ fontSize: 'inherit', lineHeight: 'inherit' }} />
+      <div className={`flex gap-2 px-3.5 pt-2 shrink-0${isComposerHidden ? ' pb-2' : ''}`}>
+        {scrollTarget !== null ? (
+          <Tooltip content={`Scroll to ${scrollTarget} of chat`}>
+            <button onClick={() => onScrollTo(scrollTarget)} aria-label={`Scroll to ${scrollTarget} of chat`} className="action-button w-full">
+              <span
+                className={`codicon codicon-chevron-${scrollTarget === 'top' ? 'up' : 'down'} mr-1`}
+                style={{ fontSize: 'inherit', lineHeight: 'inherit' }}
+              />
             </button>
           </Tooltip>
         ) : showCancel ? (
