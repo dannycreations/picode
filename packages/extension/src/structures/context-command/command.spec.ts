@@ -14,10 +14,14 @@ const mocks = vi.hoisted(() => ({
   mapDiagnostics: vi.fn(),
   getWorkspaceCwd: vi.fn(),
   reportError: vi.fn(),
+  toRelativePath: vi.fn(),
+  statSync: vi.fn(),
   completeAndExtract: vi.fn(),
   executeCommand: vi.fn(),
   postMessage: vi.fn(),
 }));
+
+vi.mock('node:fs', () => ({ statSync: mocks.statSync }));
 
 vi.mock('vscode', () => ({
   commands: {
@@ -65,6 +69,7 @@ vi.mock('@pi-code/extension/structures/context-command/helpers', async (importOr
 vi.mock('@pi-code/extension/utilities/vscode', () => ({
   getWorkspaceCwd: mocks.getWorkspaceCwd,
   reportError: mocks.reportError,
+  toRelativePath: mocks.toRelativePath,
 }));
 
 interface Replacement {
@@ -77,6 +82,7 @@ function createEditor() {
   return {
     replacements,
     document: {
+      uri: { fsPath: '/ws/active.ts', path: '/ws/active.ts', scheme: 'file' },
       lineCount: 2,
       lineAt: () => ({ text: 'line' }),
     },
@@ -120,6 +126,16 @@ async function runAddToContext(args: unknown[]): Promise<void> {
   await handler(...args);
 }
 
+async function runMentionToContext(args: unknown[]): Promise<void> {
+  const handler = mocks.handlers.get(COMMAND_IDS.mentionToContext);
+  if (!handler) throw new Error(`${COMMAND_IDS.mentionToContext} is not registered`);
+  await handler(...args);
+}
+
+function uri(fsPath: string) {
+  return { fsPath, path: fsPath, scheme: 'file' };
+}
+
 describe('addToContext argument handling', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -149,6 +165,63 @@ describe('addToContext argument handling', () => {
       type: 'set_chat_input',
       payload: { text: 'other.ts:3-4\n```\nkept\n```\n\n' },
     });
+  });
+});
+
+describe('mentionToContext argument handling', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.handlers.clear();
+    mocks.editor.current = createEditor();
+    mocks.statSync.mockReturnValue({ isDirectory: () => false });
+    registerContextCommands({ postMessage: mocks.postMessage });
+  });
+
+  it('inserts a file mention from the explorer Uri and focuses chat', async () => {
+    mocks.toRelativePath.mockReturnValue('src/index.ts');
+    const target = uri('/ws/src/index.ts');
+
+    await runMentionToContext([target, [target]]);
+
+    expect(mocks.executeCommand).toHaveBeenCalledWith(COMMAND_IDS.chatViewFocus);
+    expect(mocks.postMessage).toHaveBeenCalledWith({ type: 'set_chat_input', payload: { text: ' @src/index.ts ' } });
+  });
+
+  it('adds a trailing slash for a folder mention', async () => {
+    mocks.toRelativePath.mockReturnValue('src');
+    mocks.statSync.mockReturnValue({ isDirectory: () => true });
+    const target = uri('/ws/src');
+
+    await runMentionToContext([target, [target]]);
+
+    expect(mocks.postMessage).toHaveBeenCalledWith({ type: 'set_chat_input', payload: { text: ' @src/ ' } });
+  });
+
+  it('inserts one mention per selected resource without duplicates', async () => {
+    mocks.toRelativePath.mockImplementation((target: ReturnType<typeof uri>) => target.fsPath.replace('/ws/', ''));
+    const first = uri('/ws/a.ts');
+    const second = uri('/ws/b.ts');
+
+    await runMentionToContext([first, [first, second]]);
+
+    expect(mocks.postMessage).toHaveBeenCalledWith({ type: 'set_chat_input', payload: { text: ' @a.ts @b.ts ' } });
+  });
+
+  it('falls back to the active editor document when no Uri is passed', async () => {
+    mocks.toRelativePath.mockReturnValue('active.ts');
+
+    await runMentionToContext([]);
+
+    expect(mocks.toRelativePath).toHaveBeenCalledWith(mocks.editor.current.document.uri);
+    expect(mocks.postMessage).toHaveBeenCalledWith({ type: 'set_chat_input', payload: { text: ' @active.ts ' } });
+  });
+
+  it('does nothing when there is no Uri and no active editor', async () => {
+    mocks.editor.current = null;
+
+    await runMentionToContext([]);
+
+    expect(mocks.postMessage).not.toHaveBeenCalled();
   });
 });
 

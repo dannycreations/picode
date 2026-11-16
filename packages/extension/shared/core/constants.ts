@@ -8,6 +8,7 @@ export const COMMAND_IDS = {
   commitMessageGenerating: `${DEFAULT_APP_ID}.commitMessageGenerating`,
   cancelGenerateCommitMessage: `${DEFAULT_APP_ID}.cancelGenerateCommitMessage`,
   addToContext: `${DEFAULT_APP_ID}.addToContext`,
+  mentionToContext: `${DEFAULT_APP_ID}.mentionToContext`,
   addProblemToContext: `${DEFAULT_APP_ID}.addProblemToContext`,
   fillCode: `${DEFAULT_APP_ID}.fillCode`,
   fixCode: `${DEFAULT_APP_ID}.fixCode`,

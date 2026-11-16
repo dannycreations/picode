@@ -1,14 +1,15 @@
+import { statSync } from 'node:fs';
 import { commands, languages, ProgressLocation, Range, window } from 'vscode';
 
 import { FILL_CODE_PROMPT, FIX_CODE_PROMPT } from '@pi-code/extension/core/prompt';
 import { completeAndExtract } from '@pi-code/extension/structures/agent-runtime/helpers/complete';
-import { isResolvedSelection, mapDiagnostics, resolveSelectionFromDocument } from '@pi-code/extension/structures/context-command/helpers';
-import { getWorkspaceCwd, reportError } from '@pi-code/extension/utilities/vscode';
+import { isResolvedSelection, isUri, mapDiagnostics, resolveSelectionFromDocument } from '@pi-code/extension/structures/context-command/helpers';
+import { getWorkspaceCwd, reportError, toRelativePath } from '@pi-code/extension/utilities/vscode';
 import { COMMAND_IDS } from '@pi-code/shared/core/constants';
 import { logger } from '@pi-code/shared/core/logger';
 import { wrapCodeBlock } from '@pi-code/shared/utilities/markdown';
 
-import type { Diagnostic, Disposable } from 'vscode';
+import type { Diagnostic, Disposable, Uri } from 'vscode';
 import type { ChatViewProvider } from '@pi-code/extension/structures/agent-webview/provider';
 import type { MappedDiagnostic, ResolvedSelection } from '@pi-code/extension/structures/context-command/helpers';
 
@@ -33,6 +34,15 @@ function getDiagnosticText(args: unknown[], selection: ResolvedSelection): strin
     : collectSelectionDiagnostics(selection);
 }
 
+async function sendChatInput(sender: Pick<ChatViewProvider, 'postMessage'>, text: string): Promise<void> {
+  try {
+    await commands.executeCommand(COMMAND_IDS.chatViewFocus);
+  } catch (err) {
+    logger.warn('Failed to focus the chat view; sending the prompt anyway.', err);
+  }
+  sender.postMessage({ type: 'set_chat_input', payload: { text } });
+}
+
 function registerChatInputCommand(
   sender: Pick<ChatViewProvider, 'postMessage'>,
   id: string,
@@ -42,14 +52,41 @@ function registerChatInputCommand(
     const selection = resolveSelection(args);
     if (!selection) return;
 
-    const prompt = buildPrompt(selection, args);
+    await sendChatInput(sender, buildPrompt(selection, args));
+  });
+}
 
-    try {
-      await commands.executeCommand(COMMAND_IDS.chatViewFocus);
-    } catch (err) {
-      logger.warn('Failed to focus the chat view; sending the prompt anyway.', err);
-    }
-    sender.postMessage({ type: 'set_chat_input', payload: { text: prompt } });
+function resolveMentionUris(args: unknown[]): Uri[] {
+  const [first, second] = args;
+  if (isUri(first)) {
+    const selected = Array.isArray(second) ? second.filter(isUri) : [];
+    return selected.length > 0 ? selected : [first];
+  }
+
+  const editor = window.activeTextEditor;
+  return editor ? [editor.document.uri] : [];
+}
+
+function isDirectory(fsPath: string): boolean {
+  try {
+    return statSync(fsPath).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+function buildMention(uri: Uri): string {
+  const relative = toRelativePath(uri);
+  return `@${uri.scheme === 'file' && isDirectory(uri.fsPath) && !relative.endsWith('/') ? `${relative}/` : relative}`;
+}
+
+function registerMentionToContextCommand(sender: Pick<ChatViewProvider, 'postMessage'>): Disposable {
+  return commands.registerCommand(COMMAND_IDS.mentionToContext, async (...args: unknown[]) => {
+    const uris = resolveMentionUris(args);
+    if (uris.length === 0) return;
+
+    const text = ` ${uris.map(buildMention).join(' ')} `;
+    await sendChatInput(sender, text);
   });
 }
 
@@ -166,6 +203,7 @@ function composePrompt(lead: string, selection: ResolvedSelection): string {
 export function registerContextCommands(sender: Pick<ChatViewProvider, 'postMessage'>): Disposable[] {
   return [
     registerChatInputCommand(sender, COMMAND_IDS.addToContext, formatSelectionBlock),
+    registerMentionToContextCommand(sender),
     registerChatInputCommand(sender, COMMAND_IDS.addProblemToContext, (selection, args) =>
       composePrompt(getDiagnosticText(args, selection), selection),
     ),

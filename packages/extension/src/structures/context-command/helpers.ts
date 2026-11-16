@@ -2,7 +2,7 @@ import { Range } from 'vscode';
 
 import { toRelativePath } from '@pi-code/extension/utilities/vscode';
 
-import type { Diagnostic, Selection, TextDocument } from 'vscode';
+import type { Diagnostic, Selection, TextDocument, Uri } from 'vscode';
 
 interface EffectiveSelection {
   readonly startLine: number;
@@ -72,6 +72,12 @@ export function isResolvedSelection(value: unknown): value is ResolvedSelection 
     typeof candidate.startLine === 'number' &&
     typeof candidate.endLine === 'number'
   );
+}
+
+export function isUri(value: unknown): value is Uri {
+  if (typeof value !== 'object' || value === null) return false;
+  const candidate = value as Partial<Uri>;
+  return typeof candidate.fsPath === 'string' && typeof candidate.path === 'string' && typeof candidate.scheme === 'string';
 }
 
 export function resolveSelectionFromDocument(document: TextDocument, selection: Selection): ResolvedSelection | null {
