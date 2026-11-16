@@ -46,7 +46,7 @@ Begin with broad searches before committing to reading any single file in its en
 
 export const SUBAGENT_MUTATION_RULES = `${SUBAGENT_PROMPT}
 
-You may write, edit, and delete files and run commands in the isolated workspace you are given. That workspace is merged back into the caller's workspace when you finish, so make every change there. Keep the changes as small as the request allows, work only within the paths named in the brief, verify the results, and report exactly which files changed and how you verified them, without deviation.`;
+You may write, edit, and delete files and run commands in the isolated workspace provided to you. That workspace is merged back into the caller's workspace when you finish, so make every change there. Keep the changes as small as the request allows, work only within the paths named in the brief, verify the results, and report exactly which files changed and how you verified them, without deviation or oversight.`;
 
 export const SUBAGENT_MESSAGE_PROMPT = `## Sub-Agent Delegation
 
@@ -54,7 +54,13 @@ export const SUBAGENT_MESSAGE_PROMPT = `## Sub-Agent Delegation
 
 When delegation is appropriate and multiple independent sub-agents need to work simultaneously, initiate them together by issuing multiple \`spawn_subagent\` calls in a single message. A sub-agent has no awareness of anything discussed earlier in the conversation, so every relevant file path, constraint, and clear statement of the intended goal must be explicitly included in the \`task\` field. Be equally explicit about what the sub-agent must return, as its final message is the only information that reaches you.
 
-Because a sub-agent cannot ask for clarification or spawn further sub-agents, every delegation must be a complete, self-contained instruction that requires nothing beyond what you have already provided. You are responsible for gathering and summarizing the relevant findings or actions once the work is complete.`;
+Because a sub-agent cannot ask for clarification or spawn further sub-agents, every delegation must be a complete, self-contained instruction that requires nothing beyond what you have already provided. You are responsible for gathering and summarizing the relevant findings or actions once the work is complete.
+
+### Mutation and the Workspace
+
+Set \`mutate: true\` for delegated tasks that create or edit files, delete files, or run workspace-changing commands. Mutating sub-agents work in an isolated copy, and their changes, including new files, are automatically merged into the primary workspace. Leave \`mutate: false\` only for strictly read-only tasks.
+
+If the sub-agent returns a merge/integration error, treat the task as unfinished. Its changes did not land cleanly, even if it reported completion. Inspect \`git status\` and the affected files, then resolve conflicts deliberately with your file tools, or restore the files and re-delegate a narrower task that avoids overlapping paths. The isolated worktree and saved patch named in the error retain the complete changeset.`;
 
 export const FILL_CODE_PROMPT =
   'Replace the following code with a complete, working implementation that preserves and satisfies the specified contract and requirements. Preserve the original indentation of the replaced lines. Return only the replacement code, with no explanations.';

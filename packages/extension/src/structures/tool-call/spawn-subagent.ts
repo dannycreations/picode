@@ -66,12 +66,8 @@ export const spawnSubagentTool = defineTool({
   description: 'Delegate a self-contained task to a sub-agent that works independently and returns a final report.',
   parameters: Type.Object({
     description: Type.String({ description: 'A 3-5 word description of the delegated task, shown to the user.' }),
-    task: Type.String({
-      description: 'The comprehensive, explicit brief for the sub-agent, including the goal, relevant paths, and what to report back.',
-    }),
-    mutate: Type.Optional(
-      Type.Boolean({ description: 'Set to true to let the sub-agent mutate an isolated copy of the workspace; defaults to false (read-only).' }),
-    ),
+    task: Type.String({ description: 'The comprehensive, explicit brief, including the goal, relevant paths, and what to report back.' }),
+    mutate: Type.Optional(Type.Boolean({ description: 'Set to true to allow file mutation; defaults to false (read-only).' })),
   }),
   async execute(toolCallId, params, signal, onUpdate, ctx): Promise<AgentToolResult<SubagentDetails>> {
     const failure = (text: string): AgentToolResult<SubagentDetails> => toolError<SubagentDetails>(text);
