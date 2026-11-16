@@ -103,8 +103,6 @@ export function installFetchInterceptor(workspaceDir: string): void {
 }
 
 export async function flushDebugLog(): Promise<void> {
-  while (pendingCaptures.size > 0) {
-    await Promise.all(pendingCaptures);
-  }
+  await Promise.all([...pendingCaptures]);
   await writeChain;
 }

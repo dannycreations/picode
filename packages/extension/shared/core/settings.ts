@@ -292,9 +292,13 @@ function defaultValue(key: SettingKey): unknown {
   return Array.isArray(fallback) ? [...fallback] : fallback;
 }
 
+export function defaultSettingValue<K extends SettingKey>(key: K): AppSettings[K] {
+  return defaultValue(key) as AppSettings[K];
+}
+
 export function coerceSetting<K extends SettingKey>(key: K, value: unknown): AppSettings[K] {
   const spec = getSettingSpec(key);
-  const fallback = defaultValue(key) as AppSettings[K];
+  const fallback = defaultSettingValue(key);
 
   switch (spec.type) {
     case 'boolean': {
@@ -332,5 +336,5 @@ export function coerceSettings(values: Partial<Record<string, unknown>>): Partia
 }
 
 export function defaultSettings(): AppSettings {
-  return Object.fromEntries(SETTING_KEYS.map((key) => [key, defaultValue(key)])) as AppSettings;
+  return Object.fromEntries(SETTING_KEYS.map((key) => [key, defaultSettingValue(key)])) as AppSettings;
 }

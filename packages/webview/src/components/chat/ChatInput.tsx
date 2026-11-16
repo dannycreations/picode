@@ -4,7 +4,7 @@ import { Fragment, memo, useEffect, useMemo, useRef, useState } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
 
 import { logger } from '@pi-code/shared/core/logger';
-import { coerceSetting } from '@pi-code/shared/core/settings';
+import { defaultSettingValue } from '@pi-code/shared/core/settings';
 import { classifyFileByContent, getFileExtension } from '@pi-code/webview/components/chat/helpers/attachment';
 import { splitTokenSegments } from '@pi-code/webview/components/chat/helpers/highlight';
 import { useChatCommand, useChatMention, useChatTag } from '@pi-code/webview/components/chat/hooks/useSuggestion';
@@ -26,7 +26,7 @@ interface ChatInputProps {
   readonly supportsImages: boolean;
 }
 
-type SuggestionController = Pick<UseSuggestionReturn<unknown>, 'isOpen' | 'handleKeyDown' | 'handleChange' | 'close' | 'syncCaret'>;
+type SuggestionController = Pick<UseSuggestionReturn<unknown>, 'handleKeyDown' | 'handleChange' | 'close' | 'syncCaret'>;
 
 const AttachmentsPreview: FC<{
   readonly attachments: readonly Attachment[];
@@ -71,7 +71,7 @@ export const ChatInput = memo(({ onSend, sendingDisabled, placeholderText, texta
   const suggestionControllers: readonly SuggestionController[] = [command, mention, commit];
 
   const segments = useMemo(() => splitTokenSegments(inputValue, commands), [inputValue, commands]);
-  const minTextAttachment = settings?.minTextAttachment ?? coerceSetting('minTextAttachment', undefined);
+  const minTextAttachment = settings?.minTextAttachment ?? defaultSettingValue('minTextAttachment');
 
   // Drop any staged images when the active model cannot accept them, so the
   // user cannot send attachments the model would reject. Text attachments stay,

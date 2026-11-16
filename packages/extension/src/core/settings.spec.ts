@@ -1,7 +1,7 @@
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES } from '@earendil-works/pi-coding-agent';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { invalidateAppSettings, readModelSelection, readOutputLimits, readThinkingLevel } from '@pi-code/extension/core/settings';
+import { invalidateAppSettings, readEnvLevel, readModelSelection, readOutputLimits, readThinkingLevel } from '@pi-code/extension/core/settings';
 import { getSettingSpec, SETTING_KEYS } from '@pi-code/shared/core/settings';
 import manifest from '../../package.json' with { type: 'json' };
 import { buildManifestSettings } from '../../scripts/settings';
@@ -12,6 +12,23 @@ vi.mock('vscode', () => ({
   ConfigurationTarget: { Global: 1, Workspace: 2, WorkspaceFolder: 3 },
   workspace: { getConfiguration: () => ({ get: (key: string) => configValues[key] }) },
 }));
+
+describe('readEnvLevel', () => {
+  afterEach(() => {
+    delete process.env['PI_CODE_LOG_LEVEL'];
+  });
+
+  it('reads the log level from the environment', () => {
+    process.env['PI_CODE_LOG_LEVEL'] = ' Debug ';
+    expect(readEnvLevel()).toBe('debug');
+  });
+
+  it('returns undefined when the variable is unset or invalid', () => {
+    expect(readEnvLevel()).toBeUndefined();
+    process.env['PI_CODE_LOG_LEVEL'] = 'loud';
+    expect(readEnvLevel()).toBeUndefined();
+  });
+});
 
 describe('readOutputLimits', () => {
   beforeEach(() => {

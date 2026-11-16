@@ -4,13 +4,13 @@ import { contentText, getSupportedThinkingLevels } from '@earendil-works/pi-ai';
 import { getAgentDir, SessionManager } from '@earendil-works/pi-coding-agent';
 import { FileType, Uri, window, workspace } from 'vscode';
 
-import { getDefaultModelSelection, getSettingsManager, readAppSettings } from '@pi-code/extension/core/settings';
+import { getDefaultModelSelection, getSettingsManager, readAppSettings, readEnvLevel } from '@pi-code/extension/core/settings';
 import { createAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { collectCommands } from '@pi-code/extension/structures/chat-command/command';
 import { convertSessionEntries, loadSessionTranscript } from '@pi-code/extension/structures/chat-session/session';
 import { mapConcurrent } from '@pi-code/extension/utilities/concurrency';
 import { streamLines } from '@pi-code/extension/utilities/fs';
-import { logger, readEnvLevel } from '@pi-code/shared/core/logger';
+import { logger } from '@pi-code/shared/core/logger';
 import { resolveContextLimit } from '@pi-code/shared/utilities/common';
 
 import type { Api, Model, TextContent } from '@earendil-works/pi-ai';

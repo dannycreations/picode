@@ -2,7 +2,7 @@ import { cleanupSessionResources, registerSessionResourceCleanup } from '@earend
 import { killTrackedDetachedChildren } from '@earendil-works/pi-coding-agent';
 import { commands, languages, window, workspace } from 'vscode';
 
-import { invalidateAppSettings, readAppSettings } from '@pi-code/extension/core/settings';
+import { invalidateAppSettings, readAppSettings, readEnvLevel } from '@pi-code/extension/core/settings';
 import { mcpGateway, setMcpClientVersion } from '@pi-code/extension/structures/agent-runtime/mcp/manager';
 import { invalidateAgentResources } from '@pi-code/extension/structures/agent-runtime/resource';
 import { ChatViewProvider } from '@pi-code/extension/structures/agent-webview/provider';
@@ -17,6 +17,7 @@ import { logger } from '@pi-code/shared/core/logger';
 import type { ExtensionContext } from 'vscode';
 
 export function activate(context: ExtensionContext): void {
+  logger.setLevel(readEnvLevel() ?? null);
   setMcpClientVersion(context.extension.packageJSON.version);
 
   if (process.env['PI_CODE_DEBUG_HTTP']) {

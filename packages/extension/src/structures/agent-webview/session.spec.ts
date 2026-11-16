@@ -12,6 +12,7 @@ vi.mock('@pi-code/extension/core/settings', () => ({
   getDefaultModelSelection: vi.fn(async () => ({ id: 'zen-model', provider: 'zen' })),
   getSettingsManager: () => ({ getDefaultThinkingLevel: () => undefined }),
   readAppSettings: () => ({}),
+  readEnvLevel: () => undefined,
 }));
 
 vi.mock('@pi-code/extension/structures/chat-command/command', () => ({ collectCommands: () => [] }));

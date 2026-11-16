@@ -1,10 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { logger } from '@pi-code/shared/core/logger';
+import { logger, parseLogLevel } from '@pi-code/shared/core/logger';
 
 import type { LoggerSink } from '@pi-code/shared/core/logger';
-
-const ENV_LEVEL_KEY = 'PI_CODE_LOG_LEVEL';
 
 function recordingSink(records: Array<[string, string]>): LoggerSink {
   return {
@@ -16,13 +14,25 @@ function recordingSink(records: Array<[string, string]>): LoggerSink {
   };
 }
 
+describe('parseLogLevel', () => {
+  it('parses a level regardless of case or whitespace', () => {
+    expect(parseLogLevel(' Trace ')).toBe('trace');
+    expect(parseLogLevel('OFF')).toBe('off');
+  });
+
+  it('returns undefined for unset or invalid values', () => {
+    expect(parseLogLevel(undefined)).toBeUndefined();
+    expect(parseLogLevel('loud')).toBeUndefined();
+  });
+});
+
 describe('logger levels', () => {
   let records: Array<[string, string]> = [];
 
   const recordedLevels = (): string[] => records.map(([level]) => level);
 
   afterEach(() => {
-    delete process.env[ENV_LEVEL_KEY];
+    logger.setLevel(null);
     logger.setSink(null);
   });
 
@@ -37,25 +47,16 @@ describe('logger levels', () => {
     expect(recordedLevels()).toEqual(['info', 'warn', 'error']);
   });
 
-  it('raises verbosity from PI_CODE_LOG_LEVEL regardless of case or whitespace', () => {
-    process.env[ENV_LEVEL_KEY] = ' Trace ';
+  it('raises verbosity when the level is raised', () => {
+    logger.setLevel('trace');
     records = [];
     logger.setSink(recordingSink(records));
     logger.trace('t');
     expect(recordedLevels()).toEqual(['trace']);
   });
 
-  it('ignores invalid PI_CODE_LOG_LEVEL values and keeps the default', () => {
-    process.env[ENV_LEVEL_KEY] = 'loud';
-    records = [];
-    logger.setSink(recordingSink(records));
-    logger.debug('d');
-    logger.info('i');
-    expect(recordedLevels()).toEqual(['info']);
-  });
-
   it('silences every level when off', () => {
-    process.env[ENV_LEVEL_KEY] = 'off';
+    logger.setLevel('off');
     records = [];
     logger.setSink(recordingSink(records));
     logger.error('e');

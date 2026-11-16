@@ -32,15 +32,13 @@ const consoleSink: LoggerSink = {
 let sink: LoggerSink = consoleSink;
 let level: LevelSetting | null = null;
 
-export function readEnvLevel(): LevelSetting | undefined {
-  if (typeof process === 'undefined') return undefined;
-  const value = process.env['PI_CODE_LOG_LEVEL'];
+export function parseLogLevel(value: string | undefined): LevelSetting | undefined {
   const parsed = value?.trim().toLowerCase();
   return LEVEL_SETTINGS.find((setting) => setting === parsed);
 }
 
 function isEnabled(key: LogLevelName): boolean {
-  const setting = level ?? readEnvLevel() ?? 'info';
+  const setting = level ?? 'info';
   return LEVEL_WEIGHT[key] >= LEVEL_WEIGHT[setting];
 }
 

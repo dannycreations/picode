@@ -4,6 +4,7 @@ import { ConfigurationTarget, workspace } from 'vscode';
 
 import { isProjectTrusted } from '@pi-code/extension/utilities/vscode';
 import { DEFAULT_APP_ID } from '@pi-code/shared/core/constants';
+import { parseLogLevel } from '@pi-code/shared/core/logger';
 import { parseModelSelection } from '@pi-code/shared/core/protocol';
 import { coerceSettings, MAX_RETRY_COUNT, SETTING_KEYS } from '@pi-code/shared/core/settings';
 import { BYTES_PER_KILOBYTE } from '@pi-code/shared/utilities/common';
@@ -11,6 +12,7 @@ import { BYTES_PER_KILOBYTE } from '@pi-code/shared/utilities/common';
 import type { AgentSession } from '@earendil-works/pi-coding-agent';
 import type { WorkspaceConfiguration } from 'vscode';
 import type { OutputLimits } from '@pi-code/extension/utilities/truncate';
+import type { LevelSetting } from '@pi-code/shared/core/logger';
 import type { ModelSelection } from '@pi-code/shared/core/protocol';
 import type { AppSettings } from '@pi-code/shared/core/settings';
 import type { ModelThinkingLevel } from '@pi-code/shared/core/types';
@@ -34,6 +36,10 @@ export function readAppSettings(): AppSettings {
   }
   cachedSettings = coerceSettings(raw) as AppSettings;
   return cachedSettings;
+}
+
+export function readEnvLevel(): LevelSetting | undefined {
+  return parseLogLevel(process.env['PI_CODE_LOG_LEVEL']);
 }
 
 export function readOutputLimits(): OutputLimits {
